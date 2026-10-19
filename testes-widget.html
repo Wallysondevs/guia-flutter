@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Testes de Widget — testWidgets, find e expect | Guia Flutter</title>
+<meta name="description" content="Testes de widget no Flutter para quem nunca fez um app: o arquivo test/widget_test.dart, testWidgets, pumpWidget, find.text, find.byIcon, find.byKey, tap, enterText, pump, expect com findsOneWidget e findsNothing, flutter test no terminal e as falhas reais (pump esquecido, finder que não acha nada).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Testes de Widget</span></h1>
+
+<p class="intro">Toda vez que a Ana muda o app de compras, ela abre o celular, digita "Arroz", toca no <strong>+</strong> e confere se o item apareceu. Funciona, mas cansa, e um dia ela esquece de conferir. Um <strong>teste de widget</strong> faz essa conferência por ela: um programa pequeno que monta a tela do app <strong>sem celular nenhum</strong>, "digita", "toca" e verifica se a tela ficou como deveria. Roda em um segundo, com um comando: <code>flutter test</code>.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Onde ficam os testes (<code>test/</code>) e o teste que o <code>flutter create</code> já traz pronto.</li>
+  <li>As quatro peças de um teste: <code>testWidgets</code>, <code>pumpWidget</code>, os <strong>finders</strong> (<code>find.text</code>, <code>find.byIcon</code>, <code>find.byKey</code>…) e o <code>expect</code>.</li>
+  <li>Como simular o usuário: <code>tap</code>, <code>enterText</code> e o <code>pump</code> que redesenha a tela.</li>
+  <li>Como rodar com <code>flutter test</code> e ler a saída (<code>+3: All tests passed!</code>).</li>
+  <li>As falhas reais mais comuns e como ler a mensagem.</li>
+</ul>
+</div>
+
+<p>Todas as saídas desta página vieram do <strong>Flutter 3.47.7</strong> (Dart 3.13.5) da máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>).</p>
+
+<hr>
+
+<h2>A ideia: o robô que testa o app</h2>
+<p>Imagine um robô sentado na frente do app, com uma lista de tarefas na mão: "abra o app; procure o texto <em>0 itens na lista</em>; escreva <em>Arroz</em> no campo; toque no botão +; agora procure <em>Arroz</em> na lista". Se tudo o que ele procurou estava lá, o teste <strong>passou</strong>. Se algo faltou, ele anota <strong>o que</strong> procurou, <strong>o que</strong> achou e <strong>em que linha</strong> da lista de tarefas parou.</p>
+<p>O teste de widget é exatamente essa lista de tarefas, escrita em Dart. O "robô" é o <code>WidgetTester</code> (o "testador de widgets"), que o pacote <code>flutter_test</code> entrega pronto. Ele não abre emulador nem janela: monta a árvore de widgets na memória, numa tela de mentira de 800×600, e por isso é tão rápido.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Tipo de teste</th><th>O que confere</th><th>Precisa de aparelho?</th></tr>
+<tr><td><strong>Unitário</strong> (<code>test</code>)</td><td>Uma função ou classe Dart, sem tela</td><td>Não</td></tr>
+<tr><td><strong>De widget</strong> (<code>testWidgets</code>)</td><td>Um widget ou uma tela: o que aparece e o que acontece ao tocar</td><td>Não</td></tr>
+<tr><td><strong>De integração</strong></td><td>O app inteiro, rodando de verdade</td><td>Sim (celular, emulador ou navegador)</td></tr>
+</table>
+</div>
+<p>Esta aula é sobre o do meio, o mais usado no dia a dia.</p>
+
+<hr>
+
+<h2>1. O teste que já vem pronto</h2>
+<p>Quando você cria um projeto com <code>flutter create</code> (veja <a href="criar-projeto.html">Criando um Projeto</a>), ele já vem com uma pasta <code>test/</code> e um arquivo dentro:</p>
+
+<pre>contador/
+├── lib/
+│   └── main.dart          « o app (o contador do +)
+├── test/
+│   └── widget_test.dart   « o teste do app
+└── pubspec.yaml           « já lista o flutter_test em dev_dependencies
+</pre>
+
+<p>Sem escrever nada, a Ana já pode rodar o teste. Dentro da pasta do projeto:</p>
+
+<pre class="term">$ cd contador
+$ flutter test
+00:00 +0: loading /home/ana/contador/test/widget_test.dart
+00:00 +0: Counter increments smoke test
+00:00 +1: All tests passed!
+</pre>
+
+<dl class="anatomy">
+  <dt>00:00</dt><dd>O tempo desde o início (minutos:segundos). O teste inteiro levou menos de um segundo; o comando todo, contando a compilação, levou uns 12 segundos.</dd>
+  <dt>+0, +1</dt><dd>Quantos testes já <strong>passaram</strong>. Se algum falhar, aparece também <code>-1</code>, <code>-2</code>…</dd>
+  <dt>loading …</dt><dd>O Flutter está compilando o arquivo de teste.</dd>
+  <dt>Counter increments smoke test</dt><dd>O nome do teste que está rodando ("o contador aumenta: teste de fumaça", um teste rápido que só confere se o básico funciona).</dd>
+  <dt>All tests passed!</dt><dd>"Todos os testes passaram!" O comando termina com código 0 (sucesso).</dd>
+</dl>
+
+<p>Este é o arquivo, sem os comentários do topo:</p>
+
+<pre class="file" data-file="test/widget_test.dart">import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import 'package:contador/main.dart';
+
+void main() {
+  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
+    // Build our app and trigger a frame.
+    await tester.pumpWidget(const MyApp());
+
+    // Verify that our counter starts at 0.
+    expect(find.text('0'), findsOneWidget);
+    expect(find.text('1'), findsNothing);
+
+    // Tap the '+' icon and trigger a frame.
+    await tester.tap(find.byIcon(Icons.add));
+    await tester.pump();
+
+    // Verify that our counter has incremented.
+    expect(find.text('0'), findsNothing);
+    expect(find.text('1'), findsOneWidget);
+  });
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>import 'package:flutter_test/flutter_test.dart'</dt><dd>O pacote de testes do Flutter: traz <code>testWidgets</code>, <code>find</code>, <code>expect</code> e os <em>matchers</em> (<code>findsOneWidget</code>…).</dd>
+  <dt>import 'package:contador/main.dart'</dt><dd>O seu app. <code>contador</code> é o <code>name:</code> do <code>pubspec.yaml</code>; é assim que o teste enxerga as classes de <code>lib/</code>.</dd>
+  <dt>testWidgets('nome', (tester) async { … })</dt><dd>Declara <strong>um</strong> teste: um nome (que aparece na saída) e uma função <code>async</code> que recebe o <code>tester</code>, o robô.</dd>
+  <dt>await tester.pumpWidget(const MyApp())</dt><dd>"Bombeia" o widget para a tela de mentira: monta a árvore e desenha o <strong>primeiro quadro</strong>. É o "abrir o app".</dd>
+  <dt>find.text('0')</dt><dd>Um <strong>finder</strong> ("localizador"): descreve <em>o que</em> procurar. Aqui, widgets <code>Text</code> com o texto exato <code>0</code>.</dd>
+  <dt>expect(…, findsOneWidget)</dt><dd>A <strong>verificação</strong>: "espero achar exatamente um". Se não for verdade, o teste falha nesta linha.</dd>
+  <dt>await tester.tap(find.byIcon(Icons.add))</dt><dd>Toca no centro do widget que tem o ícone <code>+</code>. O <code>onPressed</code> roda, o <code>setState</code> é chamado…</dd>
+  <dt>await tester.pump()</dt><dd>… mas a tela só é <strong>redesenhada</strong> quando você pede: <code>pump()</code> desenha o próximo quadro. Sem ele, a tela continua mostrando <code>0</code> (veja <a href="#errado">Quando dá errado</a>).</dd>
+</dl>
+
+<div class="tip">
+<strong>Todo teste segue o mesmo roteiro</strong>
+<p>1) <strong>monte</strong> a tela (<code>pumpWidget</code>) · 2) <strong>aja</strong> como o usuário (<code>tap</code>, <code>enterText</code>) e redesenhe (<code>pump</code>) · 3) <strong>confira</strong> (<code>expect</code>). Em inglês se diz <em>arrange, act, assert</em>.</p>
+</div>
+
+<hr>
+
+<h2>2. Testando o app de compras da Ana</h2>
+<p>O contador é pequeno demais. Este é o app de lista de compras da Ana: um campo de texto, uma frase com a quantidade e a lista. Repare em duas coisas que vão ajudar o teste: o <code>TextField</code> ganhou uma <strong>chave</strong> (<code>key: const Key('campo-item')</code>) e o botão ganhou um <code>tooltip</code>.</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const AppCompras());
+
+class AppCompras extends StatelessWidget {
+  const AppCompras({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      title: 'Compras da Ana',
+      home: TelaCompras(),
+    );
+  }
+}
+
+class TelaCompras extends StatefulWidget {
+  const TelaCompras({super.key});
+
+  @override
+  State&lt;TelaCompras&gt; createState() =&gt; _TelaComprasState();
+}
+
+class _TelaComprasState extends State&lt;TelaCompras&gt; {
+  final _campo = TextEditingController();
+  final _itens = &lt;String&gt;[];
+
+  void _adicionar() {
+    final texto = _campo.text.trim();
+    if (texto.isEmpty) return;
+    setState(() =&gt; _itens.add(texto));
+    _campo.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Compras da Ana')),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: TextField(
+              key: const Key('campo-item'),
+              controller: _campo,
+              decoration: const InputDecoration(labelText: 'Novo item'),
+            ),
+          ),
+          Text('${_itens.length} itens na lista'),
+          Expanded(
+            child: ListView(
+              children: [for (final item in _itens) ListTile(title: Text(item))],
+            ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _adicionar,
+        tooltip: 'Adicionar',
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+</pre>
+
+<p>A Ana apagou o <code>widget_test.dart</code> do contador (ele procura o <code>MyApp</code>, que não existe mais) e escreveu três testes num arquivo novo. O nome do arquivo <strong>tem de terminar em <code>_test.dart</code></strong>: é assim que o <code>flutter test</code> o encontra.</p>
+
+<pre class="file" data-file="test/compras_test.dart">import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import 'package:compras/main.dart';
+
+void main() {
+  testWidgets('a lista começa vazia', (WidgetTester tester) async {
+    await tester.pumpWidget(const AppCompras());
+
+    expect(find.text('Compras da Ana'), findsOneWidget);
+    expect(find.text('0 itens na lista'), findsOneWidget);
+    expect(find.byType(ListTile), findsNothing);
+  });
+
+  testWidgets('digitar e tocar no + adiciona o item', (WidgetTester tester) async {
+    await tester.pumpWidget(const AppCompras());
+
+    await tester.enterText(find.byKey(const Key('campo-item')), 'Arroz');
+    await tester.tap(find.byIcon(Icons.add));
+    await tester.pump();
+
+    expect(find.widgetWithText(ListTile, 'Arroz'), findsOneWidget);
+    expect(find.text('1 itens na lista'), findsOneWidget);
+  });
+
+  testWidgets('campo vazio não adiciona nada', (WidgetTester tester) async {
+    await tester.pumpWidget(const AppCompras());
+
+    await tester.tap(find.byTooltip('Adicionar'));
+    await tester.pump();
+
+    expect(find.byType(ListTile), findsNothing);
+  });
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>find.byType(ListTile)</dt><dd>Procura pelo <strong>tipo</strong> do widget, não pelo texto. Com <code>findsNothing</code>: "não pode haver nenhum <code>ListTile</code>", ou seja, a lista está vazia.</dd>
+  <dt>find.byKey(const Key('campo-item'))</dt><dd>Procura o widget que tem aquela <strong>chave</strong>. É o jeito mais firme de achar um widget: o texto pode mudar, a chave não.</dd>
+  <dt>tester.enterText(finder, 'Arroz')</dt><dd>Digita <code>Arroz</code> no campo de texto achado (como se o teclado tivesse escrito).</dd>
+  <dt>find.widgetWithText(ListTile, 'Arroz')</dt><dd>"Um <code>ListTile</code> que tenha o texto <em>Arroz</em> dentro." Mais preciso que <code>find.text('Arroz')</code>, que também acharia o texto dentro do campo, se ele não tivesse sido limpo.</dd>
+  <dt>find.byTooltip('Adicionar')</dt><dd>Procura o widget pelo <code>tooltip</code>, a dica que aparece ao segurar o dedo. Outra forma de achar o mesmo botão do <code>byIcon</code>.</dd>
+</dl>
+
+<pre class="term">$ flutter test
+00:00 +0: loading /home/ana/compras/test/compras_test.dart
+00:00 +0: a lista começa vazia
+00:00 +1: digitar e tocar no + adiciona o item
+00:01 +2: campo vazio não adiciona nada
+00:01 +3: All tests passed!
+</pre>
+
+<p>Três testes, três aprovados (<code>+3</code>), em pouco mais de um segundo. Cada <code>testWidgets</code> começa do zero: o item que o segundo teste adicionou <strong>não</strong> existe no terceiro.</p>
+
+<h3>Rodando só um teste</h3>
+<p>Com muitos testes, dá para rodar só os que têm um pedaço do nome, com <code>--name</code>, ou só um arquivo:</p>
+
+<pre class="term">$ flutter test --name "campo vazio"
+00:00 +0: loading /home/ana/compras/test/compras_test.dart
+00:00 +0: campo vazio não adiciona nada
+00:01 +1: All tests passed!
+$ flutter test test/compras_test.dart     « só este arquivo
+</pre>
+
+<div class="tryflutter" data-goal="src:key:\s*const\s+Key\(\s*'campo-item'\s*\)">
+<p class="try-task"><strong>Missão:</strong> o teste da Ana procura o campo com <code>find.byKey(const Key('campo-item'))</code>, mas neste app o <code>TextField</code> está sem chave, e o teste falharia. Dê a ele a chave <code>key: const Key('campo-item')</code>. Rode e confira que o app continua igual: a chave não aparece na tela, ela só serve para achar o widget.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const AppCompras());
+
+class AppCompras extends StatelessWidget {
+  const AppCompras({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      title: 'Compras da Ana',
+      home: TelaCompras(),
+    );
+  }
+}
+
+class TelaCompras extends StatefulWidget {
+  const TelaCompras({super.key});
+
+  @override
+  State&lt;TelaCompras&gt; createState() =&gt; _TelaComprasState();
+}
+
+class _TelaComprasState extends State&lt;TelaCompras&gt; {
+  final _campo = TextEditingController();
+  final _itens = &lt;String&gt;[];
+
+  void _adicionar() {
+    final texto = _campo.text.trim();
+    if (texto.isEmpty) return;
+    setState(() =&gt; _itens.add(texto));
+    _campo.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Compras da Ana')),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: TextField(
+              controller: _campo,
+              decoration: const InputDecoration(labelText: 'Novo item'),
+            ),
+          ),
+          Text('${_itens.length} itens na lista'),
+          Expanded(
+            child: ListView(
+              children: [for (final item in _itens) ListTile(title: Text(item))],
+            ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _adicionar,
+        tooltip: 'Adicionar',
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const AppCompras());
+
+class AppCompras extends StatelessWidget {
+  const AppCompras({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      title: 'Compras da Ana',
+      home: TelaCompras(),
+    );
+  }
+}
+
+class TelaCompras extends StatefulWidget {
+  const TelaCompras({super.key});
+
+  @override
+  State&lt;TelaCompras&gt; createState() =&gt; _TelaComprasState();
+}
+
+class _TelaComprasState extends State&lt;TelaCompras&gt; {
+  final _campo = TextEditingController();
+  final _itens = &lt;String&gt;[];
+
+  void _adicionar() {
+    final texto = _campo.text.trim();
+    if (texto.isEmpty) return;
+    setState(() =&gt; _itens.add(texto));
+    _campo.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Compras da Ana')),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: TextField(
+              key: const Key('campo-item'),
+              controller: _campo,
+              decoration: const InputDecoration(labelText: 'Novo item'),
+            ),
+          ),
+          Text('${_itens.length} itens na lista'),
+          Expanded(
+            child: ListView(
+              children: [for (final item in _itens) ListTile(title: Text(item))],
+            ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _adicionar,
+        tooltip: 'Adicionar',
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<div class="note">
+<strong>Os testes rodam no seu computador</strong>
+<p>O <code>flutter test</code> precisa do Flutter instalado (veja <a href="instalar.html">Instalando o Flutter</a>). No editor do guia você treina o app; os testes, você roda no terminal do seu projeto.</p>
+</div>
+
+<hr>
+
+<h2 id="formas">3. Formas diferentes de achar o mesmo widget</h2>
+<p>O botão <strong>+</strong> do app pode ser achado de três jeitos, e todos funcionam:</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Finder</th><th>Bom quando…</th><th>Cuidado</th></tr>
+<tr><td><code>find.byIcon(Icons.add)</code></td><td>Só existe um botão com aquele ícone</td><td>Se aparecer um segundo <code>+</code> na tela, ele acha dois e o <code>tap</code> reclama</td></tr>
+<tr><td><code>find.byTooltip('Adicionar')</code></td><td>O botão tem dica (o que é bom para acessibilidade)</td><td>Mudou a dica, o teste quebra</td></tr>
+<tr><td><code>find.byKey(const Key('botao-add'))</code></td><td>Você quer um teste que não quebre quando o texto ou o ícone mudarem</td><td>Precisa colocar a <code>key</code> no código do app</td></tr>
+<tr><td><code>find.text('…')</code></td><td>Conferir o que o usuário <strong>lê</strong></td><td>O texto precisa ser idêntico, letra por letra</td></tr>
+<tr><td><code>find.byType(ListTile)</code></td><td>Contar quantos de um tipo existem</td><td>Acha <strong>todos</strong> daquele tipo</td></tr>
+</table>
+</div>
+
+<p><strong>Qual usar:</strong> para <em>conferir</em> o que aparece, <code>find.text</code> (é o que o usuário vê). Para <em>achar onde tocar ou digitar</em>, <code>find.byKey</code> nos lugares importantes, ou <code>find.byTooltip</code> se o botão já tem dica.</p>
+
+<h3>Os matchers do <code>expect</code></h3>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Matcher</th><th>Passa quando o finder acha…</th></tr>
+<tr><td><code>findsOneWidget</code></td><td>exatamente 1</td></tr>
+<tr><td><code>findsNothing</code></td><td>0</td></tr>
+<tr><td><code>findsWidgets</code></td><td>1 ou mais</td></tr>
+<tr><td><code>findsNWidgets(3)</code></td><td>exatamente 3</td></tr>
+<tr><td><code>findsAtLeastNWidgets(2)</code></td><td>2 ou mais</td></tr>
+</table>
+</div>
+
+<h3><code>pump()</code> ou <code>pumpAndSettle()</code>?</h3>
+<p><code>pump()</code> desenha <strong>um</strong> quadro. Quando o toque dispara uma <strong>animação</strong> (abrir um diálogo, trocar de tela com <code>Navigator</code>), um quadro só mostra o começo dela. Aí use <code>await tester.pumpAndSettle();</code>, que vai desenhando quadros até a tela parar de mudar. Regra prática: <code>pump()</code> depois de um <code>setState</code> simples; <code>pumpAndSettle()</code> depois de navegação, diálogo ou qualquer coisa que anima.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Esqueceu o <code>pump()</code></strong>
+<pre class="file" data-file="test/sem_pump_test.dart">import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import 'package:compras/main.dart';
+
+void main() {
+  testWidgets('esqueci o pump', (WidgetTester tester) async {
+    await tester.pumpWidget(const AppCompras());
+
+    await tester.enterText(find.byKey(const Key('campo-item')), 'Arroz');
+    await tester.tap(find.byIcon(Icons.add));
+
+    expect(find.widgetWithText(ListTile, 'Arroz'), findsOneWidget);
+  });
+}
+</pre>
+<pre class="term">$ flutter test test/sem_pump_test.dart
+00:00 +0: loading /home/ana/compras/test/sem_pump_test.dart
+00:00 +0: esqueci o pump
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following TestFailure was thrown running a test:
+Expected: exactly one matching candidate
+  Actual: _AncestorWidgetFinder:&lt;Found 0 widgets with type "ListTile" that are ancestors of widgets
+with text "Arroz": []&gt;
+   Which: means none were found but one was expected
+
+When the exception was thrown, this was the stack:
+#4      main.&lt;anonymous closure&gt; (file:///home/ana/compras/test/sem_pump_test.dart:13:5)
+&lt;asynchronous suspension&gt;
+#5      testWidgets.&lt;anonymous closure&gt;.&lt;anonymous closure&gt; (package:flutter_test/src/widget_tester.dart:192:15)
+&lt;asynchronous suspension&gt;
+#6      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
+&lt;asynchronous suspension&gt;
+&lt;asynchronous suspension&gt;
+(elided one frame from package:stack_trace)
+
+This was caught by the test expectation on the following line:
+  file:///home/ana/compras/test/sem_pump_test.dart line 13
+The test description was:
+  esqueci o pump
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:01 +0 -1: esqueci o pump [E]
+  Test failed. See exception logs above.
+  The test description was: esqueci o pump
+
+00:01 +0 -1: Some tests failed.
+
+Failing tests:
+  /home/ana/compras/test/sem_pump_test.dart: esqueci o pump
+</pre>
+<p>Lendo por partes:</p>
+<ul>
+  <li><code>EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK</code>: "exceção capturada pelo framework de testes". Começa o relatório da falha.</li>
+  <li><code>Expected: exactly one matching candidate</code>: "esperado: exatamente um candidato" (é o <code>findsOneWidget</code>).</li>
+  <li><code>Actual: … Found 0 widgets with type "ListTile" that are ancestors of widgets with text "Arroz"</code>: "na verdade: achei 0 <code>ListTile</code> que contenham o texto Arroz".</li>
+  <li><code>Which: means none were found but one was expected</code>: "ou seja, nenhum foi achado, mas um era esperado".</li>
+  <li><code>sem_pump_test.dart:13:5</code> e <code>caught … on the following line … line 13</code>: a linha do <code>expect</code> que falhou. É sempre o primeiro lugar para olhar.</li>
+  <li><code>00:01 +0 -1</code>: zero passaram, um falhou. O comando termina com código 1 (erro).</li>
+</ul>
+<p>O toque <strong>aconteceu</strong> e o <code>setState</code> rodou, mas ninguém pediu para redesenhar a tela: o <code>ListTile</code> só existiria no próximo quadro. <strong>Como consertar:</strong> <code>await tester.pump();</code> logo depois do <code>tap</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>O finder não achou o widget onde tocar</strong>
+<pre class="file" data-file="test/lixeira_test.dart">import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import 'package:compras/main.dart';
+
+void main() {
+  testWidgets('tocar na lixeira', (WidgetTester tester) async {
+    await tester.pumpWidget(const AppCompras());
+
+    await tester.tap(find.byIcon(Icons.delete));
+  });
+}
+</pre>
+<pre class="term">$ flutter test test/lixeira_test.dart
+00:00 +0: loading /home/ana/compras/test/lixeira_test.dart
+00:00 +0: tocar na lixeira
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following assertion was thrown running a test:
+The finder "Found 0 widgets with icon "IconData(U+0E1B9)": []" (used in a call to "tap()") could not
+find any matching widgets.
+
+When the exception was thrown, this was the stack:
+#0      WidgetController._getElementPoint (package:flutter_test/src/controller.dart:2095:7)
+#1      WidgetController.getCenter (package:flutter_test/src/controller.dart:1947:12)
+#2      WidgetController.tap (package:flutter_test/src/controller.dart:1080:7)
+#3      main.&lt;anonymous closure&gt; (file:///home/ana/compras/test/lixeira_test.dart:10:18)
+«…o resto igual ao exemplo anterior…»
+</pre>
+<p>"O finder <em>achei 0 widgets com o ícone U+0E1B9</em> (usado numa chamada a <code>tap()</code>) não encontrou nenhum widget." O app não tem lixeira, então não há onde tocar. O <code>IconData(U+0E1B9)</code> é o código interno do ícone <code>Icons.delete</code>. Na pilha (<em>stack</em>), as linhas <code>#0</code> a <code>#2</code> são de dentro do <code>flutter_test</code>; a primeira linha com o <strong>seu</strong> arquivo, <code>#3 … lixeira_test.dart:10:18</code>, é a que importa. <strong>Como consertar:</strong> confira se o widget existe naquele momento (talvez falte um <code>pump()</code> antes) e se o finder descreve o widget certo.</p>
+</div>
+
+<div class="cenario">
+<strong>Outras falhas comuns</strong>
+<ul>
+  <li>O finder achou <strong>dois ou mais</strong> widgets (dois botões <code>+</code>, por exemplo). Use um finder mais preciso (<code>byKey</code>) ou <code>.first</code>: <code>find.byIcon(Icons.add).first</code>.</li>
+  <li><code>Found 0 widgets with text …</code> num <code>expect</code> de texto: o texto do teste e o do app diferem em uma letra. O <code>find.text</code> exige o texto <strong>exato</strong>.</li>
+  <li>Nenhum teste encontrado: o arquivo não termina em <code>_test.dart</code> ou não está dentro de <code>test/</code>.</li>
+</ul>
+</div>
+
+<hr>
+
+<h2>Referência</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Peça</th><th>Para que serve</th></tr>
+<tr><td><code>testWidgets('nome', (tester) async {…})</code></td><td>Declara um teste de widget</td></tr>
+<tr><td><code>group('nome', () {…})</code></td><td>Junta testes parecidos sob um nome</td></tr>
+<tr><td><code>await tester.pumpWidget(widget)</code></td><td>Monta o widget e desenha o primeiro quadro</td></tr>
+<tr><td><code>await tester.pump()</code></td><td>Desenha o próximo quadro</td></tr>
+<tr><td><code>await tester.pumpAndSettle()</code></td><td>Desenha quadros até as animações terminarem</td></tr>
+<tr><td><code>await tester.tap(finder)</code></td><td>Toca no centro do widget</td></tr>
+<tr><td><code>await tester.longPress(finder)</code></td><td>Segura o dedo no widget</td></tr>
+<tr><td><code>await tester.enterText(finder, 'texto')</code></td><td>Digita num campo de texto</td></tr>
+<tr><td><code>await tester.drag(finder, const Offset(0, -300))</code></td><td>Arrasta (rolar uma lista)</td></tr>
+<tr><td><code>expect(finder, matcher)</code></td><td>Confere; falha o teste se não bater</td></tr>
+<tr><td><code>flutter test</code></td><td>Roda todos os <code>*_test.dart</code> de <code>test/</code></td></tr>
+<tr><td><code>flutter test --name "trecho"</code></td><td>Só os testes cujo nome contém o trecho</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o teste</h3>
+<p>Complete para o teste tocar no botão e redesenhar a tela:</p>
+<div class="ex-code">await tester.<input data-answer="tap" aria-label="método de tocar">(find.byIcon(Icons.add));<br>await tester.<input data-answer="pump" aria-label="método de redesenhar">();</div>
+</div>
+
+<div class="exercise">
+<h3>2. O matcher certo</h3>
+<p>Que matcher confere que a lista tem exatamente 3 <code>ListTile</code>? Complete:</p>
+<div class="ex-code">expect(find.byType(ListTile), <input data-answer="findsNWidgets(3)" aria-label="matcher">);</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. Qual comando roda os testes de widget do projeto?</p>
+<label><input type="radio" name="q3"> <code>flutter run --test</code></label>
+<label><input type="radio" name="q3"> <code>flutter test</code></label>
+<label><input type="radio" name="q3"> <code>dart test.dart</code></label>
+<label><input type="radio" name="q3"> <code>flutter doctor</code></label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. Na saída <code>00:01 +2 -1: Some tests failed.</code>, quantos testes passaram?</p>
+<label><input type="radio" name="q4"> 1</label>
+<label><input type="radio" name="q4"> 3</label>
+<label><input type="radio" name="q4"> 2</label>
+<label><input type="radio" name="q4"> Nenhum</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. O teste toca no <strong>+</strong> e, logo em seguida, o <code>expect</code> não acha o item novo. O que provavelmente faltou?</p>
+<label><input type="radio" name="q5"> <code>await tester.pump();</code> depois do <code>tap</code></label>
+<label><input type="radio" name="q5"> Um emulador ligado</label>
+<label><input type="radio" name="q5"> <code>flutter clean</code></label>
+<label><input type="radio" name="q5"> Trocar <code>testWidgets</code> por <code>test</code></label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">6. Onde o <code>flutter test</code> procura os testes?</p>
+<label><input type="radio" name="q6"> Em qualquer arquivo <code>.dart</code> de <code>lib/</code></label>
+<label><input type="radio" name="q6"> No <code>main.dart</code></label>
+<label><input type="radio" name="q6"> No <code>pubspec.yaml</code></label>
+<label><input type="radio" name="q6"> Nos arquivos terminados em <code>_test.dart</code> dentro de <code>test/</code></label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Um teste de widget monta a tela na memória, sem celular, e confere o que aparece. Fica em <code>test/</code>, num arquivo <code>*_test.dart</code>, e roda com <code>flutter test</code>.</li>
+  <li>Roteiro: <code>pumpWidget</code> (monta) → <code>tap</code>/<code>enterText</code> + <code>pump</code> (age e redesenha) → <code>expect</code> (confere).</li>
+  <li>Finders descrevem o que procurar: <code>find.text</code>, <code>find.byIcon</code>, <code>find.byKey</code>, <code>find.byTooltip</code>, <code>find.byType</code>, <code>find.widgetWithText</code>.</li>
+  <li>Matchers dizem quantos você espera: <code>findsOneWidget</code>, <code>findsNothing</code>, <code>findsNWidgets(n)</code>.</li>
+  <li>Na falha, leia <code>Expected</code>/<code>Actual</code> e procure a primeira linha da pilha com o <strong>seu</strong> arquivo. O esquecido mais comum é o <code>pump()</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
