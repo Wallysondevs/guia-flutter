@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Animações Explícitas — AnimationController na mão | Guia Flutter</title>
+<meta name="description" content="Animações explícitas no Flutter para quem nunca fez um app: AnimationController, vsync e SingleTickerProviderStateMixin, forward, reverse e repeat, Tween e CurvedAnimation, AnimatedBuilder, as transições prontas (RotationTransition, ScaleTransition, FadeTransition), o dispose, fotos do começo e do fim e os erros reais (mixin esquecido, dois controles com SingleTicker).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Animações Explícitas</span></h1>
+
+<p class="intro">Nas <a href="animacoes-implicitas.html">Animações Implícitas</a>, você mudava um valor e o widget animava sozinho, uma vez, de A até B. Isso cobre muita coisa, mas não tudo: um ícone que <strong>gira sem parar</strong> enquanto carrega, um coração que <strong>pulsa</strong>, uma animação que você quer <strong>pausar</strong>, <strong>voltar</strong> ou repetir. Para isso, você pega o "controle remoto" da animação: o <code>AnimationController</code>. A animação deixa de ser subentendida e passa a ser <strong>explícita</strong>: você diz quando ela anda, para onde e quantas vezes.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A criar um <code>AnimationController</code> com <code>vsync</code> e <code>duration</code>, e por que ele pede o <code>SingleTickerProviderStateMixin</code>.</li>
+  <li>Os comandos do controle: <code>forward</code>, <code>reverse</code>, <code>repeat</code>, <code>stop</code> e o <code>value</code> que vai de 0 a 1.</li>
+  <li>A transformar o 0…1 em tamanhos e cores com <code>Tween</code>, <code>ColorTween</code> e <code>CurvedAnimation</code>.</li>
+  <li>A redesenhar a cada quadro com <code>AnimatedBuilder</code>.</li>
+  <li>As transições prontas: <code>RotationTransition</code>, <code>ScaleTransition</code>, <code>FadeTransition</code>.</li>
+  <li>Por que todo controle precisa de <code>dispose()</code>, e os erros reais do mixin.</li>
+</ul>
+</div>
+
+<div class="note">
+<strong>Sobre as fotos desta aula</strong>
+<p>As fotos do laboratório mostram o <strong>começo</strong> e o <strong>fim</strong> de cada animação. O movimento em si, só rodando no <strong>Experimente</strong>.</p>
+</div>
+
+<hr>
+
+<h2>A ideia: o controle remoto do vídeo</h2>
+<p>Pense num vídeo de receita no celular. A barrinha embaixo vai de 0% (o começo) a 100% (o fim). O controle remoto tem botões: <strong>play</strong> (vai para o fim), <strong>voltar</strong> (vai para o começo), <strong>repetir</strong> e <strong>pausar</strong>.</p>
+<ol class="passo">
+  <li>O <code>AnimationController</code> é esse controle. A "barrinha" dele é o <code>value</code>, um número que vai de <strong>0.0</strong> a <strong>1.0</strong> durante a <code>duration</code>.</li>
+  <li>Sozinho, esse número não desenha nada. Um <code>Tween</code> traduz o 0…1 para o que interessa: de 60 a 160 pixels, de bege a marrom.</li>
+  <li>O <code>AnimatedBuilder</code> redesenha um pedaço da tela a cada quadro (cerca de 60 vezes por segundo), com o valor do momento.</li>
+</ol>
+
+<pre>
+AnimationController   0.0 ─────────────▶ 1.0       (em 800 ms)
+        │
+   Tween(60, 160)     60  ─────────────▶ 160       (tamanho do ícone)
+   ColorTween         bege ────────────▶ marrom    (cor)
+        │
+   AnimatedBuilder → Icon(size: …, color: …)       (redesenha a cada quadro)
+</pre>
+
+<hr>
+
+<h2>1. O bolo que cresce: o exemplo completo</h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaBolo(),
+    ));
+
+class TelaBolo extends StatefulWidget {
+  const TelaBolo({super.key});
+
+  @override
+  State&lt;TelaBolo&gt; createState() =&gt; _TelaBoloState();
+}
+
+class _TelaBoloState extends State&lt;TelaBolo&gt;
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controle;
+  late final Animation&lt;double&gt; _tamanho;
+  late final Animation&lt;Color?&gt; _cor;
+
+  @override
+  void initState() {
+    super.initState();
+    _controle = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _tamanho = Tween&lt;double&gt;(begin: 60, end: 160).animate(
+      CurvedAnimation(parent: _controle, curve: Curves.easeOut),
+    );
+    _cor = ColorTween(begin: Colors.brown.shade200, end: Colors.brown.shade700)
+        .animate(_controle);
+  }
+
+  @override
+  void dispose() {
+    _controle.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('O bolo crescendo')),
+      body: Center(
+        child: AnimatedBuilder(
+          animation: _controle,
+          builder: (context, child) {
+            return Icon(Icons.cake, size: _tamanho.value, color: _cor.value);
+          },
+        ),
+      ),
+      persistentFooterButtons: [
+        TextButton(
+          onPressed: () =&gt; _controle.reverse(),
+          child: const Text('Murchar'),
+        ),
+        FilledButton(
+          onPressed: () =&gt; _controle.forward(),
+          child: const Text('Assar'),
+        ),
+      ],
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>with SingleTickerProviderStateMixin</dt><dd>Um <em>mixin</em> (um pacote de métodos que a classe "veste") que dá ao <code>State</code> um <strong>ticker</strong>: um relógio que bate uma vez por quadro da tela. O controle precisa desse relógio para andar. "Single" = um ticker, para <strong>um</strong> controle.</dd>
+  <dt>late final AnimationController _controle</dt><dd>O controle. É <code>late</code> porque só pode ser criado no <code>initState</code> (ele precisa do <code>this</code>).</dd>
+  <dt>vsync: this</dt><dd>"Use o meu relógio." O <code>this</code> é o próprio <code>State</code>, que ganhou o ticker pelo mixin. O nome vem de <em>vertical sync</em> (sincronia com a tela): o ticker também <strong>para</strong> quando a tela não está visível, para não gastar bateria.</dd>
+  <dt>duration: const Duration(milliseconds: 800)</dt><dd>Quanto tempo o <code>value</code> leva de 0 a 1.</dd>
+  <dt>Tween&lt;double&gt;(begin: 60, end: 160).animate(…)</dt><dd>Liga a faixa 60…160 ao controle e devolve uma <code>Animation&lt;double&gt;</code>: quando o controle está em 0.5, ela vale 110.</dd>
+  <dt>CurvedAnimation(parent: _controle, curve: Curves.easeOut)</dt><dd>Aplica uma curva (o ritmo, como nas implícitas) entre o controle e o tween.</dd>
+  <dt>ColorTween(begin: …, end: …)</dt><dd>O mesmo, para cores: mistura as duas conforme o valor. Devolve <code>Color?</code> (pode ser nula), por isso <code>Animation&lt;Color?&gt;</code>.</dd>
+  <dt>dispose() → _controle.dispose()</dt><dd><strong>Obrigatório.</strong> Desliga o relógio quando a tela é fechada. Sem isso, o ticker continua vivo, gastando memória (veja <a href="ciclo-de-vida.html">Ciclo de Vida do Widget</a>).</dd>
+  <dt>AnimatedBuilder(animation: _controle, builder: …)</dt><dd>Escuta o controle e chama o <code>builder</code> a cada quadro. Só o que o <code>builder</code> devolve é redesenhado.</dd>
+  <dt>_tamanho.value / _cor.value</dt><dd>O valor <strong>do momento</strong> de cada animação.</dd>
+  <dt>_controle.forward() / reverse()</dt><dd>"Play" (do valor atual até 1) e "voltar" (do valor atual até 0).</dd>
+</dl>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Começo (valor 0.0)</th><th>Fim, depois de tocar em "Assar" (valor 1.0)</th></tr>
+<tr><td><figure class="tela"><img src="assets/telas/animacoes-explicitas-1.png" alt="Tela O bolo crescendo com um ícone de bolo pequeno, bege claro, no meio, e embaixo os botões Murchar e Assar" width="390" height="844" loading="lazy"><figcaption>Começo: 60 pixels, bege.</figcaption></figure></td><td><figure class="tela"><img src="assets/telas/animacoes-explicitas-2.png" alt="A mesma tela com o ícone do bolo bem maior e marrom escuro" width="390" height="844" loading="lazy"><figcaption>Fim: 160 pixels, marrom.</figcaption></figure></td></tr>
+</table>
+</div>
+
+<div class="tryflutter" data-goal="src:repeat\(\s*reverse:\s*true\s*\)">
+<p class="try-task"><strong>Missão:</strong> rode e toque em Assar e em Murchar. Depois, faça o botão Assar deixar o bolo <strong>pulsando sem parar</strong> (crescendo e encolhendo): troque o <code>_controle.forward()</code> por <code>_controle.repeat(reverse: true)</code>. Para parar no meio, o Murchar continua funcionando: o <code>reverse()</code> interrompe a repetição e volta ao começo.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaBolo(),
+    ));
+
+class TelaBolo extends StatefulWidget {
+  const TelaBolo({super.key});
+
+  @override
+  State&lt;TelaBolo&gt; createState() =&gt; _TelaBoloState();
+}
+
+class _TelaBoloState extends State&lt;TelaBolo&gt;
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controle;
+  late final Animation&lt;double&gt; _tamanho;
+  late final Animation&lt;Color?&gt; _cor;
+
+  @override
+  void initState() {
+    super.initState();
+    _controle = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _tamanho = Tween&lt;double&gt;(begin: 60, end: 160).animate(
+      CurvedAnimation(parent: _controle, curve: Curves.easeOut),
+    );
+    _cor = ColorTween(begin: Colors.brown.shade200, end: Colors.brown.shade700)
+        .animate(_controle);
+  }
+
+  @override
+  void dispose() {
+    _controle.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('O bolo crescendo')),
+      body: Center(
+        child: AnimatedBuilder(
+          animation: _controle,
+          builder: (context, child) {
+            return Icon(Icons.cake, size: _tamanho.value, color: _cor.value);
+          },
+        ),
+      ),
+      persistentFooterButtons: [
+        TextButton(
+          onPressed: () =&gt; _controle.reverse(),
+          child: const Text('Murchar'),
+        ),
+        FilledButton(
+          onPressed: () =&gt; _controle.forward(),
+          child: const Text('Assar'),
+        ),
+      ],
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaBolo(),
+    ));
+
+class TelaBolo extends StatefulWidget {
+  const TelaBolo({super.key});
+
+  @override
+  State&lt;TelaBolo&gt; createState() =&gt; _TelaBoloState();
+}
+
+class _TelaBoloState extends State&lt;TelaBolo&gt;
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controle;
+  late final Animation&lt;double&gt; _tamanho;
+  late final Animation&lt;Color?&gt; _cor;
+
+  @override
+  void initState() {
+    super.initState();
+    _controle = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _tamanho = Tween&lt;double&gt;(begin: 60, end: 160).animate(
+      CurvedAnimation(parent: _controle, curve: Curves.easeOut),
+    );
+    _cor = ColorTween(begin: Colors.brown.shade200, end: Colors.brown.shade700)
+        .animate(_controle);
+  }
+
+  @override
+  void dispose() {
+    _controle.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('O bolo crescendo')),
+      body: Center(
+        child: AnimatedBuilder(
+          animation: _controle,
+          builder: (context, child) {
+            return Icon(Icons.cake, size: _tamanho.value, color: _cor.value);
+          },
+        ),
+      ),
+      persistentFooterButtons: [
+        TextButton(
+          onPressed: () =&gt; _controle.reverse(),
+          child: const Text('Murchar'),
+        ),
+        FilledButton(
+          onPressed: () =&gt; _controle.repeat(reverse: true),
+          child: const Text('Assar'),
+        ),
+      ],
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>2. Os comandos do controle</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>_controle.forward()</code></td><td>Anda até 1.0</td></tr>
+<tr><td><code>_controle.reverse()</code></td><td>Volta até 0.0</td></tr>
+<tr><td><code>_controle.repeat()</code></td><td>De 0 a 1, de novo e de novo, sem parar</td></tr>
+<tr><td><code>_controle.repeat(reverse: true)</code></td><td>Vai e volta sem parar (0→1→0→1…): o "pulsar"</td></tr>
+<tr><td><code>_controle.stop()</code></td><td>Pausa onde estiver</td></tr>
+<tr><td><code>_controle.reset()</code></td><td>Volta para 0 na hora, sem animar</td></tr>
+<tr><td><code>_controle.value = 0.5</code></td><td>Pula para a metade (útil para arrastar com o dedo)</td></tr>
+<tr><td><code>_controle.isAnimating</code> / <code>.status</code></td><td>Está andando? Em que fase está (<code>forward</code>, <code>completed</code>…)?</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>3. As transições prontas</h2>
+<p>Para os casos mais comuns, nem precisa de <code>AnimatedBuilder</code>: o Flutter tem widgets "…Transition" que recebem a animação direto. Um ícone de carregando que gira sem parar:</p>
+
+<pre class="file" data-file="trecho.dart">// no initState:
+_giro = AnimationController(vsync: this, duration: const Duration(seconds: 2))
+  ..repeat();
+
+// no build:
+RotationTransition(
+  turns: _giro,
+  child: const Icon(Icons.autorenew, size: 64),
+)
+</pre>
+
+<dl class="anatomy">
+  <dt>..repeat()</dt><dd>O <code>..</code> (cascata do Dart) chama <code>repeat()</code> no controle recém-criado e devolve o próprio controle para a variável.</dd>
+  <dt>turns: _giro</dt><dd>"Voltas": 0.0 = parado, 1.0 = uma volta inteira. Como o controle vai de 0 a 1 em 2 segundos e repete, o ícone dá uma volta a cada 2 segundos.</dd>
+</dl>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Transição</th><th>Recebe</th><th>Anima</th></tr>
+<tr><td><code>RotationTransition</code></td><td><code>turns</code></td><td>giro (em voltas)</td></tr>
+<tr><td><code>ScaleTransition</code></td><td><code>scale</code></td><td>tamanho (1.0 = normal)</td></tr>
+<tr><td><code>FadeTransition</code></td><td><code>opacity</code></td><td>transparência</td></tr>
+<tr><td><code>SlideTransition</code></td><td><code>position</code> (<code>Animation&lt;Offset&gt;</code>)</td><td>deslocamento</td></tr>
+<tr><td><code>SizeTransition</code></td><td><code>sizeFactor</code></td><td>abre/fecha como uma gaveta</td></tr>
+</table>
+</div>
+
+<p>Um coração que pulsa, com <code>ScaleTransition</code> e um tween de 1.0 a 1.3, indo e voltando:</p>
+<pre class="file" data-file="trecho.dart">_pulso = AnimationController(vsync: this, duration: const Duration(milliseconds: 600))
+  ..repeat(reverse: true);
+_escala = Tween&lt;double&gt;(begin: 1.0, end: 1.3).animate(_pulso);
+
+// no build:
+ScaleTransition(
+  scale: _escala,
+  child: const Icon(Icons.favorite, color: Colors.red, size: 48),
+)
+</pre>
+
+<hr>
+
+<h2>4. Dois controles na mesma tela</h2>
+<p>O <code>SingleTickerProviderStateMixin</code> dá <strong>um</strong> ticker só. Se o mesmo <code>State</code> tem dois controles (o giro e o pulso, por exemplo), troque por <code>TickerProviderStateMixin</code> (sem o "Single"), que dá quantos tickers forem precisos. A seção <a href="#errado">Quando dá errado</a> mostra o que acontece se esquecer.</p>
+
+<hr>
+
+<h2 id="formas">Explícita ou implícita?</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Você quer…</th><th>Use</th></tr>
+<tr><td>Suavizar uma mudança de valor (tamanho, cor, posição), uma vez</td><td>Widget <code>Animated…</code> (<a href="animacoes-implicitas.html">implícitas</a>)</td></tr>
+<tr><td>Animar um valor qualquer uma vez, sem controle</td><td><code>TweenAnimationBuilder</code></td></tr>
+<tr><td>Repetir sem parar, ir e voltar, pausar</td><td><code>AnimationController</code> + uma <code>…Transition</code></td></tr>
+<tr><td>Várias coisas mudando juntas no mesmo ritmo, ou um desenho próprio</td><td><code>AnimationController</code> + <code>AnimatedBuilder</code></td></tr>
+<tr><td>Um elemento "voando" de uma tela para outra</td><td><a href="hero.html">Hero</a></td></tr>
+</table>
+</div>
+<p>Comece sempre pela implícita. Se ela não der conta, aí sim pegue o controle remoto.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Esqueceu o <code>with SingleTickerProviderStateMixin</code></strong>
+<p>A Ana apagou o <code>with SingleTickerProviderStateMixin</code> da classe do estado. O app não compila:</p>
+<pre class="term">lib/main.dart:24:14:
+Error: The argument type '_TelaBoloState' can't be assigned to the parameter type 'TickerProvider'.
+ - '_TelaBoloState' is from 'package:app/main.dart' ('lib/main.dart').
+ - 'TickerProvider' is from 'package:flutter/src/scheduler/ticker.dart' ('/home/ana/flutter/packages/flutter/lib/src/scheduler/ticker.dart').
+      vsync: this,
+             ^
+</pre>
+<dl class="anatomy">
+  <dt>lib/main.dart:24:14</dt><dd>Linha 24, coluna 14: o <code>this</code> do <code>vsync: this</code> (o <code>^</code> aponta para ele).</dd>
+  <dt>The argument type '_TelaBoloState' can't be assigned to the parameter type 'TickerProvider'</dt><dd>"O argumento do tipo <code>_TelaBoloState</code> não pode ir num parâmetro do tipo <code>TickerProvider</code>." O <code>vsync</code> pede um "fornecedor de ticker", e o seu <code>State</code> só vira um quando veste o mixin.</dd>
+  <dt>- '…' is from …</dt><dd>Onde cada tipo foi definido: o seu no <code>main.dart</code>, o <code>TickerProvider</code> dentro do próprio Flutter.</dd>
+</dl>
+<p><strong>Como consertar:</strong> <code>class _TelaBoloState extends State&lt;TelaBolo&gt; with SingleTickerProviderStateMixin {</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Dois controles com o <code>SingleTicker…</code></strong>
+<p>A Ana acrescentou um segundo controle, <code>_giro</code>, no mesmo <code>State</code>, sem trocar o mixin. Compila, mas a tela inteira fica vermelha ao abrir:</p>
+<figure class="tela"><img src="assets/telas/animacoes-explicitas-3.png" alt="Tela vermelha com o texto amarelo: _TelaBoloState is a SingleTickerProviderStateMixin but multiple tickers were created, seguido da explicação e do link docs.flutter.dev/testing/errors" width="390" height="844" loading="lazy"><figcaption>Dois controles, um ticker só: tela vermelha de erro.</figcaption></figure>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following assertion was thrown building Builder:
+_TelaBoloState is a SingleTickerProviderStateMixin but multiple tickers were created.
+A SingleTickerProviderStateMixin can only be used as a TickerProvider once.
+If a State is used for multiple AnimationController objects, or if it is passed to other objects and
+those objects might use it more than one time in total, then instead of mixing in a
+SingleTickerProviderStateMixin, use a regular TickerProviderStateMixin.
+…
+</pre>
+<dl class="anatomy">
+  <dt>_TelaBoloState is a SingleTickerProviderStateMixin but multiple tickers were created</dt><dd>"O <code>_TelaBoloState</code> usa o mixin de ticker <strong>único</strong>, mas vários tickers foram criados."</dd>
+  <dt>can only be used as a TickerProvider once</dt><dd>"Só pode fornecer ticker uma vez": um controle por <code>State</code>.</dd>
+  <dt>use a regular TickerProviderStateMixin</dt><dd>A própria mensagem dá o conserto: use o mixin "normal", sem o <em>Single</em>.</dd>
+</dl>
+<p><strong>Como consertar:</strong> <code>with TickerProviderStateMixin</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Esqueceu o <code>dispose()</code></strong>
+<p>Com o controle parado, nada aparece na tela e o app continua funcionando, por isso é fácil esquecer. Mas cada vez que a tela abre e fecha, um controle fica para trás, ocupando memória. Se ele ainda estiver andando quando a tela fecha (um <code>repeat()</code>, por exemplo), o modo debug acusa um erro dizendo que o <code>State</code> foi descartado com um <em>ticker</em> ativo. <strong>Como consertar:</strong> todo controle criado no <code>initState</code> tem o seu <code>.dispose()</code> no <code>dispose</code>, antes do <code>super.dispose()</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>with SingleTickerProviderStateMixin</code></td><td>Dá um ticker ao <code>State</code> (um controle)</td></tr>
+<tr><td><code>with TickerProviderStateMixin</code></td><td>Vários tickers (vários controles)</td></tr>
+<tr><td><code>AnimationController(vsync: this, duration: …)</code></td><td>Cria o controle (no <code>initState</code>)</td></tr>
+<tr><td><code>_controle.dispose()</code></td><td>Desliga o controle (no <code>dispose</code>)</td></tr>
+<tr><td><code>forward()</code> / <code>reverse()</code> / <code>repeat()</code> / <code>stop()</code></td><td>Play, voltar, repetir, pausar</td></tr>
+<tr><td><code>Tween&lt;double&gt;(begin: a, end: b).animate(_controle)</code></td><td>Traduz 0…1 em a…b</td></tr>
+<tr><td><code>CurvedAnimation(parent: _controle, curve: …)</code></td><td>Aplica uma curva</td></tr>
+<tr><td><code>AnimatedBuilder(animation: _controle, builder: …)</code></td><td>Redesenha a cada quadro</td></tr>
+<tr><td><code>RotationTransition</code> / <code>ScaleTransition</code> / <code>FadeTransition</code></td><td>Transições prontas</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o controle</h3>
+<div class="ex-code">_controle = <input data-answer="AnimationController" aria-label="classe do controle">(<br>&nbsp;&nbsp;<input data-answer="vsync" aria-label="parâmetro do relógio">: this,<br>&nbsp;&nbsp;duration: const Duration(seconds: 1),<br>);</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">2. Que comando faz um ícone pulsar (crescer e encolher) sem parar?</p>
+<label><input type="radio" name="q2"> <code>_controle.forward()</code></label>
+<label><input type="radio" name="q2"> <code>_controle.repeat()</code></label>
+<label><input type="radio" name="q2"> <code>_controle.repeat(reverse: true)</code></label>
+<label><input type="radio" name="q2"> <code>_controle.reset()</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">3. Onde se chama <code>_controle.dispose()</code>?</p>
+<label><input type="radio" name="q3"> No <code>dispose()</code> do <code>State</code>, antes do <code>super.dispose()</code></label>
+<label><input type="radio" name="q3"> No <code>initState()</code></label>
+<label><input type="radio" name="q3"> No fim do <code>build()</code></label>
+<label><input type="radio" name="q3"> Não precisa: o Flutter faz sozinho</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. O controle está em <code>value</code> 0.25 e o tween vai de 100 a 200. Quanto vale a animação (sem curva)?</p>
+<label><input type="radio" name="q4"> 25</label>
+<label><input type="radio" name="q4"> 125</label>
+<label><input type="radio" name="q4"> 150</label>
+<label><input type="radio" name="q4"> 0.25</label>
+</div>
+
+<h3>Missão final: o ícone de carregando</h3>
+
+<div class="tryflutter" data-goal="src:RotationTransition\(;;src:turns:\s*_giro">
+<p class="try-task"><strong>Missão:</strong> o controle <code>_giro</code> já está pronto e repetindo (<code>..repeat()</code>), mas o ícone está parado, porque ninguém usa o controle. Embrulhe o <code>Icon</code> num <code>RotationTransition</code> com <code>turns: _giro</code> para ele girar uma volta a cada 2 segundos. Atenção: o <code>Center</code> deixa de ser <code>const</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaCarregando(),
+    ));
+
+class TelaCarregando extends StatefulWidget {
+  const TelaCarregando({super.key});
+
+  @override
+  State&lt;TelaCarregando&gt; createState() =&gt; _TelaCarregandoState();
+}
+
+class _TelaCarregandoState extends State&lt;TelaCarregando&gt;
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _giro;
+
+  @override
+  void initState() {
+    super.initState();
+    _giro = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _giro.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Buscando receitas')),
+      body: const Center(
+        child: Icon(Icons.autorenew, size: 96, color: Colors.teal),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaCarregando(),
+    ));
+
+class TelaCarregando extends StatefulWidget {
+  const TelaCarregando({super.key});
+
+  @override
+  State&lt;TelaCarregando&gt; createState() =&gt; _TelaCarregandoState();
+}
+
+class _TelaCarregandoState extends State&lt;TelaCarregando&gt;
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _giro;
+
+  @override
+  void initState() {
+    super.initState();
+    _giro = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _giro.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Buscando receitas')),
+      body: Center(
+        child: RotationTransition(
+          turns: _giro,
+          child: const Icon(Icons.autorenew, size: 96, color: Colors.teal),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O <code>AnimationController</code> é o controle remoto: um <code>value</code> de 0 a 1 que anda com <code>forward</code>, <code>reverse</code>, <code>repeat</code> e para com <code>stop</code>.</li>
+  <li>Ele precisa de um ticker: <code>with SingleTickerProviderStateMixin</code> (um controle) ou <code>TickerProviderStateMixin</code> (vários), e <code>vsync: this</code>.</li>
+  <li>Crie no <code>initState</code>, destrua no <code>dispose</code>.</li>
+  <li><code>Tween</code>/<code>ColorTween</code> + <code>.animate(controle)</code> traduzem o 0…1; <code>CurvedAnimation</code> dá o ritmo.</li>
+  <li><code>AnimatedBuilder</code> redesenha a cada quadro; as <code>…Transition</code> prontas resolvem giro, escala, opacidade e deslize.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
