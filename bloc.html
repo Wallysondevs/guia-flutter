@@ -1,0 +1,834 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter BLoC — eventos entram, estados saem | Guia Flutter</title>
+<meta name="description" content="Uma olhada no BLoC para quem nunca fez um app: a ideia de eventos e estados, o Cubit com emit, BlocProvider, BlocBuilder, context.read, o Bloc com eventos e on&lt;Evento&gt;, BlocListener, o contador de pães da padaria da Ana e os erros reais (BlocProvider esquecido, emit da mesma lista).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">BLoC</span></h1>
+
+<p class="intro"><strong>BLoC</strong> quer dizer <em>Business Logic Component</em>, "componente da lógica do negócio". É um jeito de organizar o app em que a tela <strong>nunca</strong> mexe no estado diretamente: ela só <strong>manda pedidos</strong> (eventos) para um objeto, o bloc, e <strong>desenha</strong> o que ele devolve (estados). É mais cerimonioso que o <a href="provider.html">provider</a> e o <a href="riverpod.html">Riverpod</a>, e por isso é muito usado em empresas com apps grandes e equipes grandes: todo mundo escreve do mesmo jeito. Esta aula é uma <strong>olhada</strong>: o suficiente para você reconhecer e escrever o básico.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A ideia do BLoC: <strong>eventos entram, estados saem</strong>.</li>
+  <li>O <code>Cubit</code>, a versão simples: métodos que chamam <code>emit</code>.</li>
+  <li>A entregar o cubit para a tela com <code>BlocProvider</code> e desenhar o estado com <code>BlocBuilder</code>.</li>
+  <li>O <code>Bloc</code> "completo", com classes de evento e <code>on&lt;Evento&gt;</code>.</li>
+  <li>O <code>BlocListener</code>, para reagir a um estado sem redesenhar (mostrar um aviso).</li>
+  <li>Os erros reais: o <code>BlocProvider</code> esquecido e o botão que cria um cubit novo a cada toque.</li>
+</ul>
+</div>
+
+<p>Versões desta aula: <span class="versao">flutter_bloc 9.1.1</span> e <span class="versao">bloc 9.2.1</span>, as mais novas no <a href="https://pub.dev/packages/flutter_bloc">pub.dev</a> em outubro de 2026, e o Flutter estável do laboratório da Ana.</p>
+
+<hr>
+
+<h2>A ideia: o balcão da padaria</h2>
+<p>Na padaria, o cliente não entra na cozinha para pegar o pão. Ele faz um <strong>pedido</strong> no balcão ("dois pães, por favor"), e o balconista devolve o <strong>resultado</strong> (o saquinho com os pães). Quem decide como atender é o balconista; o cliente só pede e recebe.</p>
+<ol class="passo">
+  <li>O <strong>cliente</strong> é a tela (os widgets).</li>
+  <li>O <strong>pedido</strong> é um <strong>evento</strong>: "toquei no botão de mais".</li>
+  <li>O <strong>balconista</strong> é o bloc: recebe o evento, faz a conta, e…</li>
+  <li>…devolve um <strong>estado</strong> novo: "agora são 3 pães". A tela desenha o estado.</li>
+</ol>
+
+<pre>
+  tela ──── evento ────▶  bloc  ──── estado ────▶ tela
+ (botão +)  "mais um"   (lógica)    3 pães     (Text '3')
+</pre>
+
+<p>A tela não sabe fazer conta nenhuma, e o bloc não sabe nada de botões e cores. Cada lado pode ser trocado ou testado sozinho.</p>
+
+<hr>
+
+<h2>1. Instalar</h2>
+
+<pre class="term">$ cd padaria
+$ flutter pub add flutter_bloc
+Resolving dependencies...
+Downloading packages...
++ bloc 9.2.1
+  cupertino_icons 1.0.9 (2.0.0 available)
++ flutter_bloc 9.1.1
+  material_color_utilities 0.13.0 (0.13.1 available)
+  meta 1.18.3 (1.19.0 available)
++ nested 1.0.0
++ provider 6.1.5+1
+  test_api 0.7.12 (0.7.15 available)
+Changed 4 dependencies!
+4 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+</pre>
+
+<p>Repare nas linhas com <code>+</code>: vieram o <code>flutter_bloc</code>, o <code>bloc</code> e… o <code>provider</code>. O <code>flutter_bloc</code> é construído em cima do pacote <a href="provider.html">provider</a>, e isso vai aparecer de novo numa mensagem de erro mais abaixo. (A leitura linha por linha desta saída está na aula Provider.)</p>
+
+<p>O <code>flutter_bloc</code> traz os widgets (<code>BlocProvider</code>, <code>BlocBuilder</code>…) e já puxa o pacote <code>bloc</code>, com as classes <code>Cubit</code> e <code>Bloc</code>.</p>
+
+<hr>
+
+<h2>2. O Cubit: o BLoC sem cerimônia</h2>
+<p>O <strong>Cubit</strong> é o jeito mais simples: no lugar de classes de evento, a tela chama <strong>métodos</strong>. Cada método calcula o estado novo e o entrega com <code>emit</code> ("emitir"). O contador de pães:</p>
+
+<pre class="file" data-file="lib/main.dart">class PaesCubit extends Cubit&lt;int&gt; {
+  PaesCubit() : super(0);
+
+  void mais() =&gt; emit(state + 1);
+  void menos() {
+    if (state &gt; 0) emit(state - 1);
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>extends Cubit&lt;int&gt;</dt><dd>Um cubit cujo estado é um <code>int</code> (a quantidade de pães). O estado pode ser de qualquer tipo: um número, uma lista, uma classe sua.</dd>
+  <dt>super(0)</dt><dd>O <strong>estado inicial</strong>: zero pães.</dd>
+  <dt>state</dt><dd>O estado atual, só para leitura. Não dá para escrever <code>state = 3</code> num cubit: o único jeito de mudar é…</dd>
+  <dt>emit(state + 1)</dt><dd>…entregar um estado novo. Quem está olhando o cubit recebe o 1, o 2, o 3…</dd>
+  <dt>if (state &gt; 0)</dt><dd>A <strong>regra do negócio</strong> ("não existe quantidade negativa de pão") mora aqui, no cubit, e não no botão.</dd>
+</dl>
+
+<hr>
+
+<h2>3. Na tela: <code>BlocProvider</code> e <code>BlocBuilder</code></h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+class PaesCubit extends Cubit&lt;int&gt; {
+  PaesCubit() : super(0);
+
+  void mais() =&gt; emit(state + 1);
+  void menos() {
+    if (state &gt; 0) emit(state - 1);
+  }
+}
+
+void main() {
+  runApp(
+    BlocProvider(
+      create: (context) =&gt; PaesCubit(),
+      child: const PadariaApp(),
+    ),
+  );
+}
+
+class PadariaApp extends StatelessWidget {
+  const PadariaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaPaes(),
+    );
+  }
+}
+
+class TelaPaes extends StatelessWidget {
+  const TelaPaes({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Padaria da Ana')),
+      body: Center(
+        child: BlocBuilder&lt;PaesCubit, int&gt;(
+          builder: (context, paes) {
+            return Text(
+              '$paes pães',
+              style: const TextStyle(fontSize: 40),
+            );
+          },
+        ),
+      ),
+      floatingActionButton: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            heroTag: 'menos',
+            tooltip: 'Menos um pão',
+            onPressed: () =&gt; context.read&lt;PaesCubit&gt;().menos(),
+            child: const Icon(Icons.remove),
+          ),
+          const SizedBox(width: 12),
+          FloatingActionButton(
+            heroTag: 'mais',
+            tooltip: 'Mais um pão',
+            onPressed: () =&gt; context.read&lt;PaesCubit&gt;().mais(),
+            child: const Icon(Icons.add),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>BlocProvider(create: (context) =&gt; PaesCubit(), child: …)</dt><dd>Cria o cubit e o entrega para os widgets de baixo, como o <code>ChangeNotifierProvider</code> do provider (por dentro, o <code>flutter_bloc</code> usa mesmo o pacote provider). Ele também <strong>fecha</strong> o cubit quando sai da árvore.</dd>
+  <dt>BlocBuilder&lt;PaesCubit, int&gt;</dt><dd>Fica de olho no cubit e chama o <code>builder</code> a cada estado novo. Os tipos: o cubit e o tipo do estado.</dd>
+  <dt>builder: (context, paes) =&gt; …</dt><dd>Recebe o estado (aqui, o número de pães) e devolve o widget. Só esse pedaço é redesenhado.</dd>
+  <dt>context.read&lt;PaesCubit&gt;().mais()</dt><dd>No botão, a tela <strong>pede</strong>: "mais um". O mesmo <code>read</code> do provider: pega o cubit sem ficar de olho.</dd>
+</dl>
+
+<dl class="anatomy">
+  <dt>heroTag: 'menos' / 'mais'</dt><dd>Dois <code>FloatingActionButton</code> na mesma tela precisam de <code>heroTag</code> diferentes (o botão flutuante usa um <a href="hero.html">Hero</a> por dentro).</dd>
+</dl>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Ao abrir</th><th>Depois de três toques no +</th></tr>
+<tr><td><figure class="tela"><img src="assets/telas/bloc-1.png" alt="App Padaria da Ana: título no topo, o texto grande 0 pães no meio da tela e, no canto de baixo à direita, dois botões flutuantes, um com o sinal de menos e outro com o sinal de mais" width="390" height="844" loading="lazy"><figcaption>Ao abrir: 0 pães.</figcaption></figure></td><td><figure class="tela"><img src="assets/telas/bloc-2.png" alt="A mesma tela da Padaria da Ana, agora com o texto 3 pães no meio" width="390" height="844" loading="lazy"><figcaption>Três toques no +: 3 pães.</figcaption></figure></td></tr>
+</table>
+</div>
+
+<div class="tryflutter" data-goal="src:void zerar\(\)[^;]*emit\(0\);;src:read&lt;PaesCubit&gt;\(\)\.zerar\(\)">
+<p class="try-task"><strong>Missão:</strong> o caixa da padaria quer recomeçar a contagem. Acrescente ao <code>PaesCubit</code> um método <code>zerar()</code> que emite <code>0</code> e, na <code>Row</code> dos botões, um terceiro <code>FloatingActionButton</code> (com <code>heroTag: 'zerar'</code> e o ícone <code>Icons.refresh</code>) que o chama com <code>context.read</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+class PaesCubit extends Cubit&lt;int&gt; {
+  PaesCubit() : super(0);
+
+  void mais() =&gt; emit(state + 1);
+  void menos() {
+    if (state &gt; 0) emit(state - 1);
+  }
+}
+
+void main() {
+  runApp(
+    BlocProvider(
+      create: (context) =&gt; PaesCubit(),
+      child: const PadariaApp(),
+    ),
+  );
+}
+
+class PadariaApp extends StatelessWidget {
+  const PadariaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaPaes(),
+    );
+  }
+}
+
+class TelaPaes extends StatelessWidget {
+  const TelaPaes({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Padaria da Ana')),
+      body: Center(
+        child: BlocBuilder&lt;PaesCubit, int&gt;(
+          builder: (context, paes) {
+            return Text(
+              '$paes pães',
+              style: const TextStyle(fontSize: 40),
+            );
+          },
+        ),
+      ),
+      floatingActionButton: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            heroTag: 'menos',
+            tooltip: 'Menos um pão',
+            onPressed: () =&gt; context.read&lt;PaesCubit&gt;().menos(),
+            child: const Icon(Icons.remove),
+          ),
+          const SizedBox(width: 12),
+          FloatingActionButton(
+            heroTag: 'mais',
+            tooltip: 'Mais um pão',
+            onPressed: () =&gt; context.read&lt;PaesCubit&gt;().mais(),
+            child: const Icon(Icons.add),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+class PaesCubit extends Cubit&lt;int&gt; {
+  PaesCubit() : super(0);
+
+  void mais() =&gt; emit(state + 1);
+  void zerar() =&gt; emit(0);
+  void menos() {
+    if (state &gt; 0) emit(state - 1);
+  }
+}
+
+void main() {
+  runApp(
+    BlocProvider(
+      create: (context) =&gt; PaesCubit(),
+      child: const PadariaApp(),
+    ),
+  );
+}
+
+class PadariaApp extends StatelessWidget {
+  const PadariaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaPaes(),
+    );
+  }
+}
+
+class TelaPaes extends StatelessWidget {
+  const TelaPaes({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Padaria da Ana')),
+      body: Center(
+        child: BlocBuilder&lt;PaesCubit, int&gt;(
+          builder: (context, paes) {
+            return Text(
+              '$paes pães',
+              style: const TextStyle(fontSize: 40),
+            );
+          },
+        ),
+      ),
+      floatingActionButton: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            heroTag: 'zerar',
+            tooltip: 'Zerar',
+            onPressed: () =&gt; context.read&lt;PaesCubit&gt;().zerar(),
+            child: const Icon(Icons.refresh),
+          ),
+          const SizedBox(width: 12),
+          FloatingActionButton(
+            heroTag: 'menos',
+            tooltip: 'Menos um pão',
+            onPressed: () =&gt; context.read&lt;PaesCubit&gt;().menos(),
+            child: const Icon(Icons.remove),
+          ),
+          const SizedBox(width: 12),
+          FloatingActionButton(
+            heroTag: 'mais',
+            tooltip: 'Mais um pão',
+            onPressed: () =&gt; context.read&lt;PaesCubit&gt;().mais(),
+            child: const Icon(Icons.add),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>4. O Bloc "completo": eventos de verdade</h2>
+<p>No <strong>Bloc</strong> (sem o "Cu"), a tela não chama métodos: ela <strong>adiciona eventos</strong>, que são objetos. Cada tipo de evento tem um tratador, registrado com <code>on&lt;Evento&gt;</code>:</p>
+
+<pre class="file" data-file="lib/paes_bloc.dart">sealed class PaesEvento {}
+
+class MaisPao extends PaesEvento {}
+
+class MenosPao extends PaesEvento {}
+
+class PaesBloc extends Bloc&lt;PaesEvento, int&gt; {
+  PaesBloc() : super(0) {
+    on&lt;MaisPao&gt;((evento, emit) =&gt; emit(state + 1));
+    on&lt;MenosPao&gt;((evento, emit) {
+      if (state &gt; 0) emit(state - 1);
+    });
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>sealed class PaesEvento</dt><dd>A "família" de eventos deste bloc. O <code>sealed</code> (do Dart 3) avisa o compilador de que não existem outros eventos além dos declarados neste arquivo.</dd>
+  <dt>class MaisPao / MenosPao</dt><dd>Os pedidos possíveis. Um evento pode carregar dados (ex.: <code>class AdicionarPaes { final int quantidade; … }</code>).</dd>
+  <dt>Bloc&lt;PaesEvento, int&gt;</dt><dd>Dois tipos: o que <strong>entra</strong> (eventos) e o que <strong>sai</strong> (estado).</dd>
+  <dt>on&lt;MaisPao&gt;((evento, emit) =&gt; …)</dt><dd>"Quando chegar um <code>MaisPao</code>, faça isto." O <code>emit</code> chega como parâmetro.</dd>
+</dl>
+
+<p>Na tela, só o botão muda: no lugar de <code>context.read&lt;PaesCubit&gt;().mais()</code>, fica</p>
+<pre class="file" data-file="trecho.dart">onPressed: () =&gt; context.read&lt;PaesBloc&gt;().add(MaisPao()),
+</pre>
+<p>e o <code>BlocBuilder</code> vira <code>BlocBuilder&lt;PaesBloc, int&gt;</code>. O resto é igual.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th></th><th>Cubit</th><th>Bloc</th></tr>
+<tr><td>A tela pede com…</td><td>um método: <code>cubit.mais()</code></td><td>um evento: <code>bloc.add(MaisPao())</code></td></tr>
+<tr><td>Código</td><td>Menos</td><td>Mais (uma classe por evento)</td></tr>
+<tr><td>Rastreio</td><td>Vê os estados</td><td>Vê os estados <strong>e</strong> os eventos que os causaram</td></tr>
+<tr><td>Quando usar</td><td>A maior parte das telas</td><td>Lógica com muitos pedidos, que precisam ser registrados, atrasados ou cancelados (ex.: busca enquanto digita)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>5. <code>BlocListener</code>: reagir sem redesenhar</h2>
+<p>Às vezes um estado novo não deve mudar o desenho, e sim <strong>fazer algo uma vez</strong>: mostrar um <a href="dialogos.html">SnackBar</a>, abrir outra tela. Para isso existe o <code>BlocListener</code> ("ouvinte"):</p>
+
+<pre class="file" data-file="trecho.dart">BlocListener&lt;PaesCubit, int&gt;(
+  listenWhen: (antes, agora) =&gt; agora == 12,
+  listener: (context, paes) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Uma dúzia! Ganhou um sonho de brinde.')),
+    );
+  },
+  child: const TelaPaes(),
+)
+</pre>
+
+<dl class="anatomy">
+  <dt>listenWhen</dt><dd>Opcional: só chama o <code>listener</code> quando a função devolver <code>true</code>. Aqui, quando chegar a 12.</dd>
+  <dt>listener</dt><dd>Roda <strong>uma vez</strong> por estado novo. Não devolve widget.</dd>
+</dl>
+<p>Quando precisa das duas coisas (redesenhar e reagir), há o <code>BlocConsumer</code>, que junta <code>builder</code> e <code>listener</code>.</p>
+
+<hr>
+
+<h2 id="formas">BLoC, provider ou Riverpod?</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Sugestão</th></tr>
+<tr><td>Estado de um widget só (um campo aberto, uma aba)</td><td><a href="setstate.html">setState</a></td></tr>
+<tr><td>App pequeno ou médio, aprendendo</td><td><a href="provider.html">provider</a></td></tr>
+<tr><td>App maior, muitos estados que dependem uns dos outros</td><td><a href="riverpod.html">Riverpod</a></td></tr>
+<tr><td>Equipe grande, regra de negócio pesada, quer separar bem tela e lógica</td><td>BLoC (Cubit na maior parte; Bloc onde os eventos importam)</td></tr>
+</table>
+</div>
+<p>Os três resolvem o mesmo problema. A pior escolha é misturar os três no mesmo app sem motivo.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Esqueceu o <code>BlocProvider</code></strong>
+<p>A Ana deixou o <code>main</code> só com <code>runApp(const PadariaApp());</code>. O <code>BlocBuilder</code> procura um <code>PaesCubit</code> acima dele e não acha:</p>
+<figure class="tela"><img src="assets/telas/bloc-3.png" alt="Padaria da Ana com a barra do título normal e, abaixo dela, a tela vermelha de erro com o texto amarelo Error: Could not find the correct Provider&lt;PaesCubit&gt; above this BlocBuilder&lt;PaesCubit, int&gt; Widget e a lista de causas; os botões de menos e mais continuam no canto" width="390" height="844" loading="lazy"><figcaption>Sem <code>BlocProvider</code>: o lugar do <code>BlocBuilder</code> vira a tela vermelha de erro.</figcaption></figure>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following ProviderNotFoundException was thrown building KeyedSubtree-[GlobalKey#41dda]:
+Error: Could not find the correct Provider&lt;PaesCubit&gt; above this BlocBuilder&lt;PaesCubit, int&gt; Widget
+
+This happens because you used a `BuildContext` that does not include the provider
+of your choice. There are a few common scenarios:
+…
+  Make sure that BlocBuilder&lt;PaesCubit, int&gt; is under your MultiProvider/Provider&lt;PaesCubit&gt;.
+…
+</pre>
+<p>É a <strong>mesma</strong> <code>ProviderNotFoundException</code> da aula <a href="provider.html">Provider</a> (lá está a explicação linha por linha), porque o <code>flutter_bloc</code> usa o provider por dentro. Ela fala em <code>Provider&lt;PaesCubit&gt;</code>, mas o que falta é o seu <code>BlocProvider</code>. O <code>KeyedSubtree-[GlobalKey#41dda]</code> é um widget interno onde o erro estourou (o número muda a cada execução); o que interessa é o fim da linha seguinte: <code>above this BlocBuilder&lt;PaesCubit, int&gt; Widget</code>. <strong>Como consertar:</strong> envolva o app com <code>BlocProvider(create: (context) =&gt; PaesCubit(), child: …)</code> e reinicie.</p>
+</div>
+
+<div class="cenario">
+<strong>O botão cria um cubit novo a cada toque</strong>
+<p>Quem esquece o <code>context.read</code> escreve, no botão de mais:</p>
+<pre class="file" data-file="lib/main.dart">            onPressed: () =&gt; PaesCubit().mais(),
+</pre>
+<p>Compila, roda, não dá erro… e o número não sai do zero:</p>
+<figure class="tela"><img src="assets/telas/bloc-4.png" alt="Padaria da Ana mostrando 0 pães, mesmo depois de dois toques no botão de mais" width="390" height="844" loading="lazy"><figcaption>Depois de dois toques no +: continua 0 pães.</figcaption></figure>
+<p><code>PaesCubit()</code> cria um cubit <strong>novo</strong>, que nasce com 0, vira 1 e é jogado fora. O <code>BlocBuilder</code> está olhando <strong>outro</strong> cubit, o que o <code>BlocProvider</code> criou, e esse ninguém mudou. <strong>Como consertar:</strong> peça o cubit que já existe: <code>context.read&lt;PaesCubit&gt;().mais()</code>.</p>
+</div>
+
+<div class="tryflutter" data-goal="src:context\.read&lt;PaesCubit&gt;\(\)\.mais\(\);;nsrc:=&gt;\s*PaesCubit\(\)\.mais">
+<p class="try-task"><strong>Missão:</strong> rode e toque no +: o número não muda (o − funciona, mas não há o que tirar). Conserte o botão de mais.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+class PaesCubit extends Cubit&lt;int&gt; {
+  PaesCubit() : super(0);
+
+  void mais() =&gt; emit(state + 1);
+  void menos() {
+    if (state &gt; 0) emit(state - 1);
+  }
+}
+
+void main() {
+  runApp(
+    BlocProvider(
+      create: (context) =&gt; PaesCubit(),
+      child: const PadariaApp(),
+    ),
+  );
+}
+
+class PadariaApp extends StatelessWidget {
+  const PadariaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaPaes(),
+    );
+  }
+}
+
+class TelaPaes extends StatelessWidget {
+  const TelaPaes({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Padaria da Ana')),
+      body: Center(
+        child: BlocBuilder&lt;PaesCubit, int&gt;(
+          builder: (context, paes) {
+            return Text(
+              '$paes pães',
+              style: const TextStyle(fontSize: 40),
+            );
+          },
+        ),
+      ),
+      floatingActionButton: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            heroTag: 'menos',
+            tooltip: 'Menos um pão',
+            onPressed: () =&gt; context.read&lt;PaesCubit&gt;().menos(),
+            child: const Icon(Icons.remove),
+          ),
+          const SizedBox(width: 12),
+          FloatingActionButton(
+            heroTag: 'mais',
+            tooltip: 'Mais um pão',
+            onPressed: () =&gt; PaesCubit().mais(),
+            child: const Icon(Icons.add),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+class PaesCubit extends Cubit&lt;int&gt; {
+  PaesCubit() : super(0);
+
+  void mais() =&gt; emit(state + 1);
+  void menos() {
+    if (state &gt; 0) emit(state - 1);
+  }
+}
+
+void main() {
+  runApp(
+    BlocProvider(
+      create: (context) =&gt; PaesCubit(),
+      child: const PadariaApp(),
+    ),
+  );
+}
+
+class PadariaApp extends StatelessWidget {
+  const PadariaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaPaes(),
+    );
+  }
+}
+
+class TelaPaes extends StatelessWidget {
+  const TelaPaes({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Padaria da Ana')),
+      body: Center(
+        child: BlocBuilder&lt;PaesCubit, int&gt;(
+          builder: (context, paes) {
+            return Text(
+              '$paes pães',
+              style: const TextStyle(fontSize: 40),
+            );
+          },
+        ),
+      ),
+      floatingActionButton: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            heroTag: 'menos',
+            tooltip: 'Menos um pão',
+            onPressed: () =&gt; context.read&lt;PaesCubit&gt;().menos(),
+            child: const Icon(Icons.remove),
+          ),
+          const SizedBox(width: 12),
+          FloatingActionButton(
+            heroTag: 'mais',
+            tooltip: 'Mais um pão',
+            onPressed: () =&gt; context.read&lt;PaesCubit&gt;().mais(),
+            child: const Icon(Icons.add),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<div class="cenario">
+<strong>Um <code>emit</code> com o mesmo estado é ignorado</strong>
+<p>O <code>emit</code> compara o estado novo com o atual (com <code>==</code>) e, se forem iguais, não faz nada. Com números, é isso que se quer. Com listas, é uma armadilha: <code>state.add(item); emit(state);</code> emite a <strong>mesma</strong> lista, o <code>==</code> dá <code>true</code>, e a tela não muda (o mesmo problema do <code>state.add</code> na aula <a href="riverpod.html">Riverpod</a>). <strong>Como consertar:</strong> <code>emit([...state, item]);</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>flutter pub add flutter_bloc</code></td><td>Instala o pacote</td></tr>
+<tr><td><code>class X extends Cubit&lt;T&gt;</code>, <code>X() : super(inicial)</code></td><td>Cubit com o estado inicial</td></tr>
+<tr><td><code>emit(novo)</code></td><td>Entrega um estado novo (se for igual ao atual, é ignorado)</td></tr>
+<tr><td><code>class X extends Bloc&lt;Evento, T&gt;</code> + <code>on&lt;E&gt;((e, emit) =&gt; …)</code></td><td>Bloc com eventos</td></tr>
+<tr><td><code>BlocProvider(create: (context) =&gt; X(), child: …)</code></td><td>Cria e entrega o cubit/bloc</td></tr>
+<tr><td><code>BlocBuilder&lt;X, T&gt;(builder: (context, estado) =&gt; …)</code></td><td>Desenha a partir do estado</td></tr>
+<tr><td><code>BlocListener&lt;X, T&gt;(listener: …)</code></td><td>Reage a um estado sem redesenhar</td></tr>
+<tr><td><code>context.read&lt;X&gt;().metodo()</code> / <code>.add(Evento())</code></td><td>A tela pede algo</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o cubit</h3>
+<div class="ex-code">class NotaCubit extends Cubit&lt;int&gt; {<br>&nbsp;&nbsp;NotaCubit() : <input data-answer="super" aria-label="chamada ao construtor da classe-mãe">(5);<br>&nbsp;&nbsp;void subir() =&gt; <input data-answer="emit" aria-label="método que entrega o estado">(state + 1);<br>}</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. No BLoC, quem decide que a quantidade de pães não pode ficar negativa?</p>
+<label><input type="radio" name="q2"> O <code>onPressed</code> do botão</label>
+<label><input type="radio" name="q2"> O cubit (ou o bloc)</label>
+<label><input type="radio" name="q2"> O <code>BlocBuilder</code></label>
+<label><input type="radio" name="q2"> O <code>BlocProvider</code></label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">3. Você quer mostrar um SnackBar quando o pedido for enviado, sem mudar o desenho da tela. Qual widget usar?</p>
+<label><input type="radio" name="q3"> <code>BlocBuilder</code></label>
+<label><input type="radio" name="q3"> <code>BlocProvider</code></label>
+<label><input type="radio" name="q3"> <code>Cubit</code></label>
+<label><input type="radio" name="q3"> <code>BlocListener</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. Num <code>Bloc&lt;PaesEvento, int&gt;</code>, como a tela pede mais um pão?</p>
+<label><input type="radio" name="q4"> <code>context.read&lt;PaesBloc&gt;().add(MaisPao())</code></label>
+<label><input type="radio" name="q4"> <code>context.read&lt;PaesBloc&gt;().emit(1)</code></label>
+<label><input type="radio" name="q4"> <code>PaesBloc().state++</code></label>
+<label><input type="radio" name="q4"> <code>setState(() =&gt; MaisPao())</code></label>
+</div>
+
+<h3>Missão final: a dúzia</h3>
+
+<div class="tryflutter" data-goal="src:&gt;=\s*12;;src:Uma dúzia!" data-foto="assets/telas/bloc-5.png" data-foto-alt="A Padaria da Ana com o texto grande Uma dúzia! no meio da tela e os botões de menos e mais no canto de baixo">
+<p class="try-task"><strong>Missão:</strong> quando chegar a 12 pães ou mais, a tela deve mostrar <code>Uma dúzia!</code> no lugar do número. Mude só o <code>builder</code> do <code>BlocBuilder</code>, com um <code>if</code> curto (<code>paes &gt;= 12 ? 'Uma dúzia!' : '$paes pães'</code>). A foto é o app depois de 12 toques no +.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+class PaesCubit extends Cubit&lt;int&gt; {
+  PaesCubit() : super(0);
+
+  void mais() =&gt; emit(state + 1);
+  void menos() {
+    if (state &gt; 0) emit(state - 1);
+  }
+}
+
+void main() {
+  runApp(
+    BlocProvider(
+      create: (context) =&gt; PaesCubit(),
+      child: const PadariaApp(),
+    ),
+  );
+}
+
+class PadariaApp extends StatelessWidget {
+  const PadariaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaPaes(),
+    );
+  }
+}
+
+class TelaPaes extends StatelessWidget {
+  const TelaPaes({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Padaria da Ana')),
+      body: Center(
+        child: BlocBuilder&lt;PaesCubit, int&gt;(
+          builder: (context, paes) {
+            return Text(
+              '$paes pães',
+              style: const TextStyle(fontSize: 40),
+            );
+          },
+        ),
+      ),
+      floatingActionButton: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            heroTag: 'menos',
+            tooltip: 'Menos um pão',
+            onPressed: () =&gt; context.read&lt;PaesCubit&gt;().menos(),
+            child: const Icon(Icons.remove),
+          ),
+          const SizedBox(width: 12),
+          FloatingActionButton(
+            heroTag: 'mais',
+            tooltip: 'Mais um pão',
+            onPressed: () =&gt; context.read&lt;PaesCubit&gt;().mais(),
+            child: const Icon(Icons.add),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+class PaesCubit extends Cubit&lt;int&gt; {
+  PaesCubit() : super(0);
+
+  void mais() =&gt; emit(state + 1);
+  void menos() {
+    if (state &gt; 0) emit(state - 1);
+  }
+}
+
+void main() {
+  runApp(
+    BlocProvider(
+      create: (context) =&gt; PaesCubit(),
+      child: const PadariaApp(),
+    ),
+  );
+}
+
+class PadariaApp extends StatelessWidget {
+  const PadariaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaPaes(),
+    );
+  }
+}
+
+class TelaPaes extends StatelessWidget {
+  const TelaPaes({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Padaria da Ana')),
+      body: Center(
+        child: BlocBuilder&lt;PaesCubit, int&gt;(
+          builder: (context, paes) {
+            return Text(
+              paes &gt;= 12 ? 'Uma dúzia!' : '$paes pães',
+              style: const TextStyle(fontSize: 40),
+            );
+          },
+        ),
+      ),
+      floatingActionButton: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            heroTag: 'menos',
+            tooltip: 'Menos um pão',
+            onPressed: () =&gt; context.read&lt;PaesCubit&gt;().menos(),
+            child: const Icon(Icons.remove),
+          ),
+          const SizedBox(width: 12),
+          FloatingActionButton(
+            heroTag: 'mais',
+            tooltip: 'Mais um pão',
+            onPressed: () =&gt; context.read&lt;PaesCubit&gt;().mais(),
+            child: const Icon(Icons.add),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>BLoC separa a tela da lógica: a tela pede (eventos ou métodos), o bloc calcula e entrega estados com <code>emit</code>, a tela desenha.</li>
+  <li><code>Cubit&lt;T&gt;</code>: métodos que chamam <code>emit</code>. <code>Bloc&lt;Evento, T&gt;</code>: classes de evento tratadas com <code>on&lt;E&gt;</code>.</li>
+  <li><code>BlocProvider</code> cria e entrega; <code>BlocBuilder</code> redesenha; <code>BlocListener</code> reage uma vez; <code>context.read</code> pede.</li>
+  <li>Um <code>emit</code> com um estado igual ao atual é ignorado: em listas, emita uma lista nova.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
