@@ -85,7 +85,7 @@ class MeuApp extends StatelessWidget {
 </dl>
 
 <figure class="tela"><img src="assets/telas/listview-builder-1.png" alt="Tela 'Estoque da lojinha' com uma lista de itens, cada um com um círculo lilás numerado e o texto: de 1 Produto 1 até 16 Produto 16, e o 17 cortado no pé da tela" width="390" height="844" loading="lazy"><figcaption>Ao abrir: do Produto 1 ao 16 (e a beirada do 17).</figcaption></figure>
-<figure class="tela"><img src="assets/telas/listview-builder-2.png" alt="A lista rolada: do Produto 13 (cortado no topo) até o Produto 29, com a barra do título acinzentada" width="390" height="844" loading="lazy"><figcaption>Depois de rolar 600 pixels: Produto 14 ao 29.</figcaption></figure>
+<figure class="tela"><img src="assets/telas/listview-builder-2.png" alt="A lista rolada: do Produto 13 (cortado no topo) até o Produto 29, com a barra do título acinzentada" width="390" height="844" loading="lazy"><figcaption>Depois de rolar 600 pixels: Produto 14 ao 29 (e a beirada do 13 no topo).</figcaption></figure>
 
 <p>E o console, do momento em que o app abriu até depois da rolagem (aqui, encurtado no meio):</p>
 <pre class="term">montando o item 0
@@ -349,7 +349,7 @@ dart-sdk/lib/_internal/js_dev_runtime/private/js_array.dart 608:7               
 package:app/main.dart 30:37                                                       &lt;fn&gt;
 « … a pilha continua dentro do Flutter …
 </pre>
-<p>Sem o <code>itemCount</code>, a lista acha que é <strong>infinita</strong>: depois do item 4 (a Salada de frutas), ela chama a fôrma com <code>index</code> 5, e <code>receitas[5]</code> não existe. Linha por linha: <code>RangeError (index)</code> é "erro de intervalo, no índice"; <code>Index out of range: index should be less than 5: 5</code> é "índice fora do intervalo: o índice deveria ser menor que 5, e foi 5". A linha <code>package:app/main.dart 30:37</code> da pilha aponta o seu código: a linha 30, coluna 37, o <code>receitas[index]</code>. Na tela, os itens que deram certo aparecem, e a tela vermelha ocupa o lugar do item que falhou. <strong>Como consertar:</strong> <code>itemCount: receitas.length</code>.</p>
+<p>Sem o <code>itemCount</code>, a lista acha que é <strong>infinita</strong>: depois do item 4 (a Salada de frutas), ela chama a fôrma com <code>index</code> 5, e <code>receitas[5]</code> não existe. Linha por linha: <code>RangeError (index)</code> é "erro de intervalo, no índice"; <code>Index out of range: index should be less than 5: 5</code> é "índice fora do intervalo: o índice deveria ser menor que 5, e foi 5". A linha <code>package:app/main.dart 30:37</code> da pilha aponta o seu código: a linha 30, coluna 37, o <code>receitas[index]</code>. (As linhas <code>dart-sdk/lib/_internal/js_dev_runtime/…</code> existem porque o app do lab roda como Flutter web. Num celular, o Dart nativo escreve o mesmo erro de outro jeito: no lab, ler a posição 5 de uma lista de 5 itens com o <code>dart</code> deu <code>RangeError (length): Invalid value: Not in inclusive range 0..4: 5</code>, "valor inválido: fora do intervalo de 0 a 4". Muda o texto, não a causa.) Na tela, os itens que deram certo aparecem, e a tela vermelha ocupa o lugar do item que falhou. <strong>Como consertar:</strong> <code>itemCount: receitas.length</code>.</p>
 </div>
 
 <div class="cenario">
