@@ -1,0 +1,1352 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Projeto: Quiz — um jogo de perguntas, passo a passo | Guia Flutter</title>
+<meta name="description" content="Projeto do Guia Flutter: o Quiz da Ana em 3 versões. Versão 1 com a classe Pergunta e a tela de uma pergunta com botões de resposta; versão 2 com o estado do jogo (índice e acertos), a troca de pergunta e a tela de resultado com Jogar de novo; versão 3 com as cores de certo e errado, o botão Próxima e a barra de progresso. Fotos reais e o erro real de RangeError ao passar da última pergunta.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Projeto: Quiz</span></h1>
+
+<p class="intro">Um quiz é um jogo pequeno, mas tem tudo o que um app de verdade tem: dados (as perguntas), estado (em que pergunta você está, quantas acertou), telas que mudam (pergunta, resultado) e reação ao toque. A Ana vai fazer o <strong>Quiz da Ana</strong>, com perguntas de confeitaria e de Flutter, para brincar com as clientes na fila da padaria. O app cresce em <strong>3 versões</strong>, cada uma com o código completo, fotos reais e uma missão no editor.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Versão 1: a classe <code>Pergunta</code> e a tela de uma pergunta, com um botão por resposta gerado com <code>for</code>.</li>
+  <li>Versão 2: o <strong>estado do jogo</strong> (<code>_indice</code> e <code>_acertos</code>), a troca de pergunta a cada toque e a tela de resultado com "Jogar de novo".</li>
+  <li>Versão 3: mostrar <strong>certo e errado</strong> com cores, esperar o botão "Próxima" e uma barra de progresso.</li>
+  <li>O erro real <code>RangeError</code> ao passar da última pergunta, com a tela vermelha do modo debug.</li>
+</ul>
+</div>
+
+<p>Aulas que ajudam: <a href="stateful.html">StatefulWidget</a>, <a href="setstate.html">setState</a>, <a href="botoes.html">Botões</a>, <a href="row-column.html">Row e Column</a> e <a href="alinhamento.html">Alinhamento</a>.</p>
+
+<hr>
+
+<h2>O plano</h2>
+<p>Pense num programa de auditório: o apresentador tem um <strong>bloco de fichas</strong> (as perguntas), sabe em qual ficha está e anota os pontos num quadro. A cada resposta, ele confere, anota e passa para a próxima ficha. Quando as fichas acabam, anuncia o resultado. No app:</p>
+<ul>
+  <li>as fichas são uma lista constante de objetos <code>Pergunta</code>;</li>
+  <li>"em qual ficha estou" e "quantos pontos" são o <strong>estado</strong>: <code>_indice</code> e <code>_acertos</code>;</li>
+  <li>a tela mostra a pergunta da vez <strong>ou</strong> o resultado, conforme o estado.</li>
+</ul>
+
+<pre>QuizApp (MaterialApp)
+└── QuizPage (Scaffold, com estado: _indice, _acertos)
+    └── body:
+        ├── se ainda há perguntas → Padding → Column
+        │   ├── 'Pergunta 1 de 3'
+        │   ├── o texto da pergunta
+        │   └── um OutlinedButton por opção
+        └── se acabaram → Center → Column
+            ├── troféu, 'Você acertou 2 de 3!'
+            └── FilledButton 'Jogar de novo'
+</pre>
+
+<hr>
+
+<h2>Versão 1: a tela de uma pergunta</h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const QuizApp());
+
+class Pergunta {
+  const Pergunta(this.texto, this.opcoes, this.correta);
+
+  final String texto;
+  final List&lt;String&gt; opcoes;
+  final int correta;
+}
+
+const perguntas = [
+  Pergunta(
+    'Qual ingrediente faz o bolo crescer?',
+    ['Sal', 'Fermento', 'Açúcar', 'Óleo'],
+    1,
+  ),
+  Pergunta(
+    'Em que país nasceu o brigadeiro?',
+    ['Portugal', 'França', 'Brasil', 'Itália'],
+    2,
+  ),
+  Pergunta(
+    'Qual destes é um widget do Flutter?',
+    ['Column', 'Tabela', 'Pasta', 'Janela'],
+    0,
+  ),
+];
+
+class QuizApp extends StatelessWidget {
+  const QuizApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Quiz da Ana',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.purple),
+      home: const QuizPage(),
+    );
+  }
+}
+
+class QuizPage extends StatelessWidget {
+  const QuizPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final pergunta = perguntas[0];
+    final textos = Theme.of(context).textTheme;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Quiz da Ana')),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Pergunta 1 de ${perguntas.length}', style: textos.labelLarge),
+            const SizedBox(height: 8),
+            Text(pergunta.texto, style: textos.headlineSmall),
+            const SizedBox(height: 24),
+            for (final opcao in pergunta.opcoes)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: OutlinedButton(
+                  onPressed: () {},
+                  child: Text(opcao),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>class Pergunta { const Pergunta(this.texto, this.opcoes, this.correta); … }</dt><dd>Cada ficha: o texto, a lista de opções e a <strong>posição</strong> da opção certa (contando do 0). Em "Qual ingrediente faz o bolo crescer?", a certa é <code>1</code>, o <code>'Fermento'</code>.</dd>
+  <dt>const perguntas = [ … ];</dt><dd>As três perguntas do jogo, numa lista constante.</dd>
+  <dt>final pergunta = perguntas[0];</dt><dd>Nesta versão, a tela sempre mostra a primeira. A versão 2 troca o <code>0</code> por uma variável.</dd>
+  <dt>crossAxisAlignment: CrossAxisAlignment.stretch</dt><dd>Estica os filhos da coluna na largura toda: por isso os botões ocupam a tela de lado a lado (veja <a href="alinhamento.html">Alinhamento</a>).</dd>
+  <dt>Text('Pergunta 1 de ${perguntas.length}', style: textos.labelLarge)</dt><dd>A "plaquinha" de progresso, com o total vindo da lista. Os estilos <code>labelLarge</code> e <code>headlineSmall</code> vêm do tema (veja <a href="temas.html">Temas</a>).</dd>
+  <dt>for (final opcao in pergunta.opcoes) Padding(…, child: OutlinedButton(…))</dt><dd>Um botão por opção, gerado com o <code>for</code> dentro da lista de filhos. O <code>Padding</code> só com <code>bottom: 12</code> separa um botão do outro.</dd>
+  <dt>onPressed: () {}</dt><dd>Uma função que não faz nada. Ela é necessária: com <code>onPressed: null</code>, o botão ficaria cinza, desativado.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/projeto-quiz-1.png" alt="Tela com o título 'Quiz da Ana'; embaixo, 'Pergunta 1 de 3' em letra pequena, a pergunta 'Qual ingrediente faz o bolo crescer?' em letra grande, quebrada em duas linhas, e quatro botões com contorno, da largura da tela: Sal, Fermento, Açúcar e Óleo" width="390" height="844" loading="lazy"><figcaption>A versão 1: a primeira pergunta e as quatro opções.</figcaption></figure>
+
+<p>A pergunta grande quebrou em duas linhas sozinha, porque o <code>Text</code> tem a largura da coluna. Os quatro botões ocupam a largura toda (o <code>stretch</code>) e têm o mesmo espaço entre si (o <code>Padding</code> de 12). A cor roxa do texto dos botões vem da semente <code>Colors.purple</code>.</p>
+
+<div class="tryflutter" data-goal="src:pão de queijo no forno;;src:perguntas\[3\]">
+<p class="try-task"><strong>Missão:</strong> crie uma quarta pergunta: <code>'Quanto tempo leva o pão de queijo no forno?'</code>, com as opções <code>'5 minutos'</code>, <code>'30 minutos'</code>, <code>'3 horas'</code> e <code>'1 dia'</code> (a certa é a posição <code>1</code>). Para vê-la na tela, troque <code>perguntas[0]</code> por <code>perguntas[3]</code>, e o "Pergunta 1" por "Pergunta 4".</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const QuizApp());
+
+class Pergunta {
+  const Pergunta(this.texto, this.opcoes, this.correta);
+
+  final String texto;
+  final List&lt;String&gt; opcoes;
+  final int correta;
+}
+
+const perguntas = [
+  Pergunta(
+    'Qual ingrediente faz o bolo crescer?',
+    ['Sal', 'Fermento', 'Açúcar', 'Óleo'],
+    1,
+  ),
+  Pergunta(
+    'Em que país nasceu o brigadeiro?',
+    ['Portugal', 'França', 'Brasil', 'Itália'],
+    2,
+  ),
+  Pergunta(
+    'Qual destes é um widget do Flutter?',
+    ['Column', 'Tabela', 'Pasta', 'Janela'],
+    0,
+  ),
+];
+
+class QuizApp extends StatelessWidget {
+  const QuizApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Quiz da Ana',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.purple),
+      home: const QuizPage(),
+    );
+  }
+}
+
+class QuizPage extends StatelessWidget {
+  const QuizPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final pergunta = perguntas[0];
+    final textos = Theme.of(context).textTheme;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Quiz da Ana')),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Pergunta 1 de ${perguntas.length}', style: textos.labelLarge),
+            const SizedBox(height: 8),
+            Text(pergunta.texto, style: textos.headlineSmall),
+            const SizedBox(height: 24),
+            for (final opcao in pergunta.opcoes)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: OutlinedButton(
+                  onPressed: () {},
+                  child: Text(opcao),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const QuizApp());
+
+class Pergunta {
+  const Pergunta(this.texto, this.opcoes, this.correta);
+
+  final String texto;
+  final List&lt;String&gt; opcoes;
+  final int correta;
+}
+
+const perguntas = [
+  Pergunta(
+    'Qual ingrediente faz o bolo crescer?',
+    ['Sal', 'Fermento', 'Açúcar', 'Óleo'],
+    1,
+  ),
+  Pergunta(
+    'Em que país nasceu o brigadeiro?',
+    ['Portugal', 'França', 'Brasil', 'Itália'],
+    2,
+  ),
+  Pergunta(
+    'Qual destes é um widget do Flutter?',
+    ['Column', 'Tabela', 'Pasta', 'Janela'],
+    0,
+  ),
+  Pergunta(
+    'Quanto tempo leva o pão de queijo no forno?',
+    ['5 minutos', '30 minutos', '3 horas', '1 dia'],
+    1,
+  ),
+];
+
+class QuizApp extends StatelessWidget {
+  const QuizApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Quiz da Ana',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.purple),
+      home: const QuizPage(),
+    );
+  }
+}
+
+class QuizPage extends StatelessWidget {
+  const QuizPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final pergunta = perguntas[3];
+    final textos = Theme.of(context).textTheme;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Quiz da Ana')),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Pergunta 4 de ${perguntas.length}', style: textos.labelLarge),
+            const SizedBox(height: 8),
+            Text(pergunta.texto, style: textos.headlineSmall),
+            const SizedBox(height: 24),
+            for (final opcao in pergunta.opcoes)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: OutlinedButton(
+                  onPressed: () {},
+                  child: Text(opcao),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Versão 2: o jogo funcionando</h2>
+<p>Agora o toque vale ponto. A página vira <code>StatefulWidget</code> com dois números no estado: <code>_indice</code> (a pergunta da vez) e <code>_acertos</code>. Cada toque confere a resposta, soma o ponto se for o caso e passa para a próxima. Quando o índice passa da última pergunta, aparece a tela de resultado.</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const QuizApp());
+
+class Pergunta {
+  const Pergunta(this.texto, this.opcoes, this.correta);
+
+  final String texto;
+  final List&lt;String&gt; opcoes;
+  final int correta;
+}
+
+const perguntas = [
+  Pergunta(
+    'Qual ingrediente faz o bolo crescer?',
+    ['Sal', 'Fermento', 'Açúcar', 'Óleo'],
+    1,
+  ),
+  Pergunta(
+    'Em que país nasceu o brigadeiro?',
+    ['Portugal', 'França', 'Brasil', 'Itália'],
+    2,
+  ),
+  Pergunta(
+    'Qual destes é um widget do Flutter?',
+    ['Column', 'Tabela', 'Pasta', 'Janela'],
+    0,
+  ),
+];
+
+class QuizApp extends StatelessWidget {
+  const QuizApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Quiz da Ana',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.purple),
+      home: const QuizPage(),
+    );
+  }
+}
+
+class QuizPage extends StatefulWidget {
+  const QuizPage({super.key});
+
+  @override
+  State&lt;QuizPage&gt; createState() =&gt; _QuizPageState();
+}
+
+class _QuizPageState extends State&lt;QuizPage&gt; {
+  int _indice = 0;
+  int _acertos = 0;
+
+  void _responder(int escolhida) {
+    setState(() {
+      if (escolhida == perguntas[_indice].correta) {
+        _acertos++;
+      }
+      _indice++;
+    });
+  }
+
+  void _reiniciar() {
+    setState(() {
+      _indice = 0;
+      _acertos = 0;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textos = Theme.of(context).textTheme;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Quiz da Ana')),
+      body: _indice &gt;= perguntas.length
+          ? _resultado(textos)
+          : _pergunta(textos),
+    );
+  }
+
+  Widget _pergunta(TextTheme textos) {
+    final pergunta = perguntas[_indice];
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Pergunta ${_indice + 1} de ${perguntas.length}',
+            style: textos.labelLarge,
+          ),
+          const SizedBox(height: 8),
+          Text(pergunta.texto, style: textos.headlineSmall),
+          const SizedBox(height: 24),
+          for (var i = 0; i &lt; pergunta.opcoes.length; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: OutlinedButton(
+                onPressed: () =&gt; _responder(i),
+                child: Text(pergunta.opcoes[i]),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _resultado(TextTheme textos) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.emoji_events, size: 96, color: Colors.amber),
+          const SizedBox(height: 16),
+          Text(
+            'Você acertou $_acertos de ${perguntas.length}!',
+            style: textos.headlineSmall,
+          ),
+          const SizedBox(height: 24),
+          FilledButton(
+            onPressed: _reiniciar,
+            child: const Text('Jogar de novo'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>int _indice = 0; int _acertos = 0;</dt><dd>O estado do jogo. Começa na pergunta 0, com zero acertos.</dd>
+  <dt>void _responder(int escolhida)</dt><dd>Recebe a posição do botão tocado. Dentro do <code>setState</code>, compara com a <code>correta</code> da pergunta da vez, soma 1 em <code>_acertos</code> se acertou (<code>_acertos++</code> é o mesmo que <code>_acertos = _acertos + 1</code>) e avança o <code>_indice</code>.</dd>
+  <dt>void _reiniciar()</dt><dd>Zera os dois números: o jogo volta à primeira pergunta.</dd>
+  <dt>body: _indice &gt;= perguntas.length ? _resultado(textos) : _pergunta(textos)</dt><dd>A decisão da tela: se o índice já passou da última pergunta (com 3 perguntas, as posições são 0, 1 e 2; o índice 3 quer dizer "acabou"), mostra o resultado; senão, a pergunta. É esta linha que impede o erro da seção <a href="#errado">Quando dá errado</a>.</dd>
+  <dt>Widget _pergunta(TextTheme textos) e Widget _resultado(TextTheme textos)</dt><dd>Dois métodos que devolvem pedaços da tela. Separar o <code>build</code> em métodos deixa cada parte curta e com nome. (Para pedaços maiores ou reaproveitados, o melhor é um widget próprio, como o <code>PainelClima</code> do <a href="projeto-clima.html">Projeto Previsão do Tempo</a>.)</dd>
+  <dt>for (var i = 0; i &lt; pergunta.opcoes.length; i++) … onPressed: () =&gt; _responder(i)</dt><dd>Agora o <code>for</code> é com índice, porque o botão precisa saber <strong>qual</strong> posição representa. Cada botão guarda o seu próprio <code>i</code> (no Dart, cada volta do <code>for</code> tem a sua variável).</dd>
+  <dt>Icon(Icons.emoji_events, size: 96, color: Colors.amber)</dt><dd>O troféu da tela de resultado.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/projeto-quiz-2.png" alt="A tela do quiz com 'Pergunta 2 de 3' e a pergunta 'Em que país nasceu o brigadeiro?', com os botões Portugal, França, Brasil e Itália" width="390" height="844" loading="lazy"><figcaption>Depois de responder "Fermento": a segunda pergunta.</figcaption></figure>
+
+<p>No lab, um clique em "Fermento" (a certa) trocou a tela na hora: <code>Pergunta 2 de 3</code> e a pergunta do brigadeiro, com as opções novas. Nada no código "apagou" a pergunta antiga: o <code>_indice</code> mudou de 0 para 1, e o <code>build</code> desenhou a pergunta da posição 1. (O contorno um pouco mais escuro em "França" é só o ponteiro do mouse do lab, parado ali depois do clique.)</p>
+
+<figure class="tela"><img src="assets/telas/projeto-quiz-2b.png" alt="A tela de resultado: no meio, um troféu amarelo grande, o texto 'Você acertou 2 de 3!' e um botão roxo preenchido 'Jogar de novo'" width="390" height="844" loading="lazy"><figcaption>Depois das três respostas: a tela de resultado.</figcaption></figure>
+
+<p>Na mesma rodada, mais dois cliques: "Portugal" (errada; a certa era Brasil) e "Column" (certa). O <code>_indice</code> chegou a 3, igual ao tamanho da lista, e o <code>body</code> trocou para o resultado: <code>Você acertou 2 de 3!</code>. Tocar em "Jogar de novo" zera tudo e volta à pergunta 1.</p>
+
+<div class="tryflutter" data-goal="src:'Recomeçar'">
+<p class="try-task"><strong>Missão:</strong> jogue uma partida inteira. Depois, troque o texto do botão final de <code>'Jogar de novo'</code> para <code>'Recomeçar'</code> e confira se ele volta mesmo para a pergunta 1 com zero acertos.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const QuizApp());
+
+class Pergunta {
+  const Pergunta(this.texto, this.opcoes, this.correta);
+
+  final String texto;
+  final List&lt;String&gt; opcoes;
+  final int correta;
+}
+
+const perguntas = [
+  Pergunta(
+    'Qual ingrediente faz o bolo crescer?',
+    ['Sal', 'Fermento', 'Açúcar', 'Óleo'],
+    1,
+  ),
+  Pergunta(
+    'Em que país nasceu o brigadeiro?',
+    ['Portugal', 'França', 'Brasil', 'Itália'],
+    2,
+  ),
+  Pergunta(
+    'Qual destes é um widget do Flutter?',
+    ['Column', 'Tabela', 'Pasta', 'Janela'],
+    0,
+  ),
+];
+
+class QuizApp extends StatelessWidget {
+  const QuizApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Quiz da Ana',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.purple),
+      home: const QuizPage(),
+    );
+  }
+}
+
+class QuizPage extends StatefulWidget {
+  const QuizPage({super.key});
+
+  @override
+  State&lt;QuizPage&gt; createState() =&gt; _QuizPageState();
+}
+
+class _QuizPageState extends State&lt;QuizPage&gt; {
+  int _indice = 0;
+  int _acertos = 0;
+
+  void _responder(int escolhida) {
+    setState(() {
+      if (escolhida == perguntas[_indice].correta) {
+        _acertos++;
+      }
+      _indice++;
+    });
+  }
+
+  void _reiniciar() {
+    setState(() {
+      _indice = 0;
+      _acertos = 0;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textos = Theme.of(context).textTheme;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Quiz da Ana')),
+      body: _indice &gt;= perguntas.length
+          ? _resultado(textos)
+          : _pergunta(textos),
+    );
+  }
+
+  Widget _pergunta(TextTheme textos) {
+    final pergunta = perguntas[_indice];
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Pergunta ${_indice + 1} de ${perguntas.length}',
+            style: textos.labelLarge,
+          ),
+          const SizedBox(height: 8),
+          Text(pergunta.texto, style: textos.headlineSmall),
+          const SizedBox(height: 24),
+          for (var i = 0; i &lt; pergunta.opcoes.length; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: OutlinedButton(
+                onPressed: () =&gt; _responder(i),
+                child: Text(pergunta.opcoes[i]),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _resultado(TextTheme textos) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.emoji_events, size: 96, color: Colors.amber),
+          const SizedBox(height: 16),
+          Text(
+            'Você acertou $_acertos de ${perguntas.length}!',
+            style: textos.headlineSmall,
+          ),
+          const SizedBox(height: 24),
+          FilledButton(
+            onPressed: _reiniciar,
+            child: const Text('Jogar de novo'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const QuizApp());
+
+class Pergunta {
+  const Pergunta(this.texto, this.opcoes, this.correta);
+
+  final String texto;
+  final List&lt;String&gt; opcoes;
+  final int correta;
+}
+
+const perguntas = [
+  Pergunta(
+    'Qual ingrediente faz o bolo crescer?',
+    ['Sal', 'Fermento', 'Açúcar', 'Óleo'],
+    1,
+  ),
+  Pergunta(
+    'Em que país nasceu o brigadeiro?',
+    ['Portugal', 'França', 'Brasil', 'Itália'],
+    2,
+  ),
+  Pergunta(
+    'Qual destes é um widget do Flutter?',
+    ['Column', 'Tabela', 'Pasta', 'Janela'],
+    0,
+  ),
+];
+
+class QuizApp extends StatelessWidget {
+  const QuizApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Quiz da Ana',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.purple),
+      home: const QuizPage(),
+    );
+  }
+}
+
+class QuizPage extends StatefulWidget {
+  const QuizPage({super.key});
+
+  @override
+  State&lt;QuizPage&gt; createState() =&gt; _QuizPageState();
+}
+
+class _QuizPageState extends State&lt;QuizPage&gt; {
+  int _indice = 0;
+  int _acertos = 0;
+
+  void _responder(int escolhida) {
+    setState(() {
+      if (escolhida == perguntas[_indice].correta) {
+        _acertos++;
+      }
+      _indice++;
+    });
+  }
+
+  void _reiniciar() {
+    setState(() {
+      _indice = 0;
+      _acertos = 0;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textos = Theme.of(context).textTheme;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Quiz da Ana')),
+      body: _indice &gt;= perguntas.length
+          ? _resultado(textos)
+          : _pergunta(textos),
+    );
+  }
+
+  Widget _pergunta(TextTheme textos) {
+    final pergunta = perguntas[_indice];
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Pergunta ${_indice + 1} de ${perguntas.length}',
+            style: textos.labelLarge,
+          ),
+          const SizedBox(height: 8),
+          Text(pergunta.texto, style: textos.headlineSmall),
+          const SizedBox(height: 24),
+          for (var i = 0; i &lt; pergunta.opcoes.length; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: OutlinedButton(
+                onPressed: () =&gt; _responder(i),
+                child: Text(pergunta.opcoes[i]),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _resultado(TextTheme textos) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.emoji_events, size: 96, color: Colors.amber),
+          const SizedBox(height: 16),
+          Text(
+            'Você acertou $_acertos de ${perguntas.length}!',
+            style: textos.headlineSmall,
+          ),
+          const SizedBox(height: 24),
+          FilledButton(
+            onPressed: _reiniciar,
+            child: const Text('Recomeçar'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Versão 3: certo, errado e próxima</h2>
+<p>Na versão 2, a pergunta troca no mesmo instante do toque, e ninguém fica sabendo se acertou. A Ana quer o jeito dos programas de TV: tocou, a resposta certa fica <strong>verde</strong>, a escolhida (se errada) fica <strong>vermelha</strong>, e só depois de tocar em <strong>Próxima</strong> vem a pergunta seguinte. No alto, uma barra mostra o progresso.</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const QuizApp());
+
+class Pergunta {
+  const Pergunta(this.texto, this.opcoes, this.correta);
+
+  final String texto;
+  final List&lt;String&gt; opcoes;
+  final int correta;
+}
+
+const perguntas = [
+  Pergunta(
+    'Qual ingrediente faz o bolo crescer?',
+    ['Sal', 'Fermento', 'Açúcar', 'Óleo'],
+    1,
+  ),
+  Pergunta(
+    'Em que país nasceu o brigadeiro?',
+    ['Portugal', 'França', 'Brasil', 'Itália'],
+    2,
+  ),
+  Pergunta(
+    'Qual destes é um widget do Flutter?',
+    ['Column', 'Tabela', 'Pasta', 'Janela'],
+    0,
+  ),
+];
+
+class QuizApp extends StatelessWidget {
+  const QuizApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Quiz da Ana',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.purple),
+      home: const QuizPage(),
+    );
+  }
+}
+
+class QuizPage extends StatefulWidget {
+  const QuizPage({super.key});
+
+  @override
+  State&lt;QuizPage&gt; createState() =&gt; _QuizPageState();
+}
+
+class _QuizPageState extends State&lt;QuizPage&gt; {
+  int _indice = 0;
+  int _acertos = 0;
+  int? _escolhida;
+
+  void _responder(int escolhida) {
+    if (_escolhida != null) return;
+    setState(() {
+      _escolhida = escolhida;
+      if (escolhida == perguntas[_indice].correta) {
+        _acertos++;
+      }
+    });
+  }
+
+  void _proxima() {
+    setState(() {
+      _escolhida = null;
+      _indice++;
+    });
+  }
+
+  Color? _corDaOpcao(int i) {
+    if (_escolhida == null) return null;
+    if (i == perguntas[_indice].correta) return Colors.green.shade200;
+    if (i == _escolhida) return Colors.red.shade200;
+    return null;
+  }
+
+  void _reiniciar() {
+    setState(() {
+      _indice = 0;
+      _acertos = 0;
+      _escolhida = null;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textos = Theme.of(context).textTheme;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Quiz da Ana')),
+      body: _indice &gt;= perguntas.length
+          ? _resultado(textos)
+          : _pergunta(textos),
+    );
+  }
+
+  Widget _pergunta(TextTheme textos) {
+    final pergunta = perguntas[_indice];
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          LinearProgressIndicator(value: (_indice + 1) / perguntas.length),
+          const SizedBox(height: 16),
+          Text(
+            'Pergunta ${_indice + 1} de ${perguntas.length}',
+            style: textos.labelLarge,
+          ),
+          const SizedBox(height: 8),
+          Text(pergunta.texto, style: textos.headlineSmall),
+          const SizedBox(height: 24),
+          for (var i = 0; i &lt; pergunta.opcoes.length; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: _corDaOpcao(i),
+                ),
+                onPressed: () =&gt; _responder(i),
+                child: Text(pergunta.opcoes[i]),
+              ),
+            ),
+          if (_escolhida != null)
+            FilledButton(
+              onPressed: _proxima,
+              child: Text(
+                _indice == perguntas.length - 1 ? 'Ver resultado' : 'Próxima',
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _resultado(TextTheme textos) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.emoji_events, size: 96, color: Colors.amber),
+          const SizedBox(height: 16),
+          Text(
+            'Você acertou $_acertos de ${perguntas.length}!',
+            style: textos.headlineSmall,
+          ),
+          const SizedBox(height: 24),
+          FilledButton(
+            onPressed: _reiniciar,
+            child: const Text('Jogar de novo'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>int? _escolhida;</dt><dd>A opção tocada na pergunta da vez, ou <code>null</code> se a pessoa ainda não respondeu. O <code>?</code> deixa a variável aceitar nulo. Um único campo responde duas perguntas: "já respondeu?" (<code>_escolhida != null</code>) e "o quê?".</dd>
+  <dt>if (_escolhida != null) return;</dt><dd>Depois de responder, novos toques nas opções são ignorados. Sem isso, dava para tocar na certa depois de errar e ganhar o ponto.</dd>
+  <dt>void _proxima() { … _escolhida = null; _indice++; … }</dt><dd>Agora é o botão Próxima que avança, e ele "limpa" a escolha para a pergunta seguinte começar sem cores.</dd>
+  <dt>Color? _corDaOpcao(int i)</dt><dd>Decide a cor de cada botão: nenhuma antes de responder; verde para a certa; vermelho para a escolhida errada; nenhuma para as outras.</dd>
+  <dt>OutlinedButton.styleFrom(backgroundColor: _corDaOpcao(i))</dt><dd>Muda o fundo do botão. Quando a cor é <code>null</code>, o botão fica com o fundo padrão. Mais sobre estilos de botão em <a href="botoes.html">Botões</a>.</dd>
+  <dt>if (_escolhida != null) FilledButton(…)</dt><dd>Um <code>if</code> dentro da lista de filhos (o "collection if"): o botão Próxima só existe depois da resposta. Na última pergunta, o texto vira "Ver resultado".</dd>
+  <dt>LinearProgressIndicator(value: (_indice + 1) / perguntas.length)</dt><dd>A barra de progresso. O <code>value</code> vai de 0 a 1: na pergunta 1 de 3, <code>1 / 3</code>, um terço da barra.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/projeto-quiz-3.png" alt="A primeira pergunta na versão 3: no alto, uma barra fina com um terço preenchido em roxo; os botões Sal, com fundo vermelho claro, e Fermento, com fundo verde claro; Açúcar e Óleo sem cor; e, embaixo, um botão roxo preenchido 'Próxima'" width="390" height="844" loading="lazy"><figcaption>A versão 3 depois de responder "Sal" na primeira pergunta.</figcaption></figure>
+
+<p>No lab, o clique foi em "Sal", a errada. O botão escolhido ficou vermelho, o certo ("Fermento") ficou verde, e os outros dois continuaram sem cor. Apareceu o botão <strong>Próxima</strong>, que antes não existia, e a pergunta continua na tela até ele ser tocado. No alto, a barra de progresso está com um terço preenchido: pergunta 1 de 3.</p>
+
+<div class="tryflutter" data-goal="src:Colors\.lightGreen\.shade300">
+<p class="try-task"><strong>Missão:</strong> o verde ficou clarinho demais para a Ana. Troque <code>Colors.green.shade200</code> por <code>Colors.lightGreen.shade300</code> e responda uma pergunta para ver a cor nova.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const QuizApp());
+
+class Pergunta {
+  const Pergunta(this.texto, this.opcoes, this.correta);
+
+  final String texto;
+  final List&lt;String&gt; opcoes;
+  final int correta;
+}
+
+const perguntas = [
+  Pergunta(
+    'Qual ingrediente faz o bolo crescer?',
+    ['Sal', 'Fermento', 'Açúcar', 'Óleo'],
+    1,
+  ),
+  Pergunta(
+    'Em que país nasceu o brigadeiro?',
+    ['Portugal', 'França', 'Brasil', 'Itália'],
+    2,
+  ),
+  Pergunta(
+    'Qual destes é um widget do Flutter?',
+    ['Column', 'Tabela', 'Pasta', 'Janela'],
+    0,
+  ),
+];
+
+class QuizApp extends StatelessWidget {
+  const QuizApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Quiz da Ana',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.purple),
+      home: const QuizPage(),
+    );
+  }
+}
+
+class QuizPage extends StatefulWidget {
+  const QuizPage({super.key});
+
+  @override
+  State&lt;QuizPage&gt; createState() =&gt; _QuizPageState();
+}
+
+class _QuizPageState extends State&lt;QuizPage&gt; {
+  int _indice = 0;
+  int _acertos = 0;
+  int? _escolhida;
+
+  void _responder(int escolhida) {
+    if (_escolhida != null) return;
+    setState(() {
+      _escolhida = escolhida;
+      if (escolhida == perguntas[_indice].correta) {
+        _acertos++;
+      }
+    });
+  }
+
+  void _proxima() {
+    setState(() {
+      _escolhida = null;
+      _indice++;
+    });
+  }
+
+  Color? _corDaOpcao(int i) {
+    if (_escolhida == null) return null;
+    if (i == perguntas[_indice].correta) return Colors.green.shade200;
+    if (i == _escolhida) return Colors.red.shade200;
+    return null;
+  }
+
+  void _reiniciar() {
+    setState(() {
+      _indice = 0;
+      _acertos = 0;
+      _escolhida = null;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textos = Theme.of(context).textTheme;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Quiz da Ana')),
+      body: _indice &gt;= perguntas.length
+          ? _resultado(textos)
+          : _pergunta(textos),
+    );
+  }
+
+  Widget _pergunta(TextTheme textos) {
+    final pergunta = perguntas[_indice];
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          LinearProgressIndicator(value: (_indice + 1) / perguntas.length),
+          const SizedBox(height: 16),
+          Text(
+            'Pergunta ${_indice + 1} de ${perguntas.length}',
+            style: textos.labelLarge,
+          ),
+          const SizedBox(height: 8),
+          Text(pergunta.texto, style: textos.headlineSmall),
+          const SizedBox(height: 24),
+          for (var i = 0; i &lt; pergunta.opcoes.length; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: _corDaOpcao(i),
+                ),
+                onPressed: () =&gt; _responder(i),
+                child: Text(pergunta.opcoes[i]),
+              ),
+            ),
+          if (_escolhida != null)
+            FilledButton(
+              onPressed: _proxima,
+              child: Text(
+                _indice == perguntas.length - 1 ? 'Ver resultado' : 'Próxima',
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _resultado(TextTheme textos) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.emoji_events, size: 96, color: Colors.amber),
+          const SizedBox(height: 16),
+          Text(
+            'Você acertou $_acertos de ${perguntas.length}!',
+            style: textos.headlineSmall,
+          ),
+          const SizedBox(height: 24),
+          FilledButton(
+            onPressed: _reiniciar,
+            child: const Text('Jogar de novo'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const QuizApp());
+
+class Pergunta {
+  const Pergunta(this.texto, this.opcoes, this.correta);
+
+  final String texto;
+  final List&lt;String&gt; opcoes;
+  final int correta;
+}
+
+const perguntas = [
+  Pergunta(
+    'Qual ingrediente faz o bolo crescer?',
+    ['Sal', 'Fermento', 'Açúcar', 'Óleo'],
+    1,
+  ),
+  Pergunta(
+    'Em que país nasceu o brigadeiro?',
+    ['Portugal', 'França', 'Brasil', 'Itália'],
+    2,
+  ),
+  Pergunta(
+    'Qual destes é um widget do Flutter?',
+    ['Column', 'Tabela', 'Pasta', 'Janela'],
+    0,
+  ),
+];
+
+class QuizApp extends StatelessWidget {
+  const QuizApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Quiz da Ana',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.purple),
+      home: const QuizPage(),
+    );
+  }
+}
+
+class QuizPage extends StatefulWidget {
+  const QuizPage({super.key});
+
+  @override
+  State&lt;QuizPage&gt; createState() =&gt; _QuizPageState();
+}
+
+class _QuizPageState extends State&lt;QuizPage&gt; {
+  int _indice = 0;
+  int _acertos = 0;
+  int? _escolhida;
+
+  void _responder(int escolhida) {
+    if (_escolhida != null) return;
+    setState(() {
+      _escolhida = escolhida;
+      if (escolhida == perguntas[_indice].correta) {
+        _acertos++;
+      }
+    });
+  }
+
+  void _proxima() {
+    setState(() {
+      _escolhida = null;
+      _indice++;
+    });
+  }
+
+  Color? _corDaOpcao(int i) {
+    if (_escolhida == null) return null;
+    if (i == perguntas[_indice].correta) return Colors.lightGreen.shade300;
+    if (i == _escolhida) return Colors.red.shade200;
+    return null;
+  }
+
+  void _reiniciar() {
+    setState(() {
+      _indice = 0;
+      _acertos = 0;
+      _escolhida = null;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textos = Theme.of(context).textTheme;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Quiz da Ana')),
+      body: _indice &gt;= perguntas.length
+          ? _resultado(textos)
+          : _pergunta(textos),
+    );
+  }
+
+  Widget _pergunta(TextTheme textos) {
+    final pergunta = perguntas[_indice];
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          LinearProgressIndicator(value: (_indice + 1) / perguntas.length),
+          const SizedBox(height: 16),
+          Text(
+            'Pergunta ${_indice + 1} de ${perguntas.length}',
+            style: textos.labelLarge,
+          ),
+          const SizedBox(height: 8),
+          Text(pergunta.texto, style: textos.headlineSmall),
+          const SizedBox(height: 24),
+          for (var i = 0; i &lt; pergunta.opcoes.length; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: _corDaOpcao(i),
+                ),
+                onPressed: () =&gt; _responder(i),
+                child: Text(pergunta.opcoes[i]),
+              ),
+            ),
+          if (_escolhida != null)
+            FilledButton(
+              onPressed: _proxima,
+              child: Text(
+                _indice == perguntas.length - 1 ? 'Ver resultado' : 'Próxima',
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _resultado(TextTheme textos) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.emoji_events, size: 96, color: Colors.amber),
+          const SizedBox(height: 16),
+          Text(
+            'Você acertou $_acertos de ${perguntas.length}!',
+            style: textos.headlineSmall,
+          ),
+          const SizedBox(height: 24),
+          FilledButton(
+            onPressed: _reiniciar,
+            child: const Text('Jogar de novo'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Formas diferentes de fazer</h2>
+<h3>Uma tela só, ou uma rota para o resultado?</h3>
+<p>Aqui, o resultado é outra "cara" da mesma tela, escolhida pelo <code>_indice</code>. Outra forma é abrir uma tela nova com <code>Navigator.push</code> (como no <a href="projeto-receitas.html">Projeto App de Receitas</a>), passando os acertos pelo construtor. <strong>Qual usar:</strong> se o resultado é só um aviso e um botão, a mesma tela basta e o estado fica num lugar só. Se o resultado ganhar mais coisas (revisar as respostas, compartilhar), uma tela própria organiza melhor, e a seta de voltar passa a existir.</p>
+
+<h3>Métodos que devolvem widgets, ou widgets próprios?</h3>
+<p>Os métodos <code>_pergunta</code> e <code>_resultado</code> são práticos porque enxergam o estado (<code>_indice</code>, <code>_acertos</code>) direto. Um widget próprio (<code>class TelaResultado extends StatelessWidget</code>) precisaria receber esses valores e o <code>_reiniciar</code> por parâmetro, mas pode ser <code>const</code>, testado sozinho e reaproveitado. <strong>Qual usar:</strong> métodos para pedaços pequenos que só existem nesta tela; widgets quando o pedaço crescer (veja <a href="stateless.html">StatelessWidget</a>).</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<h3>Passou da última pergunta</h3>
+<p>Na versão 2, se o <code>body</code> chamar sempre a tela de pergunta, sem conferir se o jogo acabou:</p>
+<pre class="file" data-file="lib/main.dart (trecho errado)">body: _pergunta(textos),
+</pre>
+<p>as duas primeiras respostas funcionam. Na terceira, o <code>_indice</code> vira 3, e o <code>_pergunta</code> tenta ler <code>perguntas[3]</code>, que não existe (as posições são 0, 1 e 2). No lab, depois de três cliques:</p>
+<figure class="tela"><img src="assets/telas/projeto-quiz-erro.png" alt="Tela inteira vermelho-escura, com letras amarelas no alto: 'RangeError (index): Index out of range: index should be less than 3: 3' e, embaixo, 'See also: https://docs.flutter.dev/testing/errors'" width="390" height="844" loading="lazy"><figcaption>A terceira resposta com o teste do fim esquecido.</figcaption></figure>
+<p>É a famosa <strong>tela vermelha</strong> do modo debug: quando um <code>build</code> lança uma exceção, o Flutter troca o widget que falhou por esta tela, com a mensagem em amarelo. (No modo <em>release</em>, o que o usuário final recebe, ela vira uma tela cinza.) O console do lab mostrou:</p>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following IndexError was thrown building QuizPage(dirty, dependencies: [InheritedCupertinoTheme,
+_InheritedTheme, _LocalizationsScope-[GlobalKey#5629a]], state: _QuizPageState#94e83):
+RangeError (index): Index out of range: index should be less than 3: 3
+
+The relevant error-causing widget was:
+  QuizPage QuizPage:file:///home/ana/app/lib/main.dart:40:19
+
+When the exception was thrown, this was the stack:
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 274:3       throw_
+dart-sdk/lib/_internal/js_dev_runtime/private/js_array.dart 608:7                 _get]
+package:app/main.dart 82:31                                                       [_pergunta]
+package:app/main.dart 77:13                                                       build
+«  … mais 25 linhas da pilha, dentro do Flutter …
+</pre>
+<p>Linha por linha:</p>
+<dl class="anatomy">
+  <dt>EXCEPTION CAUGHT BY WIDGETS LIBRARY</dt><dd>O erro aconteceu enquanto o Flutter <strong>construía</strong> widgets (no <code>build</code>).</dd>
+  <dt>The following IndexError was thrown building QuizPage(…)</dt><dd>"Este erro de índice foi lançado ao construir a <code>QuizPage</code>." O resto da linha (<code>dirty</code>, <code>dependencies</code>, <code>state</code>) é a ficha técnica do widget; pode pular.</dd>
+  <dt>RangeError (index): Index out of range: index should be less than 3: 3</dt><dd>O coração da mensagem: "índice fora do intervalo: o índice deveria ser menor que 3, e foi 3". A lista tem 3 itens (posições 0, 1 e 2), e o código pediu a posição 3.</dd>
+  <dt>The relevant error-causing widget was: QuizPage … main.dart:40:19</dt><dd>O widget envolvido e onde ele foi criado no seu código: a linha 40 é o <code>home: const QuizPage()</code>.</dd>
+  <dt>package:app/main.dart 82:31 [_pergunta]</dt><dd>A linha exata do erro: a 82 do arquivo com o erro, dentro do método <code>_pergunta</code>, onde está <code>perguntas[_indice]</code>. Logo abaixo, a 77, no <code>build</code>, é quem chamou o <code>_pergunta</code>. As linhas com <code>dart-sdk/…</code> e <code>package:flutter/…</code> são de dentro do Dart e do Flutter.</dd>
+</dl>
+<p>(O formato da pilha, com <code>dart-sdk/lib/_internal/js_dev_runtime</code>, é o do navegador, onde o lab roda os apps. Num celular, as linhas da pilha começam com <code>#0</code>, <code>#1</code>…, mas a mensagem <code>RangeError</code> é a mesma.)</p>
+<p><strong>Como resolver:</strong> antes de ler uma posição de uma lista, garanta que ela existe. Aqui, a linha <code>_indice &gt;= perguntas.length ? _resultado(textos) : _pergunta(textos)</code> faz isso.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida do projeto</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Peça</th><th>Para que serviu aqui</th><th>Aula</th></tr>
+<tr><td>classe <code>Pergunta</code> + lista constante</td><td>As fichas do jogo</td><td><a href="json-modelos.html">JSON e Classes de Modelo</a></td></tr>
+<tr><td><code>_indice</code>, <code>_acertos</code>, <code>_escolhida</code> + <code>setState</code></td><td>O estado do jogo</td><td><a href="setstate.html">setState</a></td></tr>
+<tr><td><code>condição ? telaA : telaB</code></td><td>Mostrar a pergunta ou o resultado</td><td><a href="stateful.html">StatefulWidget</a></td></tr>
+<tr><td><code>for</code> e <code>if</code> na lista de filhos</td><td>Um botão por opção; o botão Próxima só depois da resposta</td><td><a href="row-column.html">Row e Column</a></td></tr>
+<tr><td><code>OutlinedButton.styleFrom(backgroundColor: …)</code></td><td>As cores de certo e errado</td><td><a href="botoes.html">Botões</a></td></tr>
+<tr><td><code>LinearProgressIndicator</code></td><td>A barra de progresso</td><td><a href="ref-widgets.html">Widgets Mais Usados</a></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o <code>_responder</code></h3>
+<div class="ex-code">void _responder(int escolhida) {<br>&nbsp;&nbsp;setState(() {<br>&nbsp;&nbsp;&nbsp;&nbsp;if (escolhida == perguntas[_indice].<input data-answer="correta" aria-label="campo da resposta certa">) {<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_acertos<input data-answer="++" aria-label="operador de incremento">;<br>&nbsp;&nbsp;&nbsp;&nbsp;}<br>&nbsp;&nbsp;&nbsp;&nbsp;_indice++;<br>&nbsp;&nbsp;});<br>}</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. Com 5 perguntas na lista, qual valor de <code>_indice</code> quer dizer "o jogo acabou"?</p>
+<label><input type="radio" name="q2"> 4</label>
+<label><input type="radio" name="q2"> 5</label>
+<label><input type="radio" name="q2"> 6</label>
+<label><input type="radio" name="q2"> 0</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">3. Na versão 3, para que serve o <code>if (_escolhida != null) return;</code> no começo do <code>_responder</code>?</p>
+<label><input type="radio" name="q3"> Para pintar o botão de verde.</label>
+<label><input type="radio" name="q3"> Para passar para a próxima pergunta.</label>
+<label><input type="radio" name="q3"> Para zerar os acertos.</label>
+<label><input type="radio" name="q3"> Para ignorar novos toques depois que a pessoa já respondeu.</label>
+</div>
+
+<div class="exercise">
+<h3>4. Desafio: embaralhar</h3>
+<p>Faça as perguntas virem em ordem diferente a cada partida. Dica: guarde no estado uma cópia da lista (<code>List&lt;Pergunta&gt; _ordem = [...perguntas];</code>), chame <code>_ordem.shuffle()</code> no <code>initState</code> e no <code>_reiniciar</code>, e use <code>_ordem[_indice]</code> no lugar de <code>perguntas[_indice]</code>.</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Os dados do jogo são uma lista de objetos <code>Pergunta</code>; o estado é "onde estou" (<code>_indice</code>) e "quanto fiz" (<code>_acertos</code>).</li>
+  <li>A tela é escolhida pelo estado: pergunta enquanto houver, resultado quando o índice chegar ao tamanho da lista.</li>
+  <li><code>for</code> e <code>if</code> dentro da lista de filhos geram botões e escondem o que ainda não deve aparecer.</li>
+  <li>Um campo que pode ser nulo (<code>int? _escolhida</code>) guarda "ainda não respondeu" e "respondeu tal opção" ao mesmo tempo.</li>
+  <li>Ler uma posição que não existe numa lista dá <code>RangeError</code>; confira o tamanho antes.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
