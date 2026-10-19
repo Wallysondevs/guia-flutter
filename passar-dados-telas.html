@@ -115,7 +115,7 @@ class TelaReceita extends StatelessWidget {
 </pre>
 
 <dl class="anatomy">
-  <dt>class Receita { … }</dt><dd>Uma classe de dados com tudo o que uma receita tem (veja <a href="https://wallysondevs.github.io/guia-dart/">o Guia Dart</a>, classes). Em vez de passar o nome, os minutos e os ingredientes separados, passamos o <strong>objeto inteiro</strong>.</dd>
+  <dt>class Receita { … }</dt><dd>Uma classe de dados com tudo o que uma receita tem (veja <a href="https://wallysondevs.github.io/guia-dart/classes.html">o Guia Dart</a>, classes). Em vez de passar o nome, os minutos e os ingredientes separados, passamos o <strong>objeto inteiro</strong>.</dd>
   <dt>const receitas = [ … ]</dt><dd>A lista de receitas. Num app de verdade, ela viria de um banco de dados ou da internet (nível 3).</dd>
   <dt>final Receita receita;</dt><dd>A tela de receita ganha um <strong>campo</strong>: o dado que ela vai mostrar. É <code>final</code> porque não muda enquanto a tela existe.</dd>
   <dt>const TelaReceita({super.key, required this.receita});</dt><dd>O construtor recebe a receita como parâmetro <strong>nomeado</strong> e <strong>obrigatório</strong> (<code>required</code>): não dá para abrir a tela sem dizer qual receita mostrar. O Dart confere isso <strong>antes</strong> de rodar.</dd>
