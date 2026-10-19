@@ -1,0 +1,1079 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Drawer — o menu lateral que desliza da esquerda | Guia Flutter</title>
+<meta name="description" content="O menu lateral (Drawer) do Flutter para quem nunca fez um app: o parâmetro drawer do Scaffold, o ícone ☰ que aparece sozinho na AppBar, DrawerHeader e ListTile, fechar com Navigator.pop, trocar o conteúdo da tela com setState, abrir por código com Scaffold.of e Builder, o endDrawer à direita, o NavigationDrawer do Material 3 e os erros reais explicados em português.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Drawer</span></h1>
+
+<p class="intro">O app de receitas da Ana cresceu: agora tem a lista de receitas, as favoritas, a lista de compras e as configurações. Não cabe tudo numa tela só, e botão para cada parte espalhado pela tela fica feio. A solução clássica dos apps Android é o <strong>menu lateral</strong>: uma "gaveta" escondida à esquerda, que desliza para dentro da tela quando você toca no ícone <strong>☰</strong> (o "hambúrguer") ou arrasta o dedo a partir da borda. No Flutter, essa gaveta se chama <strong><code>Drawer</code></strong> (em inglês, literalmente "gaveta").</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A colocar uma gaveta no app com o parâmetro <code>drawer</code> do <code>Scaffold</code>, e por que o ícone ☰ aparece sozinho na <code>AppBar</code>.</li>
+  <li>A montar o conteúdo da gaveta com <code>DrawerHeader</code> e <code>ListTile</code>.</li>
+  <li>A fechar a gaveta depois do toque com <code>Navigator.pop(context)</code>.</li>
+  <li>A trocar o que aparece na tela conforme o item escolhido (com <code>setState</code>).</li>
+  <li>A abrir a gaveta por código, com <code>Scaffold.of(context).openDrawer()</code>, e por que às vezes é preciso um <code>Builder</code>.</li>
+  <li>A pôr a gaveta do lado direito com <code>endDrawer</code>.</li>
+  <li>O <code>NavigationDrawer</code>, a gaveta no estilo Material 3, com o item escolhido destacado.</li>
+  <li>Os erros reais: o <code>Scaffold.of() called with a context that does not contain a Scaffold</code>, a gaveta que não fecha e o ☰ que sumiu.</li>
+</ul>
+</div>
+
+<p>Tudo o que você vai ver nesta aula foi compilado com o <strong>Flutter <span class="versao">3.47</span></strong> no laboratório do guia, e as fotos são do app rodando em tamanho de celular. Para acompanhar, você precisa saber o que são o <a href="scaffold.html"><code>Scaffold</code> e a <code>AppBar</code></a>, o <a href="card.html"><code>ListTile</code></a> e o <a href="setstate.html"><code>setState</code></a>. A gaveta também conversa com a navegação: o <code>Navigator.pop</code> que fecha a gaveta é o mesmo da aula <a href="navegacao.html">Indo de uma Tela para Outra</a>.</p>
+
+<hr>
+
+<h2>A ideia: a gaveta da cozinha</h2>
+<p>Na cozinha da Ana, os talheres não ficam espalhados pela bancada: ficam numa gaveta. Ela abre a gaveta, pega a colher e fecha. A bancada continua livre para cozinhar.</p>
+
+<p>No app é igual. A <strong>tela</strong> (o <code>body</code> do <code>Scaffold</code>) é a bancada, livre para o conteúdo. O <strong>menu</strong> fica guardado numa gaveta presa à lateral do <code>Scaffold</code>. Abrir a gaveta cobre parte da tela com o menu e escurece o resto; tocar num item faz o que o item manda e fecha a gaveta.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Na cozinha</th><th>No Flutter</th></tr>
+<tr><td>A bancada</td><td>O <code>body</code> do <code>Scaffold</code></td></tr>
+<tr><td>A gaveta presa ao armário</td><td>O parâmetro <code>drawer:</code> do <code>Scaffold</code></td></tr>
+<tr><td>O puxador</td><td>O ícone ☰ na <code>AppBar</code> (ou o arrastar da borda esquerda)</td></tr>
+<tr><td>Os talheres lá dentro</td><td>Os itens da gaveta, quase sempre <code>ListTile</code></td></tr>
+<tr><td>Fechar a gaveta</td><td><code>Navigator.pop(context)</code>, tocar fora dela ou arrastar de volta</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>1. A primeira gaveta</h2>
+<p>Basta entregar um <code>Drawer</code> ao parâmetro <code>drawer</code> do <code>Scaffold</code>. O resto o Flutter faz sozinho:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const InicioPage(),
+    );
+  }
+}
+
+class InicioPage extends StatelessWidget {
+  const InicioPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      drawer: const Drawer(
+        child: Center(child: Text('Eu sou a gaveta!')),
+      ),
+      body: const Center(child: Text('Toque no ícone ☰ lá em cima')),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>drawer:</dt><dd>Um parâmetro do <code>Scaffold</code>, ao lado de <code>appBar</code> e <code>body</code>. Ele recebe o widget que vai morar na gaveta da esquerda. O <code>Scaffold</code> cuida de tudo: esconder a gaveta, abrir com animação, escurecer o fundo e fechar quando você toca fora.</dd>
+  <dt>Drawer(...)</dt><dd>A gaveta em si: um painel com a altura da tela, a largura de um menu (304 pixels lógicos, o padrão do Material) e o fundo e a sombra certos. Sozinho ele é só o "móvel vazio"; o conteúdo vai no <code>child</code>.</dd>
+  <dt>child:</dt><dd>O que aparece dentro da gaveta. Aqui, um texto centralizado. Na vida real, uma lista de itens (seção 2).</dd>
+  <dt>appBar: AppBar(...)</dt><dd>Repare que nenhum ícone de menu foi escrito. Quando o <code>Scaffold</code> tem um <code>drawer</code> e a <code>AppBar</code> não tem botão à esquerda, a <code>AppBar</code> coloca o ☰ <strong>sozinha</strong>, e o toque nele já abre a gaveta.</dd>
+</dl>
+
+<p>Com o app aberto, a tela fica assim, com o ☰ no canto superior esquerdo:</p>
+
+<figure class="tela"><img src="assets/telas/drawer-1.png" alt="Tela do app com a barra 'Receitas da Ana' no topo, o ícone de três tracinhos à esquerda do título e o texto 'Toque no ícone ☰ lá em cima' no meio, sobre fundo creme" width="390" height="844" loading="lazy"><figcaption>O app rodando, com a gaveta fechada (Flutter 3.47, tamanho de celular).</figcaption></figure>
+
+<p>Tocando no ☰, a gaveta desliza da esquerda e o resto da tela fica escurecido:</p>
+
+<figure class="tela"><img src="assets/telas/drawer-2.png" alt="A gaveta aberta ocupando cerca de três quartos da largura, com cantos arredondados à direita e o texto 'Eu sou a gaveta!' no meio; o resto da tela, à direita, escurecido em cinza" width="390" height="844" loading="lazy"><figcaption>A mesma tela com a gaveta aberta.</figcaption></figure>
+
+<p>Três jeitos de fechar, todos prontos sem uma linha a mais: tocar na parte escurecida, arrastar a gaveta para a esquerda ou usar o botão "voltar" do Android.</p>
+
+<div class="tryflutter" data-goal="src:Text\(\s*'Menu da Ana'\s*\)">
+<p class="try-task"><strong>Missão:</strong> troque o texto de dentro da gaveta para <code>Menu da Ana</code>. Depois rode, toque no ☰ e confira.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const InicioPage(),
+    );
+  }
+}
+
+class InicioPage extends StatelessWidget {
+  const InicioPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      drawer: const Drawer(
+        child: Center(child: Text('Eu sou a gaveta!')),
+      ),
+      body: const Center(child: Text('Toque no ícone ☰ lá em cima')),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const InicioPage(),
+    );
+  }
+}
+
+class InicioPage extends StatelessWidget {
+  const InicioPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      drawer: const Drawer(
+        child: Center(child: Text('Menu da Ana')),
+      ),
+      body: const Center(child: Text('Toque no ícone ☰ lá em cima')),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>2. Um menu de verdade: <code>DrawerHeader</code> e <code>ListTile</code></h2>
+<p>Uma gaveta de app quase sempre tem duas partes: um <strong>cabeçalho</strong> no topo (o nome do app, a foto do usuário) e uma <strong>lista de itens</strong>, cada um com ícone e texto. Como a lista pode crescer além da altura da tela, o <code>child</code> da gaveta costuma ser uma <code>ListView</code>:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const InicioPage(),
+    );
+  }
+}
+
+class InicioPage extends StatelessWidget {
+  const InicioPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+              ),
+              child: const Text('Receitas da Ana',
+                  style: TextStyle(fontSize: 24)),
+            ),
+            ListTile(
+              leading: const Icon(Icons.menu_book),
+              title: const Text('Receitas'),
+              onTap: () =&gt; Navigator.pop(context),
+            ),
+            ListTile(
+              leading: const Icon(Icons.favorite),
+              title: const Text('Favoritas'),
+              onTap: () =&gt; Navigator.pop(context),
+            ),
+            ListTile(
+              leading: const Icon(Icons.shopping_cart),
+              title: const Text('Lista de compras'),
+              onTap: () =&gt; Navigator.pop(context),
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.settings),
+              title: const Text('Configurações'),
+              onTap: () =&gt; Navigator.pop(context),
+            ),
+          ],
+        ),
+      ),
+      body: const Center(child: Text('Bolo de cenoura')),
+    );
+  }
+}
+</pre>
+
+<figure class="tela"><img src="assets/telas/drawer-3.png" alt="Gaveta aberta com um cabeçalho laranja-claro escrito 'Receitas da Ana' e, abaixo, os itens Receitas, Favoritas e Lista de compras com ícones, uma linha divisória e o item Configurações" width="390" height="844" loading="lazy"><figcaption>A gaveta com cabeçalho e quatro itens.</figcaption></figure>
+
+<dl class="anatomy">
+  <dt>ListView(padding: EdgeInsets.zero, ...)</dt><dd>A lista que rola se os itens não couberem. O <code>padding: EdgeInsets.zero</code> tira o espaço que a <code>ListView</code> deixaria no topo (para fugir da barra de status do celular) e faz o cabeçalho colorido encostar no alto da gaveta. Sem essa linha, num celular de verdade, aparece uma faixa sem cor acima do cabeçalho (no navegador, onde não há barra de status, a diferença não aparece). A receita oficial de gaveta da documentação do Flutter também zera esse espaço.</dd>
+  <dt>DrawerHeader</dt><dd>Um cabeçalho pronto, com a altura, o espaçamento e a linha de baixo que o Material espera numa gaveta. O <code>decoration</code> é o mesmo <code>BoxDecoration</code> da aula <a href="decoration.html">Cores, Bordas e Sombras</a>; o <code>child</code> é o que vai dentro.</dd>
+  <dt>Theme.of(context).colorScheme.primaryContainer</dt><dd>Uma cor tirada do tema do app (um tom claro da cor principal, aqui laranja), em vez de uma cor escrita à mão. Assim o cabeçalho combina com o resto e muda junto se o tema mudar. As cores do tema estão em <a href="material3.html">Material 3 e ColorScheme</a>.</dd>
+  <dt>ListTile</dt><dd>Uma linha com ícone (<code>leading</code>, "o que vem na frente") e texto (<code>title</code>). Ela já tem a altura certa para o dedo e o efeito de toque.</dd>
+  <dt>onTap: () =&gt; Navigator.pop(context)</dt><dd>O que acontece no toque. Por enquanto, só <strong>fechar a gaveta</strong>. Por baixo dos panos, a gaveta aberta funciona como uma "tela" empilhada por cima do app, e o <code>Navigator.pop</code> tira da pilha a de cima: a gaveta. Na seção 3, o toque também vai trocar o conteúdo.</dd>
+  <dt>Divider()</dt><dd>Uma linha fina que separa grupos de itens: aqui, as configurações ficam separadas das partes do app.</dd>
+</dl>
+
+<p>A árvore de widgets da gaveta:</p>
+
+<pre>Scaffold
+ ├─ appBar: AppBar  (o ☰ aparece sozinho)
+ ├─ drawer: Drawer
+ │   └─ ListView
+ │       ├─ DrawerHeader
+ │       │   └─ Text 'Receitas da Ana'
+ │       ├─ ListTile  Receitas
+ │       ├─ ListTile  Favoritas
+ │       ├─ ListTile  Lista de compras
+ │       ├─ Divider
+ │       └─ ListTile  Configurações
+ └─ body: Center
+     └─ Text 'Bolo de cenoura'
+</pre>
+
+<div class="tip">
+<strong>Por que o <code>Drawer</code> perdeu o <code>const</code>?</strong>
+<p>Na seção 1 o <code>Drawer</code> era <code>const</code>: nada nele dependia do app rodando. Agora ele usa o <code>Theme.of(context)</code> e o <code>Navigator.pop(context)</code>, coisas que só existem com o app no ar, então não pode mais ser <code>const</code>. Os pedaços que continuam fixos (os <code>Icon</code>, os <code>Text</code>, o <code>Divider</code>) mantêm o <code>const</code>, como manda a boa prática.</p>
+</div>
+
+<hr>
+
+<h2>3. Trocando o conteúdo da tela</h2>
+<p>Um menu que só fecha não serve para nada. O jeito mais simples de fazer cada item mostrar uma coisa diferente: guardar <strong>qual item foi escolhido</strong> num número (o índice) e montar o <code>body</code> a partir dele. Como esse número muda, a página vira um <a href="stateful.html"><code>StatefulWidget</code></a>:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const InicioPage(),
+    );
+  }
+}
+
+class InicioPage extends StatefulWidget {
+  const InicioPage({super.key});
+
+  @override
+  State&lt;InicioPage&gt; createState() =&gt; _InicioPageState();
+}
+
+class _InicioPageState extends State&lt;InicioPage&gt; {
+  static const _titulos = ['Receitas', 'Favoritas', 'Lista de compras'];
+  static const _icones = [Icons.menu_book, Icons.favorite, Icons.shopping_cart];
+  int _escolhido = 0;
+
+  void _escolher(int indice) {
+    setState(() =&gt; _escolhido = indice);
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(_titulos[_escolhido])),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            const DrawerHeader(child: Text('Receitas da Ana')),
+            for (var i = 0; i &lt; _titulos.length; i++)
+              ListTile(
+                leading: Icon(_icones[i]),
+                title: Text(_titulos[i]),
+                selected: i == _escolhido,
+                onTap: () =&gt; _escolher(i),
+              ),
+          ],
+        ),
+      ),
+      body: Center(
+        child: Text('Tela: ${_titulos[_escolhido]}',
+            style: const TextStyle(fontSize: 22)),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>int _escolhido = 0;</dt><dd>O estado da página: o índice do item escolhido. Começa em <code>0</code>, "Receitas".</dd>
+  <dt>_escolher(int indice)</dt><dd>Faz as duas coisas que um item de menu precisa fazer: muda o índice com <code>setState</code> (o Flutter redesenha a tela com o novo título e o novo <code>body</code>) e fecha a gaveta com <code>Navigator.pop</code>.</dd>
+  <dt>for (var i = 0; ...) ListTile(...)</dt><dd>Um <code>for</code> <strong>dentro</strong> da lista de <code>children</code> (o "for de coleção" do Dart): gera um <code>ListTile</code> para cada título, sem repetir código.</dd>
+  <dt>selected: i == _escolhido</dt><dd>O <code>ListTile</code> do item atual fica <strong>destacado</strong> (ícone e texto na cor principal do tema). Assim a Ana sabe em que parte do app está quando abre a gaveta.</dd>
+  <dt>Text(_titulos[_escolhido])</dt><dd>O título da <code>AppBar</code> e o texto do meio acompanham o item escolhido.</dd>
+</dl>
+
+<p>Depois de abrir a gaveta e tocar em "Favoritas", a gaveta fecha e a tela mostra:</p>
+
+<figure class="tela"><img src="assets/telas/drawer-4.png" alt="Tela com o título 'Favoritas' na barra e o texto 'Tela: Favoritas' no meio" width="390" height="844" loading="lazy"><figcaption>Depois de escolher "Favoritas" no menu.</figcaption></figure>
+
+<p>E, abrindo a gaveta de novo, "Favoritas" aparece destacada:</p>
+
+<figure class="tela"><img src="assets/telas/drawer-5.png" alt="Gaveta aberta com cabeçalho 'Receitas da Ana' e os itens Receitas, Favoritas e Lista de compras; o item Favoritas aparece com o ícone e o texto em marrom alaranjado, destacado dos outros" width="390" height="844" loading="lazy"><figcaption>O item atual destacado pelo <code>selected: true</code>.</figcaption></figure>
+
+<div class="note">
+<strong>Trocar o <code>body</code> ou abrir outra tela?</strong>
+<p>Aqui o menu troca só o <strong>conteúdo</strong> da mesma tela: a <code>AppBar</code> e a gaveta continuam lá. Também dá para cada item abrir uma <strong>tela nova</strong> com <code>Navigator.push</code> (aula <a href="navegacao.html">Navigator</a>) ou com rotas nomeadas (<a href="rotas-nomeadas.html">Rotas Nomeadas</a>). Nesse caso, feche a gaveta <strong>antes</strong> de empilhar a tela nova (primeiro o <code>pop</code>, depois o <code>push</code>); senão, quando a Ana voltar, a gaveta ainda vai estar aberta.</p>
+</div>
+
+<div class="tryflutter" data-goal="src:'Configurações';;src:Icons\.settings">
+<p class="try-task"><strong>Missão:</strong> acrescente um quarto item ao menu, <code>Configurações</code>, com o ícone <code>Icons.settings</code>. Dica: basta mexer nas duas listas lá em cima; o <code>for</code> faz o resto.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const InicioPage(),
+    );
+  }
+}
+
+class InicioPage extends StatefulWidget {
+  const InicioPage({super.key});
+
+  @override
+  State&lt;InicioPage&gt; createState() =&gt; _InicioPageState();
+}
+
+class _InicioPageState extends State&lt;InicioPage&gt; {
+  static const _titulos = ['Receitas', 'Favoritas', 'Lista de compras'];
+  static const _icones = [Icons.menu_book, Icons.favorite, Icons.shopping_cart];
+  int _escolhido = 0;
+
+  void _escolher(int indice) {
+    setState(() =&gt; _escolhido = indice);
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(_titulos[_escolhido])),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            const DrawerHeader(child: Text('Receitas da Ana')),
+            for (var i = 0; i &lt; _titulos.length; i++)
+              ListTile(
+                leading: Icon(_icones[i]),
+                title: Text(_titulos[i]),
+                selected: i == _escolhido,
+                onTap: () =&gt; _escolher(i),
+              ),
+          ],
+        ),
+      ),
+      body: Center(
+        child: Text('Tela: ${_titulos[_escolhido]}',
+            style: const TextStyle(fontSize: 22)),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const InicioPage(),
+    );
+  }
+}
+
+class InicioPage extends StatefulWidget {
+  const InicioPage({super.key});
+
+  @override
+  State&lt;InicioPage&gt; createState() =&gt; _InicioPageState();
+}
+
+class _InicioPageState extends State&lt;InicioPage&gt; {
+  static const _titulos = ['Receitas', 'Favoritas', 'Lista de compras', 'Configurações'];
+  static const _icones = [Icons.menu_book, Icons.favorite, Icons.shopping_cart, Icons.settings];
+  int _escolhido = 0;
+
+  void _escolher(int indice) {
+    setState(() =&gt; _escolhido = indice);
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(_titulos[_escolhido])),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            const DrawerHeader(child: Text('Receitas da Ana')),
+            for (var i = 0; i &lt; _titulos.length; i++)
+              ListTile(
+                leading: Icon(_icones[i]),
+                title: Text(_titulos[i]),
+                selected: i == _escolhido,
+                onTap: () =&gt; _escolher(i),
+              ),
+          ],
+        ),
+      ),
+      body: Center(
+        child: Text('Tela: ${_titulos[_escolhido]}',
+            style: const TextStyle(fontSize: 22)),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>4. Abrindo a gaveta por código</h2>
+<p>Às vezes a Ana quer um botão no meio da tela que abra o menu ("Ver todas as seções"). Quem sabe abrir e fechar a gaveta é o <code>Scaffold</code>, e o jeito de falar com ele é o <code>Scaffold.of(context)</code>: "procure, a partir deste ponto da árvore, o <code>Scaffold</code> mais próximo <strong>acima</strong> de mim". Achado o <code>Scaffold</code>, é só pedir <code>openDrawer()</code>.</p>
+
+<p>O detalhe que pega todo mundo: o <code>context</code> do método <code>build</code> da página é o lugar <strong>da própria página</strong> na árvore, e a página fica <strong>acima</strong> do <code>Scaffold</code> que ela cria. Procurando "para cima" a partir dali, não há <code>Scaffold</code> nenhum. A saída é um <code>Builder</code>: um widget cuja única função é dar um <code>context</code> novo, já <strong>dentro</strong> do <code>Scaffold</code>:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const InicioPage(),
+    );
+  }
+}
+
+class InicioPage extends StatelessWidget {
+  const InicioPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      drawer: const Drawer(
+        child: Center(child: Text('Menu da Ana')),
+      ),
+      body: Center(
+        child: Builder(
+          builder: (contextDentro) =&gt; FilledButton.icon(
+            onPressed: () =&gt; Scaffold.of(contextDentro).openDrawer(),
+            icon: const Icon(Icons.menu),
+            label: const Text('Ver todas as seções'),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>Builder(builder: (contextDentro) =&gt; ...)</dt><dd>O <code>Builder</code> chama a função do <code>builder</code> passando o <strong>seu próprio</strong> <code>context</code>, que está dentro do <code>body</code>, portanto abaixo do <code>Scaffold</code>. O nome <code>contextDentro</code> é só para deixar isso claro; muita gente escreve <code>context</code> mesmo (e aí esse <code>context</code> "esconde" o de fora).</dd>
+  <dt>Scaffold.of(contextDentro)</dt><dd>Sobe pela árvore a partir do botão e encontra o <code>Scaffold</code>.</dd>
+  <dt>.openDrawer()</dt><dd>Abre a gaveta da esquerda, com a mesma animação do ☰. Os irmãos dele: <code>openEndDrawer()</code> (gaveta da direita, seção 5) e <code>closeDrawer()</code>.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/drawer-6.png" alt="Tela 'Receitas da Ana' com o ícone de menu no canto e, no meio, um botão marrom alaranjado arredondado com o ícone de três tracinhos e o texto 'Ver todas as seções'" width="390" height="844" loading="lazy"><figcaption>O botão no meio da tela; tocar nele abre a mesma gaveta do ☰.</figcaption></figure>
+
+<p>O que acontece sem o <code>Builder</code>, usando o <code>context</code> do <code>build</code>, está em <a href="#errado">Quando dá errado</a>. Há ainda um segundo jeito, sem <code>Builder</code>: dar uma "chave" ao <code>Scaffold</code> (seção "Formas diferentes").</p>
+
+<hr>
+
+<h2>5. A gaveta do lado direito: <code>endDrawer</code></h2>
+<p>O <code>Scaffold</code> tem uma segunda gaveta, do lado oposto: o <code>endDrawer</code> ("gaveta do fim"). Ela é boa para coisas <strong>secundárias</strong>, como filtros da lista de receitas. Quando ela existe, a <code>AppBar</code> põe sozinha um ícone de menu do lado direito:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const InicioPage(),
+    );
+  }
+}
+
+class InicioPage extends StatelessWidget {
+  const InicioPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      drawer: const Drawer(
+        child: Center(child: Text('Menu da Ana')),
+      ),
+      endDrawer: const Drawer(
+        child: Center(child: Text('Filtros: doces, salgados, rápidas')),
+      ),
+      body: const Center(child: Text('Bolo de cenoura')),
+    );
+  }
+}
+</pre>
+
+<figure class="tela"><img src="assets/telas/drawer-7.png" alt="Barra 'Receitas da Ana' com um ícone de três tracinhos à esquerda e outro igual na ponta direita; no meio da tela, 'Bolo de cenoura'" width="390" height="844" loading="lazy"><figcaption>Com <code>drawer</code> e <code>endDrawer</code>, a <code>AppBar</code> ganha um ícone de cada lado.</figcaption></figure>
+
+<p>"Esquerda" e "direita" aqui são, na verdade, "início" e "fim" da linha: num idioma escrito da direita para a esquerda, como o árabe, o Flutter inverte as duas gavetas sozinho.</p>
+
+<hr>
+
+<h2>6. O <code>NavigationDrawer</code> do Material 3</h2>
+<p>O <code>Drawer</code> com <code>ListTile</code> é o jeito clássico. O Material 3 trouxe uma gaveta pensada só para navegação, o <strong><code>NavigationDrawer</code></strong>: os itens são <code>NavigationDrawerDestination</code> ("destino"), e o item escolhido ganha um "pílula" colorida em volta, o <strong>indicador</strong>. Você não precisa controlar o <code>selected</code> de cada item: entrega o índice atual e recebe o toque num só lugar:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const InicioPage(),
+    );
+  }
+}
+
+class InicioPage extends StatefulWidget {
+  const InicioPage({super.key});
+
+  @override
+  State&lt;InicioPage&gt; createState() =&gt; _InicioPageState();
+}
+
+class _InicioPageState extends State&lt;InicioPage&gt; {
+  static const _titulos = ['Receitas', 'Favoritas', 'Lista de compras'];
+  int _escolhido = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(_titulos[_escolhido])),
+      drawer: NavigationDrawer(
+        selectedIndex: _escolhido,
+        onDestinationSelected: (indice) {
+          setState(() =&gt; _escolhido = indice);
+          Navigator.pop(context);
+        },
+        children: const [
+          Padding(
+            padding: EdgeInsets.fromLTRB(28, 16, 16, 10),
+            child: Text('Receitas da Ana'),
+          ),
+          NavigationDrawerDestination(
+            icon: Icon(Icons.menu_book_outlined),
+            selectedIcon: Icon(Icons.menu_book),
+            label: Text('Receitas'),
+          ),
+          NavigationDrawerDestination(
+            icon: Icon(Icons.favorite_border),
+            selectedIcon: Icon(Icons.favorite),
+            label: Text('Favoritas'),
+          ),
+          NavigationDrawerDestination(
+            icon: Icon(Icons.shopping_cart_outlined),
+            selectedIcon: Icon(Icons.shopping_cart),
+            label: Text('Lista de compras'),
+          ),
+        ],
+      ),
+      body: Center(
+        child: Text('Tela: ${_titulos[_escolhido]}',
+            style: const TextStyle(fontSize: 22)),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>drawer: NavigationDrawer(...)</dt><dd>O <code>NavigationDrawer</code> vai no mesmo lugar do <code>Drawer</code>: o parâmetro <code>drawer</code> do <code>Scaffold</code>. O ☰ aparece do mesmo jeito.</dd>
+  <dt>selectedIndex: _escolhido</dt><dd>Qual destino está escolhido. A gaveta desenha o indicador nele.</dd>
+  <dt>onDestinationSelected: (indice) { ... }</dt><dd>Chamado quando a Ana toca num destino, com o <strong>índice</strong> dele. Contam só os <code>NavigationDrawerDestination</code>: o <code>Padding</code> do título não tem índice, então "Receitas" é o <code>0</code>. Fechar a gaveta continua sendo trabalho seu (<code>Navigator.pop</code>).</dd>
+  <dt>NavigationDrawerDestination</dt><dd>Um item: <code>icon</code> (o ícone normal), <code>selectedIcon</code> (o ícone quando escolhido; o costume do Material 3 é o contorno no normal e o cheio no escolhido) e <code>label</code> (o texto).</dd>
+  <dt>children: const [...]</dt><dd>Como nada na lista muda, ela inteira pode ser <code>const</code>: quem muda é o <code>selectedIndex</code>, que fica fora dela.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/drawer-8.png" alt="Gaveta do Material 3 aberta com o título 'Receitas da Ana' e três destinos; Favoritas está dentro de uma pílula laranja-clara, com o coração cheio, e os outros dois têm ícones vazados" width="390" height="844" loading="lazy"><figcaption>Depois de escolher "Favoritas" e abrir a gaveta de novo: o destino atual dentro da pílula do indicador, com o ícone cheio.</figcaption></figure>
+
+<hr>
+
+<h2>Formas diferentes de fazer</h2>
+
+<h3>Abrir a gaveta: três caminhos</h3>
+<p>Além do ☰ automático e do <code>Builder</code> da seção 4, existe a <strong>chave global</strong>: você cria uma <code>GlobalKey&lt;ScaffoldState&gt;</code>, entrega ao <code>Scaffold</code> e, de qualquer ponto da página, pede <code>_chave.currentState!.openDrawer()</code>, sem procurar nada na árvore:</p>
+
+<pre class="file" data-file="lib/main.dart">class _InicioPageState extends State&lt;InicioPage&gt; {
+  final _chave = GlobalKey&lt;ScaffoldState&gt;();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      key: _chave,
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      drawer: const Drawer(child: Center(child: Text('Menu da Ana'))),
+      body: Center(
+        child: FilledButton(
+          onPressed: () =&gt; _chave.currentState!.openDrawer(),
+          child: const Text('Ver todas as seções'),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<p>(Só a parte que muda; a página precisa ser um <code>StatefulWidget</code> para guardar a chave. As chaves têm aula própria: <a href="keys.html">Keys</a>.)</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Jeito</th><th>Quando usar</th></tr>
+<tr><td>O ☰ automático da <code>AppBar</code></td><td>Quase sempre. Não custa uma linha e é o que o usuário de Android espera</td></tr>
+<tr><td><code>Builder</code> + <code>Scaffold.of(ctx).openDrawer()</code></td><td>Um botão dentro do <code>body</code> que abre a gaveta. Não precisa de estado</td></tr>
+<tr><td><code>GlobalKey&lt;ScaffoldState&gt;</code></td><td>Quando o pedido vem de longe na árvore, ou de um método da página fora do <code>build</code></td></tr>
+</table>
+</div>
+
+<h3>Qual gaveta usar</h3>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Widget</th><th>Quando usar</th></tr>
+<tr><td><code>Drawer</code> + <code>ListTile</code></td><td>Menu com conteúdo variado: cabeçalho com foto, interruptores, textos, itens que não são "lugares" (como "Sair")</td></tr>
+<tr><td><code>NavigationDrawer</code></td><td>Menu só de destinos (as partes do app), no visual Material 3, com o indicador pronto</td></tr>
+<tr><td>Barra inferior</td><td>Quando há de 3 a 5 partes principais e a Ana troca entre elas toda hora: elas ficam sempre à vista. É a próxima aula: <a href="bottom-navigation.html">Barra de Navegação Inferior</a></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>Scaffold.of()</code> com o <code>context</code> errado</strong>
+<p>A Ana tirou o <code>Builder</code> da seção 4 e usou o <code>context</code> do próprio <code>build</code>:</p>
+<pre class="file" data-file="lib/main.dart">  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      drawer: const Drawer(
+        child: Center(child: Text('Menu da Ana')),
+      ),
+      body: Center(
+        child: FilledButton.icon(
+          onPressed: () =&gt; Scaffold.of(context).openDrawer(),
+          icon: const Icon(Icons.menu),
+          label: const Text('Ver todas as seções'),
+        ),
+      ),
+    );
+  }
+</pre>
+<p>O app compila e abre normalmente, com a mesma cara da foto da seção 4. O erro só aparece no <strong>toque</strong> do botão: a gaveta não abre, e o console (aqui, o do navegador, onde o laboratório rodou o app em modo debug) mostra:</p>
+<pre class="term">[erro na página] Scaffold.of() called with a context that does not contain a Scaffold.
+No Scaffold ancestor could be found starting from the context that was passed to Scaffold.of(). This usually happens when the context provided is from the same StatefulWidget as that whose build function actually creates the Scaffold widget being sought.
+There are several ways to avoid this problem. The simplest is to use a Builder to get a context that is "under" the Scaffold. For an example of this, please see the documentation for Scaffold.of():
+  https://api.flutter.dev/flutter/material/Scaffold/of.html
+A more efficient solution is to split your build function into several widgets. This introduces a new context from which you can obtain the Scaffold. In this solution, you would have an outer widget that creates the Scaffold populated by instances of your new inner widgets, and then in these inner widgets you would use Scaffold.of().
+A less elegant but more expedient solution is assign a GlobalKey to the Scaffold, then use the key.currentState property to obtain the ScaffoldState rather than using the Scaffold.of() function.
+The context used was:
+  InicioPage
+[erro na página] Unexpected null value.
+</pre>
+<dl class="anatomy">
+  <dt>Scaffold.of() called with a context that does not contain a Scaffold.</dt><dd>"<code>Scaffold.of()</code> chamado com um context que não contém um <code>Scaffold</code>". A busca subiu pela árvore a partir do <code>context</code> e não encontrou <code>Scaffold</code> nenhum.</dd>
+  <dt>No Scaffold ancestor could be found…</dt><dd>"Nenhum <code>Scaffold</code> ancestral foi encontrado a partir do context passado. Isso costuma acontecer quando o context é do mesmo widget cujo <code>build</code> cria o <code>Scaffold</code>." É exatamente o caso: o <code>context</code> é o da <code>InicioPage</code>, que fica <strong>acima</strong> do <code>Scaffold</code> que ela mesma cria.</dd>
+  <dt>There are several ways to avoid this problem…</dt><dd>A própria mensagem dá as soluções, em ordem: "o mais simples é usar um <code>Builder</code> para obter um context que fique 'abaixo' do <code>Scaffold</code>"; "uma solução mais eficiente é dividir a sua função <code>build</code> em vários widgets" (cada widget novo tem o próprio <code>context</code>, já abaixo do <code>Scaffold</code>); e "uma solução menos elegante, porém mais rápida, é dar uma <code>GlobalKey</code> ao <code>Scaffold</code>".</dd>
+  <dt>The context used was: InicioPage</dt><dd>"O context usado foi o da <code>InicioPage</code>": a prova de que a busca começou na página, acima do <code>Scaffold</code>.</dd>
+  <dt>Unexpected null value.</dt><dd>"Valor nulo inesperado": um segundo erro, consequência do primeiro (o <code>Scaffold</code> que não foi achado). Conserte o primeiro e este some junto.</dd>
+</dl>
+<p><strong>Como consertar:</strong> envolva o botão num <code>Builder</code> e use o <code>context</code> dele (seção 4), ou use uma <code>GlobalKey&lt;ScaffoldState&gt;</code> (seção "Formas diferentes"). Outra saída limpa: tirar o botão para um widget próprio (<code>class BotaoMenu extends StatelessWidget</code>); o <code>context</code> do <code>build</code> dele já fica abaixo do <code>Scaffold</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>A gaveta não fecha depois do toque</strong>
+<pre class="file" data-file="lib/main.dart">ListTile(
+  leading: const Icon(Icons.favorite),
+  title: const Text('Favoritas'),
+  onTap: () =&gt; setState(() =&gt; _escolhido = 1),
+),
+</pre>
+<p>Nenhuma mensagem de erro: a tela de trás até muda, mas fica escondida atrás da gaveta, que continua aberta. Para quem usa, parece que o toque "não fez nada". O <code>Scaffold</code> não fecha a gaveta sozinho quando um item é tocado: ele não sabe se aquele toque era de navegação ou, por exemplo, um interruptor de "modo escuro" que deve deixar a gaveta aberta. <strong>Como consertar:</strong> acrescente <code>Navigator.pop(context);</code> no <code>onTap</code>, depois do <code>setState</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>O ☰ sumiu</strong>
+<p>Dois motivos comuns, nenhum com mensagem de erro:</p>
+<ul>
+  <li><strong>O <code>Scaffold</code> não tem <code>appBar</code>.</strong> Sem barra, não há onde pôr o ☰. A gaveta ainda existe e abre arrastando o dedo a partir da borda esquerda, mas ninguém adivinha isso. Ponha uma <code>AppBar</code> ou um botão que abra a gaveta (seção 4).</li>
+  <li><strong>A <code>AppBar</code> tem um <code>leading</code> próprio.</strong> O <code>leading</code> é o espaço à esquerda do título; se você puser um widget ali (um logotipo, por exemplo), ele toma o lugar do ☰. Ou deixe o <code>leading</code> vazio, ou faça o seu próprio botão abrir a gaveta com <code>Scaffold.of(context).openDrawer()</code> dentro de um <code>Builder</code>.</li>
+</ul>
+<p>O contrário também acontece: com <code>automaticallyImplyLeading: false</code> na <code>AppBar</code>, o ☰ some de propósito.</p>
+</div>
+
+<div class="cenario">
+<strong>O cabeçalho com uma faixa em cima</strong>
+<p>Sem o <code>padding: EdgeInsets.zero</code> na <code>ListView</code> da gaveta, a lista deixa um espaço do tamanho da barra de status no topo, e o cabeçalho colorido "desce", deixando uma faixa da cor do fundo da gaveta acima dele. Não é erro, é a lista protegendo o conteúdo da barra de status. <strong>Como consertar:</strong> <code>ListView(padding: EdgeInsets.zero, children: [...])</code>; o <code>DrawerHeader</code> já sabe se afastar da barra de status sozinho.</p>
+</div>
+
+<div class="tryflutter" data-goal="src:Builder;;src:Scaffold\.of\(\s*\w+\s*\)\.openDrawer\(\)">
+<p class="try-task"><strong>Missão:</strong> este botão está com o <code>context</code> errado e, no toque, cai no erro <code>Scaffold.of() called with a context that does not contain a Scaffold</code>. Envolva o <code>FilledButton</code> num <code>Builder</code> e use o <code>context</code> dele no <code>Scaffold.of</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const InicioPage(),
+    );
+  }
+}
+
+class InicioPage extends StatelessWidget {
+  const InicioPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      drawer: const Drawer(
+        child: Center(child: Text('Menu da Ana')),
+      ),
+      body: Center(
+        child: FilledButton(
+          onPressed: () =&gt; Scaffold.of(context).openDrawer(),
+          child: const Text('Ver todas as seções'),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const InicioPage(),
+    );
+  }
+}
+
+class InicioPage extends StatelessWidget {
+  const InicioPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      drawer: const Drawer(
+        child: Center(child: Text('Menu da Ana')),
+      ),
+      body: Center(
+        child: Builder(
+          builder: (contextDentro) =&gt; FilledButton(
+            onPressed: () =&gt; Scaffold.of(contextDentro).openDrawer(),
+            child: const Text('Ver todas as seções'),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>Scaffold(drawer: Drawer(...))</code></td><td>Gaveta à esquerda; a <code>AppBar</code> ganha o ☰ sozinha</td></tr>
+<tr><td><code>Scaffold(endDrawer: Drawer(...))</code></td><td>Gaveta à direita, com ícone próprio na <code>AppBar</code></td></tr>
+<tr><td><code>Drawer(child: ListView(padding: EdgeInsets.zero, children: [...]))</code></td><td>O formato mais comum do conteúdo</td></tr>
+<tr><td><code>DrawerHeader(decoration: ..., child: ...)</code></td><td>Cabeçalho pronto no topo da gaveta</td></tr>
+<tr><td><code>ListTile(leading:, title:, selected:, onTap:)</code></td><td>Um item do menu; <code>selected: true</code> destaca o item atual</td></tr>
+<tr><td><code>Navigator.pop(context)</code></td><td>Fecha a gaveta (dentro do <code>onTap</code>)</td></tr>
+<tr><td><code>Scaffold.of(ctx).openDrawer()</code> / <code>.openEndDrawer()</code> / <code>.closeDrawer()</code></td><td>Abre/fecha por código; o <code>ctx</code> tem de estar <strong>abaixo</strong> do <code>Scaffold</code> (use um <code>Builder</code>)</td></tr>
+<tr><td><code>GlobalKey&lt;ScaffoldState&gt;()</code> + <code>key:</code> no <code>Scaffold</code></td><td>Outro jeito de abrir por código: <code>_chave.currentState!.openDrawer()</code></td></tr>
+<tr><td><code>NavigationDrawer(selectedIndex:, onDestinationSelected:, children:)</code></td><td>A gaveta de navegação do Material 3</td></tr>
+<tr><td><code>NavigationDrawerDestination(icon:, selectedIcon:, label:)</code></td><td>Um destino do <code>NavigationDrawer</code></td></tr>
+<tr><td><code>drawerEnableOpenDragGesture: false</code> (no <code>Scaffold</code>)</td><td>Desliga o abrir arrastando da borda (o ☰ continua funcionando)</td></tr>
+</table>
+</div>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Sintoma</th><th>Causa provável</th></tr>
+<tr><td><code>Scaffold.of() called with a context that does not contain a Scaffold.</code></td><td>O <code>context</code> é o do widget que cria o <code>Scaffold</code>; use um <code>Builder</code> ou uma <code>GlobalKey</code></td></tr>
+<tr><td>A gaveta não fecha depois do toque</td><td>Faltou <code>Navigator.pop(context)</code> no <code>onTap</code></td></tr>
+<tr><td>Não aparece o ☰</td><td>Sem <code>appBar</code>, <code>leading</code> próprio ou <code>automaticallyImplyLeading: false</code></td></tr>
+<tr><td>Faixa sem cor acima do cabeçalho</td><td>Faltou <code>padding: EdgeInsets.zero</code> na <code>ListView</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. O parâmetro</h3>
+<p>Complete para pôr a gaveta do lado <strong>esquerdo</strong>:</p>
+<div class="ex-code">Scaffold(<input data-answer="drawer" aria-label="parâmetro">: Drawer(child: Text('Menu')))</div>
+</div>
+
+<div class="exercise">
+<h3>2. Do outro lado</h3>
+<p>E qual é o nome do parâmetro da gaveta do lado <strong>direito</strong>?</p>
+<div class="ex-code">Scaffold(<input data-answer="endDrawer" aria-label="parâmetro">: Drawer(child: Text('Filtros')))</div>
+</div>
+
+<div class="exercise">
+<h3>3. Fechando</h3>
+<p>Complete o <code>onTap</code> para fechar a gaveta:</p>
+<div class="ex-code">onTap: () =&gt; Navigator.<input data-answer="pop" aria-label="método">(context),</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. A Ana pôs <code>drawer: Drawer(...)</code> num <code>Scaffold</code> com <code>AppBar</code>, sem escrever ícone nenhum. O que aparece?</p>
+<label><input type="radio" name="q4"> Nada: ela precisa criar um <code>IconButton</code> com <code>Icons.menu</code></label>
+<label><input type="radio" name="q4"> O ícone ☰ à esquerda do título, que já abre a gaveta</label>
+<label><input type="radio" name="q4"> A gaveta já aberta ao iniciar o app</label>
+<label><input type="radio" name="q4"> Um erro dizendo que falta o ícone</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">5. Por que <code>Scaffold.of(context)</code> falha quando o <code>context</code> é o do <code>build</code> que cria o <code>Scaffold</code>?</p>
+<label><input type="radio" name="q5"> Porque o <code>Scaffold</code> ainda não tem <code>drawer</code></label>
+<label><input type="radio" name="q5"> Porque <code>Scaffold.of</code> só funciona em <code>StatefulWidget</code></label>
+<label><input type="radio" name="q5"> Porque a busca sobe pela árvore, e esse <code>context</code> fica acima do <code>Scaffold</code></label>
+<label><input type="radio" name="q5"> Porque falta o <code>const</code> no <code>Scaffold</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">6. No <code>NavigationDrawer</code>, os filhos são um <code>Padding</code> com o título e três <code>NavigationDrawerDestination</code>. Qual índice recebe o <code>onDestinationSelected</code> quando a Ana toca no <strong>primeiro destino</strong>?</p>
+<label><input type="radio" name="q6"> <code>0</code></label>
+<label><input type="radio" name="q6"> <code>1</code></label>
+<label><input type="radio" name="q6"> <code>-1</code></label>
+<label><input type="radio" name="q6"> O próprio widget, não um número</label>
+</div>
+
+<h3>Missão final: o menu da Ana no Material 3</h3>
+
+<div class="tryflutter" data-goal="src:NavigationDrawer\(;;src:NavigationDrawerDestination\([\s\S]*NavigationDrawerDestination\(;;src:Navigator\.pop\(">
+<p class="try-task"><strong>Missão:</strong> troque a gaveta clássica por um <code>NavigationDrawer</code> com dois destinos, <code>Receitas</code> e <code>Favoritas</code>. O toque deve mudar a tela (com <code>setState</code>) e fechar a gaveta (com <code>Navigator.pop</code>).</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const InicioPage(),
+    );
+  }
+}
+
+class InicioPage extends StatefulWidget {
+  const InicioPage({super.key});
+
+  @override
+  State&lt;InicioPage&gt; createState() =&gt; _InicioPageState();
+}
+
+class _InicioPageState extends State&lt;InicioPage&gt; {
+  static const _titulos = ['Receitas', 'Favoritas'];
+  int _escolhido = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(_titulos[_escolhido])),
+      drawer: const Drawer(
+        child: Center(child: Text('Troque-me por um NavigationDrawer')),
+      ),
+      body: Center(child: Text('Tela: ${_titulos[_escolhido]}')),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const InicioPage(),
+    );
+  }
+}
+
+class InicioPage extends StatefulWidget {
+  const InicioPage({super.key});
+
+  @override
+  State&lt;InicioPage&gt; createState() =&gt; _InicioPageState();
+}
+
+class _InicioPageState extends State&lt;InicioPage&gt; {
+  static const _titulos = ['Receitas', 'Favoritas'];
+  int _escolhido = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(_titulos[_escolhido])),
+      drawer: NavigationDrawer(
+        selectedIndex: _escolhido,
+        onDestinationSelected: (indice) {
+          setState(() =&gt; _escolhido = indice);
+          Navigator.pop(context);
+        },
+        children: const [
+          NavigationDrawerDestination(
+            icon: Icon(Icons.menu_book),
+            label: Text('Receitas'),
+          ),
+          NavigationDrawerDestination(
+            icon: Icon(Icons.favorite),
+            label: Text('Favoritas'),
+          ),
+        ],
+      ),
+      body: Center(child: Text('Tela: ${_titulos[_escolhido]}')),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>A gaveta (menu lateral) é o parâmetro <code>drawer</code> do <code>Scaffold</code>. Com uma <code>AppBar</code>, o ícone ☰ aparece sozinho; dá para abrir também arrastando da borda.</li>
+  <li>O conteúdo típico: <code>Drawer</code> → <code>ListView(padding: EdgeInsets.zero)</code> → <code>DrawerHeader</code> + <code>ListTile</code>s.</li>
+  <li>A gaveta não fecha sozinha no toque de um item: chame <code>Navigator.pop(context)</code>.</li>
+  <li>Para trocar o conteúdo, guarde o índice escolhido no estado, mude com <code>setState</code> e destaque o item atual com <code>selected</code>.</li>
+  <li>Abrir por código: <code>Scaffold.of(ctx).openDrawer()</code> com um <code>ctx</code> <strong>abaixo</strong> do <code>Scaffold</code> (um <code>Builder</code>), ou uma <code>GlobalKey&lt;ScaffoldState&gt;</code>. Com o <code>context</code> errado: <code>Scaffold.of() called with a context that does not contain a Scaffold</code>.</li>
+  <li><code>endDrawer</code> é a gaveta do lado direito, boa para filtros e opções secundárias.</li>
+  <li>No Material 3, o <code>NavigationDrawer</code> com <code>NavigationDrawerDestination</code> dá a gaveta de navegação com o indicador pronto (<code>selectedIndex</code> + <code>onDestinationSelected</code>).</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
