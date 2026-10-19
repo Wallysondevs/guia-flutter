@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter assets — imagens e arquivos que vão dentro do app | Guia Flutter</title>
+<meta name="description" content="Assets no Flutter para quem nunca fez um app: a pasta assets, a seção assets do pubspec.yaml (arquivo a arquivo ou a pasta inteira), Image.asset e AssetImage, ler um texto ou JSON com rootBundle.loadString, imagens para várias densidades de tela (2.0x, 3.0x), o que vai dentro do pacote do app (AssetManifest) e os erros reais, como o Unable to load asset, explicados em português.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Assets</span></h1>
+
+<p class="intro">A Ana tirou uma foto linda do bolo de cenoura e quer que ela apareça no app, mesmo sem internet. Também quer guardar a lista das receitas num arquivo de texto, em vez de escrever tudo dentro do código. Arquivos assim, que <strong>viajam dentro do app</strong> (imagens, textos, JSON, fontes, sons), se chamam <strong>assets</strong> (em inglês, "bens", "recursos"). Esta aula mostra como colocá-los no projeto, como avisar o Flutter de que eles existem e como usá-los no código.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Onde guardar os arquivos e como declará-los na seção <code>assets:</code> do <code>pubspec.yaml</code>.</li>
+  <li>A mostrar uma imagem do app com <code>Image.asset</code> (e com <code>AssetImage</code>, num fundo).</li>
+  <li>A ler um arquivo de texto ou JSON com <code>rootBundle.loadString</code>.</li>
+  <li>A ter versões da imagem para telas de densidades diferentes (<code>2.0x</code>, <code>3.0x</code>).</li>
+  <li>A ver o que vai, de fato, dentro do pacote do app (<code>AssetManifest</code>).</li>
+  <li>Os erros reais: o <code>Unable to load asset</code> e o arquivo que existe mas não foi declarado.</li>
+</ul>
+</div>
+
+<p>Esta aula usa o <strong>Flutter <span class="versao">3.47</span></strong>. Atenção: o editor do guia (o DartPad, aula <a href="simulador.html">O Editor do Guia</a>) e o laboratório de fotos compilam <strong>um arquivo só</strong>, sem pasta <code>assets/</code>. Por isso as fotos desta aula mostram o que o laboratório consegue mostrar de verdade: o que acontece quando o asset <strong>não</strong> está lá, e o que vai dentro de um app sem assets seus. Para ver a sua foto na tela, rode os exemplos num projeto seu (aula <a href="criar-projeto.html">Criando um Projeto</a>).</p>
+
+<hr>
+
+<h2>A ideia: a marmita da Ana</h2>
+<p>Quando a Ana vai trabalhar, ela leva a marmita pronta: o que está lá dentro vai com ela, e ela não depende de achar um restaurante. Mas, para a marmita sair de casa, alguém precisa <strong>colocar</strong> a comida dentro e <strong>fechar</strong> a tampa antes de sair. O que ficou na geladeira não vai junto.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Na marmita</th><th>No Flutter</th></tr>
+<tr><td>A comida na geladeira</td><td>O arquivo na pasta do projeto (<code>assets/imagens/bolo.jpg</code>)</td></tr>
+<tr><td>A lista do que vai na marmita</td><td>A seção <code>assets:</code> do <code>pubspec.yaml</code></td></tr>
+<tr><td>Fechar a marmita</td><td>Compilar o app (<code>flutter run</code>, <code>flutter build</code>): os arquivos da lista são empacotados</td></tr>
+<tr><td>Abrir a marmita no trabalho</td><td><code>Image.asset(...)</code>, <code>rootBundle.loadString(...)</code></td></tr>
+<tr><td>O que ficou na geladeira</td><td>Um arquivo que está na pasta mas não está na lista: <strong>não vai</strong> para o app</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>1. A pasta e o <code>pubspec.yaml</code></h2>
+<p>Primeiro, os arquivos. O costume é uma pasta <code>assets/</code> na raiz do projeto (ao lado da <code>lib/</code>), com subpastas por tipo:</p>
+
+<pre>receitas_da_ana/
+ ├─ lib/
+ │   └─ main.dart
+ ├─ assets/
+ │   ├─ imagens/
+ │   │   ├─ bolo.jpg
+ │   │   └─ coxinha.jpg
+ │   └─ dados/
+ │       └─ receitas.json
+ └─ pubspec.yaml
+</pre>
+
+<p>Depois, a lista: dentro da seção <code>flutter:</code> do <code>pubspec.yaml</code>, uma seção <code>assets:</code>. Dá para listar arquivo por arquivo ou a pasta inteira:</p>
+
+<pre class="file" data-file="pubspec.yaml">flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/imagens/
+    - assets/dados/receitas.json
+</pre>
+
+<dl class="anatomy">
+  <dt>assets:</dt><dd>A lista do que vai dentro do app. Fica <strong>dentro</strong> de <code>flutter:</code>, com dois espaços de recuo (o YAML é exigente com os espaços; veja a aula <a href="fontes.html">Fontes Personalizadas</a>).</dd>
+  <dt>- assets/imagens/</dt><dd>Com a <strong>barra no fim</strong>, é a pasta: todos os arquivos que estão <strong>diretamente</strong> nela entram. As subpastas <strong>não</strong> entram sozinhas: cada subpasta precisa da sua própria linha.</dd>
+  <dt>- assets/dados/receitas.json</dt><dd>Um arquivo só, pelo caminho a partir da raiz do projeto.</dd>
+</dl>
+
+<p>Depois de mexer no <code>pubspec.yaml</code>, <strong>pare o app e rode de novo</strong>: a recarga a quente não empacota arquivos novos.</p>
+
+<div class="note">
+<strong>O nome da pasta não importa (mas o costume ajuda)</strong>
+<p>Nada obriga a pasta a se chamar <code>assets</code>: o que vale é o caminho escrito no <code>pubspec.yaml</code>. Mas quase todo projeto Flutter usa <code>assets/</code>, e seguir o costume deixa o projeto fácil de entender para os outros (e para você, daqui a seis meses).</p>
+</div>
+
+<hr>
+
+<h2>2. Mostrando uma imagem: <code>Image.asset</code></h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Bolo de cenoura')),
+        body: Column(
+          children: [
+            Image.asset('assets/imagens/bolo.jpg', height: 200),
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Rende 12 fatias.'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>Image.asset('assets/imagens/bolo.jpg')</dt><dd>Uma imagem que vem de dentro do app. O texto é o <strong>mesmo caminho</strong> do arquivo no projeto, com as mesmas maiúsculas e minúsculas, sempre com <code>/</code> (mesmo no Windows).</dd>
+  <dt>height: 200</dt><dd>A altura na tela. Os outros parâmetros (<code>width</code>, <code>fit</code>…) são os mesmos do <code>Image.network</code> da aula <a href="image.html">Imagens</a>.</dd>
+</dl>
+
+<p>Num projeto com o <code>bolo.jpg</code> no lugar e declarado no <code>pubspec.yaml</code>, a foto aparece no alto da tela, com 200 pixels lógicos de altura, e o texto embaixo. No laboratório do guia, onde o arquivo <strong>não existe</strong>, o mesmo código mostra o que acontece quando o asset falta; a foto e a mensagem estão em <a href="#errado">Quando dá errado</a>.</p>
+
+<h3>A imagem como fundo: <code>AssetImage</code></h3>
+<p>Onde o Flutter pede um <code>ImageProvider</code> (um "fornecedor de imagem"), como o fundo de uma caixa ou a foto de um <code>CircleAvatar</code>, use o <code>AssetImage</code> com o mesmo caminho:</p>
+
+<pre class="file" data-file="lib/main.dart">Container(
+  height: 160,
+  decoration: const BoxDecoration(
+    image: DecorationImage(
+      image: AssetImage('assets/imagens/bolo.jpg'),
+      fit: BoxFit.cover,
+    ),
+  ),
+  child: const Center(child: Text('Bolo de cenoura')),
+)
+</pre>
+
+<p>Na verdade, o <code>Image.asset(caminho)</code> é um atalho para <code>Image(image: AssetImage(caminho))</code>.</p>
+
+<div class="tryflutter" data-goal="src:errorBuilder:">
+<p class="try-task"><strong>Missão:</strong> o DartPad não tem a pasta <code>assets/</code>, então esta imagem falta de verdade. Acrescente ao <code>Image.asset</code> um <code>errorBuilder</code> que mostre um ícone de bolo no lugar: <code>errorBuilder: (context, erro, pilha) =&gt; const Icon(Icons.cake, size: 120)</code>. Rode e veja o ícone aparecer em vez do erro.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Bolo de cenoura')),
+        body: Column(
+          children: [
+            Image.asset('assets/imagens/bolo.jpg', height: 200),
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Rende 12 fatias.'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Bolo de cenoura')),
+        body: Column(
+          children: [
+            Image.asset(
+              'assets/imagens/bolo.jpg',
+              height: 200,
+              errorBuilder: (context, erro, pilha) =&gt;
+                  const Icon(Icons.cake, size: 120),
+            ),
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Rende 12 fatias.'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<dl class="anatomy">
+  <dt>errorBuilder: (context, erro, pilha) =&gt; ...</dt><dd>O que desenhar se a imagem não puder ser carregada: recebe o <code>context</code>, o erro e a pilha (o "rastro" de onde ele aconteceu). Num app de verdade, é a rede de segurança para um arquivo que sumiu ou veio corrompido.</dd>
+</dl>
+
+<hr>
+
+<h2>3. Textos e JSON: <code>rootBundle.loadString</code></h2>
+<p>Para ler um arquivo de texto do app, use o <code>rootBundle</code> (o "pacote raiz": o conjunto de assets do app), que vem do <code>package:flutter/services.dart</code>. A leitura é <strong>assíncrona</strong>: ela devolve um <code>Future&lt;String&gt;</code>, e a tela usa um <code>FutureBuilder</code> para esperar:</p>
+
+<pre class="file" data-file="assets/dados/receitas.json">["Bolo de cenoura", "Coxinha", "Suco de maracujá"]
+</pre>
+
+<pre class="file" data-file="lib/main.dart">import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+Future&lt;List&lt;String&gt;&gt; carregarReceitas() async {
+  final texto = await rootBundle.loadString('assets/dados/receitas.json');
+  final lista = jsonDecode(texto) as List;
+  return lista.cast&lt;String&gt;();
+}
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: FutureBuilder&lt;List&lt;String&gt;&gt;(
+          future: carregarReceitas(),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return Text('Erro: ${snapshot.error}');
+            }
+            if (!snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            return ListView(
+              children: [
+                for (final r in snapshot.data!) ListTile(title: Text(r)),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>rootBundle.loadString('assets/dados/receitas.json')</dt><dd>Lê o arquivo inteiro como texto. O caminho é o mesmo do <code>pubspec.yaml</code>.</dd>
+  <dt>await</dt><dd>Espera a leitura terminar (ela é rápida, mas não instantânea). O <code>async</code>/<code>await</code> é o mesmo do Dart (aula <a href="dart-para-flutter.html">O Dart que Você Precisa</a>).</dd>
+  <dt>jsonDecode(texto) as List</dt><dd>Transforma o texto JSON numa lista do Dart (o <code>jsonDecode</code> vem do <code>dart:convert</code>; aula <a href="json-modelos.html">JSON</a>).</dd>
+  <dt>FutureBuilder</dt><dd>Desenha a tela conforme o estado do <code>Future</code>: carregando (a rodinha), com erro, ou com os dados (aula <a href="futurebuilder.html">FutureBuilder</a>).</dd>
+</dl>
+
+<p>Com o arquivo no lugar, a tela mostra uma lista com "Bolo de cenoura", "Coxinha" e "Suco de maracujá". Sem o arquivo, o <code>snapshot.hasError</code> entra em ação; a mensagem real está em <a href="#errado">Quando dá errado</a>.</p>
+
+<hr>
+
+<h2>4. Imagens para cada tela: <code>2.0x</code> e <code>3.0x</code></h2>
+<p>Os celulares têm telas de densidades diferentes: num aparelho comum, cada "pixel lógico" do Flutter vira 2 ou 3 pontinhos de verdade na tela. Uma foto pequena, esticada numa tela densa, fica borrada. Para isso, o Flutter aceita <strong>versões</strong> da mesma imagem em subpastas com a densidade no nome:</p>
+
+<pre>assets/imagens/
+ ├─ icone-bolo.png          « 100 × 100 pontinhos (densidade 1)
+ ├─ 2.0x/
+ │   └─ icone-bolo.png      « 200 × 200
+ └─ 3.0x/
+     └─ icone-bolo.png      « 300 × 300
+</pre>
+
+<p>No código e no <code>pubspec.yaml</code>, nada muda: você declara e usa só <code>assets/imagens/icone-bolo.png</code>, e o Flutter escolhe sozinho a versão que combina com a tela do aparelho. Com <code>width: 100</code>, a imagem ocupa sempre 100 pixels lógicos; só a nitidez muda.</p>
+
+<hr>
+
+<h2>5. O que vai dentro do app</h2>
+<p>Mesmo sem nenhum asset seu, o app já leva alguns arquivos. O <code>AssetManifest</code> (o "manifesto de assets", a lista que o Flutter monta ao compilar) diz quais são. O app abaixo, rodado no laboratório, lista tudo:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+void main() =&gt; runApp(const ListaApp());
+
+class ListaApp extends StatelessWidget {
+  const ListaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: Scaffold(
+        appBar: AppBar(title: const Text('O que tem no pacote do app')),
+        body: FutureBuilder&lt;AssetManifest&gt;(
+          future: AssetManifest.loadFromAssetBundle(rootBundle),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final arquivos = snapshot.data!.listAssets();
+            return ListView(
+              children: [
+                for (final a in arquivos) ListTile(title: Text(a)),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<figure class="tela"><img src="assets/telas/assets-lista.png" alt="Tela 'O que tem no pacote do app' com um único item na lista: packages/cupertino_icons/assets/CupertinoIcons.ttf" width="390" height="844" loading="lazy"><figcaption>A lista de assets de um app recém-criado, sem nenhum asset da Ana.</figcaption></figure>
+
+<p>Um item só: <code>packages/cupertino_icons/assets/CupertinoIcons.ttf</code>, a fonte dos ícones no estilo iPhone, que vem do pacote <code>cupertino_icons</code> que o <code>flutter create</code> já põe no <code>pubspec.yaml</code>. Repare no começo do caminho: assets de <strong>pacotes</strong> ficam em <code>packages/NOME_DO_PACOTE/</code>. Quando a Ana declarar os dela, eles aparecem nesta lista com o caminho que ela escreveu (<code>assets/imagens/bolo.jpg</code>…). É um jeito rápido de conferir se um asset foi mesmo para dentro do app.</p>
+
+<hr>
+
+<h2>Formas diferentes de fazer</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Jeito</th><th>Quando usar</th></tr>
+<tr><td><code>Image.asset('assets/…')</code></td><td>Imagens fixas do app: logotipo, ilustrações, fotos que não mudam. Funcionam sem internet e aparecem na hora</td></tr>
+<tr><td><code>Image.network('https://…')</code></td><td>Imagens que mudam ou que são muitas (as fotos das receitas de todos os usuários): não aumentam o tamanho do app, mas precisam de internet (aula <a href="image.html">Imagens</a>)</td></tr>
+<tr><td><code>Image.file(File(…))</code></td><td>Imagens que o próprio usuário criou no aparelho (uma foto que a Ana tirou com o app); não funciona na web</td></tr>
+<tr><td><code>rootBundle.loadString</code></td><td>Textos e JSON fixos do app (a lista inicial de receitas, um texto de ajuda)</td></tr>
+<tr><td>Uma pasta inteira no <code>pubspec.yaml</code> (<code>- assets/imagens/</code>)</td><td>Quando há muitos arquivos; lembre-se de que as subpastas precisam de linha própria</td></tr>
+</table>
+</div>
+
+<div class="tip">
+<strong>Cuidado com o tamanho</strong>
+<p>Tudo o que está na lista <code>assets:</code> aumenta o tamanho do app que as pessoas baixam. Antes de pôr uma foto de 5 MB, reduza-a para o tamanho em que ela aparece na tela (uma foto de 1080 pixels de largura já é nítida num celular) e prefira JPG para fotos e PNG para desenhos com fundo transparente.</p>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>O asset que não está no pacote: <code>Unable to load asset</code></strong>
+<p>A Ana usou <code>Image.asset('assets/imagens/bolo.jpg')</code> (o app da seção 2), mas o arquivo não foi para dentro do app: ele não existe, ou existe na pasta mas não está no <code>pubspec.yaml</code>, ou o app não foi reiniciado depois de mudar o <code>pubspec.yaml</code>. No laboratório, onde o arquivo não existe, a tela ficou assim:</p>
+<figure class="tela"><img src="assets/telas/assets-erro1.png" alt="Tela 'Bolo de cenoura' em que, no lugar da foto, aparece uma faixa cinza com borda vermelha e um X vermelho de canto a canto, com o texto riscado 'Unable to load asset: assets/imagens/bolo.jpg. The asset does not exist or has empty data.'; embaixo, 'Rende 12 fatias.'" width="390" height="844" loading="lazy"><figcaption>No modo debug, a imagem que faltou vira uma caixa com um X vermelho e a mensagem.</figcaption></figure>
+<p>E o console:</p>
+<pre class="term">Failed to load resource: the server responded with a status of 404 (Not Found)
+Error while trying to load an asset: Flutter Web engine failed to fetch "assets/assets/imagens/bolo.jpg". HTTP request succeeded, but the server responded with HTTP status 404.
+══╡ EXCEPTION CAUGHT BY IMAGE RESOURCE SERVICE ╞════════════════════════════════════════════════════
+The following assertion was thrown resolving an image codec:
+Unable to load asset: "assets/imagens/bolo.jpg".
+The asset does not exist or has empty data.
+
+When the exception was thrown, this was the stack:
+«  … as linhas da pilha
+Image provider: AssetImage(bundle: null, name: "assets/imagens/bolo.jpg")
+Image key: AssetBundleImageKey(bundle: PlatformAssetBundle#b7e4c(), name: "assets/imagens/bolo.jpg",
+  scale: 1)
+════════════════════════════════════════════════════════════════════════════════════════════════════
+</pre>
+<dl class="anatomy">
+  <dt>Failed to load resource … 404 / Flutter Web engine failed to fetch "assets/assets/imagens/bolo.jpg"</dt><dd>As duas primeiras linhas são da versão <strong>web</strong> (o laboratório roda o app num navegador): o app pediu o arquivo ao servidor e ouviu "404, não encontrado". O <code>assets/</code> repetido não é erro seu: na web, o Flutter guarda os assets numa pasta <code>assets/</code> do site, e o seu caminho (que também começa com <code>assets/</code>) vai dentro dela. Num celular, essas duas linhas não aparecem.</dd>
+  <dt>EXCEPTION CAUGHT BY IMAGE RESOURCE SERVICE</dt><dd>O erro veio do "serviço de imagens", a parte do Flutter que carrega e decodifica imagens.</dd>
+  <dt>Unable to load asset: "assets/imagens/bolo.jpg". The asset does not exist or has empty data.</dt><dd>"Não foi possível carregar o asset. Ele não existe ou está vazio." É a mensagem que importa, com o caminho exato que o código pediu: compare letra por letra com o nome do arquivo e com o <code>pubspec.yaml</code>.</dd>
+  <dt>Image provider: AssetImage(…)</dt><dd>Quem pediu a imagem: um <code>AssetImage</code> (o <code>Image.asset</code> cria um por dentro, como na seção 2).</dd>
+</dl>
+<p>Repare que o resto da tela continuou funcionando: o "Rende 12 fatias." apareceu normalmente. Uma imagem que falta não derruba o app; ela só some (no modo de lançamento, o <em>release</em>, a caixa com o X nem aparece: fica um espaço vazio).</p>
+<p><strong>Como consertar:</strong> confira, nesta ordem: (1) o arquivo está na pasta, com o nome <strong>exatamente</strong> igual (maiúsculas, extensão <code>.jpg</code> × <code>.jpeg</code>); (2) o caminho, ou a pasta com a barra no fim, está na lista <code>assets:</code> do <code>pubspec.yaml</code>, com o recuo certo; (3) você parou o app e rodou de novo.</p>
+</div>
+
+<div class="cenario">
+<strong>O texto que não carrega</strong>
+<p>O mesmo problema com o <code>rootBundle.loadString</code>: o <code>Future</code> termina com erro, e o <code>FutureBuilder</code> mostra o <code>snapshot.error</code>. No laboratório, sem o <code>receitas.json</code>:</p>
+<figure class="tela"><img src="assets/telas/assets-erro2.png" alt="Tela 'Receitas da Ana' com o texto 'Erro: Unable to load asset: assets/dados/receitas.json. The asset does not exist or has empty data.'" width="390" height="844" loading="lazy"><figcaption>O <code>FutureBuilder</code> mostrando o <code>snapshot.error</code>.</figcaption></figure>
+<p>A mesma mensagem, <code>Unable to load asset: "assets/dados/receitas.json".</code>, agora dentro do texto que o próprio app montou com <code>Erro: ${snapshot.error}</code>. No console do laboratório saíram só as duas linhas do 404 da versão web: como o erro foi entregue ao <code>FutureBuilder</code>, que o tratou e mostrou na tela, o Flutter não o considera um erro "solto". É por isso que vale sempre tratar o <code>snapshot.hasError</code>: sem ele, a rodinha de carregando giraria para sempre.</p>
+</div>
+
+<div class="cenario">
+<strong>A subpasta esquecida</strong>
+<pre class="file" data-file="pubspec.yaml">flutter:
+  assets:
+    - assets/imagens/
+</pre>
+<p>Com <code>Image.asset('assets/imagens/doces/brigadeiro.jpg')</code>, dá o mesmo <code>Unable to load asset</code>, embora a pasta <code>assets/imagens/</code> esteja na lista: a linha com a barra no fim inclui só os arquivos que estão <strong>direto</strong> nela, não os das subpastas. <strong>Como consertar:</strong> acrescente <code>- assets/imagens/doces/</code>. (As pastas <code>2.0x</code> e <code>3.0x</code> da seção 4 são a exceção: o Flutter as procura sozinho.)</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>flutter: assets: - assets/imagens/</code></td><td>Põe no app os arquivos que estão direto na pasta</td></tr>
+<tr><td><code>flutter: assets: - assets/dados/receitas.json</code></td><td>Põe no app um arquivo</td></tr>
+<tr><td><code>Image.asset('assets/imagens/bolo.jpg')</code></td><td>Mostra uma imagem do app</td></tr>
+<tr><td><code>AssetImage('assets/imagens/bolo.jpg')</code></td><td>A mesma imagem como <code>ImageProvider</code> (fundos, <code>CircleAvatar</code>)</td></tr>
+<tr><td><code>errorBuilder: (context, erro, pilha) =&gt; …</code></td><td>O que mostrar se a imagem falhar</td></tr>
+<tr><td><code>await rootBundle.loadString('assets/…')</code></td><td>Lê um arquivo de texto do app (<code>import 'package:flutter/services.dart'</code>)</td></tr>
+<tr><td><code>assets/imagens/2.0x/x.png</code>, <code>3.0x/x.png</code></td><td>Versões para telas mais densas; no código, só <code>assets/imagens/x.png</code></td></tr>
+<tr><td><code>AssetManifest.loadFromAssetBundle(rootBundle)</code></td><td>A lista dos assets que foram para dentro do app</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. A lista do pubspec</h3>
+<p>Complete o nome da seção do <code>pubspec.yaml</code> que lista os arquivos do app:</p>
+<div class="ex-code">flutter:<br>&nbsp;&nbsp;<input data-answer="assets" aria-label="seção">:<br>&nbsp;&nbsp;&nbsp;&nbsp;- assets/imagens/</div>
+</div>
+
+<div class="exercise">
+<h3>2. A imagem</h3>
+<p>Complete o construtor que mostra uma imagem de dentro do app:</p>
+<div class="ex-code">Image.<input data-answer="asset" aria-label="construtor">('assets/imagens/bolo.jpg')</div>
+</div>
+
+<div class="exercise">
+<h3>3. O texto</h3>
+<p>Complete o objeto que lê arquivos de texto do app:</p>
+<div class="ex-code">await <input data-answer="rootBundle" aria-label="objeto">.loadString('assets/dados/receitas.json')</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. O <code>pubspec.yaml</code> tem <code>- assets/imagens/</code>. Qual destes arquivos <strong>não</strong> vai para o app?</p>
+<label><input type="radio" name="q4"> <code>assets/imagens/bolo.jpg</code></label>
+<label><input type="radio" name="q4"> <code>assets/imagens/doces/brigadeiro.jpg</code></label>
+<label><input type="radio" name="q4"> <code>assets/imagens/coxinha.png</code></label>
+<label><input type="radio" name="q4"> Todos vão</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">5. A Ana acrescentou uma imagem nova no <code>pubspec.yaml</code> e apertou só a recarga a quente. O que acontece?</p>
+<label><input type="radio" name="q5"> A imagem aparece na hora</label>
+<label><input type="radio" name="q5"> O app fecha</label>
+<label><input type="radio" name="q5"> A imagem pode não aparecer: é preciso parar e rodar o app de novo</label>
+<label><input type="radio" name="q5"> O <code>pubspec.yaml</code> é apagado</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">6. Com <code>assets/imagens/2.0x/logo.png</code> e <code>assets/imagens/logo.png</code>, o que a Ana escreve no código?</p>
+<label><input type="radio" name="q6"> <code>Image.asset('assets/imagens/logo.png')</code>, e o Flutter escolhe a versão</label>
+<label><input type="radio" name="q6"> <code>Image.asset('assets/imagens/2.0x/logo.png')</code></label>
+<label><input type="radio" name="q6"> Um <code>if</code> conferindo a densidade da tela</label>
+<label><input type="radio" name="q6"> <code>Image.network</code></label>
+</div>
+
+<h3>Missão final: o fundo da receita</h3>
+
+<div class="tryflutter" data-goal="src:AssetImage\(\s*['&quot;]assets/imagens/bolo\.jpg['&quot;]\s*\)">
+<p class="try-task"><strong>Missão:</strong> ponha a foto <code>assets/imagens/bolo.jpg</code> como fundo do cartão, com <code>image: DecorationImage(image: AssetImage('assets/imagens/bolo.jpg'), fit: BoxFit.cover)</code> dentro do <code>BoxDecoration</code>. No DartPad o arquivo não existe, então o fundo fica só na cor no seu projeto, com o asset declarado, a foto aparece.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: Container(
+          height: 160,
+          margin: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.orange.shade100,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: const Center(child: Text('Bolo de cenoura')),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: Container(
+          height: 160,
+          margin: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.orange.shade100,
+            borderRadius: BorderRadius.circular(16),
+            image: const DecorationImage(
+              image: AssetImage('assets/imagens/bolo.jpg'),
+              fit: BoxFit.cover,
+            ),
+          ),
+          child: const Center(child: Text('Bolo de cenoura')),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Assets são arquivos que vão dentro do app: imagens, textos, JSON, fontes, sons.</li>
+  <li>Guarde em <code>assets/</code> e liste na seção <code>flutter: assets:</code> do <code>pubspec.yaml</code> (um arquivo, ou a pasta com a barra no fim; subpastas precisam de linha própria). Depois, pare e rode o app de novo.</li>
+  <li>Imagem: <code>Image.asset('caminho')</code>, ou <code>AssetImage('caminho')</code> onde o Flutter pede um <code>ImageProvider</code>; <code>errorBuilder</code> para quando ela faltar.</li>
+  <li>Texto: <code>await rootBundle.loadString('caminho')</code>, com <code>FutureBuilder</code> na tela.</li>
+  <li>Versões <code>2.0x/</code> e <code>3.0x/</code> deixam a imagem nítida em telas densas, sem mudar o código.</li>
+  <li>Arquivo fora do pacote → <code>Unable to load asset</code>: confira o nome, o <code>pubspec.yaml</code> e reinicie o app.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
