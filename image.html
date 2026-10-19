@@ -69,7 +69,7 @@ class MeuApp extends StatelessWidget {
 <dl class="anatomy">
   <dt>Image.network( ... )</dt><dd>"Imagem da rede": baixa a imagem do endereço e a mostra. Repare que é <code>Image.network</code>, um <strong>construtor com nome</strong> da classe <code>Image</code> (você viu construtores com nome no Dart).</dd>
   <dt>'https://...'</dt><dd>O endereço (URL) da imagem. Tem de ser o endereço do <strong>arquivo</strong> da imagem (que termina em <code>.png</code>, <code>.jpg</code>, <code>.webp</code>...), e não de uma página que mostra a imagem.</dd>
-  <dt>sem const</dt><dd><code>Image.network</code> não pode ser <code>const</code>: ele guarda o que baixou enquanto o app roda.</dd>
+  <dt>sem const</dt><dd><code>Image.network</code> não pode ser <code>const</code>: o construtor não é <code>const</code>, porque monta por dentro, com o app rodando, o "buscador" da imagem (um <code>NetworkImage</code>).</dd>
 </dl>
 
 <figure class="tela"><img src="assets/telas/image-1.png" alt="Foto de uma coruja marrom com pintas brancas e olhos amarelos, pousada numa pedra, ocupando toda a largura da tela logo abaixo da barra 'Receitas da Ana'; o resto da tela, embaixo, fica vazio" width="390" height="844" loading="lazy"><figcaption><code>Image.network</code> sem tamanho: a foto ocupa a largura da tela, na proporção dela.</figcaption></figure>

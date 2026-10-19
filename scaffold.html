@@ -236,7 +236,7 @@ class MeuApp extends StatelessWidget {
 </dl>
 
 <figure class="tela"><img src="assets/telas/scaffold-4.png" alt="Tela com barra laranja e título branco 'Receitas da Ana', fundo creme bem claro, o texto 'Nenhuma receita ainda' no meio e, no canto de baixo à direita, um botão quadrado de cantos arredondados lilás com um sinal de mais" width="390" height="844" loading="lazy"><figcaption>Fundo âmbar-claro, barra laranja e o botão flutuante.</figcaption></figure>
-<p>O botão flutuante saiu lilás, e não laranja: ele usa as cores do <strong>tema</strong> (o roxo padrão do Material 3), e a Ana só pintou a barra. Para o app inteiro combinar, o caminho é o tema, na seção seguinte.</p>
+<p>O botão flutuante saiu lilás, e não laranja: ele usa as cores do <strong>tema</strong> (o roxo padrão do Material 3), e a Ana só pintou a barra. Para o app inteiro combinar, o caminho é o tema: a cor-semente da aula <a href="material-app.html">MaterialApp</a> pinta tudo, e a seção seguinte mostra como dar uma cor só às barras.</p>
 
 <pre>MaterialApp
 └── Scaffold
@@ -396,7 +396,7 @@ The relevant error-causing widget was:
 
 <h3>Missão final: a tela da lojinha</h3>
 
-<div class="tryflutter" data-goal="src:title:\s*const\s+Text\('Lojinha da Ana'\);;src:Icons\.shopping_cart;;src:floatingActionButton:">
+<div class="tryflutter" data-goal="src:title:\s*(const\s+)?Text\(\s*['&quot;]Lojinha da Ana['&quot;]\s*\);;src:Icons\.shopping_cart;;src:floatingActionButton:">
 <p class="try-task"><strong>Missão:</strong> monte a tela da lojinha: um <code>AppBar</code> com o título <code>Lojinha da Ana</code>, um <code>IconButton</code> com o ícone <code>Icons.shopping_cart</code> nas <code>actions</code>, e um botão flutuante com <code>Icons.add</code>.</p>
 <pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
 

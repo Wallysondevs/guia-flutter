@@ -191,7 +191,7 @@ class MeuApp extends StatelessWidget {
   <dt>MaterialApp sem const</dt><dd>Repare que o <code>const</code> saiu de antes do <code>MaterialApp</code> e foi para dentro, nas partes que não mudam. <code>ThemeData(...)</code> e <code>ColorScheme.fromSeed(...)</code> são calculados quando o app roda, e por isso não podem ser <code>const</code> (veja o cenário em <a href="#errado">Quando dá errado</a>).</dd>
 </dl>
 
-<p>Para ver o que a semente mudou, o lab fotografou o mesmo app duas vezes: sem o <code>theme</code> (à esquerda) e com a semente laranja (à direita):</p>
+<p>Para ver o que a semente mudou, o lab fotografou o mesmo app duas vezes: primeiro sem o <code>theme</code>, depois com a semente laranja:</p>
 
 <figure class="tela"><img src="assets/telas/material-app-3b.png" alt="App sem tema: barra do topo com 'Receitas da Ana' à esquerda, fundo branco levemente rosado, 'Bolo de cenoura' no meio e, no canto de baixo à direita, um botão quadrado de cantos arredondados lilás com um sinal de mais" width="390" height="844" loading="lazy"><figcaption>Sem <code>theme</code>: as cores padrão do Material 3, puxadas para o roxo.</figcaption></figure>
 
