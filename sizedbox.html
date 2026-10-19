@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter SizedBox e Spacer — tamanho fixo e espaço entre widgets | Guia Flutter</title>
+<meta name="description" content="SizedBox e Spacer no Flutter para quem nunca fez um app: dar um tamanho fixo a um widget, pôr espaço vazio entre os itens de uma Row ou Column, SizedBox.expand e double.infinity, o Spacer que empurra os vizinhos, o parâmetro spacing da Row e da Column, e os erros reais, com as telas fotografadas no Flutter de verdade.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">SizedBox e Spacer</span></h1>
+
+<p class="intro">Duas peças pequenas que você vai usar em quase toda tela. O <code>SizedBox</code> ("caixa com tamanho") é uma caixa invisível de tamanho fixo: serve para <strong>dar um tamanho</strong> a um widget ("este botão tem 56 de altura") ou, vazio, para <strong>pôr espaço</strong> entre dois widgets ("16 de distância entre o título e o texto"). O <code>Spacer</code> ("espaçador") é um espaço vazio que <strong>estica</strong>: ele empurra os vizinhos para as pontas de uma <code>Row</code> ou <code>Column</code>.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como pôr um espaço fixo entre os itens com um <code>SizedBox</code> vazio (<code>height</code> na Column, <code>width</code> na Row).</li>
+  <li>Como dar largura e altura fixas a um widget, e como esticar até o máximo com <code>double.infinity</code>.</li>
+  <li>Como o <code>Spacer</code> empurra os vizinhos, e o <code>flex</code> dele.</li>
+  <li>O parâmetro <code>spacing:</code> da <code>Row</code> e da <code>Column</code>, que põe o mesmo espaço entre todos os filhos.</li>
+  <li>Os erros comuns: o espaço "na direção errada" e o <code>SizedBox(16)</code>.</li>
+</ul>
+</div>
+
+<p>Todos os apps desta aula são um <code>lib/main.dart</code> completo, compilados pelo Flutter <span class="versao">Flutter 3.47</span> do laboratório para a web e fotografados no navegador, em tamanho de celular (390 × 844).</p>
+
+<hr>
+
+<h2>A ideia: o calço e a mola</h2>
+<p>Na estante da Ana, para separar os livros de receitas dos cadernos, ela põe um <strong>calço</strong> de madeira de 3 cm: o espaço é sempre o mesmo, não importa o tamanho da estante. Esse é o <code>SizedBox</code>. Já para encostar os livros numa ponta e o porta-retrato na outra, imagine uma <strong>mola</strong> entre eles, que estica até ocupar o vão todo. Esse é o <code>Spacer</code>.</p>
+
+<hr>
+
+<h2>1. <code>SizedBox</code> vazio: espaço entre os itens</h2>
+<p>Numa <code>Column</code>, os filhos ficam colados um no outro. Um <code>SizedBox</code> com só a <code>height</code> ("altura"), e sem filho, vira um espaço vazio daquela altura:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Bolo de cenoura', style: TextStyle(fontSize: 28)),
+              SizedBox(height: 8),
+              Text('Rende 8 porções', style: TextStyle(fontSize: 16)),
+              SizedBox(height: 32),
+              Row(
+                children: [
+                  Icon(Icons.timer),
+                  SizedBox(width: 8),
+                  Text('40 minutos', style: TextStyle(fontSize: 18)),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>SizedBox(height: 8)</dt><dd>Numa <code>Column</code>, um espaço de 8 entre o título e a linha de baixo. Só a altura importa aqui (a coluna empilha na vertical).</dd>
+  <dt>SizedBox(height: 32)</dt><dd>Um espaço maior, para separar "blocos" diferentes da tela. Espaços diferentes ajudam o olho a perceber o que está junto e o que está separado.</dd>
+  <dt>SizedBox(width: 8)</dt><dd>Numa <code>Row</code>, o espaço é na <strong>largura</strong>: 8 entre o ícone e o texto. É o jeito certo de fazer o que, na aula <a href="row-column.html">Row e Column</a>, foi feito com um espaço dentro do texto (<code>' 40 minutos'</code>).</dd>
+  <dt>const</dt><dd>O <code>SizedBox</code> tem construtor <code>const</code>, então a coluna inteira continua constante.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/sizedbox-1.png" alt="O título Bolo de cenoura, logo abaixo Rende 8 porções em letra menor, um espaço maior e, embaixo, um cronômetro com o texto 40 minutos um pouco afastado dele" width="390" height="844" loading="lazy"><figcaption>Os espaços de 8 e de 32 entre os textos, e o de 8 entre o ícone e o texto.</figcaption></figure>
+
+<div class="tryflutter" data-goal="src:SizedBox\(height:\s*24\)">
+<p class="try-task"><strong>Missão:</strong> os três itens da lista de compras estão colados. Ponha um <code>SizedBox(height: 24)</code> entre o primeiro e o segundo (e, se quiser, entre o segundo e o terceiro).</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lista de compras')),
+        body: const Column(
+          children: [
+            Text('Arroz', style: TextStyle(fontSize: 24)),
+            Text('Feijão', style: TextStyle(fontSize: 24)),
+            Text('Café', style: TextStyle(fontSize: 24)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lista de compras')),
+        body: const Column(
+          children: [
+            Text('Arroz', style: TextStyle(fontSize: 24)),
+            SizedBox(height: 24),
+            Text('Feijão', style: TextStyle(fontSize: 24)),
+            SizedBox(height: 24),
+            Text('Café', style: TextStyle(fontSize: 24)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>2. <code>SizedBox</code> com filho: tamanho fixo</h2>
+<p>Com um <code>child</code>, o <code>SizedBox</code> obriga o filho a ter aquele tamanho. O uso mais comum é em botões: o botão, sozinho, tem o tamanho do texto dele; dentro de um <code>SizedBox</code>, ele fica do tamanho que você escolher:</p>
+
+<pre class="file" data-file="lib/main.dart (só o body)">        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              FilledButton(onPressed: () {}, child: const Text('Sem SizedBox')),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: 200,
+                height: 56,
+                child: FilledButton(onPressed: () {}, child: const Text('200 × 56')),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: FilledButton(onPressed: () {}, child: const Text('Largura toda')),
+              ),
+            ],
+          ),
+        ),
+</pre>
+
+<dl class="anatomy">
+  <dt>FilledButton(onPressed: () {}, …)</dt><dd>Um botão do Material 3 (aula <a href="botoes.html">Botões</a>). O <code>() {}</code> é uma função vazia: o botão funciona, mas não faz nada ao ser tocado.</dd>
+  <dt>width: 200, height: 56</dt><dd>O botão fica com exatamente 200 de largura e 56 de altura.</dd>
+  <dt>width: double.infinity</dt><dd>"Largura infinita". Na prática quer dizer "<strong>o máximo que o pai deixar</strong>": aqui, a largura da tela menos o padding. É o jeito clássico de fazer um botão que ocupa a linha toda.</dd>
+  <dt>sem const no Padding</dt><dd>Os botões não são constantes (o <code>onPressed</code> recebe uma função criada na hora), então o <code>const</code> foi para as peças que podem ser.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/sizedbox-2.png" alt="Três botões roxos centralizados um embaixo do outro: o primeiro pequeno, do tamanho do texto Sem SizedBox; o segundo mais largo e mais alto, 200 × 56; o terceiro ocupando a largura toda da tela, menos as margens, com o texto Largura toda" width="390" height="844" loading="lazy"><figcaption>O mesmo botão em três tamanhos: o natural, 200 × 56, e a largura toda.</figcaption></figure>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Atalho</th><th>É o mesmo que</th><th>Para quê</th></tr>
+<tr><td><code>SizedBox.expand(child: w)</code></td><td><code>SizedBox(width: double.infinity, height: double.infinity, child: w)</code></td><td>Ocupar todo o espaço que o pai der</td></tr>
+<tr><td><code>SizedBox.square(dimension: 48)</code></td><td><code>SizedBox(width: 48, height: 48)</code></td><td>Um quadrado</td></tr>
+<tr><td><code>SizedBox.shrink()</code></td><td><code>SizedBox(width: 0, height: 0)</code></td><td>"Nada": um widget vazio, de tamanho zero</td></tr>
+</table>
+</div>
+
+<div class="note">
+<strong>O "nada" do Flutter</strong>
+<p>Às vezes você precisa devolver um widget mas não quer mostrar nada (por exemplo, um aviso que só aparece se houver erro). <code>const SizedBox.shrink()</code> (ou <code>const SizedBox()</code>, sem nada) é o jeito mais leve de dizer "aqui não tem nada".</p>
+</div>
+
+<hr>
+
+<h2>3. <code>Spacer</code>: a mola</h2>
+<p>O <code>Spacer</code> é um espaço vazio que ocupa <strong>toda a sobra</strong> de uma <code>Row</code> ou <code>Column</code>, empurrando os vizinhos. Para pôr o nome da receita à esquerda e a estrela à direita:</p>
+
+<pre class="file" data-file="lib/main.dart (só o body)">        body: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Text('Bolo de cenoura', style: TextStyle(fontSize: 22)),
+                  Spacer(),
+                  Icon(Icons.star, color: Colors.amber),
+                ],
+              ),
+              SizedBox(height: 32),
+              Row(
+                children: [
+                  Icon(Icons.home, size: 40),
+                  Spacer(),
+                  Icon(Icons.search, size: 40),
+                  Spacer(flex: 2),
+                  Icon(Icons.person, size: 40),
+                ],
+              ),
+            ],
+          ),
+        ),
+</pre>
+
+<figure class="tela"><img src="assets/telas/sizedbox-3.png" alt="Em cima, Bolo de cenoura à esquerda e uma estrela amarela encostada na direita. Embaixo, três ícones: casa na esquerda, lupa um pouco mais adiante e pessoa na direita, com o vão entre a lupa e a pessoa do dobro do vão entre a casa e a lupa" width="390" height="844" loading="lazy"><figcaption>Em cima: o <code>Spacer</code> empurra a estrela para a direita. Embaixo: dois <code>Spacer</code>, o segundo com <code>flex: 2</code>.</figcaption></figure>
+
+<p>Na segunda linha há duas molas. Como no <a href="expanded.html">Expanded</a>, elas dividem a sobra pelo <code>flex</code>: a primeira (<code>flex</code> 1, o padrão) fica com 1 parte e a segunda (<code>flex: 2</code>) com 2 partes. Por isso o espaço entre a lupa e a pessoa é o <strong>dobro</strong> do espaço entre a casa e a lupa. (Por dentro, o <code>Spacer</code> é exatamente isto: um <code>Expanded</code> com um <code>SizedBox.shrink()</code> dentro.)</p>
+
+<hr>
+
+<h2>4. <code>spacing:</code> o mesmo espaço entre todos</h2>
+<p>Pôr um <code>SizedBox</code> entre cada par de itens fica repetitivo numa lista de dez. Desde o Flutter 3.27, a <code>Row</code> e a <code>Column</code> têm um parâmetro <code>spacing:</code>, que põe o mesmo espaço entre <strong>todos</strong> os filhos:</p>
+
+<pre class="file" data-file="lib/main.dart (só o body)">        body: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            spacing: 16,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Arroz', style: TextStyle(fontSize: 24)),
+              Text('Feijão', style: TextStyle(fontSize: 24)),
+              Text('Café', style: TextStyle(fontSize: 24)),
+              Row(
+                spacing: 8,
+                children: [
+                  Icon(Icons.add_shopping_cart),
+                  Text('Adicionar item', style: TextStyle(fontSize: 18)),
+                ],
+              ),
+            ],
+          ),
+        ),
+</pre>
+
+<figure class="tela"><img src="assets/telas/sizedbox-4.png" alt="Arroz, Feijão e Café um embaixo do outro, igualmente separados, e embaixo um ícone de carrinho com sinal de mais e o texto Adicionar item" width="390" height="844" loading="lazy"><figcaption>Com <code>spacing: 16</code>, os quatro filhos da coluna ficam igualmente separados, sem nenhum <code>SizedBox</code>.</figcaption></figure>
+
+<p>O <code>spacing</code> só vai <strong>entre</strong> os filhos: não há espaço antes do primeiro nem depois do último.</p>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Quero…</th><th>Use</th></tr>
+<tr><td>O mesmo espaço entre todos os filhos</td><td><code>spacing:</code> na <code>Row</code>/<code>Column</code></td></tr>
+<tr><td>Espaços diferentes em pontos diferentes</td><td><code>SizedBox(height: …)</code> / <code>SizedBox(width: …)</code> entre os filhos</td></tr>
+<tr><td>Empurrar um filho para a ponta</td><td><code>Spacer()</code>, ou <code>mainAxisAlignment: MainAxisAlignment.spaceBetween</code> (aula <a href="alinhamento.html">Alinhamento</a>)</td></tr>
+<tr><td>Espaço em volta de um widget (não entre dois)</td><td><code>Padding</code> (aula <a href="padding-margin.html">Padding e Margem</a>)</td></tr>
+<tr><td>Tamanho fixo, sem cor</td><td><code>SizedBox(width:, height:, child:)</code></td></tr>
+<tr><td>Tamanho fixo <strong>com</strong> cor, borda…</td><td><code>Container(width:, height:, …)</code> (aula <a href="container.html">Container</a>)</td></tr>
+</table>
+</div>
+
+<div class="tip">
+<strong>SizedBox ou Container para dar tamanho?</strong>
+<p>Os dois aceitam <code>width</code> e <code>height</code>. Se você só quer o tamanho (ou só um espaço), prefira o <code>SizedBox</code>: ele é mais simples, tem construtor <code>const</code> e deixa claro o que você quis. O <code>Container</code> é para quando também há cor, borda, margem ou alinhamento.</p>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>O espaço na direção errada</strong>
+<p>Na <code>Row</code>, um <code>SizedBox(height: …)</code> não afasta nada na horizontal: ele tem largura zero. O erro não aparece no console; o espaço é que não aparece na tela:</p>
+<pre class="file" data-file="lib/main.dart (só o body)">        body: const Row(
+          children: [
+            Icon(Icons.timer, size: 40),
+            SizedBox(height: 40),
+            Text('40 minutos', style: TextStyle(fontSize: 24)),
+          ],
+        ),
+</pre>
+<figure class="tela"><img src="assets/telas/sizedbox-5.png" alt="O cronômetro e o texto 40 minutos colados um no outro, sem espaço entre eles" width="390" height="844" loading="lazy"><figcaption>O <code>SizedBox(height: 40)</code> não afastou nada: o ícone e o texto ficaram colados.</figcaption></figure>
+<p><strong>Como consertar:</strong> na <code>Row</code>, use <code>width</code>; na <code>Column</code>, <code>height</code>. Regra: o espaço vai <strong>na direção da fila</strong> (o eixo principal).</p>
+</div>
+
+<div class="cenario">
+<strong>Escreveu <code>SizedBox(16)</code></strong>
+<pre class="file" data-file="lib/main.dart (trecho)">            Text('Arroz'),
+            SizedBox(16),
+            Text('Feijão'),
+</pre>
+<pre class="term">$ flutter run
+«  (…)
+lib/main.dart:17:21: Error: Too many positional arguments: 0 allowed, but 1 found.
+Try removing the extra positional arguments.
+            SizedBox(16),
+                    ^
+…/packages/flutter/lib/src/widgets/basic.dart:2777:9: Context: Found this candidate, but the arguments don't match.
+  const SizedBox({super.key, this.width, this.height, super.child});
+        ^^^^^^^^
+</pre>
+<p>"Argumentos posicionais demais: 0 permitidos, mas 1 encontrado." Um argumento <strong>posicional</strong> é o que vai sem nome, só pela posição (o <code>16</code>). O <code>SizedBox</code> não aceita nenhum: todos os parâmetros dele são <strong>nomeados</strong>, como mostra o construtor que o compilador achou, com as chaves <code>{ }</code>: <code>width</code>, <code>height</code> e <code>child</code>. O Dart não tem como adivinhar se o 16 é largura ou altura. <strong>Como consertar:</strong> diga qual medida: <code>SizedBox(height: 16)</code>.</p>
+</div>
+
+<div class="cenario">
+<strong><code>Spacer</code> dentro de algo que rola</strong>
+<pre class="file" data-file="lib/main.dart (só o body)">        body: const SingleChildScrollView(
+          child: Column(
+            children: [Text('Arroz'), Spacer(), Text('Café')],
+          ),
+        ),
+</pre>
+<pre class="term">══╡ EXCEPTION CAUGHT BY RENDERING LIBRARY ╞═════════════════════════════════════════════════════════
+The following assertion was thrown during performLayout():
+RenderFlex children have non-zero flex but incoming height constraints are unbounded.
+When a column is in a parent that does not provide a finite height constraint, for example if it is
+in a vertical scrollable, it will try to shrink-wrap its children along the vertical axis. Setting a
+flex on a child (e.g. using Expanded) indicates that the child is to expand to fill the remaining
+space in the vertical direction.
+«  (conselhos, os detalhes da Column e a pilha)
+</pre>
+<p>É o mesmo erro do <code>Expanded</code> numa área que rola (aula <a href="expanded.html">Expanded e Flexible</a>), e pelo mesmo motivo: o <code>Spacer</code> <strong>é</strong> um <code>Expanded</code> por dentro, e "ocupe a sobra" não faz sentido quando a altura é infinita. <strong>Como consertar:</strong> numa área que rola, troque o <code>Spacer</code> por um espaço fixo, <code>SizedBox(height: …)</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>SizedBox(height: 16)</code></td><td>Espaço vazio de 16 numa <code>Column</code></td></tr>
+<tr><td><code>SizedBox(width: 16)</code></td><td>Espaço vazio de 16 numa <code>Row</code></td></tr>
+<tr><td><code>SizedBox(width: 200, height: 56, child: w)</code></td><td><code>w</code> com exatamente 200 × 56</td></tr>
+<tr><td><code>SizedBox(width: double.infinity, child: w)</code></td><td><code>w</code> com a largura máxima que o pai deixar</td></tr>
+<tr><td><code>SizedBox.expand(child: w)</code> / <code>.square(dimension: n)</code> / <code>.shrink()</code></td><td>Tudo / quadrado / nada</td></tr>
+<tr><td><code>Spacer()</code> / <code>Spacer(flex: 2)</code></td><td>Espaço que estica com a sobra (com peso)</td></tr>
+<tr><td><code>Row(spacing: 8, …)</code> / <code>Column(spacing: 16, …)</code></td><td>O mesmo espaço entre todos os filhos (Flutter 3.27 ou mais novo)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">1. Para afastar um ícone de um texto <strong>numa Row</strong>, qual escrita usar?</p>
+<label><input type="radio" name="q1"> <code>SizedBox(height: 8)</code></label>
+<label><input type="radio" name="q1"> <code>SizedBox(width: 8)</code></label>
+<label><input type="radio" name="q1"> <code>SizedBox(8)</code></label>
+<label><input type="radio" name="q1"> <code>Spacer(8)</code></label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">2. O que <code>width: double.infinity</code> faz num <code>SizedBox</code>?</p>
+<label><input type="radio" name="q2"> Dá erro: não existe largura infinita</label>
+<label><input type="radio" name="q2"> Deixa a largura em zero</label>
+<label><input type="radio" name="q2"> Rola a tela para o lado</label>
+<label><input type="radio" name="q2"> Ocupa a largura máxima que o pai deixar</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">3. Numa <code>Row</code> com <code>[A, Spacer(), B, Spacer(flex: 3), C]</code>, o espaço entre B e C é…</p>
+<label><input type="radio" name="q3"> o triplo do espaço entre A e B</label>
+<label><input type="radio" name="q3"> igual ao espaço entre A e B</label>
+<label><input type="radio" name="q3"> 3 pixels</label>
+<label><input type="radio" name="q3"> um terço do espaço entre A e B</label>
+</div>
+
+<div class="exercise">
+<h3>4. Complete</h3>
+<p>Complete para pôr 12 de espaço entre todos os filhos da coluna, sem nenhum <code>SizedBox</code>:</p>
+<div class="ex-code">Column(<br>&nbsp;&nbsp;<input data-answer="spacing" aria-label="nome do parâmetro">: <input data-answer="12" aria-label="valor">,<br>&nbsp;&nbsp;children: [ … ],<br>)</div>
+</div>
+
+<h3>Missão final: o botão de salvar</h3>
+
+<div class="tryflutter" data-goal="src:SizedBox\(\s*width:\s*double\.infinity;;src:height:\s*56">
+<p class="try-task"><strong>Missão:</strong> o botão "Salvar receita" deve ocupar a <strong>largura toda</strong>, com 56 de altura. Embrulhe o <code>FilledButton</code> num <code>SizedBox</code> com <code>width: double.infinity</code> e <code>height: 56</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Nova receita')),
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              const Text('Pudim de leite', style: TextStyle(fontSize: 28)),
+              const Spacer(),
+              FilledButton(onPressed: () {}, child: const Text('Salvar receita')),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Nova receita')),
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              const Text('Pudim de leite', style: TextStyle(fontSize: 28)),
+              const Spacer(),
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: FilledButton(onPressed: () {}, child: const Text('Salvar receita')),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<figure class="tela"><img src="assets/telas/sizedbox-6.png" alt="Pudim de leite no alto, centralizado, e no pé da tela um botão roxo da largura toda com o texto Salvar receita" width="390" height="844" loading="lazy"><figcaption>O resultado esperado: o título em cima e, empurrado pelo <code>Spacer</code> para o fim da tela, o botão na largura toda.</figcaption></figure>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>SizedBox</code> vazio é um espaço fixo: <code>height</code> na <code>Column</code>, <code>width</code> na <code>Row</code>.</li>
+  <li><code>SizedBox</code> com <code>child</code> dá um tamanho fixo ao filho; <code>double.infinity</code> quer dizer "o máximo que o pai deixar".</li>
+  <li><code>Spacer</code> é uma mola: ocupa a sobra e empurra os vizinhos; vários <code>Spacer</code> dividem a sobra pelo <code>flex</code>.</li>
+  <li><code>spacing:</code> na <code>Row</code>/<code>Column</code> põe o mesmo espaço entre todos os filhos.</li>
+  <li>Para só dar tamanho ou espaço, prefira <code>SizedBox</code> (é <code>const</code>) a <code>Container</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
