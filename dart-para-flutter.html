@@ -1,0 +1,609 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>O Dart que Você Precisa — a revisão de Dart para começar no Flutter | Guia Flutter</title>
+<meta name="description" content="O Dart que aparece em todo app Flutter, revisado com saídas reais do Dart 3.13: classes com parâmetros nomeados e required, final e const, null safety (?, ?? e ?.), funções anônimas e arrow (os callbacks dos botões), listas com if, for e spread, extends, @override e super.key, e async/await, com os erros de compilação explicados em português.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>O Dart que <span class="hl">Você Precisa</span></h1>
+
+<p class="intro">Um app Flutter é um programa Dart. Não existe uma "linguagem do Flutter": as telas, os botões e as regras do app são classes, funções e listas de Dart. Esta aula é uma <strong>revisão dirigida</strong>: só os pedaços do Dart que aparecem em <strong>todo</strong> app Flutter, cada um mostrado primeiro em Dart puro e depois no lugar em que você vai encontrá-lo no Flutter. Se algum deles for novidade, a aula indica onde estudar no <a href="https://wallysondevs.github.io/guia-dart/">Guia Dart</a>.</p>
+
+<div class="note">
+<strong>Você vai aprender (ou relembrar)</strong>
+<ul>
+  <li>Classes com <strong>parâmetros nomeados</strong>, <code>required</code> e valor padrão: o jeito como todo widget recebe as opções.</li>
+  <li><code>final</code> e <code>const</code>, e por que o Flutter gosta tanto de <code>const</code>.</li>
+  <li><strong>Null safety</strong>: o <code>?</code> no tipo, o <code>??</code> e o <code>?.</code>.</li>
+  <li>Funções anônimas e a seta <code>=&gt;</code>: o que vai no <code>onPressed</code> de um botão.</li>
+  <li>Listas com <code>if</code>, <code>for</code> e <code>...</code> dentro dos colchetes: o jeito de montar os <code>children</code>.</li>
+  <li><code>extends</code>, <code>@override</code> e <code>super.key</code>: a primeira linha de todo widget.</li>
+  <li><code>async</code>/<code>await</code>, para quando o app espera alguma coisa.</li>
+  <li>Os erros de compilação mais comuns nesses pontos, com a mensagem real.</li>
+</ul>
+</div>
+
+<p>Os programas de Dart puro desta aula foram rodados com <code>dart run</code> na máquina da Ana, com o <strong>Dart 3.13.5</strong>, a mesma versão que vem dentro do Flutter do guia (o Flutter traz o Dart junto: aula <a href="instalar.html">Instalar o Flutter</a>).</p>
+
+<hr>
+
+<h2>A ideia: a ficha de pedido</h2>
+<p>Na lanchonete, o pedido é uma ficha com campos: <em>lanche</em>, <em>bebida</em>, <em>observação</em>. Alguns campos são obrigatórios (sem lanche, não tem pedido), outros têm um valor que vale se ninguém escrever nada ("bebida: nenhuma"), e a observação pode ficar em branco.</p>
+
+<p>Um widget do Flutter funciona igualzinho. Quando você escreve <code>Text('Oi', style: ..., maxLines: 2)</code>, está preenchendo a ficha do <code>Text</code>: o texto é obrigatório, o resto é opcional e tem padrão. Os pedaços de Dart desta aula são justamente as regras dessa ficha.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Na ficha de pedido</th><th>No Dart</th></tr>
+<tr><td>Campo com nome ("bebida: suco")</td><td>Parâmetro nomeado: <code>bebida: 'suco'</code></td></tr>
+<tr><td>Campo obrigatório</td><td><code>required</code></td></tr>
+<tr><td>"Se não escrever, vale <em>nenhuma</em>"</td><td>Valor padrão: <code>this.bebida = 'nenhuma'</code></td></tr>
+<tr><td>Campo que pode ficar em branco</td><td>Tipo com <code>?</code>: <code>String? observacao</code></td></tr>
+<tr><td>Ficha impressa, que não se rasura</td><td><code>final</code> e <code>const</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>1. Classes com parâmetros nomeados</h2>
+<p>A Ana quer guardar as receitas do app. Cada receita tem um nome, o tempo de preparo e se é doce:</p>
+
+<pre class="file" data-file="receita.dart">class Receita {
+  final String nome;
+  final int minutos;
+  final bool doce;
+
+  const Receita({required this.nome, required this.minutos, this.doce = true});
+
+  @override
+  String toString() =&gt; '$nome ($minutos min)';
+}
+
+void main() {
+  const bolo = Receita(nome: 'Bolo de cenoura', minutos: 50);
+  final pao = Receita(minutos: 20, nome: 'Pão de queijo', doce: false);
+  print(bolo);
+  print(pao);
+  print(bolo.doce);
+  print(pao.doce);
+}
+</pre>
+
+<pre class="term">$ dart run receita.dart
+Bolo de cenoura (50 min)
+Pão de queijo (20 min)
+true
+false
+</pre>
+
+<dl class="anatomy">
+  <dt>final String nome;</dt><dd>Um campo que recebe valor uma vez, no construtor, e nunca mais muda. Nos widgets, <strong>todos</strong> os campos são <code>final</code>.</dd>
+  <dt>{ ... }</dt><dd>As chaves em volta dos parâmetros do construtor os tornam <strong>nomeados</strong>: quem cria a receita escreve o nome de cada um (<code>nome: ...</code>) e pode passá-los em qualquer ordem. Repare que o <code>pao</code> passou <code>minutos</code> antes de <code>nome</code>.</dd>
+  <dt>required this.nome</dt><dd><code>required</code> torna o parâmetro obrigatório. O <code>this.nome</code> guarda o valor direto no campo <code>nome</code>, sem precisar de corpo no construtor.</dd>
+  <dt>this.doce = true</dt><dd>Um parâmetro opcional com <strong>valor padrão</strong>. O <code>bolo</code> não disse nada sobre <code>doce</code> e ficou com <code>true</code>.</dd>
+  <dt>const Receita(...)</dt><dd>Um construtor <code>const</code>: permite criar receitas constantes, prontas na hora da compilação (seção 2).</dd>
+  <dt>@override String toString()</dt><dd>Troca o texto que o <code>print</code> mostra para um objeto. A seta <code>=&gt;</code> é o atalho de uma função de uma linha só (seção 4).</dd>
+</dl>
+
+<p><strong>No Flutter</strong>, é exatamente assim que você usa os widgets prontos. O <code>Text</code> tem um parâmetro posicional (o texto) e vários nomeados opcionais; o <code>Padding</code> tem um nomeado obrigatório (<code>padding</code>) e o <code>child</code> opcional:</p>
+
+<pre class="file" data-file="lib/main.dart">Padding(
+  padding: const EdgeInsets.all(16),   // required
+  child: Text(                         // opcional
+    'Bolo de cenoura',                 // posicional
+    maxLines: 1,                       // nomeado, opcional
+  ),
+)
+</pre>
+
+<div class="tip">
+<strong>A vírgula do fim</strong>
+<p>Repare na vírgula depois do último parâmetro (<code>maxLines: 1,</code>). O Dart aceita essa "vírgula sobrando", e no Flutter ela é costume: com ela, o formatador (<code>dart format</code>) põe cada parâmetro numa linha, e a árvore de widgets fica fácil de ler.</p>
+</div>
+
+<hr>
+
+<h2>2. <code>final</code> × <code>const</code></h2>
+<p>As duas palavras dizem "isto não muda", mas em momentos diferentes:</p>
+
+<dl class="anatomy">
+  <dt>final</dt><dd>O valor é decidido <strong>quando o programa roda</strong> e depois fica travado. Serve para qualquer valor, até para um que vem da internet.</dd>
+  <dt>const</dt><dd>O valor é decidido <strong>na compilação</strong>, antes de o programa rodar. Só vale para coisas que o compilador já sabe: números, textos escritos no código, e objetos com construtor <code>const</code> cujos parâmetros também são constantes.</dd>
+</dl>
+
+<p>Tentar trocar um <code>final</code> nem compila:</p>
+
+<pre class="file" data-file="final-erro.dart">void main() {
+  final nome = 'Bolo de cenoura';
+  nome = 'Bolo de fubá';
+  print(nome);
+}
+</pre>
+
+<pre class="term">$ dart run final-erro.dart
+final-erro.dart:3:3: Error: Can't assign to the final variable 'nome'.
+  nome = 'Bolo de fubá';
+  ^^^^
+</pre>
+
+<p>"Não dá para atribuir à variável final <code>nome</code>". O <code>3:3</code> é linha 3, coluna 3, e os <code>^^^^</code> apontam o nome que foi alterado. Como é erro de compilação, nada roda.</p>
+
+<p><strong>No Flutter</strong>, <code>const</code> aparece o tempo todo: <code>const Text('Oi')</code>, <code>const EdgeInsets.all(16)</code>, <code>const MeuApp()</code>. Um widget <code>const</code> é criado uma vez só, e o Flutter sabe que ele nunca muda; quando a tela é redesenhada, ele pula esse pedaço. É uma economia de graça.</p>
+
+<hr>
+
+<h2>3. Null safety: <code>?</code>, <code>??</code> e <code>?.</code></h2>
+<p>No Dart, uma variável <code>String</code> <strong>nunca</strong> é <code>null</code>. Para aceitar "nada", o tipo ganha um <code>?</code>:</p>
+
+<pre class="file" data-file="nulo.dart">void main() {
+  String? dica;
+  print(dica);
+  print(dica ?? 'sem dica');
+  print(dica?.length);
+  dica = 'Use cenoura bem fresca';
+  print(dica.length);
+}
+</pre>
+
+<pre class="term">$ dart run nulo.dart
+null
+sem dica
+null
+22
+</pre>
+
+<dl class="anatomy">
+  <dt>String? dica;</dt><dd>Uma <code>String</code> que <strong>pode</strong> ser <code>null</code>. Sem valor inicial, começa com <code>null</code>.</dd>
+  <dt>dica ?? 'sem dica'</dt><dd>"Se <code>dica</code> for <code>null</code>, use <code>'sem dica'</code>". Muito usado para mostrar um texto padrão na tela.</dd>
+  <dt>dica?.length</dt><dd>"Se <code>dica</code> não for <code>null</code>, pegue o tamanho; se for, o resultado é <code>null</code>", sem dar erro.</dd>
+  <dt>dica.length</dt><dd>Depois de <code>dica</code> receber um texto, o Dart <strong>sabe</strong> que ela não é mais <code>null</code> e deixa usar <code>.length</code> direto (a frase tem 22 caracteres).</dd>
+</dl>
+
+<p>Pôr <code>null</code> numa <code>String</code> sem <code>?</code> é recusado na compilação:</p>
+
+<pre class="term">$ dart run nulo-erro.dart
+nulo-erro.dart:2:17: Error: A value of type 'Null' can't be assigned to a variable of type 'String'.
+  String dica = null;
+                ^
+</pre>
+
+<p><strong>No Flutter</strong>, os parâmetros opcionais dos widgets são quase todos tipos com <code>?</code>: o <code>appBar</code> de um <code>Scaffold</code> é um <code>PreferredSizeWidget?</code> (pode não ter barra), o <code>onPressed</code> de um botão é um <code>VoidCallback?</code> (com <code>null</code>, o botão fica <strong>desativado</strong>, cinza: aula <a href="botoes.html">Botões</a>).</p>
+
+<hr>
+
+<h2>4. Funções anônimas e a seta <code>=&gt;</code></h2>
+<p>No Dart, uma função é um valor como outro qualquer: dá para guardá-la numa variável e passá-la para outra função. É assim que um botão sabe o que fazer quando for tocado:</p>
+
+<pre class="file" data-file="funcoes.dart">void quandoTocar(String nome, void Function() acao) {
+  print('Tocou em $nome');
+  acao();
+}
+
+int dobro(int n) =&gt; n * 2;
+
+void main() {
+  quandoTocar('Salvar', () {
+    print('Receita salva!');
+  });
+  quandoTocar('Apagar', () =&gt; print('Receita apagada!'));
+  print(dobro(21));
+}
+</pre>
+
+<pre class="term">$ dart run funcoes.dart
+Tocou em Salvar
+Receita salva!
+Tocou em Apagar
+Receita apagada!
+42
+</pre>
+
+<dl class="anatomy">
+  <dt>void Function() acao</dt><dd>Um parâmetro cujo tipo é "uma função sem parâmetros que não devolve nada". No Flutter, esse tipo tem um apelido: <code>VoidCallback</code>.</dd>
+  <dt>() { ... }</dt><dd>Uma <strong>função anônima</strong> (sem nome), escrita ali mesmo, na chamada. Os parênteses vazios dizem que ela não recebe nada.</dd>
+  <dt>() =&gt; print(...)</dt><dd>A mesma coisa, com a seta: <code>=&gt; x</code> é o atalho de <code>{ return x; }</code>. Use quando a função cabe numa expressão só.</dd>
+  <dt>int dobro(int n) =&gt; n * 2;</dt><dd>A seta também vale para funções com nome.</dd>
+</dl>
+
+<p><strong>No Flutter</strong>, você escreve funções anônimas em todo botão:</p>
+
+<pre class="file" data-file="lib/main.dart">ElevatedButton(
+  onPressed: () {
+    print('Receita salva!');
+  },
+  child: const Text('Salvar'),
+)
+</pre>
+
+<p>Um erro clássico é <strong>chamar</strong> a função em vez de passá-la: <code>onPressed: salvar()</code> roda o <code>salvar</code> na hora de montar a tela (e entrega o resultado, não a função). O certo é <code>onPressed: salvar</code>, sem parênteses, ou <code>onPressed: () =&gt; salvar()</code>.</p>
+
+<hr>
+
+<h2>5. Listas com <code>if</code>, <code>for</code> e <code>...</code></h2>
+<p>Dentro dos colchetes de uma lista, o Dart aceita um <code>if</code> (o item só entra se a condição for verdadeira), um <code>for</code> (gera vários itens) e o <code>...</code> (o <strong>spread</strong>, "espalhar": despeja os itens de outra lista):</p>
+
+<pre class="file" data-file="listas.dart">void main() {
+  final temCalda = true;
+  final ingredientes = [
+    'cenoura',
+    'ovos',
+    'açúcar',
+    if (temCalda) 'chocolate',
+    for (final n in [1, 2]) 'passo $n',
+  ];
+  print(ingredientes);
+
+  final extras = ['fermento', 'óleo'];
+  final todos = [...ingredientes, ...extras];
+  print(todos.length);
+
+  final itens = ingredientes.map((i) =&gt; '- $i').toList();
+  print(itens);
+}
+</pre>
+
+<pre class="term">$ dart run listas.dart
+[cenoura, ovos, açúcar, chocolate, passo 1, passo 2]
+8
+[- cenoura, - ovos, - açúcar, - chocolate, - passo 1, - passo 2]
+</pre>
+
+<dl class="anatomy">
+  <dt>if (temCalda) 'chocolate'</dt><dd>Um <strong>if de coleção</strong>: sem chaves e sem <code>;</code>. Com <code>temCalda</code> falso, o item simplesmente não entraria.</dd>
+  <dt>for (final n in [1, 2]) 'passo $n'</dt><dd>Um <strong>for de coleção</strong>: gerou dois itens.</dd>
+  <dt>[...ingredientes, ...extras]</dt><dd>Junta as duas listas numa nova: 6 + 2 = 8 itens.</dd>
+  <dt>.map((i) =&gt; '- $i').toList()</dt><dd>Transforma cada item com uma função anônima e volta a fazer uma lista.</dd>
+</dl>
+
+<p><strong>No Flutter</strong>, essa é a forma de montar os <code>children</code> de uma <code>Column</code>:</p>
+
+<pre class="file" data-file="lib/main.dart">Column(
+  children: [
+    const Text('Bolo de cenoura'),
+    if (temCalda) const Text('com calda de chocolate'),
+    for (final i in ingredientes) Text('- $i'),
+  ],
+)
+</pre>
+
+<hr>
+
+<h2>6. <code>extends</code>, <code>@override</code> e <code>super.key</code></h2>
+<p>Todo widget que você cria é uma classe que <strong>estende</strong> (herda de) um widget do Flutter. Este exemplo de Dart puro imita o formato, com uma classe <code>Peca</code> no papel do widget:</p>
+
+<pre class="file" data-file="heranca.dart">class Peca {
+  final String? chave;
+  const Peca({this.chave});
+
+  String desenhar() =&gt; 'uma peça';
+}
+
+class Titulo extends Peca {
+  final String texto;
+  const Titulo(this.texto, {super.chave});
+
+  @override
+  String desenhar() =&gt; 'o título "$texto"';
+}
+
+void main() {
+  const t = Titulo('Receitas da Ana', chave: 'topo');
+  print(t.desenhar());
+  print(t.chave);
+  print(t is Peca);
+}
+</pre>
+
+<pre class="term">$ dart run heranca.dart
+o título "Receitas da Ana"
+topo
+true
+</pre>
+
+<dl class="anatomy">
+  <dt>class Titulo extends Peca</dt><dd><code>Titulo</code> herda tudo de <code>Peca</code> e <strong>é</strong> uma <code>Peca</code> (o <code>t is Peca</code> deu <code>true</code>).</dd>
+  <dt>{super.chave}</dt><dd>Um <strong>super parâmetro</strong>: recebe o <code>chave</code> e o repassa direto ao construtor da classe-mãe. É o atalho de <code>{String? chave}) : super(chave: chave)</code>.</dd>
+  <dt>@override</dt><dd>Avisa que <code>desenhar</code> <strong>substitui</strong> o método de mesmo nome da classe-mãe. Se você errar o nome, o analisador reclama.</dd>
+</dl>
+
+<p><strong>No Flutter</strong>, a mesma forma aparece no começo de todo widget seu. Compare linha por linha:</p>
+
+<pre class="file" data-file="lib/main.dart">class Titulo extends StatelessWidget {
+  final String texto;
+  const Titulo(this.texto, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(texto);
+  }
+}
+</pre>
+
+<p>O <code>super.key</code> repassa a <code>key</code> (uma etiqueta opcional que identifica o widget: aula <a href="keys.html">Keys</a>) para o <code>StatelessWidget</code>, e o <code>build</code> com <code>@override</code> é o método que o Flutter chama para saber o que desenhar (aula <a href="stateless.html">StatelessWidget</a>).</p>
+
+<hr>
+
+<h2>7. <code>async</code> e <code>await</code></h2>
+<p>Buscar uma receita na internet ou ler um arquivo demora. Uma função <code>async</code> devolve um <code>Future</code> (uma "promessa" de valor), e o <code>await</code> espera o valor chegar sem travar o resto do programa:</p>
+
+<pre class="file" data-file="espera.dart">Future&lt;String&gt; buscarReceita() async {
+  await Future.delayed(const Duration(seconds: 1));
+  return 'Bolo de cenoura';
+}
+
+void main() async {
+  print('Buscando...');
+  final r = await buscarReceita();
+  print('Chegou: $r');
+}
+</pre>
+
+<pre class="term">$ dart run espera.dart
+Buscando...
+Chegou: Bolo de cenoura   « um segundo depois
+</pre>
+
+<p><strong>No Flutter</strong>, você vai usar isso nas aulas de internet e dados (<a href="futurebuilder.html">FutureBuilder</a>, <a href="http.html">http</a>). Por enquanto, basta reconhecer o formato.</p>
+
+<hr>
+
+<h2>Experimente: a ficha da receita no app</h2>
+<p>Este app usa a classe <code>Receita</code> da seção 1 e mostra a receita no meio da tela. O <code>'$receita'</code> chama o <code>toString</code> que você escreveu.</p>
+
+<div class="tryflutter" data-goal="src:minutos:\s*35" data-erro-proposital>
+<p class="try-task"><strong>Missão:</strong> o bolo de fubá leva <strong>35 minutos</strong>. Complete a criação da receita passando o parâmetro nomeado que falta (o programa não compila sem ele: leia a mensagem).</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+class Receita {
+  final String nome;
+  final int minutos;
+
+  const Receita({required this.nome, required this.minutos});
+
+  @override
+  String toString() =&gt; '$nome ($minutos min)';
+}
+
+void main() {
+  const receita = Receita(nome: 'Bolo de fubá');
+  runApp(MaterialApp(
+    home: Scaffold(
+      body: Center(child: Text('$receita')),
+    ),
+  ));
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+class Receita {
+  final String nome;
+  final int minutos;
+
+  const Receita({required this.nome, required this.minutos});
+
+  @override
+  String toString() =&gt; '$nome ($minutos min)';
+}
+
+void main() {
+  const receita = Receita(nome: 'Bolo de fubá', minutos: 35);
+  runApp(MaterialApp(
+    home: Scaffold(
+      body: Center(child: Text('$receita')),
+    ),
+  ));
+}
+</pre>
+</div>
+
+<figure class="tela"><img src="assets/telas/dart-para-flutter-1.png" alt="O resultado esperado: tela clara, sem barra de título, com o texto 'Bolo de fubá (35 min)' no meio e a faixa DEBUG no canto" width="390" height="844" loading="lazy"><figcaption>O resultado esperado: o <code>toString</code> da receita no meio da tela.</figcaption></figure>
+
+<hr>
+
+<h2>Formas diferentes de receber os dados</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Construtor</th><th>Como se chama</th><th>Quando usar</th></tr>
+<tr><td><code>Receita(this.nome, this.minutos)</code></td><td><code>Receita('Bolo', 50)</code></td><td>Um ou dois dados óbvios. No Flutter, o texto do <code>Text</code> e o ícone do <code>Icon</code> são assim</td></tr>
+<tr><td><code>Receita({required this.nome, required this.minutos})</code></td><td><code>Receita(nome: 'Bolo', minutos: 50)</code></td><td><strong>O padrão do Flutter.</strong> Quem lê o código entende cada valor</td></tr>
+<tr><td><code>Receita(this.nome, {this.minutos = 30})</code></td><td><code>Receita('Bolo')</code> ou <code>Receita('Bolo', minutos: 50)</code></td><td>O principal posicional, os detalhes nomeados e opcionais</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Esqueceu um parâmetro <code>required</code></strong>
+<pre class="file" data-file="faltou.dart">class Receita {
+  final String nome;
+  final int minutos;
+
+  const Receita({required this.nome, required this.minutos});
+}
+
+void main() {
+  const bolo = Receita(nome: 'Bolo de cenoura');
+  print(bolo.nome);
+}
+</pre>
+<pre class="term">$ dart run faltou.dart
+faltou.dart:9:23: Error: Required named parameter 'minutos' must be provided.
+  const bolo = Receita(nome: 'Bolo de cenoura');
+                      ^
+faltou.dart:5:9: Context: Found this candidate, but the arguments don't match.
+  const Receita({required this.nome, required this.minutos});
+        ^^^^^^^
+</pre>
+<p>É o erro que você mais vai ver no começo do Flutter (é o que aparece, por exemplo, num <code>Padding</code> sem o <code>padding</code>). Linha por linha:</p>
+<dl class="anatomy">
+  <dt>faltou.dart:9:23:</dt><dd>Arquivo, linha 9, coluna 23: o parêntese que abre a chamada.</dd>
+  <dt>Error: Required named parameter 'minutos' must be provided.</dt><dd>"O parâmetro nomeado obrigatório <code>minutos</code> precisa ser informado."</dd>
+  <dt>a linha de código e o ^</dt><dd>A linha copiada do seu arquivo, com o <code>^</code> embaixo do ponto do problema.</dd>
+  <dt>Context: Found this candidate, but the arguments don't match.</dt><dd>Uma "dica de contexto": "encontrei este construtor, mas os argumentos não batem". Ela mostra a linha 5, onde o construtor foi declarado, com <code>^^^^^^^</code> embaixo do nome. É ali que você confere quais parâmetros ele exige.</dd>
+</dl>
+<p><strong>Como consertar:</strong> passe o que falta, <code>Receita(nome: 'Bolo de cenoura', minutos: 50)</code>.</p>
+</div>
+
+<div class="cenario">
+<strong><code>null</code> onde não cabe</strong>
+<p>A mensagem <code>A value of type 'Null' can't be assigned to a variable of type 'String'</code> (seção 3) quer dizer: o tipo não tem <code>?</code>, então <code>null</code> não entra. <strong>Como consertar:</strong> dê um valor de verdade ou, se "nada" fizer sentido ali, mude o tipo para <code>String?</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Mudar um <code>final</code></strong>
+<p><code>Can't assign to the final variable 'nome'</code> (seção 2). <strong>Como consertar:</strong> se o valor precisa mudar, use <code>var</code>. Num widget, porém, os campos ficam <code>final</code>: o que muda na tela mora no <strong>estado</strong>, e isso é assunto da aula <a href="stateful.html">StatefulWidget</a>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th><th>Onde aparece no Flutter</th></tr>
+<tr><td><code>{required this.x}</code></td><td>Parâmetro nomeado obrigatório</td><td><code>Padding(padding: ..., child: ...)</code></td></tr>
+<tr><td><code>{this.x = 1}</code></td><td>Parâmetro nomeado com padrão</td><td><code>Text(..., maxLines: 2)</code></td></tr>
+<tr><td><code>final</code></td><td>Recebe valor uma vez, ao rodar</td><td>Os campos de todo widget</td></tr>
+<tr><td><code>const</code></td><td>Valor pronto na compilação</td><td><code>const Text('Oi')</code>, <code>const EdgeInsets.all(8)</code></td></tr>
+<tr><td><code>String?</code></td><td>Pode ser <code>null</code></td><td>Parâmetros opcionais</td></tr>
+<tr><td><code>a ?? b</code></td><td><code>b</code> se <code>a</code> for <code>null</code></td><td>Texto padrão na tela</td></tr>
+<tr><td><code>a?.b</code></td><td>Acessa <code>b</code> só se <code>a</code> não for <code>null</code></td><td>Dados que podem faltar</td></tr>
+<tr><td><code>() { ... }</code> / <code>() =&gt; x</code></td><td>Função anônima</td><td><code>onPressed</code>, <code>onChanged</code></td></tr>
+<tr><td><code>[if (c) a, for (x in l) b, ...outra]</code></td><td>Lista montada com condições e repetições</td><td><code>children</code></td></tr>
+<tr><td><code>extends</code>, <code>@override</code>, <code>super.key</code></td><td>Herança</td><td>Todo widget seu</td></tr>
+<tr><td><code>async</code> / <code>await</code> / <code>Future</code></td><td>Esperar sem travar</td><td>Internet, arquivos, banco de dados</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. O obrigatório</h3>
+<p>Complete o construtor para que <code>nome</code> seja um parâmetro nomeado obrigatório:</p>
+<div class="ex-code">const Receita({<input data-answer="required" aria-label="palavra-chave"> this.nome});</div>
+</div>
+
+<div class="exercise">
+<h3>2. O valor padrão</h3>
+<p>Com <code>String? dica;</code> ainda sem valor, o que mostra <code>print(dica ?? 'nada');</code>?</p>
+<div class="ex-code">Saída: <input data-answer="nada" aria-label="saída"></div>
+</div>
+
+<div class="exercise">
+<h3>3. A lista</h3>
+<p>Quantos itens tem <code>[1, if (false) 2, ...[3, 4]]</code>?</p>
+<div class="ex-code">Itens: <input data-answer="3" aria-label="quantidade"></div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. O que acontece com <code>onPressed: salvar()</code> num botão?</p>
+<label><input type="radio" name="q4"> O botão chama <code>salvar</code> quando é tocado</label>
+<label><input type="radio" name="q4"> O botão fica desativado</label>
+<label><input type="radio" name="q4"> O <code>salvar</code> roda na hora de montar a tela, e o botão recebe o resultado dele, não a função</label>
+<label><input type="radio" name="q4"> Nada: é o mesmo que <code>onPressed: salvar</code></label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">5. Por que o Flutter recomenda <code>const Text('Oi')</code>?</p>
+<label><input type="radio" name="q5"> Porque sem <code>const</code> o texto não aparece</label>
+<label><input type="radio" name="q5"> Porque o widget é criado uma vez só e o Flutter pula esse pedaço ao redesenhar a tela</label>
+<label><input type="radio" name="q5"> Porque deixa o texto em negrito</label>
+<label><input type="radio" name="q5"> Porque <code>const</code> é obrigatório em todo widget</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">6. O que faz o <code>super.key</code> em <code>const Titulo(this.texto, {super.key});</code>?</p>
+<label><input type="radio" name="q6"> Recebe a <code>key</code> e a repassa ao construtor da classe-mãe</label>
+<label><input type="radio" name="q6"> Cria uma senha para o widget</label>
+<label><input type="radio" name="q6"> Torna o widget constante</label>
+<label><input type="radio" name="q6"> Chama o método <code>build</code></label>
+</div>
+
+<h3>Missão final: a receita salgada</h3>
+
+<div class="tryflutter" data-goal="src:doce:\s*false;;src:Pão de queijo">
+<p class="try-task"><strong>Missão:</strong> troque a receita para <code>Pão de queijo</code>, com 20 minutos, e diga que ela <strong>não</strong> é doce, passando o parâmetro opcional <code>doce</code>. A tela deve mostrar <code>Pão de queijo (20 min) · salgado</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+class Receita {
+  final String nome;
+  final int minutos;
+  final bool doce;
+
+  const Receita({required this.nome, required this.minutos, this.doce = true});
+
+  @override
+  String toString() =&gt; '$nome ($minutos min) · ${doce ? 'doce' : 'salgado'}';
+}
+
+void main() {
+  const receita = Receita(nome: 'Bolo de cenoura', minutos: 50);
+  runApp(MaterialApp(
+    home: Scaffold(
+      body: Center(child: Text('$receita')),
+    ),
+  ));
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+class Receita {
+  final String nome;
+  final int minutos;
+  final bool doce;
+
+  const Receita({required this.nome, required this.minutos, this.doce = true});
+
+  @override
+  String toString() =&gt; '$nome ($minutos min) · ${doce ? 'doce' : 'salgado'}';
+}
+
+void main() {
+  const receita = Receita(nome: 'Pão de queijo', minutos: 20, doce: false);
+  runApp(MaterialApp(
+    home: Scaffold(
+      body: Center(child: Text('$receita')),
+    ),
+  ));
+}
+</pre>
+</div>
+
+<figure class="tela"><img src="assets/telas/dart-para-flutter-2.png" alt="O resultado esperado: o texto 'Pão de queijo (20 min) · salgado' no meio da tela clara" width="390" height="844" loading="lazy"><figcaption>O resultado esperado da missão final.</figcaption></figure>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Um app Flutter é Dart puro: widgets são classes, e você os cria preenchendo parâmetros.</li>
+  <li>Parâmetros nomeados (<code>{...}</code>), com <code>required</code> ou valor padrão, são o jeito de todo widget receber opções.</li>
+  <li><code>final</code> trava ao rodar; <code>const</code> fica pronto na compilação. Widgets <code>const</code> economizam trabalho do Flutter.</li>
+  <li>Tipos sem <code>?</code> nunca são <code>null</code>; <code>??</code> dá um valor padrão e <code>?.</code> acessa com segurança.</li>
+  <li>Funções anônimas (<code>() {}</code> e <code>() =&gt;</code>) são o que vai nos <code>onPressed</code>. Passe a função, não a chame.</li>
+  <li><code>if</code>, <code>for</code> e <code>...</code> dentro dos colchetes montam os <code>children</code>.</li>
+  <li>Todo widget seu tem <code>extends</code>, <code>super.key</code> e um <code>build</code> com <code>@override</code>.</li>
+  <li>O erro mais comum do começo: <code>Required named parameter '...' must be provided</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
