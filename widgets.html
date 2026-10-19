@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tudo é Widget — a árvore de peças que forma a tela | Guia Flutter</title>
+<meta name="description" content="A ideia central do Flutter: tudo na tela é um widget, até o espaço e o alinhamento. A árvore de widgets, pai e filho, child e children, widgets visíveis e invisíveis, o método build que descreve a tela, widgets imutáveis e reconstruídos, StatelessWidget e StatefulWidget, e os erros reais: a lista no child e a tela vermelha de uma exceção no build.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Tudo é <span class="hl">Widget</span></h1>
+
+<p class="intro">Se você guardar uma única ideia de todo o Flutter, guarde esta: <strong>tudo o que aparece na tela é um widget</strong>, e os widgets se encaixam uns dentro dos outros. Um texto é um widget; um botão é um widget; o espaço em volta do botão, o alinhamento no centro, a coluna que empilha as coisas e a tela inteira também são. Entender essa árvore de peças é entender como qualquer tela do Flutter é feita.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é um widget e o que é a <strong>árvore de widgets</strong>.</li>
+  <li>Pai e filho: a diferença entre <code>child</code> (um filho) e <code>children</code> (vários).</li>
+  <li>Que até o alinhamento e o espaçamento são widgets.</li>
+  <li>O método <code>build</code>, que <strong>descreve</strong> a tela.</li>
+  <li>Por que os widgets não mudam (são imutáveis) e são reconstruídos.</li>
+  <li>Os dois tipos de widget que você mesmo cria: <code>StatelessWidget</code> e <code>StatefulWidget</code>.</li>
+  <li>Os erros reais: uma lista no <code>child</code> e a tela vermelha.</li>
+</ul>
+</div>
+
+<p>As telas desta aula foram fotografadas de um Flutter 3.47.7 de verdade (em modo debug, por isso a faixa DEBUG), e as mensagens de erro saíram da máquina da Ana.</p>
+
+<hr>
+
+<h2>A ideia: caixas dentro de caixas</h2>
+<p>Pense numa mudança. Você tem uma caixa grande escrita "cozinha". Dentro dela, uma caixa menor com "louça". Dentro dessa, um prato embrulhado em jornal. Cada caixa só sabe o que tem dentro dela, e cada uma pode conter <strong>uma</strong> coisa (o prato no jornal) ou <strong>várias</strong> (a caixa de louça, com vários pratos).</p>
+
+<p>Os widgets são essas caixas. Um widget que contém outro é o <strong>pai</strong> (em inglês, <em>parent</em>); o de dentro é o <strong>filho</strong> (<em>child</em>). Alguns widgets têm um filho só (parâmetro <code>child</code>), outros têm uma lista de filhos (parâmetro <code>children</code>), e alguns não têm filho nenhum (um <code>Text</code>, um <code>Icon</code>): são as "folhas" da árvore.</p>
+
+<hr>
+
+<h2>1. Uma tela, uma árvore</h2>
+<p>A tela de uma receita, com um ícone, o nome e um botão:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MaterialApp(home: TelaReceita()));
+}
+
+class TelaReceita extends StatelessWidget {
+  const TelaReceita({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cake, size: 64),
+            const Text('Bolo de cenoura'),
+            ElevatedButton(
+              onPressed: () {},
+              child: const Text('Ver receita'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<figure class="tela"><img src="assets/telas/widgets-1.png" alt="Tela com o título 'Receitas da Ana' no alto e, no centro, um ícone grande de bolo com vela, o texto 'Bolo de cenoura' embaixo e, mais abaixo, um botão arredondado claro escrito 'Ver receita'" width="390" height="844" loading="lazy"><figcaption>A tela da receita.</figcaption></figure>
+
+<p>A mesma tela, desenhada como árvore:</p>
+
+<pre>MaterialApp
+└── home: TelaReceita
+    └── Scaffold
+        ├── appBar: AppBar
+        │   └── title: Text('Receitas da Ana')
+        └── body: Center
+            └── child: Column
+                └── children:
+                    ├── Icon(Icons.cake)
+                    ├── Text('Bolo de cenoura')
+                    └── ElevatedButton
+                        └── child: Text('Ver receita')
+</pre>
+
+<dl class="anatomy">
+  <dt>MaterialApp</dt><dd>A raiz: o app no estilo Material. O filho dele fica no parâmetro <code>home</code> (a tela inicial).</dd>
+  <dt>TelaReceita</dt><dd>Um widget <strong>seu</strong>, criado com <code>extends StatelessWidget</code>. Por dentro, ele é feito de widgets do Flutter: é assim que se constrói um app, juntando peças pequenas em peças maiores.</dd>
+  <dt>Scaffold</dt><dd>O "andaime" da tela Material, com lugares com nome: <code>appBar</code> (a barra de cima) e <code>body</code> (o corpo).</dd>
+  <dt>Center → child</dt><dd>Um widget de <strong>um filho</strong>: ele centraliza o que estiver no <code>child</code>.</dd>
+  <dt>Column → children</dt><dd>Um widget de <strong>vários filhos</strong>: empilha os itens da lista <code>children</code>, de cima para baixo, na ordem da lista.</dd>
+  <dt>Icon, Text</dt><dd>"Folhas": não têm filhos. Desenham alguma coisa.</dd>
+  <dt>ElevatedButton → child</dt><dd>Um botão também é um pai: o que vai escrito nele é o filho, um <code>Text</code>. Poderia ser um <code>Icon</code>, ou uma <code>Row</code> com ícone e texto.</dd>
+</dl>
+
+<p>Repare que a árvore no código e a árvore desenhada têm a mesma forma: a <strong>indentação</strong> do código mostra quem está dentro de quem. É por isso que a vírgula no fim de cada parâmetro e o formatador (<code>dart format</code>) importam tanto no Flutter.</p>
+
+<hr>
+
+<h2>2. Até o invisível é widget</h2>
+<p>Em muitas ferramentas, "centralizar" ou "dar um espaço" são <strong>propriedades</strong> de um componente (como no CSS: <code>text-align: center</code>, <code>padding: 16px</code>). No Flutter, são <strong>widgets</strong> que embrulham outros:</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Você quer</th><th>No Flutter, embrulhe com</th><th>Aula</th></tr>
+<tr><td>Centralizar</td><td><code>Center(child: ...)</code></td><td><a href="center-align.html">Center e Align</a></td></tr>
+<tr><td>Um espaço em volta</td><td><code>Padding(padding: ..., child: ...)</code></td><td><a href="padding-margin.html">Padding e Margem</a></td></tr>
+<tr><td>Um tamanho fixo ou um espaço vazio</td><td><code>SizedBox(width: ..., height: ...)</code></td><td><a href="sizedbox.html">SizedBox e Spacer</a></td></tr>
+<tr><td>Empilhar na vertical ou na horizontal</td><td><code>Column</code> / <code>Row</code></td><td><a href="row-column.html">Row e Column</a></td></tr>
+<tr><td>Detectar um toque</td><td><code>GestureDetector(onTap: ..., child: ...)</code></td><td><a href="gestos.html">Toques e Gestos</a></td></tr>
+</table>
+</div>
+
+<p>Por isso a árvore de um app Flutter é funda: cada detalhe da tela é mais um nível de caixa. No começo, parece muito; com o tempo, vira um jeito muito previsível de montar telas, porque é sempre a mesma regra.</p>
+
+<hr>
+
+<h2>3. O <code>build</code>: a tela como descrição</h2>
+<p>Um widget não "desenha" nada sozinho. Ele é uma <strong>descrição</strong>: "quero um texto 'Bolo de cenoura' no centro". Quem lê a descrição e pinta os pixels é o Flutter.</p>
+
+<p>Quando um widget seu precisa aparecer, o Flutter chama o método <code>build</code> dele e recebe de volta a árvore de widgets daquela parte da tela. Por isso o <code>build</code> devolve um <code>Widget</code> e só deve montar e devolver a árvore, sem fazer trabalhos demorados.</p>
+
+<dl class="anatomy">
+  <dt>@override Widget build(BuildContext context)</dt><dd>"Construa": devolve a árvore de widgets que este widget representa.</dd>
+  <dt>BuildContext context</dt><dd>O "endereço" deste widget na árvore. Serve, por exemplo, para pegar o tema do app (<code>Theme.of(context)</code>), como o contador do <code>flutter create</code> faz.</dd>
+</dl>
+
+<h3>Widgets não mudam: são trocados</h3>
+<p>Os widgets são <strong>imutáveis</strong>: depois de criado, um <code>Text('Bolo')</code> nunca vira <code>Text('Torta')</code>. Quando a tela precisa mudar (o contador aumentou), o Flutter chama o <code>build</code> de novo, recebe uma árvore <strong>nova</strong> e compara com a antiga, redesenhando só o que mudou. Criar widgets é muito barato, e é isso que permite reconstruir a tela dezenas de vezes por segundo. (É também por isso que os campos de um widget são <code>final</code> e que <code>const</code> ajuda: aula <a href="dart-para-flutter.html">O Dart que Você Precisa</a>.)</p>
+
+<div class="note">
+<strong>Por baixo dos panos: três árvores</strong>
+<p>Além da árvore de widgets (a descrição), o Flutter mantém mais duas: a de <strong>elementos</strong> (que liga cada widget ao seu lugar na tela e guarda o estado) e a de <strong>objetos de renderização</strong> (que calcula tamanhos e pinta). Você não precisa mexer nelas para fazer apps; vale só saber que existem, porque aparecem nas mensagens de erro (<code>RenderFlex</code>, <code>RenderBox</code>...).</p>
+</div>
+
+<hr>
+
+<h2>4. Os dois tipos de widget que você cria</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th></th><th><code>StatelessWidget</code></th><th><code>StatefulWidget</code></th></tr>
+<tr><td>Quer dizer</td><td>"Sem estado"</td><td>"Com estado"</td></tr>
+<tr><td>Muda sozinho?</td><td>Não: só mostra o que recebeu</td><td>Sim: guarda dados que mudam (um contador, um campo marcado) e se redesenha</td></tr>
+<tr><td>Exemplo</td><td>A <code>TelaReceita</code> desta aula, um título, um cartão</td><td>O contador do <code>flutter create</code>, um formulário</td></tr>
+<tr><td>Aula</td><td><a href="stateless.html">StatelessWidget</a></td><td><a href="stateful.html">StatefulWidget</a></td></tr>
+</table>
+</div>
+
+<p>Regra prática: comece sempre com <code>StatelessWidget</code>; só passe para <code>StatefulWidget</code> quando algo na tela precisar mudar enquanto o app está aberto.</p>
+
+<hr>
+
+<h2>Experimente</h2>
+
+<div class="tryflutter" data-goal="src:Text\('Pão de queijo'\)">
+<p class="try-task"><strong>Missão:</strong> a coluna tem dois filhos, o ícone e o bolo. Acrescente um terceiro filho na lista <code>children</code>: <code>Text('Pão de queijo')</code>, embaixo do bolo.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(
+    const MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.cake, size: 64),
+              Text('Bolo de cenoura'),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(
+    const MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.cake, size: 64),
+              Text('Bolo de cenoura'),
+              Text('Pão de queijo'),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+</pre>
+</div>
+
+<figure class="tela"><img src="assets/telas/widgets-2.png" alt="O resultado esperado: no centro da tela, o ícone de bolo e, embaixo, as linhas 'Bolo de cenoura' e 'Pão de queijo'" width="390" height="844" loading="lazy"><figcaption>O resultado esperado: três filhos na coluna, na ordem da lista.</figcaption></figure>
+
+<hr>
+
+<h2>Formas diferentes de montar a mesma tela</h2>
+<p>A mesma árvore pode ser escrita toda num <code>build</code> só, ou quebrada em widgets menores:</p>
+
+<pre class="file" data-file="lib/main.dart (trecho)">// Tudo junto: funciona, mas cresce rápido
+body: Center(
+  child: Column(
+    children: [
+      const Icon(Icons.cake, size: 64),
+      const Text('Bolo de cenoura'),
+    ],
+  ),
+),
+
+// Quebrado em peças com nome
+body: const Center(child: CartaoReceita(nome: 'Bolo de cenoura')),
+</pre>
+
+<p>No segundo jeito, <code>CartaoReceita</code> é um <code>StatelessWidget</code> seu, com o ícone e o texto dentro. <strong>Qual usar?</strong> Comece junto; quando um <code>build</code> passar de uma tela de altura, ou quando a mesma parte aparecer duas vezes, separe em widgets com nomes claros. Widgets pequenos são mais fáceis de ler, de testar e de reconstruir (aula <a href="stateless.html">StatelessWidget</a>).</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Uma lista no <code>child</code></strong>
+<pre class="file" data-file="lib/main.dart (com erro)">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(
+    const MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: [
+            Text('Bolo de cenoura'),
+            Text('Pão de queijo'),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+</pre>
+<pre class="term">$ flutter run -d web-server --web-port 8080
+Launching lib/main.dart on Web Server in debug mode...
+Waiting for connection from debug service on Web Server...
+lib/main.dart:8:18: Error: The argument type 'List&lt;Text&gt;' can't be assigned to the parameter type 'Widget?'.
+ - 'List' is from 'dart:core'.
+ - 'Text' is from 'package:flutter/src/widgets/text.dart' ('../flutter/packages/flutter/lib/src/widgets/text.dart').
+ - 'Widget' is from 'package:flutter/src/widgets/framework.dart' ('../flutter/packages/flutter/lib/src/widgets/framework.dart').
+          child: [
+                 ^
+Waiting for connection from debug service on Web Server...         27,5s
+Failed to compile application.
+</pre>
+<dl class="anatomy">
+  <dt>lib/main.dart:8:18:</dt><dd>Linha 8, coluna 18: o <code>[</code> depois de <code>child:</code>.</dd>
+  <dt>The argument type 'List&lt;Text&gt;' can't be assigned to the parameter type 'Widget?'.</dt><dd>"Uma <code>List&lt;Text&gt;</code> (lista de textos) não cabe num parâmetro do tipo <code>Widget?</code> (um widget só, ou nada)". O <code>Center</code> tem <strong>um</strong> filho.</dd>
+  <dt>- 'List' is from 'dart:core'. ...</dt><dd>De onde vem cada tipo citado. Ajuda quando dois pacotes têm classes com o mesmo nome; aqui, pode ignorar.</dd>
+</dl>
+<p>O <code>flutter analyze</code> (e o editor, ao vivo) acusam o mesmo, com mais uma dica por causa do <code>const</code>:</p>
+<pre class="term">$ flutter analyze
+Analyzing lista_compras...
+
+  error • A value of type 'List&lt;Text&gt;' can't be assigned to a parameter of type 'Widget?' in a const constructor. Try using a subtype, or removing the keyword 'const' • lib/main.dart:8:11 • const_constructor_param_type_mismatch
+  error • The argument type 'List&lt;Text&gt;' can't be assigned to the parameter type 'Widget?'.  • lib/main.dart:8:18 • argument_type_not_assignable
+
+2 issues found. (ran in 9.1s)
+</pre>
+<p><strong>Como consertar:</strong> para vários filhos, use um widget de vários filhos: <code>Center(child: Column(children: [ ... ]))</code>. O contrário também acontece: <code>Column(child: ...)</code> dá erro, porque a <code>Column</code> não tem <code>child</code>, só <code>children</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>A tela vermelha: uma exceção dentro do <code>build</code></strong>
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MaterialApp(home: TelaReceita()));
+}
+
+class TelaReceita extends StatelessWidget {
+  const TelaReceita({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    const receitas = ['Bolo de cenoura', 'Pão de queijo'];
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: Center(child: Text(receitas[2])),
+    );
+  }
+}
+</pre>
+<p>Este código compila, mas a lista tem 2 receitas (posições 0 e 1), e o <code>build</code> pede a posição 2. O erro acontece <strong>enquanto</strong> o Flutter monta a tela:</p>
+
+<figure class="tela"><img src="assets/telas/widgets-erro.png" alt="Tela inteira vermelho-escura, sem a barra de título, com o texto amarelo no alto: 'RangeError (index): Index out of range: index should be less than 2: 2' e 'See also: https://docs.flutter.dev/testing/errors', e a faixa DEBUG no canto" width="390" height="844" loading="lazy"><figcaption>A tela vermelha do modo debug.</figcaption></figure>
+
+<p>No modo debug, o Flutter troca o widget que falhou por uma <strong>tela vermelha</strong> com a mensagem em amarelo. Como quem falhou foi a <code>TelaReceita</code> inteira, sumiu tudo, até a barra de título. A explicação completa sai no console (o terminal do <code>flutter run</code>):</p>
+
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following IndexError was thrown building TelaReceita(dirty):
+RangeError (index): Index out of range: index should be less than 2: 2
+
+The relevant error-causing widget was:
+  TelaReceita TelaReceita:file:///home/ana/app/lib/main.dart:4:34
+
+When the exception was thrown, this was the stack:
+«  ... dezenas de linhas de dentro do Flutter; a que interessa é a do seu arquivo:
+package:app/main.dart 15:40                                                  build
+«  ...
+════════════════════════════════════════════════════════════════════════════════════════════════════
+</pre>
+
+<dl class="anatomy">
+  <dt>EXCEPTION CAUGHT BY WIDGETS LIBRARY</dt><dd>"Exceção capturada pela biblioteca de widgets": o erro aconteceu ao montar widgets.</dd>
+  <dt>The following IndexError was thrown building TelaReceita(dirty):</dt><dd>"Este <code>IndexError</code> (erro de posição) foi lançado ao construir a <code>TelaReceita</code>". O <code>(dirty)</code> ("suja") quer dizer que ela estava marcada para ser construída.</dd>
+  <dt>RangeError (index): Index out of range: index should be less than 2: 2</dt><dd>"Posição fora do intervalo: a posição deveria ser menor que 2, e foi 2". A mesma frase da tela vermelha.</dd>
+  <dt>The relevant error-causing widget was: ... main.dart:4:34</dt><dd>"O widget que causou o erro foi": a <code>TelaReceita</code>, criada na linha 4 (no <code>runApp</code>).</dd>
+  <dt>package:app/main.dart 15:40 build</dt><dd>No rastro, a linha do <strong>seu</strong> arquivo: linha 15, coluna 40, dentro do <code>build</code>, onde está o <code>receitas[2]</code>. As outras linhas do rastro são de dentro do Flutter.</dd>
+</dl>
+
+<p>(Esse app rodou como projeto <code>app</code> em <code>/home/ana/app</code>, e no Chrome: o rastro completo, que foi cortado acima, traz nomes de arquivos do compilador para a web. Num celular, ele muda, mas a primeira parte da mensagem é a mesma.)</p>
+
+<p><strong>Como consertar:</strong> use uma posição que existe (<code>receitas[1]</code>). No app final (modo release), a tela vermelha não aparece: o pedaço com erro fica cinza. Por isso nunca ignore uma tela vermelha no desenvolvimento.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Termo</th><th>O que é</th></tr>
+<tr><td>Widget</td><td>Uma peça da tela, visível (<code>Text</code>, <code>Icon</code>) ou não (<code>Center</code>, <code>Padding</code>)</td></tr>
+<tr><td>Árvore de widgets</td><td>Os widgets encaixados uns nos outros, da raiz (<code>MaterialApp</code>) às folhas</td></tr>
+<tr><td><code>child</code></td><td>O filho único: <code>Center</code>, <code>Padding</code>, <code>ElevatedButton</code>...</td></tr>
+<tr><td><code>children</code></td><td>A lista de filhos: <code>Column</code>, <code>Row</code>, <code>Stack</code>, <code>ListView</code>...</td></tr>
+<tr><td><code>build</code></td><td>O método que devolve a árvore de um widget</td></tr>
+<tr><td>Imutável</td><td>Widget não muda: a tela muda com um <code>build</code> novo</td></tr>
+<tr><td><code>StatelessWidget</code> / <code>StatefulWidget</code></td><td>Widget sem estado / com estado que muda</td></tr>
+<tr><td>Tela vermelha</td><td>Exceção durante o <code>build</code>, no modo debug; detalhes no console</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Um filho</h3>
+<p>Complete com o nome do parâmetro de filho único do <code>Center</code>:</p>
+<div class="ex-code">Center(<input data-answer="child" aria-label="parâmetro">: Text('Oi'))</div>
+</div>
+
+<div class="exercise">
+<h3>2. Vários filhos</h3>
+<p>Complete com o nome do parâmetro da lista de filhos da <code>Column</code>:</p>
+<div class="ex-code">Column(<input data-answer="children" aria-label="parâmetro">: [Text('A'), Text('B')])</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. No Flutter, como se centraliza um texto?</p>
+<label><input type="radio" name="q3"> Com <code>Text('Oi', center: true)</code></label>
+<label><input type="radio" name="q3"> Com uma propriedade do <code>MaterialApp</code></label>
+<label><input type="radio" name="q3"> Embrulhando o texto num widget: <code>Center(child: Text('Oi'))</code></label>
+<label><input type="radio" name="q3"> Não dá para centralizar</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. O contador aumentou. O que o Flutter faz com o widget <code>Text('0')</code> que estava na tela?</p>
+<label><input type="radio" name="q4"> Muda o texto dele para <code>'1'</code></label>
+<label><input type="radio" name="q4"> Chama o <code>build</code> de novo, recebe um <code>Text('1')</code> novo e redesenha o que mudou</label>
+<label><input type="radio" name="q4"> Fecha o app e abre de novo</label>
+<label><input type="radio" name="q4"> Nada: a tela não muda</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">5. A tela ficou vermelha com uma mensagem em amarelo. Onde está a explicação completa?</p>
+<label><input type="radio" name="q5"> Em lugar nenhum</label>
+<label><input type="radio" name="q5"> No <code>pubspec.yaml</code></label>
+<label><input type="radio" name="q5"> No <code>flutter doctor</code></label>
+<label><input type="radio" name="q5"> No console, o terminal do <code>flutter run</code></label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Tudo na tela é widget, inclusive o invisível: centralizar, espaçar, empilhar.</li>
+  <li>Os widgets formam uma <strong>árvore</strong>: pai e filho; <code>child</code> para um filho, <code>children</code> para vários; folhas sem filhos.</li>
+  <li>A indentação do código mostra a árvore.</li>
+  <li>O <code>build</code> devolve a descrição da tela; os widgets são imutáveis e, quando algo muda, a árvore é reconstruída.</li>
+  <li>Você cria widgets com <code>StatelessWidget</code> (não muda) ou <code>StatefulWidget</code> (tem estado).</li>
+  <li>Lista no <code>child</code> é erro de compilação; exceção no <code>build</code> vira a tela vermelha, com os detalhes no console.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
