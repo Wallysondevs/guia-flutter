@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Criando um Projeto (flutter create) — o primeiro app em um comando | Guia Flutter</title>
+<meta name="description" content="O comando flutter create explicado com a saída real do Flutter 3.47.7: o nome do projeto (letras minúsculas e sublinhado), o que o comando escreve, o app contador que vem de exemplo, o --empty com o Hello World, o --org e o --platforms, criar pelo VS Code e pelo Android Studio, e os erros de nome inválido.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Criando um Projeto <span class="hl">(flutter create)</span></h1>
+
+<p class="intro">Um app Flutter não é um arquivo só: é uma <strong>pasta de projeto</strong> com o seu código Dart, a lista de pacotes que ele usa e uma subpasta para cada plataforma (Android, iOS, web...), cheia de arquivos de configuração que ninguém escreve à mão. Quem monta tudo isso é o comando <code>flutter create</code>. Com ele, em alguns segundos, a Ana tem um app completo, que já roda, para começar a mexer.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A criar um projeto com <code>flutter create</code> e a ler o que ele responde.</li>
+  <li>As regras do <strong>nome</strong> do projeto, e o erro quando o nome não vale.</li>
+  <li>O app de exemplo que vem pronto: o <strong>contador</strong>.</li>
+  <li>O <code>--empty</code>, para começar com um app mínimo.</li>
+  <li>O <code>--org</code> e o <code>--platforms</code>.</li>
+  <li>A criar o mesmo projeto pelo VS Code e pelo Android Studio.</li>
+  <li>O que acontece ao rodar <code>flutter create</code> numa pasta que já existe.</li>
+</ul>
+</div>
+
+<p>Todos os comandos desta aula foram rodados na máquina da Ana (Flutter 3.47.7), na pasta pessoal dela, <code>/home/ana</code>. O <code>flutter create</code> precisa de internet: no fim, ele baixa os pacotes do projeto.</p>
+
+<hr>
+
+<h2>A ideia: a casa pré-moldada</h2>
+<p>Quem constrói uma casa pré-moldada não começa cortando tijolo: recebe as paredes, o telhado e o encanamento já prontos e encaixados, e uma casa que já dá para morar. Depois, pinta e muda os móveis do jeito que quiser.</p>
+
+<p>O <code>flutter create</code> entrega a casa pré-moldada: todas as pastas e configurações de cada plataforma, e um app de exemplo funcionando. O seu trabalho, nas próximas aulas, é "mudar os móveis": quase tudo o que você vai escrever fica num arquivo só, o <code>lib/main.dart</code>.</p>
+
+<hr>
+
+<h2>1. O primeiro projeto</h2>
+<p>A Ana quer um app de receitas. No terminal, na pasta pessoal:</p>
+
+<pre class="term">$ flutter create receitas_da_ana
+Creating project receitas_da_ana...
+Resolving dependencies in `receitas_da_ana`...
+Downloading packages...
+Got dependencies in `receitas_da_ana`.
+Wrote 131 files.
+
+All done!
+You can find general documentation for Flutter at: https://docs.flutter.dev/
+Detailed API documentation is available at: https://api.flutter.dev/
+If you prefer video documentation, consider: https://www.youtube.com/c/flutterdev
+
+In order to run your application, type:
+
+  $ cd receitas_da_ana
+  $ flutter run
+
+Your application code is in receitas_da_ana/lib/main.dart.
+</pre>
+
+<dl class="anatomy">
+  <dt>flutter create receitas_da_ana</dt><dd>"Crie um projeto Flutter na pasta <code>receitas_da_ana</code>". O nome da pasta vira também o <strong>nome do projeto</strong> (o nome do pacote Dart).</dd>
+  <dt>Creating project receitas_da_ana...</dt><dd>"Criando o projeto": a pasta e os arquivos.</dd>
+  <dt>Resolving dependencies ... Downloading packages... Got dependencies</dt><dd>"Resolvendo dependências, baixando pacotes, dependências obtidas": o comando roda sozinho um <code>flutter pub get</code>, que baixa os pacotes que o projeto usa (os da lista do <code>pubspec.yaml</code>: aula <a href="estrutura-projeto.html">As Pastas de um Projeto</a>).</dd>
+  <dt>Wrote 131 files.</dt><dd>"Escrevi 131 arquivos". A maioria é configuração das seis plataformas.</dd>
+  <dt>All done!</dt><dd>"Tudo pronto!", seguido de três endereços: a documentação geral, a documentação de cada classe (a API) e o canal de vídeos.</dd>
+  <dt>In order to run your application, type: ...</dt><dd>"Para rodar o seu app, digite": entrar na pasta (<code>cd</code>) e <code>flutter run</code> (aula <a href="flutter-run.html">Rodando o App</a>).</dd>
+  <dt>Your application code is in receitas_da_ana/lib/main.dart.</dt><dd>"O código do seu app está em <code>lib/main.dart</code>". É ali que você vai trabalhar.</dd>
+</dl>
+
+<hr>
+
+<h2>2. O nome do projeto</h2>
+<p>O nome do projeto é um <strong>nome de pacote Dart</strong>, e tem regras. Veja o que acontece quando a Ana tenta um nome com letra maiúscula e hífen:</p>
+
+<pre class="term">$ flutter create Receitas-Ana
+"Receitas-Ana" is not a valid Dart package name. Try "receitas_ana" instead.
+
+The name should consist of lowercase words separated by underscores, "like_this". Use only basic Latin letters and Arabic digits: [a-z0-9_], and ensure the name is a valid Dart identifier (i.e. it does not start with a digit and is not a reserved word).
+
+See https://dart.dev/tools/pub/pubspec#name for more information.
+</pre>
+
+<dl class="anatomy">
+  <dt>"Receitas-Ana" is not a valid Dart package name. Try "receitas_ana" instead.</dt><dd>"Não é um nome de pacote Dart válido. Experimente <code>receitas_ana</code>." O Flutter até sugere um nome que vale.</dd>
+  <dt>lowercase words separated by underscores, "like_this"</dt><dd>"Palavras em minúsculas separadas por sublinhado (<code>_</code>), assim: <code>like_this</code>". Esse estilo se chama <em>snake_case</em> ("estilo cobra").</dd>
+  <dt>Use only basic Latin letters and Arabic digits: [a-z0-9_]</dt><dd>"Só letras latinas básicas e algarismos": de <code>a</code> a <code>z</code>, de <code>0</code> a <code>9</code> e o <code>_</code>. Nada de acento, cedilha, espaço ou hífen.</dd>
+  <dt>a valid Dart identifier (... does not start with a digit and is not a reserved word)</dt><dd>"Um identificador Dart válido: não começa com número e não é uma palavra reservada" (como <code>class</code> ou <code>void</code>).</dd>
+</dl>
+
+<p>Nenhuma pasta foi criada: o comando parou antes. Com um número na frente, a sugestão é curiosa:</p>
+
+<pre class="term">$ flutter create 2receitas
+"2receitas" is not a valid Dart package name. Try "_2receitas" instead.
+«  ... o mesmo texto de regras de antes
+</pre>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Nome</th><th>Vale?</th></tr>
+<tr><td><code>receitas_da_ana</code></td><td>Sim</td></tr>
+<tr><td><code>lojinha</code></td><td>Sim</td></tr>
+<tr><td><code>app2</code></td><td>Sim (o número pode vir depois)</td></tr>
+<tr><td><code>Receitas-Ana</code></td><td>Não: maiúscula e hífen</td></tr>
+<tr><td><code>2receitas</code></td><td>Não: começa com número</td></tr>
+<tr><td><code>pão_de_queijo</code></td><td>Não: acento e til</td></tr>
+<tr><td><code>class</code></td><td>Não: palavra reservada do Dart</td></tr>
+</table>
+</div>
+
+<div class="tip">
+<strong>E o nome que aparece no celular?</strong>
+<p>O nome do projeto é interno. O nome que aparece embaixo do ícone no celular ("Receitas da Ana", com espaço e maiúscula) é outra coisa, configurada em cada plataforma; ele aparece nas aulas de build (<a href="build-android.html">Gerando o APK e o App Bundle</a>).</p>
+</div>
+
+<hr>
+
+<h2>3. O app que vem de presente: o contador</h2>
+<p>O projeto novo já tem um app. O <code>lib/main.dart</code> tem 122 linhas, muitas delas comentários em inglês explicando o código. Sem os comentários, ele é este:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Flutter Demo',
+      theme: ThemeData(
+        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+      ),
+      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+    );
+  }
+}
+
+class MyHomePage extends StatefulWidget {
+  const MyHomePage({super.key, required this.title});
+  final String title;
+
+  @override
+  State&lt;MyHomePage&gt; createState() =&gt; _MyHomePageState();
+}
+
+class _MyHomePageState extends State&lt;MyHomePage&gt; {
+  int _counter = 0;
+
+  void _incrementCounter() {
+    setState(() {
+      _counter++;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: Text(widget.title),
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: .center,
+          children: [
+            const Text('You have pushed the button this many times:'),
+            Text(
+              '$_counter',
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _incrementCounter,
+        tooltip: 'Increment',
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+</pre>
+
+<p>Rodando, ele mostra um contador: um número no meio da tela e um botão redondo com <strong>+</strong> no canto. Cada toque no botão soma 1.</p>
+
+<figure class="tela"><img src="assets/telas/criar-projeto-1.png" alt="O app contador recém-criado: barra lilás no alto com o título 'Flutter Demo Home Page', no meio a frase 'You have pushed the button this many times:' e embaixo dela o número 0 grande, e no canto inferior direito um botão quadrado de cantos arredondados, lilás, com o sinal de mais" width="390" height="844" loading="lazy"><figcaption>O app de exemplo do <code>flutter create</code>, como abre.</figcaption></figure>
+
+<figure class="tela"><img src="assets/telas/criar-projeto-1b.png" alt="O mesmo app depois de três toques no botão de mais: o número no meio da tela agora é 3" width="390" height="844" loading="lazy"><figcaption>Depois de três toques no botão +.</figcaption></figure>
+
+<p>Por enquanto, reconheça só as peças grandes. Cada uma tem aula própria:</p>
+<dl class="anatomy">
+  <dt>MyApp</dt><dd>O app: um <code>MaterialApp</code> com o título, o <strong>tema</strong> (<code>theme</code>) e a tela inicial (<code>home</code>). Aula <a href="material-app.html">MaterialApp</a>.</dd>
+  <dt>ColorScheme.fromSeed(seedColor: Colors.deepPurple)</dt><dd>As cores do app inteiro, geradas a partir de uma "cor-semente" (o roxo). É por isso que a barra e o botão saíram lilás. O ponto no começo (<code>.fromSeed</code>, sem o nome <code>ColorScheme</code>) é um atalho recente do Dart: como o tipo do parâmetro já é <code>ColorScheme</code>, dá para omitir o nome. O mesmo vale para o <code>.center</code> mais abaixo. Aula <a href="temas.html">Temas</a>.</dd>
+  <dt>MyHomePage / _MyHomePageState</dt><dd>A tela, um <code>StatefulWidget</code>: um widget que <strong>muda</strong> (o número). Aula <a href="stateful.html">StatefulWidget</a>.</dd>
+  <dt>_counter e setState</dt><dd>O número guardado e o jeito de avisar o Flutter que ele mudou, para a tela ser redesenhada. Aula <a href="setstate.html">setState</a>.</dd>
+  <dt>Scaffold, AppBar, Column, Text, FloatingActionButton</dt><dd>As peças da tela: o "andaime", a barra, a coluna, os textos e o botão flutuante. Aulas <a href="scaffold.html">Scaffold e AppBar</a> e <a href="row-column.html">Row e Column</a>.</dd>
+</dl>
+
+<div class="tryflutter" data-goal="src:title:\s*'Receitas da Ana';;src:seedColor:\s*Colors\.orange">
+<p class="try-task"><strong>Missão:</strong> deixe o contador com a cara da Ana: troque o título da tela (<code>'Flutter Demo Home Page'</code>) por <code>'Receitas da Ana'</code> e a cor-semente (<code>Colors.deepPurple</code>) por <code>Colors.orange</code>. Rode e veja todas as cores mudarem juntas.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Flutter Demo',
+      theme: ThemeData(
+        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+      ),
+      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+    );
+  }
+}
+
+class MyHomePage extends StatefulWidget {
+  const MyHomePage({super.key, required this.title});
+  final String title;
+
+  @override
+  State&lt;MyHomePage&gt; createState() =&gt; _MyHomePageState();
+}
+
+class _MyHomePageState extends State&lt;MyHomePage&gt; {
+  int _counter = 0;
+
+  void _incrementCounter() {
+    setState(() {
+      _counter++;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: Text(widget.title),
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: .center,
+          children: [
+            const Text('You have pushed the button this many times:'),
+            Text(
+              '$_counter',
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _incrementCounter,
+        tooltip: 'Increment',
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Flutter Demo',
+      theme: ThemeData(
+        colorScheme: .fromSeed(seedColor: Colors.orange),
+      ),
+      home: const MyHomePage(title: 'Receitas da Ana'),
+    );
+  }
+}
+
+class MyHomePage extends StatefulWidget {
+  const MyHomePage({super.key, required this.title});
+  final String title;
+
+  @override
+  State&lt;MyHomePage&gt; createState() =&gt; _MyHomePageState();
+}
+
+class _MyHomePageState extends State&lt;MyHomePage&gt; {
+  int _counter = 0;
+
+  void _incrementCounter() {
+    setState(() {
+      _counter++;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: Text(widget.title),
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: .center,
+          children: [
+            const Text('You have pushed the button this many times:'),
+            Text(
+              '$_counter',
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _incrementCounter,
+        tooltip: 'Increment',
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<figure class="tela"><img src="assets/telas/criar-projeto-3.png" alt="O resultado esperado: o mesmo contador, agora com a barra do alto laranja-clara e o título 'Receitas da Ana', o fundo levemente pêssego e o botão de mais em laranja-claro" width="390" height="844" loading="lazy"><figcaption>O resultado esperado: uma cor-semente nova muda o app inteiro.</figcaption></figure>
+
+<hr>
+
+<h2>4. Começando do zero: <code>--empty</code></h2>
+<p>O contador é ótimo para ver algo funcionando, mas, para começar um app de verdade, a primeira coisa que todo mundo faz é apagá-lo. O <code>--empty</code> ("vazio") já cria o projeto com um <code>main.dart</code> mínimo:</p>
+
+<pre class="term">$ flutter create --empty lista_compras
+Creating project lista_compras...
+Resolving dependencies in `lista_compras`...
+Downloading packages...
+Got dependencies in `lista_compras`.
+Wrote 130 files.
+«  ... All done! e os endereços, como antes
+In order to run your empty application, type:
+
+  $ cd lista_compras
+  $ flutter run
+
+Your empty application code is in lista_compras/lib/main.dart.
+$ cat lista_compras/lib/main.dart
+import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MainApp());
+}
+
+class MainApp extends StatelessWidget {
+  const MainApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      home: Scaffold(body: Center(child: Text('Hello World!'))),
+    );
+  }
+}
+</pre>
+
+<p>As mensagens agora falam em <em>empty application</em> ("aplicativo vazio"). O <code>main.dart</code> tem a mesma forma do app da aula <a href="introducao.html">O que é Flutter</a>: um <code>MaterialApp</code>, um <code>Scaffold</code> e um <code>Text</code> no centro:</p>
+
+<figure class="tela"><img src="assets/telas/criar-projeto-2.png" alt="O app vazio: tela clara, sem barra de título, com o texto 'Hello World!' no meio e a faixa DEBUG no canto" width="390" height="844" loading="lazy"><figcaption>O app criado com <code>--empty</code>.</figcaption></figure>
+
+<hr>
+
+<h2>5. <code>--org</code> e <code>--platforms</code></h2>
+<p>A lojinha da Ana vai ser só para celular e web. E ela quer o app identificado com o domínio dela, ao contrário: <code>br.com.ana</code>.</p>
+
+<pre class="term">$ flutter create --org br.com.ana --platforms android,ios,web lojinha
+Creating project lojinha...
+Resolving dependencies in `lojinha`...
+Downloading packages...
+Got dependencies in `lojinha`.
+Wrote 82 files.
+«  ... o resto igual
+$ ls lojinha
+README.md
+analysis_options.yaml
+android
+ios
+lib
+lojinha.iml
+pubspec.lock
+pubspec.yaml
+test
+web
+$ grep -n "applicationId\|namespace" lojinha/android/app/build.gradle.kts
+8:    namespace = "br.com.ana.lojinha"
+19:        applicationId = "br.com.ana.lojinha"
+</pre>
+
+<dl class="anatomy">
+  <dt>--org br.com.ana</dt><dd>A "organização", escrita como um domínio de internet <strong>ao contrário</strong> (<code>ana.com.br</code> vira <code>br.com.ana</code>). Somada ao nome do projeto, forma a identidade do app nas lojas: <code>br.com.ana.lojinha</code>. Sem o <code>--org</code>, o padrão é <code>com.example</code>, que a Play Store não aceita na hora de publicar. Escolha bem: trocar depois dá trabalho.</dd>
+  <dt>--platforms android,ios,web</dt><dd>Só cria as pastas dessas plataformas. Sem a opção, vêm as seis: <code>android</code>, <code>ios</code>, <code>linux</code>, <code>macos</code>, <code>web</code> e <code>windows</code>.</dd>
+  <dt>Wrote 82 files.</dt><dd>Menos plataformas, menos arquivos: 82 contra os 131 do primeiro projeto.</dd>
+  <dt>applicationId = "br.com.ana.lojinha"</dt><dd>A identidade do app no Android, gravada pelo <code>--org</code> no arquivo de configuração do Android.</dd>
+</dl>
+
+<p>Compare com o projeto de receitas, criado sem <code>--platforms</code>, que tem as seis pastas:</p>
+
+<pre class="term">$ ls receitas_da_ana
+README.md
+analysis_options.yaml
+android
+ios
+lib
+linux
+macos
+pubspec.lock
+pubspec.yaml
+receitas_da_ana.iml
+test
+web
+windows
+</pre>
+
+<p>O que é cada uma dessas pastas é o assunto da próxima aula, <a href="estrutura-projeto.html">As Pastas de um Projeto</a>.</p>
+
+<hr>
+
+<h2>Formas diferentes de criar (e qual usar)</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Jeito</th><th>Como</th></tr>
+<tr><td>Terminal</td><td><code>flutter create nome_do_app</code> (com <code>--empty</code>, <code>--org</code>, <code>--platforms</code> se quiser)</td></tr>
+<tr><td>VS Code</td><td>Paleta de comandos (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>) › <strong>Flutter: New Project</strong> › <strong>Application</strong> (ou <strong>Empty Application</strong>) › escolher a pasta › digitar o nome</td></tr>
+<tr><td>Android Studio</td><td><strong>File › New › New Flutter Project</strong> (ou <em>New Flutter Project</em> na tela de boas-vindas) › nome, pasta, organização e plataformas num formulário</td></tr>
+</table>
+</div>
+
+<p>Os três fazem a mesma coisa: os editores rodam o <code>flutter create</code> por baixo, com as opções do formulário (os passos dos editores são ilustrativos: os menus mudam um pouco de versão para versão). Use o que for mais cômodo; o terminal é o único que funciona igual em qualquer máquina, e é o que o guia usa.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Nome inválido</strong>
+<p>Maiúsculas, hífen, espaço, acento ou número na frente: <code>is not a valid Dart package name</code> (seção 2). <strong>Como consertar:</strong> use o nome que o próprio Flutter sugere em <code>Try "..." instead</code>, ou escreva tudo minúsculo com <code>_</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Esqueceu o nome</strong>
+<pre class="term">$ flutter create
+No option specified for the output directory.
+Create a new Flutter project.
+
+If run on a project that already exists, this will repair the project, recreating any files that are missing.
+«  ... e a ajuda completa do comando, com todas as opções
+</pre>
+<p>"Nenhuma pasta de saída informada." Em seguida, o Flutter mostra a ajuda do <code>create</code>. Repare na segunda frase: "se rodado num projeto que já existe, ele <strong>conserta</strong> o projeto, recriando os arquivos que faltam". <strong>Como consertar:</strong> diga o nome: <code>flutter create receitas_da_ana</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Criar de novo numa pasta que já existe</strong>
+<pre class="term">$ flutter create receitas_da_ana
+Recreating project receitas_da_ana...
+Resolving dependencies in `receitas_da_ana`...
+Downloading packages...
+Got dependencies in `receitas_da_ana`.
+Wrote 3 files.
+«  ... o resto igual
+</pre>
+<p>Não é bem um erro, mas assusta: "<strong>Recriando</strong> o projeto". O Flutter <strong>não</strong> apagou nada: ele só recriou os arquivos que faltavam (aqui, 3) e manteve os que existiam, inclusive o seu <code>lib/main.dart</code>. É o "modo conserto" da ajuda. É útil, por exemplo, para acrescentar uma plataforma a um projeto: <code>flutter create --platforms web .</code> dentro da pasta (o <code>.</code> é "a pasta atual").</p>
+</div>
+
+<div class="cenario">
+<strong>Sem internet</strong>
+<p>O <code>flutter create</code> roda um <code>flutter pub get</code> no fim, e ele precisa baixar os pacotes. Sem internet (e sem os pacotes já guardados no computador), essa parte falha. <strong>Como consertar:</strong> conecte e rode <code>flutter pub get</code> dentro da pasta do projeto; os arquivos já foram criados.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>flutter create nome</code></td><td>Cria o projeto na pasta <code>nome</code>, com o app contador e as seis plataformas</td></tr>
+<tr><td><code>flutter create --empty nome</code></td><td>Cria com um <code>main.dart</code> mínimo ("Hello World!")</td></tr>
+<tr><td><code>flutter create --org br.com.ana nome</code></td><td>Define a organização (a identidade do app: <code>br.com.ana.nome</code>); o padrão é <code>com.example</code></td></tr>
+<tr><td><code>flutter create --platforms android,ios,web nome</code></td><td>Só as plataformas da lista</td></tr>
+<tr><td><code>flutter create --project-name nome pasta</code></td><td>Nome do projeto diferente do nome da pasta</td></tr>
+<tr><td><code>flutter create --description "..." nome</code></td><td>A descrição que vai para o <code>pubspec.yaml</code> (padrão: <code>A new Flutter project.</code>)</td></tr>
+<tr><td><code>flutter create .</code></td><td>Dentro de um projeto: recria o que falta ("conserta")</td></tr>
+<tr><td><code>flutter create --help</code></td><td>Todas as opções</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. O comando</h3>
+<p>Complete o comando que cria o projeto <code>lista_compras</code> com o app mínimo:</p>
+<div class="ex-code">$ flutter create --<input data-answer="empty" aria-label="opção"> lista_compras</div>
+</div>
+
+<div class="exercise">
+<h3>2. Onde está o código</h3>
+<p>Em que arquivo fica o código do app recém-criado?</p>
+<div class="ex-code">receitas_da_ana/<input data-answer="lib/main.dart" aria-label="arquivo"></div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. Qual destes nomes de projeto é válido?</p>
+<label><input type="radio" name="q3"> <code>Lojinha-Ana</code></label>
+<label><input type="radio" name="q3"> <code>3lojinha</code></label>
+<label><input type="radio" name="q3"> <code>lojinha_da_ana</code></label>
+<label><input type="radio" name="q3"> <code>lojinha da ana</code></label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. Com <code>--org br.com.ana</code>, qual é a identidade do projeto <code>lojinha</code> no Android?</p>
+<label><input type="radio" name="q4"> <code>com.example.lojinha</code></label>
+<label><input type="radio" name="q4"> <code>br.com.ana.lojinha</code></label>
+<label><input type="radio" name="q4"> <code>ana.com.br.lojinha</code></label>
+<label><input type="radio" name="q4"> <code>lojinha.br.com.ana</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. A Ana rodou <code>flutter create receitas_da_ana</code> de novo, por engano, com o projeto já existindo. O que aconteceu com o <code>lib/main.dart</code> que ela tinha mudado?</p>
+<label><input type="radio" name="q5"> Nada: o Flutter só recria os arquivos que faltam</label>
+<label><input type="radio" name="q5"> Voltou a ser o contador</label>
+<label><input type="radio" name="q5"> Foi apagado</label>
+<label><input type="radio" name="q5"> O comando deu erro e não fez nada</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>flutter create nome</code> cria uma pasta de projeto completa, baixa os pacotes (<code>pub get</code>) e deixa um app pronto para rodar.</li>
+  <li>O nome é um nome de pacote Dart: minúsculas, algarismos e <code>_</code>, sem começar com número. Se errar, o Flutter sugere um que vale.</li>
+  <li>O app de exemplo é o contador; com <code>--empty</code>, vem um "Hello World!" mínimo.</li>
+  <li><code>--org</code> define a identidade do app (padrão <code>com.example</code>); <code>--platforms</code> escolhe as plataformas.</li>
+  <li>O código do app fica em <code>lib/main.dart</code>.</li>
+  <li>Rodar o <code>create</code> num projeto existente não apaga nada: só recria o que falta.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
