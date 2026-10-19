@@ -1,0 +1,634 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Alinhamento — mainAxisAlignment e crossAxisAlignment na Row e na Column | Guia Flutter</title>
+<meta name="description" content="Alinhamento no Flutter para quem nunca fez um app: o eixo principal e o eixo cruzado da Row e da Column, todos os valores de mainAxisAlignment (start, end, center, spaceBetween, spaceAround, spaceEvenly) e de crossAxisAlignment (start, end, center, stretch, baseline) com a foto real de cada um, e por que às vezes o alinhamento parece não fazer nada.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Alinhamento</span> (mainAxis e crossAxis)</h1>
+
+<p class="intro">Na aula <a href="row-column.html">Row e Column</a>, os filhos sempre ficaram encostados no começo: no alto da coluna, à esquerda da fileira. Mas e se você quiser os botões <strong>no meio</strong> da tela? Ou o primeiro ícone na esquerda e o último na direita, com o espaço repartido entre eles? Para isso, a <code>Row</code> e a <code>Column</code> têm dois parâmetros: <code>mainAxisAlignment</code> e <code>crossAxisAlignment</code>. Os nomes assustam, mas a ideia é uma só: <strong>em que direção</strong> você está alinhando.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é o <strong>eixo principal</strong> (<em>main axis</em>) e o <strong>eixo cruzado</strong> (<em>cross axis</em>), e por que eles trocam de lugar entre a <code>Row</code> e a <code>Column</code>.</li>
+  <li>Os seis valores de <code>mainAxisAlignment</code>, cada um com a foto: <code>start</code>, <code>end</code>, <code>center</code>, <code>spaceBetween</code>, <code>spaceAround</code> e <code>spaceEvenly</code>.</li>
+  <li>Os valores de <code>crossAxisAlignment</code>: <code>start</code>, <code>end</code>, <code>center</code>, <code>stretch</code> e <code>baseline</code>.</li>
+  <li>Por que, às vezes, mudar o alinhamento <strong>não muda nada</strong> na tela, e como resolver.</li>
+</ul>
+</div>
+
+<p>Todos os apps desta aula são um <code>lib/main.dart</code> completo, compilados pelo Flutter <span class="versao">Flutter 3.47</span> do laboratório para a web e fotografados no navegador, em tamanho de celular (390 × 844).</p>
+
+<hr>
+
+<h2>A ideia: a fila do caixa</h2>
+<p>Pense numa fila de pessoas no caixa do mercado. A fila tem uma <strong>direção</strong>: é nela que as pessoas andam, uma atrás da outra. Essa é a direção principal. A outra direção, de lado, é a <strong>cruzada</strong>: dá para alguém ficar mais à esquerda ou mais à direita na fila, sem sair do lugar dela.</p>
+<ul>
+  <li>Na <code>Row</code>, a fila anda <strong>para a direita</strong>: o eixo principal é o <strong>horizontal</strong> e o cruzado é o <strong>vertical</strong>.</li>
+  <li>Na <code>Column</code>, a fila anda <strong>para baixo</strong>: o eixo principal é o <strong>vertical</strong> e o cruzado é o <strong>horizontal</strong>.</li>
+</ul>
+<pre>Row                                   Column
+eixo principal ──────────────▶        eixo principal
+┌────┐ ┌────┐ ┌────┐  ▲ eixo           │  ┌──────┐
+│ A  │ │ B  │ │ C  │  │ cruzado        │  │  A   │
+└────┘ └────┘ └────┘  ▼                │  ├──────┤
+                                       │  │  B   │
+                                       ▼  ├──────┤
+                                          │  C   │
+                                          └──────┘
+                                       ◀── eixo cruzado ──▶</pre>
+<p>Então:</p>
+<ul>
+  <li><code>mainAxisAlignment</code> ("alinhamento no eixo principal") diz onde os filhos ficam <strong>ao longo da fila</strong>: no começo, no fim, no meio, ou espalhados.</li>
+  <li><code>crossAxisAlignment</code> ("alinhamento no eixo cruzado") diz onde cada filho fica <strong>de lado</strong>: encostado de um lado, do outro, no meio, ou esticado.</li>
+</ul>
+
+<hr>
+
+<h2>1. <code>mainAxisAlignment</code>: os seis valores</h2>
+<p>Este app desenha seis faixas cinzas. Cada uma é uma <code>Row</code> com os mesmos três quadrados (vermelho, verde e azul); a única diferença entre elas é o <code>mainAxisAlignment</code>, escrito em cima de cada faixa:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class Quadrado extends StatelessWidget {
+  const Quadrado(this.cor, {super.key});
+
+  final Color cor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(width: 48, height: 48, color: cor);
+  }
+}
+
+class Faixa extends StatelessWidget {
+  const Faixa(this.nome, this.alinhamento, {super.key});
+
+  final String nome;
+  final MainAxisAlignment alinhamento;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(nome, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        ColoredBox(
+          color: Colors.grey.shade300,
+          child: Row(
+            mainAxisAlignment: alinhamento,
+            children: const [
+              Quadrado(Colors.red),
+              Quadrado(Colors.green),
+              Quadrado(Colors.blue),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+      ],
+    );
+  }
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('mainAxisAlignment')),
+        body: const Padding(
+          padding: EdgeInsets.all(12),
+          child: Column(
+            children: [
+              Faixa('start', MainAxisAlignment.start),
+              Faixa('end', MainAxisAlignment.end),
+              Faixa('center', MainAxisAlignment.center),
+              Faixa('spaceBetween', MainAxisAlignment.spaceBetween),
+              Faixa('spaceAround', MainAxisAlignment.spaceAround),
+              Faixa('spaceEvenly', MainAxisAlignment.spaceEvenly),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>Quadrado</dt><dd>Um widget nosso, bem pequeno: um <code>Container</code> de 48 × 48 com uma cor. Fazer um widget só para isso evita repetir a mesma linha nove vezes (aula <a href="stateless.html">StatelessWidget</a>).</dd>
+  <dt>Faixa</dt><dd>Outro widget nosso: o nome em negrito e, embaixo, a faixa cinza (<code>ColoredBox</code>) com a <code>Row</code> dos três quadrados. Ele recebe o <code>MainAxisAlignment</code> como parâmetro.</dd>
+  <dt>mainAxisAlignment: alinhamento</dt><dd>O único parâmetro que muda de uma faixa para outra. O tipo é <code>MainAxisAlignment</code>, um <code>enum</code> do Flutter; os valores se escrevem <code>MainAxisAlignment.center</code>, <code>MainAxisAlignment.spaceBetween</code> etc.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/alinhamento-1.png" alt="Seis faixas cinzas, cada uma com o nome em cima e três quadrados vermelho, verde e azul: em start, juntos à esquerda; em end, juntos à direita; em center, juntos no meio; em spaceBetween, vermelho na ponta esquerda, verde no meio, azul na ponta direita; em spaceAround e spaceEvenly, espalhados com espaços nas pontas, um pouco maiores no spaceEvenly" width="390" height="844" loading="lazy"><figcaption>Os seis valores de <code>mainAxisAlignment</code> numa Row, um embaixo do outro.</figcaption></figure>
+
+<p>Valor por valor (a faixa cinza tem a largura da tela, menos o padding; os quadrados são sempre os mesmos):</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Valor</th><th>Onde ficam os quadrados</th><th>Desenho</th></tr>
+<tr><td><code>start</code> (o padrão)</td><td>Encostados no <strong>começo</strong> (na Row, à esquerda), sem espaço entre eles</td><td><code>[RGB      ]</code></td></tr>
+<tr><td><code>end</code></td><td>Encostados no <strong>fim</strong> (na Row, à direita)</td><td><code>[      RGB]</code></td></tr>
+<tr><td><code>center</code></td><td>Juntos, no <strong>meio</strong></td><td><code>[   RGB   ]</code></td></tr>
+<tr><td><code>spaceBetween</code></td><td>O primeiro no começo, o último no fim, e o espaço que sobra repartido <strong>entre</strong> eles</td><td><code>[R   G   B]</code></td></tr>
+<tr><td><code>spaceAround</code></td><td>Cada quadrado ganha o mesmo espaço <strong>em volta</strong> de si; nas pontas fica a <strong>metade</strong> do espaço do meio</td><td><code>[ R  G  B ]</code></td></tr>
+<tr><td><code>spaceEvenly</code></td><td>Todos os espaços <strong>iguais</strong>, inclusive os das pontas</td><td><code>[ R  G  B ]</code> (pontas um pouco maiores que no <code>spaceAround</code>)</td></tr>
+</table>
+</div>
+
+<h3>Fazendo a conta do espaço</h3>
+<p>Os três "space…" repartem a <strong>sobra</strong>: a largura da faixa menos a largura dos filhos. Na foto, a faixa cinza tem 366 de largura (os 390 da tela menos 12 de padding de cada lado) e os três quadrados somam 3 × 48 = 144. A sobra é 366 − 144 = <strong>222</strong>:</p>
+<ul>
+  <li><code>spaceBetween</code>: 2 vãos entre os quadrados, 222 ÷ 2 = <strong>111</strong> cada; nas pontas, 0.</li>
+  <li><code>spaceAround</code>: cada quadrado ganha 222 ÷ 3 = 74, metade de cada lado (37 + 37). Entre dois quadrados ficam 37 + 37 = <strong>74</strong>; nas pontas, só <strong>37</strong>.</li>
+  <li><code>spaceEvenly</code>: 4 vãos iguais (antes, entre, entre, depois), 222 ÷ 4 = <strong>55,5</strong> cada.</li>
+</ul>
+<p>É por isso que, na foto, o quadrado vermelho do <code>spaceEvenly</code> começa um pouco mais longe da borda que o do <code>spaceAround</code>.</p>
+
+<div class="tryflutter" data-goal="src:mainAxisAlignment:\s*MainAxisAlignment\.spaceEvenly">
+<p class="try-task"><strong>Missão:</strong> a barra de baixo do app da Ana tem três ícones encostados à esquerda. Espalhe os três com espaços iguais, usando <code>MainAxisAlignment.spaceEvenly</code>. Depois experimente os outros cinco valores.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            Icon(Icons.home, size: 40),
+            Icon(Icons.search, size: 40),
+            Icon(Icons.favorite, size: 40),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            Icon(Icons.home, size: 40),
+            Icon(Icons.search, size: 40),
+            Icon(Icons.favorite, size: 40),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>2. <code>mainAxisAlignment</code> na <code>Column</code>: no meio da tela</h2>
+<p>Na <code>Column</code>, o eixo principal é o <strong>vertical</strong>. Então os mesmos valores agora movem os filhos <strong>para cima e para baixo</strong>. O uso mais comum: centralizar o conteúdo na altura da tela, como numa tela de boas-vindas.</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.restaurant_menu, size: 80, color: Colors.deepOrange),
+            Text('Bem-vinda, Ana!', style: TextStyle(fontSize: 28)),
+            Text('32 receitas salvas', style: TextStyle(fontSize: 18)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<figure class="tela"><img src="assets/telas/alinhamento-2.png" alt="Barra Receitas da Ana; no meio da altura da tela, encostados à esquerda, um ícone laranja de garfo e colher cruzados, o texto grande Bem-vinda, Ana! e, embaixo, 32 receitas salvas" width="390" height="844" loading="lazy"><figcaption>Column com <code>MainAxisAlignment.center</code>: o grupo fica no meio da altura (mas à esquerda).</figcaption></figure>
+
+<p>O ícone e os dois textos foram para o <strong>meio da altura</strong> do <code>body</code>: a <code>Column</code> ocupa toda a altura, e o <code>center</code> divide o espaço que sobra igualmente em cima e embaixo. Mas repare: o grupo ficou encostado à <strong>esquerda</strong>, e não no meio da largura. O ícone e o "32 receitas salvas" estão centralizados em relação ao "Bem-vinda, Ana!", não à tela. Isso não é defeito; é uma regra importante, explicada na <a href="#nada-muda">seção 4</a>.</p>
+
+<hr>
+
+<h2>3. <code>crossAxisAlignment</code>: de lado</h2>
+<p>Agora o outro eixo. Para ver o <code>crossAxisAlignment</code> numa <code>Row</code>, os filhos precisam ter <strong>alturas diferentes</strong> (se todos tivessem a mesma altura, não haveria o que alinhar). Este app usa faixas de 90 de altura com três caixas de 30, 60 e 45:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class Faixa extends StatelessWidget {
+  const Faixa(this.nome, this.alinhamento, {super.key});
+
+  final String nome;
+  final CrossAxisAlignment alinhamento;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(nome, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        Container(
+          height: 90,
+          color: Colors.grey.shade300,
+          child: Row(
+            crossAxisAlignment: alinhamento,
+            children: [
+              Container(width: 60, height: 30, color: Colors.red),
+              Container(width: 60, height: 60, color: Colors.green),
+              Container(width: 60, height: 45, color: Colors.blue),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+      ],
+    );
+  }
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('crossAxisAlignment')),
+        body: const Padding(
+          padding: EdgeInsets.all(12),
+          child: Column(
+            children: [
+              Faixa('start', CrossAxisAlignment.start),
+              Faixa('center', CrossAxisAlignment.center),
+              Faixa('end', CrossAxisAlignment.end),
+              Faixa('stretch', CrossAxisAlignment.stretch),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<figure class="tela"><img src="assets/telas/alinhamento-3.png" alt="Quatro faixas cinzas de mesma altura, cada uma com três caixas vermelha, verde e azul de alturas diferentes à esquerda: em start, encostadas no alto; em center, no meio da altura; em end, encostadas embaixo; em stretch, as três com a altura toda da faixa" width="390" height="844" loading="lazy"><figcaption>Os valores de <code>crossAxisAlignment</code> numa Row: o eixo cruzado é o vertical.</figcaption></figure>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Valor</th><th>Na Row (eixo cruzado = vertical)</th><th>Na Column (eixo cruzado = horizontal)</th></tr>
+<tr><td><code>center</code> (o padrão)</td><td>Cada filho no meio da altura</td><td>Cada filho no meio da largura</td></tr>
+<tr><td><code>start</code></td><td>Encostados em <strong>cima</strong></td><td>Encostados à <strong>esquerda</strong></td></tr>
+<tr><td><code>end</code></td><td>Encostados <strong>embaixo</strong></td><td>Encostados à <strong>direita</strong></td></tr>
+<tr><td><code>stretch</code></td><td>Esticados até a altura toda (a altura que você deu é ignorada)</td><td>Esticados até a largura toda</td></tr>
+<tr><td><code>baseline</code></td><td>Textos de tamanhos diferentes apoiados na mesma linha de base (exige <code>textBaseline:</code>)</td><td>Não se usa</td></tr>
+</table>
+</div>
+
+<p>Na foto, cada faixa cinza tem 90 de altura. Com <code>start</code>, as três caixas encostam no <strong>alto</strong> da faixa; com <code>center</code>, ficam no meio da altura; com <code>end</code>, encostam <strong>embaixo</strong>. Com <code>stretch</code>, as três ficaram com os 90 de altura da faixa: o <code>height</code> de 30, 60 e 45 que demos a cada <code>Container</code> foi ignorado, porque o <code>stretch</code> <strong>obriga</strong> cada filho a ter a altura toda. As larguras (60) não mudaram em nenhuma faixa: o eixo cruzado da <code>Row</code> é só o vertical.</p>
+
+<h3><code>baseline</code>: textos de tamanhos diferentes na mesma linha</h3>
+<p>Quando uma <code>Row</code> junta textos de tamanhos diferentes (um preço grande e o "R$" pequeno, por exemplo), centralizar fica estranho: as letras não "pisam" no mesmo chão. O <code>baseline</code> alinha pela <strong>linha de base</strong>, a linha invisível onde as letras se apoiam, como as linhas de um caderno:</p>
+
+<pre class="file" data-file="lib/main.dart (só o body)">        body: const Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text('R\$ ', style: TextStyle(fontSize: 18)),
+            Text('12', style: TextStyle(fontSize: 64)),
+            Text(',90', style: TextStyle(fontSize: 28)),
+          ],
+        ),
+</pre>
+
+<figure class="tela"><img src="assets/telas/alinhamento-4.png" alt="O preço R$ 12,90 com R$ pequeno, 12 enorme e ,90 médio, os três apoiados na mesma linha de base, no canto de cima à esquerda" width="390" height="844" loading="lazy"><figcaption>O preço com <code>baseline</code>: os três textos apoiados na mesma linha.</figcaption></figure>
+
+<p>O <code>R\$</code> tem uma barra porque, no Dart, o <code>$</code> dentro de um texto serve para mostrar variáveis (<code>'Olá, $nome'</code>); a barra diz "é um cifrão de verdade". O <code>textBaseline: TextBaseline.alphabetic</code> é obrigatório com <code>baseline</code>: ele diz qual linha de base usar (a do nosso alfabeto).</p>
+
+<hr>
+
+<h2 id="nada-muda">4. "Mudei o alinhamento e nada aconteceu!"</h2>
+<p>Esta é a dúvida mais comum de quem começa. O alinhamento só move os filhos <strong>dentro do espaço que a Row ou a Column tem</strong>. Se não sobra espaço, não há para onde mover. Veja esta coluna, que deveria encostar os textos à direita:</p>
+
+<pre class="file" data-file="lib/main.dart (só o body)">        body: const Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text('Arroz', style: TextStyle(fontSize: 24)),
+            Text('Feijão preto', style: TextStyle(fontSize: 24)),
+            Text('Café', style: TextStyle(fontSize: 24)),
+          ],
+        ),
+</pre>
+
+<figure class="tela"><img src="assets/telas/alinhamento-5.png" alt="Barra Lista de compras; embaixo, as palavras Arroz, Feijão preto e Café alinhadas pela direita entre si, mas num bloco estreito encostado na borda esquerda da tela" width="390" height="844" loading="lazy"><figcaption>Os textos se alinharam à direita uns dos outros, mas o bloco continua à esquerda da tela.</figcaption></figure>
+
+<p>O <code>end</code> funcionou, só que dentro de um espaço pequeno. Na direção cruzada, a <code>Column</code> fica só com a largura do filho <strong>mais largo</strong> (o "Feijão preto"). Os outros dois foram encostados à direita <strong>desse</strong> espaço, e a coluna inteira ficou no canto esquerdo da tela, onde o <code>Scaffold</code> a pôs. O mesmo aconteceu na tela de boas-vindas da seção 2: o grupo foi para o meio da altura, mas ficou à esquerda. A regra:</p>
+<ul>
+  <li>no <strong>eixo principal</strong>, a <code>Row</code>/<code>Column</code> ocupa todo o espaço (por causa do <code>MainAxisSize.max</code>), então o <code>mainAxisAlignment</code> tem espaço para trabalhar;</li>
+  <li>no <strong>eixo cruzado</strong>, ela fica do tamanho do maior filho, então o <code>crossAxisAlignment</code> só alinha os filhos <strong>entre si</strong>.</li>
+</ul>
+<p>Para o <code>crossAxisAlignment</code> valer para a tela toda, dê largura à coluna. Um jeito é um <code>SizedBox</code> com <code>width: double.infinity</code> ("a largura máxima que o pai deixar"; aula <a href="sizedbox.html">SizedBox e Spacer</a>):</p>
+
+<pre class="file" data-file="lib/main.dart (só o body)">        body: const SizedBox(
+          width: double.infinity,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text('Arroz', style: TextStyle(fontSize: 24)),
+              Text('Feijão preto', style: TextStyle(fontSize: 24)),
+              Text('Café', style: TextStyle(fontSize: 24)),
+            ],
+          ),
+        ),
+</pre>
+
+<figure class="tela"><img src="assets/telas/alinhamento-7.png" alt="Barra Lista de compras; embaixo, Arroz, Feijão preto e Café, um embaixo do outro, todos encostados na borda direita da tela" width="390" height="844" loading="lazy"><figcaption>Agora a coluna tem a largura da tela, e os textos encostam na borda direita.</figcaption></figure>
+
+<p>E para a tela de boas-vindas ficar no meio de verdade (na altura <strong>e</strong> na largura), embrulhe a <code>Column</code> num <code>Center</code> (aula <a href="center-align.html">Center e Align</a>):</p>
+
+<pre class="file" data-file="lib/main.dart (só o body)">        body: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.restaurant_menu, size: 80, color: Colors.deepOrange),
+              Text('Bem-vinda, Ana!', style: TextStyle(fontSize: 28)),
+              Text('32 receitas salvas', style: TextStyle(fontSize: 18)),
+            ],
+          ),
+        ),
+</pre>
+
+<figure class="tela"><img src="assets/telas/alinhamento-8.png" alt="Barra Receitas da Ana; no meio exato da tela, o ícone laranja de garfo e colher, Bem-vinda, Ana! e 32 receitas salvas, centralizados" width="390" height="844" loading="lazy"><figcaption>Com o <code>Center</code> em volta, o grupo fica no meio da tela nas duas direções.</figcaption></figure>
+
+<p>Por que o tamanho da coluna funciona assim é o assunto da aula <a href="constraints.html">Como o Flutter Calcula Tamanhos</a>.</p>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Quero…</th><th>Jeito</th></tr>
+<tr><td>Um widget só, no meio da tela</td><td><code>Center</code> (aula <a href="center-align.html">Center e Align</a>), mais simples que uma Column com um filho</td></tr>
+<tr><td>Vários widgets juntos, no meio</td><td><code>mainAxisAlignment: MainAxisAlignment.center</code></td></tr>
+<tr><td>Espaços <strong>fixos</strong> entre os filhos (sempre 16)</td><td><code>SizedBox</code> entre eles, ou o parâmetro <code>spacing:</code> da Row/Column (aula <a href="sizedbox.html">SizedBox e Spacer</a>)</td></tr>
+<tr><td>Um filho num canto e o resto no outro</td><td><code>Spacer()</code> ou <code>Expanded</code> no meio (aulas <a href="sizedbox.html">SizedBox e Spacer</a> e <a href="expanded.html">Expanded</a>)</td></tr>
+<tr><td>Os filhos com a largura toda (botões do mesmo tamanho)</td><td><code>crossAxisAlignment: CrossAxisAlignment.stretch</code> na Column</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Trocou os tipos: <code>CrossAxisAlignment</code> no <code>mainAxisAlignment</code></strong>
+<pre class="file" data-file="lib/main.dart (trecho)">        body: const Row(
+          mainAxisAlignment: CrossAxisAlignment.center,
+          children: [Text('A'), Text('B')],
+        ),
+</pre>
+<pre class="term">$ flutter run
+«  (…)
+lib/main.dart:15:49: Error: The argument type 'CrossAxisAlignment' can't be assigned to the parameter type 'MainAxisAlignment'.
+ - 'CrossAxisAlignment' is from 'package:flutter/src/rendering/flex.dart' (…).
+ - 'MainAxisAlignment' is from 'package:flutter/src/rendering/flex.dart' (…).
+          mainAxisAlignment: CrossAxisAlignment.center,
+                                                ^
+</pre>
+<p>"O argumento do tipo <code>CrossAxisAlignment</code> não pode ser passado para o parâmetro do tipo <code>MainAxisAlignment</code>." Os dois têm um <code>center</code>, mas são tipos diferentes, e cada parâmetro aceita só o seu. <strong>Como consertar:</strong> o nome do tipo é o nome do parâmetro com letra maiúscula: <code>mainAxisAlignment: MainAxisAlignment.center</code>, <code>crossAxisAlignment: CrossAxisAlignment.center</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Usou <code>baseline</code> sem o <code>textBaseline</code></strong>
+<pre class="file" data-file="lib/main.dart (trecho)">        body: const Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          children: [Text('R\$ '), Text('12', style: TextStyle(fontSize: 64))],
+        ),
+</pre>
+<pre class="term">$ flutter run
+«  (…)
+lib/main.dart:14:21: Error: Constant evaluation error:
+        body: const Row(
+                    ^
+…/packages/flutter/lib/src/widgets/basic.dart:5320:70: Context: This assertion failed with message: textBaseline is required if you specify the crossAxisAlignment with CrossAxisAlignment.baseline
+         !identical(crossAxisAlignment, CrossAxisAlignment.baseline) || textBaseline != null,
+                                                                     ^
+</pre>
+<dl class="anatomy">
+  <dt>Constant evaluation error</dt><dd>"Erro ao calcular a constante." Como a <code>Row</code> é <code>const</code>, o Dart monta o widget já na compilação e roda as conferências (<code>assert</code>) do construtor dela. Uma falhou.</dd>
+  <dt>Context: This assertion failed with message: …</dt><dd>A conferência que falhou, com a mensagem: "<code>textBaseline</code> é obrigatório se você usa <code>CrossAxisAlignment.baseline</code>". A linha de baixo é o próprio <code>assert</code>, no código do Flutter.</dd>
+</dl>
+<p><strong>Como consertar:</strong> acrescente <code>textBaseline: TextBaseline.alphabetic</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Escreveu o valor sem o nome do tipo</strong>
+<pre class="file" data-file="lib/main.dart (trecho)">        body: const Row(
+          mainAxisAlignment: center,
+          children: [Text('A'), Text('B')],
+        ),
+</pre>
+<pre class="term">$ flutter run
+«  (…)
+lib/main.dart:15:30: Error: Not a constant expression.
+          mainAxisAlignment: center,
+                             ^^^^^^
+</pre>
+<p>"Não é uma expressão constante." A mensagem confunde, porque o problema não é o <code>const</code>: é que <code>center</code>, sozinho, não existe. Como a <code>Row</code> é <code>const</code>, o Dart reclama primeiro que o valor não é constante.</p>
+<p>Sem o <code>const</code> (com <code>Row(mainAxisAlignment: center, children: const [ … ])</code>), a mensagem fica mais clara:</p>
+<pre class="term">lib/main.dart:15:30: Error: The getter 'center' isn't defined for the type 'MeuApp'.
+ - 'MeuApp' is from 'package:app/main.dart' ('lib/main.dart').
+Try correcting the name to the name of an existing getter, or defining a getter or field named 'center'.
+          mainAxisAlignment: center,
+                             ^^^^^^
+</pre>
+<p>"O <em>getter</em> <code>center</code> não está definido para o tipo <code>MeuApp</code>." Sem o nome do tipo na frente, o Dart procura um <code>center</code> dentro da sua própria classe (<code>MeuApp</code>) e não acha. <strong>Como consertar:</strong> os valores de um <code>enum</code> sempre levam o nome do tipo na frente: <code>MainAxisAlignment.center</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th></th><th>Row</th><th>Column</th></tr>
+<tr><td>Eixo principal (<code>mainAxisAlignment</code>)</td><td>Horizontal (esquerda → direita)</td><td>Vertical (cima → baixo)</td></tr>
+<tr><td>Eixo cruzado (<code>crossAxisAlignment</code>)</td><td>Vertical</td><td>Horizontal</td></tr>
+<tr><td>Padrão do <code>mainAxisAlignment</code></td><td colspan="2"><code>MainAxisAlignment.start</code></td></tr>
+<tr><td>Padrão do <code>crossAxisAlignment</code></td><td colspan="2"><code>CrossAxisAlignment.center</code></td></tr>
+</table>
+</div>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th><code>MainAxisAlignment.</code></th><th>Faz</th></tr>
+<tr><td><code>start</code> / <code>end</code> / <code>center</code></td><td>Todos juntos no começo / no fim / no meio</td></tr>
+<tr><td><code>spaceBetween</code></td><td>Pontas encostadas, sobra repartida entre os filhos</td></tr>
+<tr><td><code>spaceAround</code></td><td>Espaço igual em volta de cada filho (meio espaço nas pontas)</td></tr>
+<tr><td><code>spaceEvenly</code></td><td>Todos os espaços iguais, inclusive nas pontas</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">1. Numa <code>Column</code>, qual parâmetro leva os filhos para o <strong>meio da altura</strong> da tela?</p>
+<label><input type="radio" name="q1"> <code>crossAxisAlignment: CrossAxisAlignment.center</code></label>
+<label><input type="radio" name="q1"> <code>mainAxisAlignment: MainAxisAlignment.center</code></label>
+<label><input type="radio" name="q1"> <code>mainAxisSize: MainAxisSize.min</code></label>
+<label><input type="radio" name="q1"> Nenhum: a Column não centraliza</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">2. Numa <code>Row</code> com três ícones, qual valor deixa o primeiro encostado à esquerda, o último à direita e o do meio no meio?</p>
+<label><input type="radio" name="q2"> <code>spaceAround</code></label>
+<label><input type="radio" name="q2"> <code>center</code></label>
+<label><input type="radio" name="q2"> <code>spaceBetween</code></label>
+<label><input type="radio" name="q2"> <code>end</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">3. Numa <code>Row</code>, o <code>crossAxisAlignment</code> mexe em qual direção?</p>
+<label><input type="radio" name="q3"> Vertical</label>
+<label><input type="radio" name="q3"> Horizontal</label>
+<label><input type="radio" name="q3"> As duas</label>
+<label><input type="radio" name="q3"> Depende do tamanho da tela</label>
+</div>
+
+<div class="exercise">
+<h3>4. Complete</h3>
+<p>Complete para os botões da Column ocuparem a largura toda:</p>
+<div class="ex-code">Column(<br>&nbsp;&nbsp;<input data-answer="crossAxisAlignment" aria-label="nome do parâmetro">: CrossAxisAlignment.<input data-answer="stretch" aria-label="valor">,<br>&nbsp;&nbsp;children: [ … ],<br>)</div>
+</div>
+
+<h3>Missão final: o cabeçalho da receita</h3>
+
+<div class="tryflutter" data-goal="src:mainAxisAlignment:\s*MainAxisAlignment\.spaceBetween">
+<p class="try-task"><strong>Missão:</strong> o nome da receita deve ficar à esquerda e a estrela de favorito, à direita, na mesma linha. Use o <code>mainAxisAlignment</code> certo na <code>Row</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Text('Bolo de cenoura', style: TextStyle(fontSize: 24)),
+              Icon(Icons.star, color: Colors.amber, size: 32),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Bolo de cenoura', style: TextStyle(fontSize: 24)),
+              Icon(Icons.star, color: Colors.amber, size: 32),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<figure class="tela"><img src="assets/telas/alinhamento-6.png" alt="Barra Receitas da Ana; embaixo, numa linha, o texto Bolo de cenoura à esquerda e uma estrela amarela encostada à direita" width="390" height="844" loading="lazy"><figcaption>O resultado esperado: o nome à esquerda e a estrela à direita.</figcaption></figure>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Toda <code>Row</code> e <code>Column</code> tem um <strong>eixo principal</strong> (a direção da fila) e um <strong>eixo cruzado</strong> (o de lado). Na Row, o principal é horizontal; na Column, vertical.</li>
+  <li><code>mainAxisAlignment</code> posiciona os filhos ao longo da fila: <code>start</code> (padrão), <code>end</code>, <code>center</code>, <code>spaceBetween</code>, <code>spaceAround</code>, <code>spaceEvenly</code>.</li>
+  <li><code>crossAxisAlignment</code> posiciona cada filho de lado: <code>center</code> (padrão), <code>start</code>, <code>end</code>, <code>stretch</code>, <code>baseline</code> (com <code>textBaseline</code>).</li>
+  <li>O alinhamento só funciona se <strong>sobrar espaço</strong>. Se nada mudou, a Row ou a Column está do tamanho exato dos filhos.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
