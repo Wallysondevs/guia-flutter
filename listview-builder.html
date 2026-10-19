@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter ListView.builder — listas grandes, montadas sob demanda | Guia Flutter</title>
+<meta name="description" content="ListView.builder do Flutter para iniciantes: itemCount e itemBuilder, uma lista de mil produtos que só monta os itens visíveis (visto no console), lista feita de uma classe de modelo, ListView.separated com Divider e a tela vermelha real 'RangeError (index): Index out of range' de quem esquece o itemCount.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">ListView.builder</span></h1>
+
+<p class="intro">Na aula <a href="listview.html">ListView</a>, você escreveu cada item da lista à mão. Isso funciona para 14 itens de compras, mas não para os mil produtos do estoque, nem para uma lista que vem de um banco de dados e muda de tamanho. Para isso existe a <code>ListView.builder</code> ("construtora"): você diz <strong>quantos</strong> itens são e dá uma <strong>receita</strong> para montar um item qualquer. O Flutter monta só os que aparecem na tela, na hora em que aparecem.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Os dois parâmetros da <code>ListView.builder</code>: <code>itemCount</code> e <code>itemBuilder</code>.</li>
+  <li>Como ela monta os itens <strong>sob demanda</strong> (visto no console, com mil produtos).</li>
+  <li>Como montar a lista a partir de uma lista de objetos (uma classe <code>Receita</code>).</li>
+  <li>A <code>ListView.separated</code>, com uma linha entre os itens.</li>
+  <li>A tela vermelha real <code>RangeError (index)</code> de quem esquece o <code>itemCount</code>.</li>
+</ul>
+</div>
+
+<p>As telas e o console desta aula vieram de um Flutter de verdade, no laboratório da Ana, em tamanho de celular.</p>
+
+<hr>
+
+<h2>A ideia: a fôrma de biscoito</h2>
+<p>Para fazer 1000 biscoitos, ninguém desenha cada um à mão: a Ana usa <strong>uma fôrma</strong> e corta quantos precisar. E ela não precisa assar os mil de uma vez: assa só a fornada que vai para a vitrine agora. A <code>ListView.builder</code> faz igual:</p>
+<ul>
+  <li>o <code>itemBuilder</code> é a <strong>fôrma</strong>: uma função que recebe a posição (<code>index</code>) e devolve o widget daquele item;</li>
+  <li>o <code>itemCount</code> diz <strong>quantos</strong> biscoitos existem;</li>
+  <li>e o Flutter só chama a fôrma para os itens que vão <strong>aparecer</strong> (mais uma pequena reserva logo abaixo da tela).</li>
+</ul>
+
+<hr>
+
+<h2>1. Mil produtos</h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final produtos = List.generate(1000, (i) =&gt; 'Produto ${i + 1}');
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Estoque da lojinha')),
+        body: ListView.builder(
+          itemCount: produtos.length,
+          itemBuilder: (context, index) {
+            debugPrint('montando o item $index');
+            return ListTile(
+              leading: CircleAvatar(child: Text('${index + 1}')),
+              title: Text(produtos[index]),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}</pre>
+
+<dl class="anatomy">
+  <dt>List.generate(1000, (i) =&gt; 'Produto ${i + 1}')</dt><dd>Cria a lista de dados: <code>'Produto 1'</code>, <code>'Produto 2'</code>… até <code>'Produto 1000'</code> (o <code>i</code> começa em 0).</dd>
+  <dt>ListView.builder(…)</dt><dd>Uma <code>ListView</code> que monta os itens com uma função, em vez de receber a lista de <code>children</code> pronta.</dd>
+  <dt>itemCount: produtos.length</dt><dd>Quantos itens a lista tem: 1000. Com ele, a lista sabe onde termina.</dd>
+  <dt>itemBuilder: (context, index) { … }</dt><dd>A fôrma. O Flutter a chama com o <code>index</code> do item que precisa mostrar (de 0 a 999) e usa o widget que ela devolve. O <code>context</code> é o mesmo <code>BuildContext</code> do <code>build</code>.</dd>
+  <dt>debugPrint('montando o item $index')</dt><dd>Só para espiar: escreve no console cada vez que a fôrma é usada.</dd>
+  <dt>CircleAvatar(child: Text('${index + 1}'))</dt><dd>Um círculo com o número do item (o <code>index</code> + 1, para começar do 1).</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/listview-builder-1.png" alt="Tela 'Estoque da lojinha' com uma lista de itens, cada um com um círculo lilás numerado e o texto: de 1 Produto 1 até 16 Produto 16, e o 17 cortado no pé da tela" width="390" height="844" loading="lazy"><figcaption>Ao abrir: do Produto 1 ao 16 (e a beirada do 17).</figcaption></figure>
+<figure class="tela"><img src="assets/telas/listview-builder-2.png" alt="A lista rolada: do Produto 13 (cortado no topo) até o Produto 29, com a barra do título acinzentada" width="390" height="844" loading="lazy"><figcaption>Depois de rolar 600 pixels: Produto 14 ao 29.</figcaption></figure>
+
+<p>E o console, do momento em que o app abriu até depois da rolagem (aqui, encurtado no meio):</p>
+<pre class="term">montando o item 0
+montando o item 1
+montando o item 2
+« … um item por linha …
+montando o item 33
+montando o item 34
+</pre>
+
+<p>A lista tem <strong>1000</strong> produtos, mas a fôrma foi usada <strong>35 vezes</strong> (do item 0 ao 34): os 17 que apareceram ao abrir, os que apareceram durante a rolagem e uma pequena reserva abaixo da tela, montada com antecedência para a rolagem não engasgar. Os outros 965 nunca foram montados. Com a <code>ListView(children: [...])</code>, os 1000 <code>ListTile</code> seriam criados logo de cara.</p>
+
+<div class="tryflutter" data-goal="src:List\.generate\(\s*50\s*,">
+<p class="try-task"><strong>Missão:</strong> o estoque encolheu: troque os 1000 produtos por <strong>50</strong>. Depois role até o fim da lista e confira que ela termina no Produto 50 (é o <code>itemCount: produtos.length</code> que avisa onde parar).</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final produtos = List.generate(1000, (i) =&gt; 'Produto ${i + 1}');
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Estoque da lojinha')),
+        body: ListView.builder(
+          itemCount: produtos.length,
+          itemBuilder: (context, index) {
+            debugPrint('montando o item $index');
+            return ListTile(
+              leading: CircleAvatar(child: Text('${index + 1}')),
+              title: Text(produtos[index]),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final produtos = List.generate(50, (i) =&gt; 'Produto ${i + 1}');
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Estoque da lojinha')),
+        body: ListView.builder(
+          itemCount: produtos.length,
+          itemBuilder: (context, index) {
+            debugPrint('montando o item $index');
+            return ListTile(
+              leading: CircleAvatar(child: Text('${index + 1}')),
+              title: Text(produtos[index]),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}</pre>
+</div>
+
+<hr>
+
+<h2>2. Uma lista de objetos: as receitas</h2>
+<p>Na vida real, cada item tem várias informações. A Ana criou uma classe <code>Receita</code> com o nome e o tempo de preparo, e uma lista de receitas. A fôrma pega a receita da posição <code>index</code> e monta a linha com os dados dela:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class Receita {
+  const Receita(this.nome, this.minutos);
+
+  final String nome;
+  final int minutos;
+}
+
+const receitas = [
+  Receita('Bolo de cenoura', 50),
+  Receita('Pão de queijo', 30),
+  Receita('Brigadeiro', 20),
+  Receita('Lasanha', 90),
+  Receita('Salada de frutas', 15),
+];
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: ListView.separated(
+          itemCount: receitas.length,
+          separatorBuilder: (context, index) =&gt; const Divider(),
+          itemBuilder: (context, index) {
+            final receita = receitas[index];
+            return ListTile(
+              leading: const Icon(Icons.restaurant_menu),
+              title: Text(receita.nome),
+              trailing: Text('${receita.minutos} min'),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}</pre>
+
+<dl class="anatomy">
+  <dt>class Receita { … }</dt><dd>Uma classe de modelo simples, com construtor <code>const</code> e campos <code>final</code> (mais em <a href="json-modelos.html">JSON e Classes de Modelo</a>).</dd>
+  <dt>const receitas = [ Receita(…), … ];</dt><dd>A lista de dados, fora dos widgets. Numa versão de verdade, ela viria de um banco de dados ou da internet.</dd>
+  <dt>ListView.separated(…)</dt><dd>Uma prima da <code>builder</code>: monta um <strong>separador</strong> entre um item e o próximo.</dd>
+  <dt>separatorBuilder: (context, index) =&gt; const Divider()</dt><dd>A fôrma do separador: aqui, uma linha fina (<code>Divider</code>). Ela é usada entre os itens, e não depois do último.</dd>
+  <dt>final receita = receitas[index];</dt><dd>Pega a receita da posição atual. Daí em diante, <code>receita.nome</code> e <code>receita.minutos</code>.</dd>
+  <dt>trailing: Text('${receita.minutos} min')</dt><dd>O tempo de preparo na ponta direita da linha.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/listview-builder-3.png" alt="Tela 'Receitas da Ana' com cinco linhas separadas por linhas finas cinzas: Bolo de cenoura 50 min, Pão de queijo 30 min, Brigadeiro 20 min, Lasanha 90 min e Salada de frutas 15 min, cada uma com um ícone de talheres" width="390" height="844" loading="lazy"><figcaption>A <code>ListView.separated</code>: uma linha fina entre as receitas.</figcaption></figure>
+
+<p>Repare que há 4 linhas separadoras para 5 receitas: nenhuma depois da Salada de frutas.</p>
+
+<div class="tryflutter" data-goal="src:ListView\.separated\(;;src:separatorBuilder:">
+<p class="try-task"><strong>Missão:</strong> esta versão usa a <code>ListView.builder</code>, sem separadores. Troque por uma <code>ListView.separated</code> e acrescente o <code>separatorBuilder</code> com um <code>Divider</code>, para ficar como a foto acima.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class Receita {
+  const Receita(this.nome, this.minutos);
+
+  final String nome;
+  final int minutos;
+}
+
+const receitas = [
+  Receita('Bolo de cenoura', 50),
+  Receita('Pão de queijo', 30),
+  Receita('Brigadeiro', 20),
+  Receita('Lasanha', 90),
+  Receita('Salada de frutas', 15),
+];
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: ListView.builder(
+          itemCount: receitas.length,
+          itemBuilder: (context, index) {
+            final receita = receitas[index];
+            return ListTile(
+              leading: const Icon(Icons.restaurant_menu),
+              title: Text(receita.nome),
+              trailing: Text('${receita.minutos} min'),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class Receita {
+  const Receita(this.nome, this.minutos);
+
+  final String nome;
+  final int minutos;
+}
+
+const receitas = [
+  Receita('Bolo de cenoura', 50),
+  Receita('Pão de queijo', 30),
+  Receita('Brigadeiro', 20),
+  Receita('Lasanha', 90),
+  Receita('Salada de frutas', 15),
+];
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: ListView.separated(
+          itemCount: receitas.length,
+          separatorBuilder: (context, index) =&gt; const Divider(),
+          itemBuilder: (context, index) {
+            final receita = receitas[index];
+            return ListTile(
+              leading: const Icon(Icons.restaurant_menu),
+              title: Text(receita.nome),
+              trailing: Text('${receita.minutos} min'),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}</pre>
+</div>
+
+<hr>
+
+<h2 id="formas">3. Formas diferentes de fazer uma lista: qual usar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Forma</th><th>Use quando</th></tr>
+<tr><td><code>ListView(children: [...])</code></td><td>Poucos itens, escritos à mão (um menu de configurações)</td></tr>
+<tr><td><code>ListView.builder(itemCount:, itemBuilder:)</code></td><td>Muitos itens, ou itens que vêm de uma lista de dados</td></tr>
+<tr><td><code>ListView.separated(…, separatorBuilder:)</code></td><td>O mesmo, com algo entre os itens (linha, espaço)</td></tr>
+<tr><td><code>ListView(children: [for (final r in receitas) ListTile(…)])</code></td><td>Lista curta vinda de dados: funciona, mas monta todos os itens de uma vez</td></tr>
+</table>
+</div>
+
+<p>Para apagar itens com o dedo, veja <a href="dismissible.html">Arrastar para Apagar</a>. E se os itens têm estado e a lista muda de ordem, lembre das <a href="keys.html">Keys</a>.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Esqueceu o <code>itemCount</code></strong>
+<pre class="file" data-file="lib/main.dart">        body: ListView.builder(
+          itemBuilder: (context, index) {
+            final receita = receitas[index];
+            return ListTile(
+              leading: const Icon(Icons.restaurant_menu),
+              title: Text(receita.nome),
+              trailing: Text('${receita.minutos} min'),
+            );
+          },
+        ),</pre>
+<figure class="tela"><img src="assets/telas/listview-builder-4.png" alt="Tela 'Receitas da Ana' com as cinco receitas no topo e, logo abaixo, o resto da tela vermelho com o texto amarelo 'RangeError (index): Index out of range: index should be less than 5: 5 See also: https://docs.flutter.dev/testing/errors'" width="390" height="844" loading="lazy"><figcaption>As cinco receitas e, embaixo, a tela vermelha de erro.</figcaption></figure>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following IndexError was thrown building:
+RangeError (index): Index out of range: index should be less than 5: 5
+
+When the exception was thrown, this was the stack:
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 274:3       throw_
+dart-sdk/lib/_internal/js_dev_runtime/private/js_array.dart 608:7                 _get]
+package:app/main.dart 30:37                                                       &lt;fn&gt;
+« … a pilha continua dentro do Flutter …
+</pre>
+<p>Sem o <code>itemCount</code>, a lista acha que é <strong>infinita</strong>: depois do item 4 (a Salada de frutas), ela chama a fôrma com <code>index</code> 5, e <code>receitas[5]</code> não existe. Linha por linha: <code>RangeError (index)</code> é "erro de intervalo, no índice"; <code>Index out of range: index should be less than 5: 5</code> é "índice fora do intervalo: o índice deveria ser menor que 5, e foi 5". A linha <code>package:app/main.dart 30:37</code> da pilha aponta o seu código: a linha 30, coluna 37, o <code>receitas[index]</code>. Na tela, os itens que deram certo aparecem, e a tela vermelha ocupa o lugar do item que falhou. <strong>Como consertar:</strong> <code>itemCount: receitas.length</code>.</p>
+</div>
+
+<div class="cenario">
+<strong><code>ListView.builder</code> dentro de uma <code>Column</code></strong>
+<p>O mesmo erro da <code>ListView</code> comum: <code>Vertical viewport was given unbounded height</code> e a tela em branco. A solução também é a mesma: <code>Expanded(child: ListView.builder(…))</code>. Veja <a href="listview.html#errado">ListView: Quando dá errado</a>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>ListView.builder(itemCount: n, itemBuilder: (context, index) =&gt; …)</code></td><td>Lista de <code>n</code> itens, montados sob demanda</td></tr>
+<tr><td><code>ListView.separated(…, separatorBuilder: (context, index) =&gt; const Divider())</code></td><td>Com um separador entre os itens</td></tr>
+<tr><td><code>List.generate(n, (i) =&gt; …)</code></td><td>Cria uma lista de dados com <code>n</code> itens</td></tr>
+<tr><td><code>final item = lista[index];</code></td><td>Pega o dado da posição atual dentro do <code>itemBuilder</code></td></tr>
+<tr><td><code>RangeError (index): Index out of range</code></td><td>Faltou o <code>itemCount</code> (ou ele é maior que a lista)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete</h3>
+<div class="ex-code">ListView.builder(<br>&nbsp;&nbsp;<input data-answer="itemCount" aria-label="quantos itens">: frutas.length,<br>&nbsp;&nbsp;<input data-answer="itemBuilder" aria-label="a função que monta um item">: (context, <input data-answer="index" aria-label="a posição">) =&gt; Text(frutas[index]),<br>)</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">2. Uma <code>ListView.builder</code> com <code>itemCount: 1000</code> numa tela onde cabem 12 itens. Quantas vezes o <code>itemBuilder</code> roda ao abrir?</p>
+<label><input type="radio" name="q2"> 1000</label>
+<label><input type="radio" name="q2"> 1</label>
+<label><input type="radio" name="q2"> Só um pouco mais que os itens visíveis</label>
+<label><input type="radio" name="q2"> Nenhuma, até rolar</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. Numa <code>ListView.separated</code> com 8 itens, quantos separadores aparecem?</p>
+<label><input type="radio" name="q3"> 8</label>
+<label><input type="radio" name="q3"> 7</label>
+<label><input type="radio" name="q3"> 9</label>
+<label><input type="radio" name="q3"> Nenhum</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. O que provoca <code>RangeError (index): Index out of range: index should be less than 5: 5</code> numa <code>ListView.builder</code>?</p>
+<label><input type="radio" name="q4"> Faltou o <code>itemCount</code>, e a lista pediu um item que não existe</label>
+<label><input type="radio" name="q4"> A lista tem itens demais</label>
+<label><input type="radio" name="q4"> Faltou o <code>Divider</code></label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>ListView.builder</code> recebe <code>itemCount</code> (quantos) e <code>itemBuilder</code> (a fôrma que monta o item da posição <code>index</code>).</li>
+  <li>Ela só monta os itens que aparecem (e uma pequena reserva): com mil produtos, o lab montou 35.</li>
+  <li>Dentro do <code>itemBuilder</code>, pegue o dado com <code>lista[index]</code> e monte a linha com ele.</li>
+  <li><code>ListView.separated</code> põe um separador entre os itens (um a menos que os itens).</li>
+  <li>Sem <code>itemCount</code>, a lista é infinita e dá <code>RangeError (index)</code> quando os dados acabam.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
