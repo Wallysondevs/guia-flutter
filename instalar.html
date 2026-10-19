@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Instalar o Flutter — Windows, macOS e Linux, pelo VS Code ou à mão | Guia Flutter</title>
+<meta name="description" content="Como instalar o Flutter 3 no Windows, no macOS e no Linux: o jeito rápido pelo VS Code (Flutter: New Project, Download SDK, Add SDK to PATH) e o jeito manual (baixar o pacote, extrair em develop, pôr a pasta bin no PATH), conferindo com flutter --version e dart --version, e os erros comuns: comando não encontrado, pasta com espaço, antivírus e PATH errado.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Instalar o <span class="hl">Flutter</span></h1>
+
+<p class="intro">Antes do primeiro app, o Flutter precisa morar no seu computador. Instalar o Flutter é, no fundo, três coisas: <strong>baixar</strong> uma pasta (o SDK), <strong>guardar</strong> essa pasta num lugar fixo e <strong>avisar ao sistema</strong> onde ela está, para que o comando <code>flutter</code> funcione em qualquer terminal. Esta aula mostra os dois caminhos oficiais: o rápido, pelo VS Code, e o manual, que funciona em qualquer lugar.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que você precisa ter antes de começar (Git, espaço em disco, um editor).</li>
+  <li>O jeito rápido: instalar pelo VS Code, com a extensão do Flutter.</li>
+  <li>O jeito manual: baixar o pacote, extrair na pasta <code>develop</code> e pôr a pasta <code>bin</code> no <strong>PATH</strong>, no Windows, no macOS e no Linux.</li>
+  <li>Como conferir a instalação com <code>flutter --version</code> e <code>dart --version</code>.</li>
+  <li>O que fazer quando o terminal diz que o <code>flutter</code> não existe.</li>
+</ul>
+</div>
+
+<div class="warning">
+<strong>O que é ilustrativo nesta aula</strong>
+<p>A instalação depende do seu sistema. Os passos de Windows e macOS e as telas do VS Code foram conferidos na documentação oficial (<code>docs.flutter.dev/install</code>, versão 3.47) e são <strong>ilustrativos</strong>: não foram fotografados. As saídas de terminal marcadas como "máquina da Ana" saíram de um Linux de verdade, com o Flutter 3.47.7.</p>
+</div>
+
+<p>Não quer instalar nada agora? Dá para seguir as primeiras aulas só com as caixas "Experimente" do guia, que rodam o Flutter no navegador (aula <a href="simulador.html">O Editor do Guia</a>). Mas, para ter o app no seu celular, a instalação é o caminho.</p>
+
+<hr>
+
+<h2>A ideia: a caixa de ferramentas e o mapa</h2>
+<p>Pense numa caixa de ferramentas nova. Não adianta comprar e deixar no porta-malas de um carro qualquer: você guarda num lugar fixo da garagem e conta para todo mundo da casa onde ela fica. Aí, quando alguém pede "me passa a chave de fenda", qualquer um sabe onde buscar.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Na garagem</th><th>No computador</th></tr>
+<tr><td>A caixa de ferramentas</td><td>A pasta <code>flutter</code> (o SDK), com as ferramentas dentro de <code>flutter/bin</code></td></tr>
+<tr><td>O lugar fixo da garagem</td><td>A pasta <code>develop</code> na sua pasta pessoal</td></tr>
+<tr><td>O recado "a caixa fica na prateleira 3"</td><td>O <strong>PATH</strong>: a lista de pastas onde o terminal procura os comandos</td></tr>
+<tr><td>"Me passa a chave de fenda"</td><td>Digitar <code>flutter</code> no terminal</td></tr>
+</table>
+</div>
+
+<p>O <strong>PATH</strong> (em inglês, "caminho") é uma variável do sistema com uma lista de pastas. Quando você digita um comando, o terminal procura um programa com aquele nome em cada pasta da lista, na ordem. Se a pasta <code>flutter/bin</code> não estiver na lista, o terminal responde que o comando não existe, mesmo com o Flutter inteiro no seu disco.</p>
+
+<hr>
+
+<h2>1. Antes de começar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Item</th><th>Por quê</th></tr>
+<tr><td>Um computador com Windows 10 ou 11 (64 bits), macOS ou Linux</td><td>São os sistemas em que o SDK roda. Para app de iPhone, só o Mac (aula <a href="introducao.html">O que é Flutter</a>)</td></tr>
+<tr><td>Espaço em disco</td><td>O SDK ocupa alguns gigabytes, e o Android Studio com um emulador ocupa bem mais. Separe uns 10 GB</td></tr>
+<tr><td><strong>Git</strong></td><td>O Flutter usa o Git por dentro (para se atualizar, por exemplo). No Windows: <em>Git for Windows</em> (<code>git-scm.com</code>). No macOS, vem com as ferramentas de linha de comando do Xcode. No Linux, pelo gerenciador de pacotes</td></tr>
+<tr><td>Um editor</td><td>O VS Code ou o Android Studio (aula <a href="editor.html">VS Code e Android Studio</a>)</td></tr>
+</table>
+</div>
+
+<p>Não precisa instalar o Dart separado: <strong>o Dart vem dentro do Flutter</strong>. Se você já tem um Dart instalado por causa do Guia Dart, tudo bem; mais adiante você vê como saber qual deles o terminal está usando.</p>
+
+<hr>
+
+<h2>2. O jeito rápido: pelo VS Code</h2>
+<p>É o caminho que a documentação oficial chama de <em>quick start</em>, e o mais fácil no Windows e no macOS. O VS Code baixa o Flutter e mexe no PATH para você.</p>
+
+<ol class="passo">
+  <li>Instale o <strong>Git</strong> e o <strong>VS Code</strong> (<code>code.visualstudio.com</code>).</li>
+  <li>No VS Code, instale a extensão <strong>Flutter</strong> (da <em>Dart Code</em>): abra a aba de extensões (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd>), procure "Flutter" e clique em <strong>Install</strong>. Ela instala junto a extensão do Dart.</li>
+  <li>Abra a <strong>paleta de comandos</strong>: menu <strong>View › Command Palette</strong>, ou <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> (<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> no Mac).</li>
+  <li>Digite <code>flutter</code> e escolha <strong>Flutter: New Project</strong>.</li>
+  <li>O VS Code avisa que não achou o SDK. Clique em <strong>Download SDK</strong>.</li>
+  <li>Na janela <strong>Select Folder for Flutter SDK</strong>, escolha onde guardar (por exemplo, a pasta <code>develop</code> na sua pasta pessoal) e clique em <strong>Clone Flutter</strong>. Aparece o aviso <em>"Downloading the Flutter SDK. This may take a few minutes."</em> ("baixando o SDK do Flutter; pode levar alguns minutos").</li>
+  <li>No fim, clique em <strong>Add SDK to PATH</strong>. A mensagem <em>"The Flutter SDK was added to your PATH"</em> confirma.</li>
+  <li>Se aparecer o aviso do Google Analytics, leia e responda.</li>
+  <li><strong>Feche e abra de novo</strong> todos os terminais e o próprio VS Code. Só os terminais abertos <em>depois</em> enxergam o PATH novo.</li>
+</ol>
+
+<p>Pronto. Pule para a seção 4, "Conferindo".</p>
+
+<hr>
+
+<h2>3. O jeito manual</h2>
+<p>O caminho manual é o mesmo nos três sistemas: <strong>baixar</strong>, <strong>extrair</strong>, <strong>pôr no PATH</strong>. Use quando não quiser depender do VS Code, ou quando o jeito rápido der problema.</p>
+
+<h3>3.1 Baixar</h3>
+<p>Na página <code>docs.flutter.dev/install/archive</code> ficam os pacotes do canal <strong>stable</strong> (estável). O nome do arquivo diz o sistema e a versão:</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Sistema</th><th>Arquivo (exemplo)</th></tr>
+<tr><td>Windows</td><td><code>flutter_windows_3.47.7-stable.zip</code></td></tr>
+<tr><td>macOS</td><td><code>flutter_macos_arm64_3.47.7-stable.zip</code> (Apple Silicon) ou <code>flutter_macos_3.47.7-stable.zip</code> (Intel)</td></tr>
+<tr><td>Linux</td><td><code>flutter_linux_3.47.7-stable.tar.xz</code></td></tr>
+</table>
+</div>
+
+<p>Pegue sempre o <strong>stable</strong> mais recente. Os outros canais (<code>beta</code>, <code>main</code>) são para quem quer testar novidades antes da hora.</p>
+
+<h3>3.2 Extrair na pasta <code>develop</code></h3>
+<p>A recomendação oficial é uma pasta <code>develop</code> dentro da sua pasta pessoal. Duas regras importantes para a pasta: <strong>sem espaços nem acentos</strong> no caminho, e <strong>sem precisar de administrador</strong> para escrever nela (nada de <code>C:\Program Files</code>).</p>
+
+<p><strong>Windows</strong> (no PowerShell, depois de criar a pasta <code>develop</code>):</p>
+<pre class="term">PS&gt; Expand-Archive `
+  -Path "$env:USERPROFILE\Downloads\flutter_windows_3.47.7-stable.zip" `
+  -DestinationPath "$env:USERPROFILE\develop"
+</pre>
+
+<p><strong>macOS</strong>:</p>
+<pre class="term">$ mkdir -p ~/develop
+$ unzip ~/Downloads/flutter_macos_arm64_3.47.7-stable.zip -d ~/develop/
+</pre>
+
+<p><strong>Linux</strong> (antes, os pacotes que o Flutter usa, nos sistemas da família Debian/Ubuntu):</p>
+<pre class="term">$ sudo apt-get install -y curl git unzip xz-utils zip libglu1-mesa
+$ mkdir -p ~/develop
+$ tar -xf ~/Downloads/flutter_linux_3.47.7-stable.tar.xz -C ~/develop/
+</pre>
+
+<p>Nos três casos, o resultado é uma pasta <code>develop/flutter</code>. Dentro dela, a que interessa é a <code>bin</code>, onde moram os comandos <code>flutter</code> e <code>dart</code>.</p>
+
+<h3>3.3 Pôr a pasta <code>bin</code> no PATH</h3>
+
+<p><strong>Windows:</strong></p>
+<ol class="passo">
+  <li>Aperte <kbd>Windows</kbd>+<kbd>Pause</kbd> (ou procure "variáveis de ambiente" no menu Iniciar) e vá em <strong>Configurações avançadas do sistema › Variáveis de Ambiente</strong>.</li>
+  <li>Em <strong>Variáveis de usuário</strong>, selecione <strong>Path</strong> e clique em <strong>Editar</strong>.</li>
+  <li>Clique em <strong>Novo</strong> e escreva <code>%USERPROFILE%\develop\flutter\bin</code>.</li>
+  <li>Use <strong>Mover para Cima</strong> até a linha ficar no topo.</li>
+  <li>Clique em <strong>OK</strong> nas três janelas e <strong>feche e abra de novo</strong> os terminais e o editor.</li>
+</ol>
+
+<p><strong>macOS</strong> (o terminal padrão é o zsh): acrescente uma linha no fim do arquivo <code>~/.zprofile</code>:</p>
+<pre class="file" data-file="~/.zprofile">export PATH="$HOME/develop/flutter/bin:$PATH"
+</pre>
+
+<p><strong>Linux</strong> (com o bash, o padrão do Ubuntu): acrescente a mesma linha no fim do <code>~/.bashrc</code>, com um comando só:</p>
+<pre class="term">$ echo 'export PATH="$HOME/develop/flutter/bin:$PATH"' &gt;&gt; ~/.bashrc
+</pre>
+
+<dl class="anatomy">
+  <dt>export PATH=</dt><dd>Muda a variável <code>PATH</code> e a "exporta" para os programas abertos a partir daquele terminal.</dd>
+  <dt>"$HOME/develop/flutter/bin</dt><dd>A pasta nova, com o caminho completo (<code>$HOME</code> é a sua pasta pessoal; na máquina da Ana, <code>/home/ana</code>).</dd>
+  <dt>:$PATH"</dt><dd>Os dois-pontos separam as pastas da lista, e <code>$PATH</code> é a lista antiga. Ou seja: "a pasta do Flutter <strong>primeiro</strong>, e depois tudo o que já estava lá". Esquecer o <code>:$PATH</code> apaga a lista antiga, e aí nem o <code>ls</code> funciona.</dd>
+  <dt>&gt;&gt; ~/.bashrc</dt><dd>Acrescenta a linha no <strong>fim</strong> do arquivo que o bash lê toda vez que abre. Com <code>&gt;</code> (um só), o arquivo inteiro seria <strong>substituído</strong>: cuidado.</dd>
+</dl>
+
+<p>Depois, <strong>abra um terminal novo</strong> (ou rode <code>source ~/.bashrc</code> no atual).</p>
+
+<hr>
+
+<h2>4. Conferindo</h2>
+<p>Num terminal novo, peça a versão. A Ana instalou com o Git (a terceira forma da tabela "Formas diferentes", mais abaixo), direto na pasta pessoal: o SDK dela fica em <code>/home/ana/flutter</code>, e o PATH aponta para <code>/home/ana/flutter/bin</code>. Na máquina dela:</p>
+
+<pre class="term">$ flutter --version
+Flutter 3.47.7 • channel stable • https://github.com/flutter/flutter.git
+Framework • revision abaf9c5237 (11 days ago) • 2026-10-08 09:51:21 -0700
+Engine • hash d8a2d6c768c334d53e16277f837970ffa1e2de81 (revision deb287481e) (12 days ago) • 2026-10-07 17:09:12.000Z
+Tools • Dart 3.13.5 • DevTools 2.60.0
+</pre>
+
+<dl class="anatomy">
+  <dt>Flutter 3.47.7</dt><dd>A versão do Flutter: a série 3, a versão 47 dessa série e a correção número 7. É a versão usada em todo o guia.</dd>
+  <dt>channel stable</dt><dd>O <strong>canal</strong>: <code>stable</code> é o estável, o recomendado.</dd>
+  <dt>https://github.com/flutter/flutter.git</dt><dd>De onde o SDK veio: o repositório oficial.</dd>
+  <dt>Framework • revision ... (11 days ago)</dt><dd>A versão exata do código dos widgets e quando ela foi feita.</dd>
+  <dt>Engine • hash ...</dt><dd>A versão exata do motor de desenho.</dd>
+  <dt>Tools • Dart 3.13.5 • DevTools 2.60.0</dt><dd>O Dart e o DevTools que vieram <strong>junto</strong>. Repare: você não instalou o Dart, e ele já está aí.</dd>
+</dl>
+
+<p>Agora o Dart e o lugar de cada comando:</p>
+
+<pre class="term">$ dart --version
+Dart SDK version: 3.13.5 (stable) (Tue Sep 29 01:00:52 2026 -0700) on "linux_x64"
+$ which flutter dart
+/home/ana/flutter/bin/flutter
+/home/ana/flutter/bin/dart
+$ echo $PATH
+/home/ana/flutter/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+</pre>
+
+<p>O <code>which</code> ("qual?") mostra <strong>de onde</strong> vem cada comando: os dois vêm da pasta <code>bin</code> do Flutter. Se você tinha um Dart instalado antes, é aqui que você confere qual está valendo: o que vem primeiro no PATH ganha. E o <code>echo $PATH</code> mostra a lista inteira, separada por dois-pontos, com a pasta do Flutter <strong>na frente</strong>.</p>
+
+<p>Por fim, o <code>flutter</code> sozinho mostra a ajuda (este é o começo; a lista continua):</p>
+
+<pre class="term">$ flutter
+Manage your Flutter app development.
+
+Common commands:
+
+  flutter create &lt;output directory&gt;
+    Create a new Flutter project in the specified directory.
+
+  flutter run [options]
+    Run your Flutter application on an attached device or in an emulator.
+
+Usage: flutter &lt;command&gt; [arguments]
+«  ... as opções e a lista completa de comandos: doctor, create, run, build, pub, devices...
+</pre>
+
+<p>"Gerencie o desenvolvimento do seu app Flutter. Comandos comuns: <code>flutter create</code> (cria um projeto novo na pasta indicada) e <code>flutter run</code> (roda o app num aparelho ligado ou num emulador)". Os dois são as próximas aulas. Antes deles, o <a href="flutter-doctor.html"><code>flutter doctor</code></a> confere se falta alguma coisa na máquina.</p>
+
+<hr>
+
+<h2>Experimente</h2>
+<p>Enquanto a instalação não termina, comemore no editor do guia, que já tem um Flutter pronto.</p>
+
+<div class="tryflutter" data-goal="src:Text\('Flutter instalado!'\)">
+<p class="try-task"><strong>Missão:</strong> troque o texto do meio da tela por <code>Flutter instalado!</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MaterialApp(
+    home: Scaffold(
+      body: Center(child: Text('Instalando...')),
+    ),
+  ));
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MaterialApp(
+    home: Scaffold(
+      body: Center(child: Text('Flutter instalado!')),
+    ),
+  ));
+}
+</pre>
+</div>
+
+<figure class="tela"><img src="assets/telas/instalar-1.png" alt="O resultado esperado: tela clara com o texto 'Flutter instalado!' no meio e a faixa DEBUG no canto superior direito" width="390" height="844" loading="lazy"><figcaption>O resultado esperado da missão.</figcaption></figure>
+
+<hr>
+
+<h2>Formas diferentes de instalar (e qual usar)</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Jeito</th><th>Como</th><th>Quando usar</th></tr>
+<tr><td>Pelo VS Code</td><td>Extensão Flutter › <em>Flutter: New Project</em> › <em>Download SDK</em> › <em>Add SDK to PATH</em></td><td><strong>O mais fácil</strong>, principalmente no Windows. Recomendado para começar</td></tr>
+<tr><td>Manual (pacote)</td><td>Baixar o <code>.zip</code>/<code>.tar.xz</code>, extrair em <code>develop</code>, PATH à mão</td><td>Quando você quer saber exatamente onde está tudo, ou usa outro editor</td></tr>
+<tr><td>Com o Git</td><td><code>git clone https://github.com/flutter/flutter.git -b stable</code> dentro de <code>develop</code>, e o PATH à mão</td><td>É o que o VS Code faz por baixo ("Clone Flutter"). O resultado é igual ao manual</td></tr>
+<tr><td>Loja do sistema (Snap, Homebrew...)</td><td>Pacotes mantidos por terceiros ou pela comunidade</td><td>Funcionam, mas não são o caminho principal da documentação; se der problema, volte ao manual</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>"Comando 'flutter' não encontrado"</strong>
+<p>Numa máquina da Ana <strong>sem</strong> o Flutter no PATH, o terminal do Ubuntu responde assim (as mensagens do próprio Ubuntu saem em português):</p>
+<pre class="term">$ flutter --version
+Comando 'flutter' não encontrado, você quis dizer:
+  comando 'fluster' do deb fluster (1.0.1+really0.6.0-2)
+Experimente: sudo apt install &lt;deb name&gt;
+</pre>
+<p>O terminal procurou um programa chamado <code>flutter</code> em todas as pastas do PATH e não achou. O Ubuntu ainda tenta ajudar: sugere um programa de nome parecido, o <code>fluster</code>, que <strong>não tem nada a ver</strong> com o Flutter. <strong>Não</strong> instale o <code>fluster</code>. No Windows, a mesma situação aparece como <em>"'flutter' não é reconhecido como um comando interno ou externo"</em> (ilustrativo).</p>
+<p><strong>Como consertar:</strong> (1) confira se a pasta existe mesmo (no Linux, <code>ls ~/develop/flutter/bin</code>); (2) confira se a linha do PATH está certa e aponta para a pasta <code>bin</code>, não para a pasta <code>flutter</code>; (3) abra um terminal <strong>novo</strong>.</p>
+</div>
+
+<div class="cenario">
+<strong>Esqueceu o <code>:$PATH</code></strong>
+<pre class="term">$ export PATH="$HOME/develop/flutter/bin"
+$ ls
+Comando 'ls' está disponível nos seguintes locais
+ * /bin/ls
+ * /usr/bin/ls
+O comando não foi localizado porque '/usr/bin:/bin' não está incluído na variável de ambiente PATH.
+ls: comando não encontrado
+</pre>
+<p>A Ana escreveu a linha do PATH sem o <code>:$PATH</code> do fim. A lista antiga sumiu, e agora o terminal só procura comandos na pasta do Flutter: até o <code>ls</code> deixou de existir. A mensagem do Ubuntu explica direitinho: o <code>ls</code> está em <code>/bin/ls</code>, mas <code>/usr/bin:/bin</code> não está no PATH. <strong>Como consertar:</strong> feche esse terminal (a mudança feita com <code>export</code> vale só para ele) e, se a linha errada foi parar no <code>~/.bashrc</code>, corrija-a lá, com <code>:$PATH</code> no fim.</p>
+</div>
+
+<div class="cenario">
+<strong>A pasta tem espaço ou acento</strong>
+<p>Instalar em <code>C:\Users\Ana Maria\Meus Programas\flutter</code> ou em <code>C:\Program Files</code> costuma dar erros estranhos depois, na hora de compilar o app de Android (ferramentas que se perdem no espaço do caminho, ou que não têm permissão para escrever ali). <strong>Como consertar:</strong> mova a pasta <code>flutter</code> para um caminho simples, como <code>C:\develop\flutter</code>, e corrija o PATH.</p>
+</div>
+
+<div class="cenario">
+<strong>Windows: sumiu o <code>flutter.bat</code></strong>
+<p>Depois de extrair, a pasta <code>flutter\bin</code> está sem o arquivo <code>flutter.bat</code>. A documentação oficial explica: o antivírus pode ter colocado o arquivo em quarentena. <strong>Como consertar:</strong> marque a pasta do Flutter como confiável no antivírus e extraia de novo.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Passo</th><th>Windows</th><th>macOS</th><th>Linux</th></tr>
+<tr><td>Pré-requisito</td><td>Git for Windows</td><td><code>xcode-select --install</code></td><td><code>curl git unzip xz-utils zip libglu1-mesa</code></td></tr>
+<tr><td>Pasta</td><td><code>%USERPROFILE%\develop</code></td><td><code>~/develop</code></td><td><code>~/develop</code></td></tr>
+<tr><td>Extrair</td><td><code>Expand-Archive</code></td><td><code>unzip</code></td><td><code>tar -xf</code></td></tr>
+<tr><td>PATH</td><td>Variáveis de Ambiente › Path › <code>%USERPROFILE%\develop\flutter\bin</code></td><td><code>~/.zprofile</code></td><td><code>~/.bashrc</code></td></tr>
+<tr><td>Conferir</td><td colspan="3"><code>flutter --version</code>, <code>dart --version</code> e, depois, <a href="flutter-doctor.html"><code>flutter doctor</code></a></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. A pasta dos comandos</h3>
+<p>Qual subpasta do SDK do Flutter precisa estar no PATH?</p>
+<div class="ex-code">develop/flutter/<input data-answer="bin" aria-label="subpasta"></div>
+</div>
+
+<div class="exercise">
+<h3>2. O comando da versão</h3>
+<p>Complete o comando que mostra a versão do Flutter instalado:</p>
+<div class="ex-code">$ flutter <input data-answer="--version" aria-label="opção"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. A Ana acrescentou o Flutter ao PATH, mas no terminal que já estava aberto o <code>flutter</code> continua "não encontrado". Por quê?</p>
+<label><input type="radio" name="q3"> O download veio corrompido</label>
+<label><input type="radio" name="q3"> Terminais já abertos não leem o PATH novo: é preciso abrir outro (ou rodar <code>source ~/.bashrc</code>)</label>
+<label><input type="radio" name="q3"> Falta instalar o Dart separado</label>
+<label><input type="radio" name="q3"> O Flutter só funciona dentro do VS Code</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. Qual destas pastas é a <strong>melhor</strong> para guardar o Flutter no Windows?</p>
+<label><input type="radio" name="q4"> <code>C:\Program Files\Flutter</code></label>
+<label><input type="radio" name="q4"> <code>C:\Users\Ana\Área de Trabalho\meus apps\flutter</code></label>
+<label><input type="radio" name="q4"> <code>C:\Windows\flutter</code></label>
+<label><input type="radio" name="q4"> <code>C:\Users\Ana\develop\flutter</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. O que acontece com <code>export PATH="$HOME/develop/flutter/bin"</code>, <strong>sem</strong> o <code>:$PATH</code> no fim?</p>
+<label><input type="radio" name="q5"> A lista antiga some, e comandos como <code>ls</code> deixam de ser achados naquele terminal</label>
+<label><input type="radio" name="q5"> Nada: o <code>:$PATH</code> é opcional</label>
+<label><input type="radio" name="q5"> O Flutter fica instalado duas vezes</label>
+<label><input type="radio" name="q5"> O computador não liga mais</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Instalar o Flutter é baixar o SDK, guardar numa pasta fixa (<code>develop</code>, sem espaços nem acentos) e pôr a pasta <code>flutter/bin</code> no <strong>PATH</strong>.</li>
+  <li>O jeito mais fácil é pelo VS Code: extensão Flutter, <em>Flutter: New Project</em>, <em>Download SDK</em>, <em>Add SDK to PATH</em>.</li>
+  <li>O jeito manual: pacote do canal stable, extrair, e o PATH pelas Variáveis de Ambiente (Windows), no <code>~/.zprofile</code> (macOS) ou no <code>~/.bashrc</code> (Linux).</li>
+  <li>O Dart vem junto com o Flutter.</li>
+  <li>Confira com <code>flutter --version</code> e <code>dart --version</code>, sempre num terminal aberto <strong>depois</strong> de mexer no PATH.</li>
+  <li>"Comando não encontrado" quase sempre é PATH: confira a pasta, o <code>:$PATH</code> e abra um terminal novo.</li>
+  <li>O próximo passo é o <a href="flutter-doctor.html"><code>flutter doctor</code></a>, que confere o resto da máquina.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
