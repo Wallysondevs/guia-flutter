@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter runApp — seu primeiro app, do zero | Guia Flutter</title>
+<meta name="description" content="O primeiro app Flutter escrito à mão: a função main, o runApp, o widget raiz, o import do material.dart, por que o Text sozinho pede uma direção de texto, o MaterialApp e o Scaffold de cara, e os erros reais (No Directionality widget found, runApp esquecido, import faltando) explicados em português, com fotos da tela e missões no editor.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">runApp</span>: seu primeiro app</h1>
+
+<p class="intro">O <code>flutter create</code> entrega um app pronto, com contador, tema e comentários, e é fácil ficar perdido no meio de tanta coisa. Nesta aula a Ana faz o caminho contrário: apaga tudo do <code>lib/main.dart</code> e escreve um app <strong>do zero</strong>, uma linha por vez. O ponto de partida é uma função só, o <code>runApp</code>, que pega um widget e o coloca na tela.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é a função <code>main</code> num app Flutter e o que o <code>runApp</code> faz.</li>
+  <li>O que é o <strong>widget raiz</strong> e por que ele ocupa a tela inteira.</li>
+  <li>O menor app possível: um <code>Text</code> sozinho, e por que ele exige uma <strong>direção de texto</strong>.</li>
+  <li>A centralizar com <code>Center</code> e a desenhar a <strong>árvore de widgets</strong> do seu app.</li>
+  <li>O jeito de verdade de começar: <code>MaterialApp</code> + <code>Scaffold</code>.</li>
+  <li>A separar o app numa classe sua (<code>MeuApp</code>), o formato que todo o guia usa.</li>
+  <li>Os erros reais: <code>No Directionality widget found</code>, o <code>runApp</code> esquecido e o <code>import</code> que faltou.</li>
+</ul>
+</div>
+
+<p>Todos os apps desta aula foram compilados com o Flutter estável do laboratório e fotografados numa tela do tamanho de um celular. Cada caixa "Experimente" deixa você mexer no mesmo código (aula <a href="simulador.html">O Editor do Guia</a>).</p>
+
+<hr>
+
+<h2>A ideia: ligar o aparelho na tomada</h2>
+<p>Pense numa televisão nova. Ela pode ter o melhor painel do mundo, mas só mostra alguma coisa quando você <strong>liga na tomada</strong> e escolhe o canal. Antes disso, é uma caixa preta.</p>
+
+<p>Num app Flutter é igual. Você pode escrever quantos widgets quiser (widget = "peça da tela", aula <a href="widgets.html">Tudo é Widget</a>), mas nada aparece até alguém dizer ao Flutter: <strong>"este aqui é o app; desenhe-o"</strong>. Quem diz isso é o <code>runApp</code>.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Na televisão</th><th>No Flutter</th></tr>
+<tr><td>Apertar o botão de ligar</td><td>O sistema chama a função <code>main()</code></td></tr>
+<tr><td>Escolher o canal que vai ocupar a tela</td><td><code>runApp(widget)</code>: escolhe o widget que vai ocupar a tela</td></tr>
+<tr><td>O programa que passa no canal</td><td>O <strong>widget raiz</strong> e tudo o que estiver dentro dele</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>1. A função <code>main</code></h2>
+<p>Você já conhece a <code>main</code> do Dart (aula <a href="dart-para-flutter.html">O Dart que Você Precisa</a>): é por ela que todo programa Dart começa. Num programa de terminal, ela usa <code>print</code>. Num app Flutter, ela tem um trabalho só: chamar o <code>runApp</code>.</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/widgets.dart';
+
+void main() {
+  runApp(
+    const Text(
+      'Olá, Ana!',
+      textDirection: TextDirection.ltr,
+    ),
+  );
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>import 'package:flutter/widgets.dart';</dt><dd>Traz para o arquivo as peças básicas do Flutter: <code>runApp</code>, <code>Text</code>, <code>Center</code>, <code>TextDirection</code>... Sem um <code>import</code> do Flutter, o Dart não sabe o que é nenhuma delas.</dd>
+  <dt>void main() { ... }</dt><dd>O ponto de partida. Quando o app abre no celular, o Flutter chama a <code>main</code>, como em qualquer programa Dart.</dd>
+  <dt>runApp( ... )</dt><dd>"Rode o app": recebe <strong>um</strong> widget e o coloca na tela. É a ponte entre o seu código e a tela do aparelho.</dd>
+  <dt>const Text('Olá, Ana!', ...)</dt><dd>O widget que vai para a tela: um texto. Ele é o <strong>widget raiz</strong> (a raiz da árvore, o primeiro de todos). O <code>const</code> diz ao Dart que este widget nunca muda, e o Flutter pode reaproveitá-lo (você vai ver o porquê em <a href="stateless.html">StatelessWidget</a>).</dd>
+  <dt>textDirection: TextDirection.ltr</dt><dd>A <strong>direção</strong> do texto: <code>ltr</code> = <em>left to right</em>, "da esquerda para a direita", como o português. Em árabe e hebraico se escreve da direita para a esquerda (<code>rtl</code>). Aqui, sem ninguém em volta para avisar a direção, o próprio <code>Text</code> precisa dela (seção 3).</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/primeiro-app-1.png" alt="Tela toda branca com o texto 'Olá, Ana!', pequeno e preto, colado no canto de cima à esquerda" width="390" height="844" loading="lazy"><figcaption>O menor app Flutter (Flutter 3.47.7, tela de celular de 390 × 844).</figcaption></figure>
+
+<p>Funcionou, mas está longe de parecer um app: o texto ficou <strong>colado no canto de cima, à esquerda</strong>, pequeno, sem barra, sem cor, sem nada. Ninguém pintou o fundo (o branco da foto é o da janela onde o lab abriu o app). E isso é tudo o que você pediu: um texto. O Flutter não acrescenta nada por conta própria.</p>
+
+<hr>
+
+<h2>2. O widget raiz ocupa a tela inteira</h2>
+<p>Por que o texto foi parar no canto? Porque o widget que você entrega ao <code>runApp</code>, o <strong>widget raiz</strong>, é obrigado a ocupar <strong>a tela inteira</strong>. O <code>Text</code> recebeu a tela toda e escreveu as letras a partir do começo dela: o canto de cima, à esquerda.</p>
+
+<p>Para o texto ir para o meio, é preciso outro widget em volta dele, cujo trabalho seja justamente "pôr no meio": o <code>Center</code>. Agora é ele que recebe a tela inteira, e o <code>Text</code> vira o <strong>filho</strong> dele:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/widgets.dart';
+
+void main() {
+  runApp(
+    const Center(
+      child: Text(
+        'Olá, Ana!',
+        textDirection: TextDirection.ltr,
+      ),
+    ),
+  );
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>Center</dt><dd>Um widget que não desenha nada: ele só pega o filho e o coloca <strong>no meio</strong> do espaço que tem. Como ele é o widget raiz, o espaço que ele tem é a tela inteira.</dd>
+  <dt>child:</dt><dd>"Filho". É o parâmetro onde vai o widget de dentro. Quase todo widget que embrulha <strong>um</strong> outro usa o nome <code>child</code>; os que embrulham vários usam <code>children</code> ("filhos"), como você vai ver em <a href="row-column.html">Row e Column</a>.</dd>
+  <dt>Text(...)</dt><dd>O mesmo texto da seção 1, agora como filho do <code>Center</code>.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/primeiro-app-2.png" alt="Tela toda branca com o texto 'Olá, Ana!', pequeno e preto, bem no meio da tela" width="390" height="844" loading="lazy"><figcaption>Com o <code>Center</code>, o texto foi para o meio da tela.</figcaption></figure>
+
+<p>O código virou uma <strong>árvore</strong>: um widget dentro do outro. Desenhada, a árvore deste app é assim:</p>
+
+<pre>runApp
+└── Center
+    └── Text('Olá, Ana!')
+</pre>
+
+<p>Repare na vírgula depois de cada <code>)</code>. Ela é opcional no Dart, mas é um costume forte no Flutter: com a vírgula no fim, o formatador (<code>dart format</code>, que o VS Code roda ao salvar) quebra as linhas de um jeito que deixa a árvore visível no próprio código, um nível de recuo para cada nível da árvore.</p>
+
+<div class="tryflutter" data-goal="src:Text\(\s*'Receitas da Ana'">
+<p class="try-task"><strong>Missão:</strong> o app vai ser de receitas. Troque o texto do meio da tela para <code>Receitas da Ana</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/widgets.dart';
+
+void main() {
+  runApp(
+    const Center(
+      child: Text(
+        'Olá, Ana!',
+        textDirection: TextDirection.ltr,
+      ),
+    ),
+  );
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/widgets.dart';
+
+void main() {
+  runApp(
+    const Center(
+      child: Text(
+        'Receitas da Ana',
+        textDirection: TextDirection.ltr,
+      ),
+    ),
+  );
+}
+</pre>
+</div>
+
+<hr>
+
+<h2 id="direcao">3. Por que o <code>Text</code> pediu a direção?</h2>
+<p>O <code>Text</code> precisa saber se as letras vão da esquerda para a direita ou ao contrário: sem isso, ele não sabe nem por onde começar a desenhar. Normalmente, quem conta isso a ele é um widget lá de cima da árvore (o <code>MaterialApp</code>, seção 4). Nos exemplos acima não havia ninguém em cima, então a direção teve de ir no próprio <code>Text</code>.</p>
+
+<p>O que acontece se a Ana tirar o <code>textDirection</code>?</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/widgets.dart';
+
+void main() {
+  runApp(
+    const Center(
+      child: Text('Olá, Ana!'),
+    ),
+  );
+}
+</pre>
+
+<p>O código compila sem reclamar. O problema só aparece com o app <strong>rodando</strong>: no lugar do texto, a tela inteira fica vermelha, com a mensagem de erro escrita em amarelo:</p>
+
+<figure class="tela"><img src="assets/telas/primeiro-app-3.png" alt="Tela inteira vermelho-escura com um texto amarelo que começa com 'No Directionality widget found.' e continua explicando que widgets RichText precisam de um Directionality acima deles; algumas setas da mensagem aparecem como quadradinhos" width="390" height="844" loading="lazy"><figcaption>A "tela vermelha" do modo debug: um erro aconteceu enquanto o Flutter montava a tela.</figcaption></figure>
+
+<p>Essa é a famosa <strong>tela vermelha</strong> do Flutter. Ela só aparece no modo <strong>debug</strong> (o modo do <code>flutter run</code>, em que você desenvolve) e mostra o erro ali mesmo, onde o widget deveria estar. As setinhas da mensagem saíram como quadradinhos porque a fonte da tela não tem o símbolo <code>←</code>; no console elas aparecem certas. O console mostrou a mensagem completa:</p>
+
+<pre class="devtools">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following assertion was thrown building Text("Olá, Ana!", dependencies: [MediaQuery]):
+No Directionality widget found.
+RichText widgets require a Directionality widget ancestor.
+The specific widget that could not find a Directionality ancestor was:
+  RichText
+The ownership chain for the affected widget is: "RichText ← Text ← Center ← _FocusInheritedScope ←
+  _FocusScopeWithExternalFocusNode ← _FocusInheritedScope ← Focus ← FocusTraversalGroup ← MediaQuery
+  ← _MediaQueryFromView ← ⋯"
+Typically, the Directionality widget is introduced by the MaterialApp or WidgetsApp widget at the
+top of your application widget tree. It determines the ambient reading direction and is used, for
+example, to determine how to lay out text, how to interpret "start" and "end" values, and to resolve
+EdgeInsetsDirectional, AlignmentDirectional, and other *Directional objects.
+…
+════════════════════════════════════════════════════════════════════════════════════════════════════
+</pre>
+
+<p>É a primeira mensagem de erro do guia, então vamos ler por partes:</p>
+<dl class="anatomy">
+  <dt>EXCEPTION CAUGHT BY WIDGETS LIBRARY</dt><dd>"Exceção capturada pela biblioteca de widgets": o erro aconteceu enquanto o Flutter <strong>montava</strong> os widgets.</dd>
+  <dt>thrown building Text("Olá, Ana!", ...)</dt><dd>Ao construir qual widget: o seu <code>Text</code>.</dd>
+  <dt>No Directionality widget found.</dt><dd>A causa: "nenhum widget <code>Directionality</code> encontrado". <code>Directionality</code> é o widget que guarda a direção do texto para todos os que estão abaixo dele.</dd>
+  <dt>RichText widgets require a Directionality widget ancestor.</dt><dd>"Widgets <code>RichText</code> precisam de um <code>Directionality</code> como ancestral" (ancestral = algum widget acima, na árvore). O <code>RichText</code> é a peça que o <code>Text</code> usa por dentro para desenhar as letras.</dd>
+  <dt>The ownership chain ...</dt><dd>"A cadeia de donos": o caminho na árvore, de baixo para cima. <code>RichText ← Text ← Center</code> é o seu código; os nomes com <code>_</code> e o <code>MediaQuery</code> são widgets que o próprio <code>runApp</code> põe em volta do seu.</dd>
+  <dt>Typically, the Directionality widget is introduced by the MaterialApp...</dt><dd>A dica de conserto: "normalmente, o <code>Directionality</code> vem do <code>MaterialApp</code> ou do <code>WidgetsApp</code>, no topo da árvore".</dd>
+</dl>
+
+<p><strong>Como consertar:</strong> ou devolva o <code>textDirection: TextDirection.ltr</code> ao <code>Text</code>, ou (o jeito de verdade) ponha um <code>MaterialApp</code> no topo, como na próxima seção.</p>
+
+<div class="note">
+<strong>Sobre o "…" na mensagem</strong>
+<p>O console mostrou ainda um parágrafo sobre <code>Widget creation tracking</code> ("rastreio da criação de widgets"), que é do jeito como o lab compila o app. Quando você roda com <code>flutter run</code>, no lugar dele aparece a linha do seu código onde está o widget que deu problema. Por isso ele foi cortado.</p>
+</div>
+
+<hr>
+
+<h2>4. O jeito de verdade: <code>MaterialApp</code> e <code>Scaffold</code></h2>
+<p>Ninguém faz um app de verdade com um <code>Text</code> solto: faltam a direção, a fonte, as cores, a barra do topo. Quase todo app Flutter começa com dois widgets que já resolvem tudo isso:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(
+    const MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Text('Olá, Ana!'),
+        ),
+      ),
+    ),
+  );
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>import 'package:flutter/material.dart';</dt><dd>Agora o <code>import</code> é o do <strong>Material</strong>, o visual do Google (botões, barras, cores). Ele já inclui tudo do <code>widgets.dart</code>, então é o único <code>import</code> que você vai precisar na maioria dos apps.</dd>
+  <dt>MaterialApp</dt><dd>O "app" propriamente dito: cuida da direção do texto, do idioma, do tema (cores e fontes) e da navegação entre telas. Tem aula própria: <a href="material-app.html">MaterialApp</a>.</dd>
+  <dt>home:</dt><dd>A <strong>tela inicial</strong> do app, a primeira que aparece.</dd>
+  <dt>Scaffold</dt><dd>"Andaime": a estrutura de uma tela, com fundo, lugar para a barra do topo, para o conteúdo e para botões. Aula: <a href="scaffold.html">Scaffold e AppBar</a>.</dd>
+  <dt>body:</dt><dd>O "corpo" da tela, o conteúdo principal. Aqui, o mesmo <code>Center</code> com o <code>Text</code>.</dd>
+  <dt>Text('Olá, Ana!')</dt><dd>Repare: <strong>sem</strong> <code>textDirection</code>. O <code>MaterialApp</code> já informou a direção para todo mundo abaixo dele.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/primeiro-app-4.png" alt="Tela com fundo branco levemente rosado, o texto 'Olá, Ana!' no meio, e uma faixa vermelha escrita DEBUG atravessando o canto de cima à direita" width="390" height="844" loading="lazy"><figcaption>Com <code>MaterialApp</code> e <code>Scaffold</code>: fundo do tema e a faixa DEBUG no canto.</figcaption></figure>
+
+<p>Três diferenças em relação à seção 2, todas vindas dos dois widgets novos:</p>
+<ul>
+  <li>O <strong>fundo</strong> agora tem cor: um branco levemente rosado, a cor de fundo padrão do Material 3, pintada pelo <code>Scaffold</code>.</li>
+  <li>O texto usa a <strong>fonte e a cor do tema</strong> (um cinza bem escuro, e não o preto puro).</li>
+  <li>Apareceu a faixa <strong>DEBUG</strong> no canto: o <code>MaterialApp</code> avisa que o app está no modo de desenvolvimento. Você aprende a escondê-la em <a href="material-app.html">MaterialApp</a>.</li>
+</ul>
+
+<pre>runApp
+└── MaterialApp
+    └── Scaffold          (home)
+        └── Center        (body)
+            └── Text('Olá, Ana!')
+</pre>
+
+<hr>
+
+<h2>5. O formato que todo o guia usa: uma classe para o app</h2>
+<p>O código da seção 4 funciona, mas tudo está enfiado dentro do <code>runApp</code>. Quando o app crescer, isso vira uma bagunça. O costume (e o que o <code>flutter create</code> faz) é criar uma <strong>classe</strong> para o app e passar só ela para o <code>runApp</code>:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Text('Olá, Ana!'),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>runApp(const MeuApp())</dt><dd>Agora o widget raiz é o <strong>seu</strong> widget, <code>MeuApp</code>.</dd>
+  <dt>class MeuApp extends StatelessWidget</dt><dd>Você criou um widget novo. <code>StatelessWidget</code> ("widget sem estado") é o tipo de widget que só desenha e não muda sozinho. Ele tem aula própria: <a href="stateless.html">StatelessWidget</a>.</dd>
+  <dt>const MeuApp({super.key});</dt><dd>O construtor. O <code>{super.key}</code> repassa a <code>key</code> (uma etiqueta opcional de identificação, aula <a href="keys.html">Keys</a>) para a classe mãe. Por enquanto, escreva sempre assim.</dd>
+  <dt>Widget build(BuildContext context)</dt><dd>O método que diz <strong>o que desenhar</strong>. O Flutter chama o <code>build</code> e usa o widget que ele devolve. O <code>context</code> é a "posição" deste widget na árvore.</dd>
+  <dt>return const MaterialApp(...)</dt><dd>A mesma árvore da seção 4, agora devolvida pelo <code>build</code>.</dd>
+</dl>
+
+<p>A tela é <strong>idêntica</strong> à da seção 4 (o lab fotografou as duas e as imagens saíram iguais): mudou a organização do código, não o resultado. Por isso a foto não se repete aqui.</p>
+
+<div class="tryflutter" data-goal="src:Text\(\s*'Bolo de cenoura'\s*\)">
+<p class="try-task"><strong>Missão:</strong> a primeira receita da Ana é um bolo. Troque o texto do <code>build</code> para <code>Bolo de cenoura</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Text('Olá, Ana!'),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Text('Bolo de cenoura'),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Formas diferentes de escrever a <code>main</code></h2>
+<p>As duas formas abaixo fazem exatamente a mesma coisa:</p>
+
+<pre class="file" data-file="lib/main.dart">// com chaves
+void main() {
+  runApp(const MeuApp());
+}
+
+// com seta (=&gt;): uma linha só
+void main() =&gt; runApp(const MeuApp());
+</pre>
+
+<p>A seta <code>=&gt;</code> do Dart é um atalho para uma função que tem <strong>uma</strong> instrução só (aula de funções do <a href="https://wallysondevs.github.io/guia-dart/">Guia Dart</a>). Você vai ver as duas formas em código dos outros. Quando o app precisa preparar alguma coisa antes de abrir (ler uma configuração, abrir o banco de dados), a <code>main</code> ganha mais linhas e a forma com chaves é a única que serve.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Forma</th><th>Quando usar</th></tr>
+<tr><td><code>runApp(const Text('...', textDirection: TextDirection.ltr))</code></td><td>Só para entender o mecanismo, como nas seções 1 a 3. Nenhum app de verdade é assim.</td></tr>
+<tr><td><code>runApp(const MaterialApp(home: ...))</code></td><td>Testes rápidos e exemplos curtos.</td></tr>
+<tr><td><code>runApp(const MeuApp())</code> + <code>class MeuApp extends StatelessWidget</code></td><td><strong>Sempre</strong>, num projeto. É o formato que o <code>flutter create</code> gera e o que este guia usa daqui para frente.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+<p>Os erros de um app Flutter aparecem em dois momentos: <strong>ao compilar</strong> (o código nem chega a rodar, e a mensagem sai no terminal) e <strong>com o app rodando</strong> (a tela vermelha da seção 3, com a mensagem no console). E há o pior tipo: o que não dá mensagem nenhuma. As mensagens saem em inglês; abaixo, cada uma explicada em português.</p>
+
+<div class="cenario">
+<strong>O <code>runApp</code> esquecido: tela em branco, sem erro</strong>
+<pre class="file" data-file="lib/main.dart">void main() {
+  const MeuApp();
+}
+</pre>
+<p>A Ana criou o widget, mas não o entregou a ninguém. O app compila e abre, e a tela fica <strong>em branco</strong>. Nenhuma mensagem no console, nenhuma tela vermelha: para o Flutter, a <code>main</code> terminou sem pedir para desenhar nada. A ferramenta de fotos do lab esperou 60 segundos pelo primeiro desenho do app, que nunca veio, e fotografou uma tela totalmente branca.</p>
+<p><strong>Como consertar:</strong> <code>runApp(const MeuApp());</code>. Se o seu app abriu em branco e o console está quieto, confira a <code>main</code> primeiro.</p>
+</div>
+
+<div class="cenario">
+<strong>O <code>import</code> esquecido</strong>
+<pre class="file" data-file="lib/main.dart">void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  ...
+</pre>
+<p>Sem a linha <code>import 'package:flutter/material.dart';</code>, o Dart não conhece nada do Flutter. Ao compilar o app para a web (<code>flutter build web</code>), o lab recebeu uma enxurrada de erros (aqui, os quatro primeiros):</p>
+<pre class="term">lib/main.dart:5:22:
+Error: Type 'StatelessWidget' not found.
+class MeuApp extends StatelessWidget {
+                     ^^^^^^^^^^^^^^^
+lib/main.dart:9:3:
+Error: Type 'Widget' not found.
+  Widget build(BuildContext context) {
+  ^^^^^^
+lib/main.dart:9:16:
+Error: Type 'BuildContext' not found.
+  Widget build(BuildContext context) {
+               ^^^^^^^^^^^^
+lib/main.dart:2:3:
+Error: Method not found: 'runApp'.
+  runApp(const MeuApp());
+  ^^^^^^
+…                                  « e mais cinco erros parecidos
+Error: Compilation failed.
+</pre>
+<dl class="anatomy">
+  <dt>lib/main.dart:5:22:</dt><dd>O arquivo, a <strong>linha</strong> (5) e a <strong>coluna</strong> (22) do problema. É o que você procura primeiro.</dd>
+  <dt>Error: Type 'StatelessWidget' not found.</dt><dd>"Tipo <code>StatelessWidget</code> não encontrado": o Dart não sabe o que é isso.</dd>
+  <dt>class MeuApp extends StatelessWidget { e ^^^^</dt><dd>A linha do seu código, com os <code>^</code> embaixo do pedaço exato que deu problema.</dd>
+  <dt>Method not found: 'runApp'.</dt><dd>"Método não encontrado": nem o <code>runApp</code> existe sem o <code>import</code>.</dd>
+</dl>
+<p>Muitos erros de uma vez assustam, mas repare que <strong>todos</strong> dizem a mesma coisa: "não sei o que é isso". Quando todos os nomes do Flutter dão <code>not found</code>, a causa é uma só. <strong>Como consertar:</strong> ponha <code>import 'package:flutter/material.dart';</code> na primeira linha.</p>
+</div>
+
+<div class="cenario">
+<strong><code>runApp(MeuApp)</code>, sem os parênteses</strong>
+<p>O mesmo app da seção 5, só que com a linha 4 assim:</p>
+<pre class="file" data-file="lib/main.dart">void main() {
+  runApp(MeuApp);
+}
+</pre>
+<pre class="term">lib/main.dart:4:10:
+Error: The argument type 'Type' can't be assigned to the parameter type 'Widget'.
+ - 'Type' is from 'dart:core'.
+ - 'Widget' is from 'package:flutter/src/widgets/framework.dart'.   « caminho do arquivo cortado
+  runApp(MeuApp);
+         ^
+Error: Compilation failed.
+</pre>
+<p>"O argumento do tipo <code>Type</code> não pode ser passado para o parâmetro do tipo <code>Widget</code>". <code>MeuApp</code> sozinho é o <strong>nome da classe</strong> (a "receita"); <code>MeuApp()</code>, com parênteses, <strong>cria</strong> um widget a partir dela (o "bolo"). O <code>runApp</code> quer o widget. <strong>Como consertar:</strong> <code>runApp(const MeuApp());</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Tela vermelha: <code>No Directionality widget found</code></strong>
+<p>Um <code>Text</code> sem <code>MaterialApp</code> acima e sem <code>textDirection</code>. A mensagem completa, linha por linha, está na <a href="#direcao">seção 3</a> desta aula. <strong>Como consertar:</strong> ponha o <code>MaterialApp</code> no topo da árvore.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Peça</th><th>O que é</th></tr>
+<tr><td><code>void main()</code></td><td>Por onde o app começa; num app Flutter, chama o <code>runApp</code></td></tr>
+<tr><td><code>runApp(widget)</code></td><td>Coloca o widget na tela, como widget raiz</td></tr>
+<tr><td>Widget raiz</td><td>O primeiro widget da árvore; recebe a tela inteira</td></tr>
+<tr><td><code>import 'package:flutter/material.dart';</code></td><td>Traz os widgets do Flutter, inclusive os do Material</td></tr>
+<tr><td><code>import 'package:flutter/widgets.dart';</code></td><td>Só os widgets básicos, sem Material (raro em apps)</td></tr>
+<tr><td><code>textDirection: TextDirection.ltr</code></td><td>Direção do texto, obrigatória quando não há um <code>MaterialApp</code> (ou um <code>Directionality</code>) em volta</td></tr>
+<tr><td><code>MaterialApp(home: ...)</code></td><td>O app Material; o <code>home</code> é a tela inicial</td></tr>
+<tr><td><code>Scaffold(body: ...)</code></td><td>A estrutura de uma tela; o <code>body</code> é o conteúdo</td></tr>
+<tr><td><code>Center(child: ...)</code></td><td>Coloca o filho no meio do espaço disponível</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete a main</h3>
+<p>Complete para colocar o app <code>MeuApp</code> na tela:</p>
+<div class="ex-code">void main() { <input data-answer="runApp" aria-label="função">(const MeuApp()); }</div>
+</div>
+
+<div class="exercise">
+<h3>2. A direção do texto</h3>
+<p>Complete a direção do texto para o português (da esquerda para a direita):</p>
+<div class="ex-code">textDirection: TextDirection.<input data-answer="ltr" aria-label="direção"></div>
+</div>
+
+<div class="exercise">
+<h3>3. O parâmetro do filho</h3>
+<p>Qual é o nome do parâmetro onde vai o widget de dentro de um <code>Center</code>?</p>
+<div class="ex-code">Center(<input data-answer="child" aria-label="parâmetro">: Text('Oi'))</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. Quantos widgets o <code>runApp</code> recebe?</p>
+<label><input type="radio" name="q4"> Nenhum: ele descobre sozinho</label>
+<label><input type="radio" name="q4"> Exatamente um, o widget raiz</label>
+<label><input type="radio" name="q4"> Uma lista com todos os widgets do app</label>
+<label><input type="radio" name="q4"> Um por tela do app</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">5. Por que o <code>Text('Olá')</code> dentro de um <code>MaterialApp</code> não precisa de <code>textDirection</code>?</p>
+<label><input type="radio" name="q5"> Porque o <code>Text</code> adivinha a direção pelo idioma das palavras</label>
+<label><input type="radio" name="q5"> Porque o <code>import</code> do <code>material.dart</code> muda o <code>Text</code></label>
+<label><input type="radio" name="q5"> Porque o <code>MaterialApp</code> informa a direção para todos os widgets abaixo dele</label>
+<label><input type="radio" name="q5"> Porque o <code>textDirection</code> só é obrigatório no iPhone</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">6. Num app de verdade, qual é o widget raiz mais comum?</p>
+<label><input type="radio" name="q6"> Um widget seu (como <code>MeuApp</code>) que devolve um <code>MaterialApp</code></label>
+<label><input type="radio" name="q6"> Um <code>Text</code></label>
+<label><input type="radio" name="q6"> Um <code>Center</code></label>
+<label><input type="radio" name="q6"> Um <code>Scaffold</code> sem <code>MaterialApp</code></label>
+</div>
+
+<h3>Missão final: o app da lojinha</h3>
+
+<div class="tryflutter" data-goal="src:class\s+LojinhaApp\s+extends\s+StatelessWidget;;src:runApp\(\s*const\s+LojinhaApp\(\)\s*\);;src:Text\(\s*'Lojinha da Ana'\s*\)">
+<p class="try-task"><strong>Missão:</strong> a Ana também tem uma lojinha. Renomeie a classe <code>MeuApp</code> para <code>LojinhaApp</code> (na classe, no construtor e no <code>runApp</code>) e troque o texto para <code>Lojinha da Ana</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Text('Olá, Ana!'),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const LojinhaApp());
+}
+
+class LojinhaApp extends StatelessWidget {
+  const LojinhaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Text('Lojinha da Ana'),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Todo app Flutter começa na <code>main</code>, e a <code>main</code> chama o <code>runApp</code>.</li>
+  <li><code>runApp</code> recebe <strong>um</strong> widget, o widget raiz, e o faz ocupar a tela inteira.</li>
+  <li>Os widgets se encaixam uns dentro dos outros pelo <code>child</code>, formando a <strong>árvore de widgets</strong>.</li>
+  <li>Sem <code>MaterialApp</code>, o <code>Text</code> exige <code>textDirection</code>; sem ele, aparece o erro <code>No Directionality widget found</code>.</li>
+  <li>O começo de verdade é <code>MaterialApp</code> → <code>Scaffold</code> → conteúdo, com o <code>import 'package:flutter/material.dart';</code>.</li>
+  <li>Num projeto, o app vira uma classe sua (<code>class MeuApp extends StatelessWidget</code>) e a <code>main</code> só faz <code>runApp(const MeuApp())</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
