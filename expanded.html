@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Expanded e Flexible — dividir o espaço que sobra | Guia Flutter</title>
+<meta name="description" content="Expanded e Flexible no Flutter para quem nunca fez um app: ocupar o espaço que sobra numa Row ou Column, dividir em proporções com flex, a diferença entre Expanded e Flexible (FlexFit.tight e loose), consertar o overflow de um texto comprido, e os erros reais (Incorrect use of ParentDataWidget, altura sem limite), com as telas fotografadas no Flutter de verdade.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Expanded e Flexible</span></h1>
+
+<p class="intro">Uma <code>Row</code> põe os filhos lado a lado, cada um com o seu tamanho. Mas e se você quiser que um deles <strong>ocupe todo o espaço que sobrou</strong>? Uma barra de busca que estica até o botão, um texto comprido que deve quebrar a linha em vez de estourar a tela, duas colunas que dividem a tela meio a meio. É para isso que servem o <code>Expanded</code> ("expandido") e o <code>Flexible</code> ("flexível"): eles só funcionam <strong>dentro</strong> de uma <code>Row</code> ou de uma <code>Column</code>, e repartem o espaço livre entre os filhos.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como o <code>Expanded</code> faz um filho ocupar todo o espaço que sobra numa <code>Row</code> ou <code>Column</code>.</li>
+  <li>Como dividir o espaço em <strong>proporções</strong> com <code>flex</code> (1 : 2 : 1, meio a meio).</li>
+  <li>A diferença entre <code>Expanded</code> e <code>Flexible</code>: "ocupe tudo" × "pode ocupar até tudo".</li>
+  <li>Como consertar o overflow de um texto comprido numa <code>Row</code>.</li>
+  <li>Os erros reais: <code>Expanded</code> fora de uma <code>Row</code>/<code>Column</code>, e <code>Expanded</code> num lugar sem limite de altura.</li>
+</ul>
+</div>
+
+<p>Todos os apps desta aula são um <code>lib/main.dart</code> completo, compilados pelo Flutter <span class="versao">Flutter 3.47</span> do laboratório para a web e fotografados no navegador, em tamanho de celular (390 × 844).</p>
+
+<hr>
+
+<h2>A ideia: a mesa da cozinha</h2>
+<p>A bancada da cozinha da Ana tem 2 metros. Ela põe o fogão (60 cm) numa ponta e a geladeira (70 cm) na outra. O que sobra no meio (70 cm) é da bancada de trabalho, que "estica" para ocupar o vão, seja ele qual for. Se ela trocar a geladeira por uma menor, a bancada cresce; se trocar por uma maior, a bancada encolhe.</p>
+<p>O <code>Expanded</code> é essa bancada: a <code>Row</code> mede primeiro os filhos de tamanho fixo (o fogão e a geladeira), calcula a <strong>sobra</strong> e entrega a sobra para os filhos <code>Expanded</code>. Se houver dois <code>Expanded</code>, eles dividem a sobra entre si.</p>
+
+<hr>
+
+<h2>1. Um <code>Expanded</code>: ocupe o que sobrou</h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Expanded')),
+        body: Row(
+          children: [
+            Container(width: 80, height: 80, color: Colors.red),
+            Expanded(
+              child: Container(height: 80, color: Colors.green),
+            ),
+            Container(width: 80, height: 80, color: Colors.blue),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>Container(width: 80, …) vermelho e azul</dt><dd>Os filhos de tamanho fixo: o fogão e a geladeira. A <code>Row</code> mede esses primeiro.</dd>
+  <dt>Expanded(child: …)</dt><dd>"Este filho fica com o espaço que sobrar." O <code>Expanded</code> não desenha nada; ele só avisa a <code>Row</code> que o filho dele deve esticar.</dd>
+  <dt>Container(height: 80, color: Colors.green)</dt><dd>Repare: o verde <strong>não tem</strong> <code>width</code>. Quem decide a largura dele é o <code>Expanded</code> (a sobra). Se você puser um <code>width</code>, ele é ignorado.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/expanded-1.png" alt="Logo abaixo da barra, uma faixa da largura da tela: um quadrado vermelho na esquerda, um quadrado azul na direita e um retângulo verde ocupando todo o espaço entre eles" width="390" height="844" loading="lazy"><figcaption>O verde, com <code>Expanded</code>, ocupa toda a largura entre o vermelho e o azul.</figcaption></figure>
+
+<p>A conta da <code>Row</code>: a tela tem 390 de largura; o vermelho e o azul pedem 80 cada, juntos 160. Sobram 390 − 160 = <strong>230</strong>, e é essa a largura do verde. Num celular de 412 de largura, o verde teria 252, sem você mudar nada.</p>
+
+<hr>
+
+<h2>2. Dividindo em proporções: <code>flex</code></h2>
+<p>Com dois ou mais <code>Expanded</code>, a sobra é dividida entre eles. Por padrão, em partes iguais. Para dividir de outro jeito, cada <code>Expanded</code> recebe um <code>flex</code> (o "peso" dele, um número inteiro; o padrão é 1):</p>
+
+<pre class="file" data-file="lib/main.dart (só o body)">        body: Column(
+          children: [
+            Row(
+              children: [
+                Expanded(child: Container(height: 60, color: Colors.red)),
+                Expanded(child: Container(height: 60, color: Colors.green)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(flex: 1, child: Container(height: 60, color: Colors.red)),
+                Expanded(flex: 2, child: Container(height: 60, color: Colors.green)),
+                Expanded(flex: 1, child: Container(height: 60, color: Colors.blue)),
+              ],
+            ),
+          ],
+        ),
+</pre>
+
+<figure class="tela"><img src="assets/telas/expanded-2.png" alt="Duas faixas: na de cima, metade vermelha e metade verde; na de baixo, vermelho, verde e azul, com o verde do dobro da largura dos outros dois" width="390" height="844" loading="lazy"><figcaption>Em cima: dois <code>Expanded</code>, meio a meio. Embaixo: <code>flex</code> 1, 2 e 1.</figcaption></figure>
+
+<p>A conta é sempre a mesma: some os <code>flex</code> (1 + 2 + 1 = 4) e divida a sobra em 4 partes. O vermelho fica com 1 parte, o verde com 2 e o azul com 1. Na tela de 390 de largura, sem nenhum filho fixo, a sobra é 390 inteira: cada parte vale 390 ÷ 4 = 97,5. O vermelho e o azul ficam com 97,5 e o verde com 195. Na linha de cima, com dois <code>Expanded</code> de <code>flex</code> 1, cada um fica com 390 ÷ 2 = 195.</p>
+
+<div class="tryflutter" data-goal="src:flex:\s*3">
+<p class="try-task"><strong>Missão:</strong> a Ana quer a coluna dos ingredientes (verde) com o <strong>triplo</strong> da largura da coluna da foto (laranja). Mude o <code>flex</code> do verde para 3.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: Row(
+          children: [
+            Expanded(flex: 1, child: Container(height: 200, color: Colors.orange)),
+            Expanded(flex: 1, child: Container(height: 200, color: Colors.green)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: Row(
+          children: [
+            Expanded(flex: 1, child: Container(height: 200, color: Colors.orange)),
+            Expanded(flex: 3, child: Container(height: 200, color: Colors.green)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>3. Na <code>Column</code>: o meio estica</h2>
+<p>Na <code>Column</code>, o <code>Expanded</code> estica na <strong>altura</strong>. O desenho clássico de uma tela: um cabeçalho fixo em cima, um rodapé fixo embaixo, e o miolo ocupando o resto:</p>
+
+<pre class="file" data-file="lib/main.dart (só o body)">        body: Column(
+          children: [
+            Container(
+              height: 80,
+              color: Colors.orange,
+              alignment: Alignment.center,
+              child: const Text('Cabeçalho', style: TextStyle(fontSize: 22)),
+            ),
+            Expanded(
+              child: Container(
+                color: Colors.yellow.shade100,
+                alignment: Alignment.center,
+                child: const Text('Miolo (Expanded)', style: TextStyle(fontSize: 22)),
+              ),
+            ),
+            Container(
+              height: 60,
+              color: Colors.brown.shade300,
+              alignment: Alignment.center,
+              child: const Text('Rodapé', style: TextStyle(fontSize: 22)),
+            ),
+          ],
+        ),
+</pre>
+
+<figure class="tela"><img src="assets/telas/expanded-3.png" alt="Abaixo da barra, uma faixa laranja com Cabeçalho, uma área amarelo-clara enorme com Miolo (Expanded) no meio, e no pé da tela uma faixa marrom-clara com Rodapé" width="390" height="844" loading="lazy"><figcaption>O cabeçalho e o rodapé têm altura fixa; o miolo ocupa toda a altura que sobra.</figcaption></figure>
+
+<p>(O <code>alignment: Alignment.center</code> do <code>Container</code> só centraliza o texto dentro de cada caixa; é assunto da aula <a href="center-align.html">Center e Align</a>.) Em outro celular, mais alto ou mais baixo, o cabeçalho e o rodapé continuam com 80 e 60; só o miolo muda.</p>
+
+<hr>
+
+<h2>4. O texto comprido que estourava a tela</h2>
+<p>Na aula <a href="row-column.html">Row e Column</a>, um texto comprido ao lado de um ícone estourou a <code>Row</code> (o overflow com as listras amarelas e pretas). O motivo: a <code>Row</code> pergunta ao <code>Text</code> "qual a sua largura?" sem limite nenhum, e o texto responde "a largura da frase inteira, numa linha só". Com o <code>Expanded</code>, a <code>Row</code> passa a dizer ao texto: "você tem <strong>exatamente</strong> a sobra". O texto, então, quebra a linha para caber:</p>
+
+<pre class="file" data-file="lib/main.dart (só o body)">        body: const Row(
+          children: [
+            Icon(Icons.shopping_cart, size: 40),
+            Expanded(
+              child: Text(
+                'Arroz, feijão, café, leite, açúcar e farinha de trigo',
+                style: TextStyle(fontSize: 24),
+              ),
+            ),
+          ],
+        ),
+</pre>
+
+<figure class="tela"><img src="assets/telas/expanded-4.png" alt="O ícone do carrinho à esquerda e, ao lado, o texto Arroz, feijão, café, leite, açúcar e farinha de trigo quebrado em duas linhas, sem faixa de overflow" width="390" height="844" loading="lazy"><figcaption>Com <code>Expanded</code>, o texto quebra em várias linhas ao lado do ícone, sem overflow.</figcaption></figure>
+
+<p>Esse é, de longe, o uso mais comum do <code>Expanded</code> no dia a dia: <strong>todo texto que pode ser comprido, dentro de uma <code>Row</code>, vai num <code>Expanded</code></strong> (ou num <code>Flexible</code>, logo abaixo).</p>
+
+<hr>
+
+<h2>5. <code>Flexible</code>: "pode ocupar até tudo"</h2>
+<p>O <code>Expanded</code> <strong>obriga</strong> o filho a ocupar a sua parte inteira. O <code>Flexible</code> é mais educado: ele dá ao filho a parte como <strong>limite máximo</strong>, e o filho pode ficar menor, se quiser. Este app compara os dois com o mesmo filho, um <code>Container</code> de 100 de largura:</p>
+
+<pre class="file" data-file="lib/main.dart (só o body)">        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Expanded', style: TextStyle(fontSize: 18)),
+            Row(
+              children: [
+                Expanded(child: Container(width: 100, height: 50, color: Colors.green)),
+                Container(width: 50, height: 50, color: Colors.blue),
+              ],
+            ),
+            const SizedBox(height: 24),
+            const Text('Flexible', style: TextStyle(fontSize: 18)),
+            Row(
+              children: [
+                Flexible(child: Container(width: 100, height: 50, color: Colors.green)),
+                Container(width: 50, height: 50, color: Colors.blue),
+              ],
+            ),
+          ],
+        ),
+</pre>
+
+<figure class="tela"><img src="assets/telas/expanded-5.png" alt="Duas linhas rotuladas: em Expanded, um retângulo verde que vai da borda esquerda até um quadrado azul encostado na direita; em Flexible, um retângulo verde curto, de 100, colado num quadrado azul, com o resto da linha vazio" width="390" height="844" loading="lazy"><figcaption>Expanded: o verde estica até o azul (o width 100 é ignorado). Flexible: o verde fica com os 100 que pediu.</figcaption></figure>
+
+<p>Para um <strong>texto</strong>, a diferença aparece assim: com <code>Flexible</code>, um texto curto ocupa só o tamanho dele (e o que vem depois fica <strong>colado</strong> nele); um texto comprido ainda quebra a linha, sem estourar. Com <code>Expanded</code>, o texto sempre ocupa a sobra inteira (e o que vem depois vai para a ponta).</p>
+
+<div class="note">
+<strong>Por dentro: <code>Expanded</code> é um <code>Flexible</code></strong>
+<p>Na documentação do Flutter, o <code>Expanded</code> é definido como um <code>Flexible</code> com <code>fit: FlexFit.tight</code> ("ajuste apertado": ocupe exatamente a parte). O <code>Flexible</code> comum usa <code>fit: FlexFit.loose</code> ("ajuste frouxo": no máximo a parte). Os dois aceitam <code>flex</code>.</p>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Quero…</th><th>Use</th></tr>
+<tr><td>Que o filho ocupe <strong>toda</strong> a sobra</td><td><code>Expanded(child: …)</code></td></tr>
+<tr><td>Que o filho ocupe <strong>no máximo</strong> a sobra (pode ser menor)</td><td><code>Flexible(child: …)</code></td></tr>
+<tr><td>Dividir em proporções (1/3 e 2/3)</td><td>Dois <code>Expanded</code> com <code>flex: 1</code> e <code>flex: 2</code></td></tr>
+<tr><td>Um espaço vazio que empurra os vizinhos para as pontas</td><td><code>Spacer()</code> (um <code>Expanded</code> vazio; aula <a href="sizedbox.html">SizedBox e Spacer</a>)</td></tr>
+<tr><td>Um tamanho <strong>fixo</strong> (sempre 100)</td><td><code>SizedBox(width: 100)</code>, não <code>Expanded</code></td></tr>
+<tr><td>Uma fração da <strong>tela</strong> (não da sobra)</td><td><code>FractionallySizedBox</code> ou <code>MediaQuery</code> (aula <a href="responsivo.html">Telas de Vários Tamanhos</a>)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>Expanded</code> fora de uma <code>Row</code> ou <code>Column</code></strong>
+<pre class="file" data-file="lib/main.dart (só o body)">        body: Center(
+          child: Expanded(
+            child: Container(color: Colors.green),
+          ),
+        ),
+</pre>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following assertion was thrown while applying parent data.:
+Incorrect use of ParentDataWidget.
+The ParentDataWidget Expanded(flex: 1) wants to apply ParentData of type FlexParentData to a
+RenderObject, which has been set up to accept ParentData of incompatible type BoxParentData.
+Usually, this means that the Expanded widget has the wrong ancestor RenderObjectWidget. Typically,
+Expanded widgets are placed directly inside Flex widgets.
+The offending Expanded is currently placed inside a Center widget.
+«  (a "cadeia" de widgets e a pilha de chamadas)
+</pre>
+<dl class="anatomy">
+  <dt>Incorrect use of ParentDataWidget.</dt><dd>"Uso errado de um <code>ParentDataWidget</code>." O <code>Expanded</code> é desse tipo: um widget que não desenha nada, só deixa um <strong>recado</strong> para o pai (o "peso" <code>flex</code>). Só a <code>Row</code>, a <code>Column</code> e o <code>Flex</code> sabem ler esse recado.</dd>
+  <dt>Typically, Expanded widgets are placed directly inside Flex widgets.</dt><dd>"Normalmente, o <code>Expanded</code> fica direto dentro de um <code>Flex</code>." <code>Flex</code> é o widget "pai" da <code>Row</code> e da <code>Column</code>.</dd>
+  <dt>The offending Expanded is currently placed inside a Center widget.</dt><dd>"O <code>Expanded</code> culpado está dentro de um <code>Center</code>." A mensagem diz exatamente onde está o erro.</dd>
+</dl>
+<p>A mensagem aparece no console assim que a tela é montada. <strong>Como consertar:</strong> o <code>Expanded</code> tem de ser filho <strong>direto</strong> de uma <code>Row</code> ou <code>Column</code>. Para ocupar a tela inteira fora delas, use <code>SizedBox.expand</code> (aula <a href="sizedbox.html">SizedBox e Spacer</a>).</p>
+</div>
+
+<div class="cenario">
+<strong><code>Expanded</code> numa coluna que rola (sem limite de altura)</strong>
+<pre class="file" data-file="lib/main.dart (só o body)">        body: SingleChildScrollView(
+          child: Column(
+            children: [
+              const Text('Ingredientes'),
+              Expanded(child: Container(color: Colors.green)),
+            ],
+          ),
+        ),
+</pre>
+<pre class="term">══╡ EXCEPTION CAUGHT BY RENDERING LIBRARY ╞═════════════════════════════════════════════════════════
+The following assertion was thrown during performLayout():
+RenderFlex children have non-zero flex but incoming height constraints are unbounded.
+When a column is in a parent that does not provide a finite height constraint, for example if it is
+in a vertical scrollable, it will try to shrink-wrap its children along the vertical axis. Setting a
+flex on a child (e.g. using Expanded) indicates that the child is to expand to fill the remaining
+space in the vertical direction.
+These two directives are mutually exclusive. If a parent is to shrink-wrap its child, the child
+cannot simultaneously expand to fit its parent.
+«  (conselhos, os detalhes da Column e a pilha)
+The relevant error-causing widget was:
+  Column Column:file:///home/ana/app/lib/main.dart:15:18
+</pre>
+<dl class="anatomy">
+  <dt>RenderFlex children have non-zero flex but incoming height constraints are unbounded.</dt><dd>"Os filhos da Column têm <code>flex</code> (um <code>Expanded</code>), mas a altura que ela recebeu é <strong>sem limite</strong>."</dd>
+  <dt>When a column is in a parent that does not provide a finite height … in a vertical scrollable</dt><dd>"Quando a coluna está num pai que não dá uma altura finita, como algo que rola na vertical, ela tenta ficar do tamanho dos filhos." O <code>SingleChildScrollView</code> deixa a coluna ter a altura que quiser (é por isso que dá para rolar).</dd>
+  <dt>These two directives are mutually exclusive.</dt><dd>"As duas ordens não combinam": a coluna quer ficar do tamanho dos filhos, e o <code>Expanded</code> quer ficar do tamanho da coluna. Ninguém consegue decidir primeiro. "Ocupe a sobra" não faz sentido quando o espaço é infinito.</dd>
+  <dt>Column … main.dart:15:18</dt><dd>A <code>Column</code> com problema, na linha 15 do arquivo.</dd>
+</dl>
+<p><strong>Como consertar:</strong> numa área que rola, não use <code>Expanded</code>: dê ao filho uma altura fixa (<code>SizedBox(height: 200, …)</code>) ou deixe-o com o tamanho natural. Por que a altura é infinita ali é o assunto da aula <a href="constraints.html">Como o Flutter Calcula Tamanhos</a>.</p>
+</div>
+
+<div class="cenario">
+<strong>Escreveu <code>flex: 0.5</code></strong>
+<pre class="file" data-file="lib/main.dart (trecho)">            Expanded(flex: 0.5, child: Container(color: Colors.red)),
+</pre>
+<pre class="term">$ flutter run
+«  (…)
+lib/main.dart:16:28: Error: The argument type 'double' can't be assigned to the parameter type 'int'.
+            Expanded(flex: 0.5, child: Container(color: Colors.red)),
+                           ^
+</pre>
+<p>"O argumento do tipo <code>double</code> não pode ser passado para o parâmetro do tipo <code>int</code>." O <code>flex</code> é um peso <strong>inteiro</strong>. Para "meia parte", multiplique todos os pesos: em vez de <code>0.5</code> e <code>1</code>, use <code>1</code> e <code>2</code> (a proporção é a mesma).</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>Expanded(child: w)</code></td><td><code>w</code> ocupa toda a sobra da Row/Column (largura na Row, altura na Column)</td></tr>
+<tr><td><code>Expanded(flex: 2, child: w)</code></td><td><code>w</code> fica com 2 partes da sobra (o padrão é 1)</td></tr>
+<tr><td><code>Flexible(child: w)</code></td><td><code>w</code> pode ocupar até a sua parte da sobra, mas pode ser menor</td></tr>
+<tr><td><code>Flexible(fit: FlexFit.tight, child: w)</code></td><td>O mesmo que <code>Expanded</code></td></tr>
+<tr><td><code>Spacer()</code></td><td>Um espaço vazio que ocupa a sobra</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">1. Numa <code>Row</code> de 400 de largura, um filho fixo de 100 e dois <code>Expanded</code> com <code>flex: 1</code> e <code>flex: 2</code>. Qual a largura do segundo <code>Expanded</code>?</p>
+<label><input type="radio" name="q1"> 100</label>
+<label><input type="radio" name="q1"> 150</label>
+<label><input type="radio" name="q1"> 200</label>
+<label><input type="radio" name="q1"> 266</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. Onde o <code>Expanded</code> pode ser usado?</p>
+<label><input type="radio" name="q2"> Em qualquer lugar da árvore</label>
+<label><input type="radio" name="q2"> Só como filho direto de uma <code>Row</code>, <code>Column</code> (ou <code>Flex</code>)</label>
+<label><input type="radio" name="q2"> Só dentro de um <code>Container</code></label>
+<label><input type="radio" name="q2"> Só no <code>body</code> do <code>Scaffold</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">3. Qual a diferença entre <code>Expanded</code> e <code>Flexible</code>?</p>
+<label><input type="radio" name="q3"> O <code>Expanded</code> obriga o filho a ocupar a parte inteira; o <code>Flexible</code> deixa o filho ser menor</label>
+<label><input type="radio" name="q3"> O <code>Flexible</code> só funciona na <code>Column</code></label>
+<label><input type="radio" name="q3"> O <code>Expanded</code> não aceita <code>flex</code></label>
+<label><input type="radio" name="q3"> Nenhuma: são nomes diferentes para a mesma coisa</label>
+</div>
+
+<div class="exercise">
+<h3>4. Complete</h3>
+<p>Complete para o texto comprido quebrar a linha ao lado do ícone, sem overflow:</p>
+<div class="ex-code">Row(children: [<br>&nbsp;&nbsp;Icon(Icons.info),<br>&nbsp;&nbsp;<input data-answer="Expanded" aria-label="widget que ocupa a sobra">(<input data-answer="child" aria-label="parâmetro">: Text('Um texto bem comprido…')),<br>])</div>
+</div>
+
+<h3>Missão final: a linha do ingrediente</h3>
+
+<div class="tryflutter" data-goal="src:Expanded\(\s*child:\s*Text">
+<p class="try-task"><strong>Missão:</strong> o nome comprido do ingrediente estoura a linha (aparece a faixa listrada). Embrulhe o <code>Text</code> do meio num <code>Expanded</code>, para ele quebrar a linha e o preço ficar sempre na ponta direita.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lista de compras')),
+        body: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(Icons.check_box_outline_blank),
+              Text(
+                'Farinha de trigo especial tipo 1, pacote de 5 quilos',
+                style: TextStyle(fontSize: 20),
+              ),
+              Text('R\$ 21,90', style: TextStyle(fontSize: 20)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lista de compras')),
+        body: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(Icons.check_box_outline_blank),
+              Expanded(
+                child: Text(
+                  'Farinha de trigo especial tipo 1, pacote de 5 quilos',
+                  style: TextStyle(fontSize: 20),
+                ),
+              ),
+              Text('R\$ 21,90', style: TextStyle(fontSize: 20)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<figure class="tela"><img src="assets/telas/expanded-6.png" alt="Uma linha com a caixinha de marcar vazia, o texto Farinha de trigo especial tipo 1, pacote de 5 quilos em duas linhas e o preço R$ 21,90 na ponta direita" width="390" height="844" loading="lazy"><figcaption>O resultado esperado da missão.</figcaption></figure>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>Expanded</code> faz um filho de uma <code>Row</code> ou <code>Column</code> ocupar o espaço que <strong>sobrou</strong> depois dos filhos de tamanho fixo.</li>
+  <li>Vários <code>Expanded</code> dividem a sobra; o <code>flex</code> (inteiro, padrão 1) diz o peso de cada um.</li>
+  <li><code>Flexible</code> dá a parte como limite máximo: o filho pode ficar menor. <code>Expanded</code> = <code>Flexible</code> com <code>FlexFit.tight</code>.</li>
+  <li>Texto comprido dentro de uma <code>Row</code>: embrulhe num <code>Expanded</code> ou <code>Flexible</code> para ele quebrar a linha em vez de estourar.</li>
+  <li>Só use <code>Expanded</code> como filho direto de <code>Row</code>/<code>Column</code>, e nunca numa direção sem limite (dentro de algo que rola).</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
