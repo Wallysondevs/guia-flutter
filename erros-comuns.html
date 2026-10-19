@@ -268,7 +268,7 @@ When the exception was thrown, this was the stack:
 <figure class="tela"><img src="assets/telas/erros-comuns-2.png" alt="Tela inteira vermelho-escura com, no alto, o texto amarelo 'Unexpected null value.' e, embaixo, 'See also: https://docs.flutter.dev/testing/errors', e a faixa DEBUG no canto" width="390" height="844" loading="lazy"><figcaption>A tela vermelha: quando o <code>build</code> de um widget falha, o Flutter desenha este aviso no lugar dele (só em modo debug).</figcaption></figure>
 
 <p>Repare: no navegador, a mesma falha aparece como <code>Unexpected null value.</code> ("valor nulo inesperado"), porque lá o Dart roda compilado para JavaScript e usa outra frase. No celular e no teste, é <code>Null check operator used on a null value</code>. São o mesmo erro. Em modo <strong>release</strong>, no lugar da tela vermelha fica uma área cinza, sem texto.</p>
-<p><strong>Como consertar:</strong> não use <code>!</code> quando o valor pode mesmo ser nulo. Dê um valor padrão com <code>??</code>: <code>Text('Olá, ${nomeSalvo ?? 'visitante'}')</code>.</p>
+<p><strong>Como consertar:</strong> não use <code>!</code> quando o valor pode mesmo ser nulo. Dê um valor padrão com <code>??</code>: <code>Text('Olá, ${nomeSalvo ?? 'visitante'}')</code>. (O <code>!</code> e o <code>??</code> estão no Guia Dart: <a href="https://wallysondevs.github.io/guia-dart/null-safety.html">Null safety</a> e <a href="https://wallysondevs.github.io/guia-dart/operadores-null.html">Operadores de nulo</a>.)</p>
 
 <hr>
 
