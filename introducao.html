@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>O que é Flutter — um código, apps para Android, iOS, web e desktop | Guia Flutter</title>
+<meta name="description" content="O que é o Flutter, para quem sabe o básico de Dart e nunca fez um app: o kit do Google que desenha a tela inteira com o próprio motor, a ideia de que tudo é widget, um código para Android, iOS, web e desktop, o que vem na caixa (SDK, Dart, Material 3, hot reload), um app mínimo explicado peça por peça e o que este guia vai ensinar.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>O que é <span class="hl">Flutter</span></h1>
+
+<p class="intro">A Ana já sabe o básico de Dart: variáveis, funções, listas, classes. Agora ela quer o que todo mundo quer quando aprende a programar: <strong>um app de verdade</strong>, com botões, que abra no celular dela e no da mãe. O <strong>Flutter</strong> é a ferramenta que faz isso. Com ele, você escreve o app <strong>uma vez</strong>, em Dart, e o mesmo código vira um app de Android, de iPhone, um site e um programa de computador.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é o Flutter e de onde ele veio.</li>
+  <li>A grande ideia do Flutter: <strong>tudo na tela é um widget</strong>, uma peça de montar.</li>
+  <li>Como o Flutter desenha a tela: com o próprio motor, pixel por pixel, em vez de usar os botões prontos do sistema.</li>
+  <li>Em quais aparelhos o mesmo código roda.</li>
+  <li>O que vem na caixa quando você instala o Flutter.</li>
+  <li>A cara de um app Flutter mínimo, com cada parte explicada.</li>
+  <li>O Flutter comparado com outros jeitos de fazer app, e o que este guia vai ensinar.</li>
+</ul>
+</div>
+
+<hr>
+
+<h2>A ideia: uma caixa de peças de montar</h2>
+<p>Pense numa caixa de blocos de montar. Com peças pequenas (um tijolinho, uma janela, uma porta), você monta uma casa; com a casa, uma rua; com a rua, uma cidade. Ninguém fabrica a cidade inteira de uma vez: ela é feita de peças encaixadas umas <strong>dentro</strong> das outras.</p>
+
+<p>No Flutter, cada peça da tela se chama <strong>widget</strong> (em inglês, algo como "dispositivo", "pecinha"; neste guia, "componente" ou "peça da tela"). Um texto é um widget. Um botão é um widget. O espaço em volta do botão é um widget. A tela inteira é um widget que tem outros widgets dentro. Fazer um app em Flutter é, no fundo, <strong>encaixar widgets</strong>.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Na caixa de blocos</th><th>No Flutter</th></tr>
+<tr><td>Uma peça (um tijolinho, uma janela)</td><td>Um widget: <code>Text</code>, <code>Icon</code>, <code>ElevatedButton</code></td></tr>
+<tr><td>Uma peça encaixada dentro de outra</td><td>Um widget <strong>filho</strong> (<code>child</code>) dentro de um widget <strong>pai</strong></td></tr>
+<tr><td>Várias peças lado a lado</td><td>Uma lista de filhos (<code>children</code>), por exemplo numa <code>Column</code> ou numa <code>Row</code></td></tr>
+<tr><td>A casa montada</td><td>A <strong>árvore de widgets</strong> da tela</td></tr>
+</table>
+</div>
+
+<p>Essa ideia é tão central que tem uma aula só para ela: <a href="widgets.html">Tudo é Widget</a>.</p>
+
+<hr>
+
+<h2>1. O que é, em uma frase</h2>
+<p>O <strong>Flutter</strong> é um <strong>kit de desenvolvimento</strong> (um SDK, <em>Software Development Kit</em>) gratuito e de código aberto, criado pelo Google, para fazer apps com interface gráfica para várias plataformas a partir de <strong>um único código</strong> escrito em <strong>Dart</strong>.</p>
+
+<dl class="anatomy">
+  <dt>kit de desenvolvimento (SDK)</dt><dd>Não é um programa que você abre e clica: é um conjunto de ferramentas de linha de comando (o <code>flutter</code> e o <code>dart</code>), bibliotecas prontas (os widgets) e o motor que desenha a tela. Você escreve código num editor e usa os comandos para criar, rodar e empacotar o app.</dd>
+  <dt>gratuito e de código aberto</dt><dd>Você não paga nada para usar, nem para publicar apps feitos com ele. O código do próprio Flutter fica aberto no GitHub (<code>github.com/flutter/flutter</code>).</dd>
+  <dt>criado pelo Google</dt><dd>A primeira versão estável, a 1.0, saiu em dezembro de 2018. O Google usa o Flutter em apps próprios, e milhares de empresas também.</dd>
+  <dt>um único código</dt><dd>O mesmo projeto vira app de Android, de iOS (iPhone e iPad), site (web), e programa de Windows, macOS e Linux.</dd>
+  <dt>em Dart</dt><dd>A linguagem do Flutter é o Dart, também do Google. Você não escreve Java, Kotlin ou Swift para fazer as telas: é Dart do começo ao fim. A aula <a href="dart-para-flutter.html">O Dart que Você Precisa</a> revisa o que vai aparecer.</dd>
+</dl>
+
+<hr>
+
+<h2>2. Como o Flutter desenha a tela</h2>
+<p>Este é o detalhe que mais diferencia o Flutter. Existem, grosso modo, dois jeitos de um kit de apps mostrar um botão:</p>
+
+<ol class="passo">
+  <li><strong>Pedir ao sistema:</strong> o kit fala para o Android "mostre um botão seu aqui" e, para o iPhone, "mostre um botão seu aqui". Cada sistema desenha o <em>seu</em> botão. É o que fazem os apps nativos e, de outro jeito, o React Native.</li>
+  <li><strong>Desenhar sozinho:</strong> o kit recebe do sistema só uma "tela em branco" (uma área de pintura) e desenha <strong>cada pixel</strong> do botão por conta própria. É o que o Flutter faz.</li>
+</ol>
+
+<p>O Flutter traz dentro do app um <strong>motor de desenho</strong> (em inglês, <em>engine</em>; nos celulares, o motor atual se chama <strong>Impeller</strong>) que pinta tudo: textos, cores, sombras, animações. Por isso um app Flutter fica <strong>igual</strong> no Android e no iPhone, e por isso ele é rápido: o motor conversa direto com a placa de vídeo do aparelho.</p>
+
+<pre>Seu código Dart (os widgets)
+        │
+        ▼
+Framework Flutter       « Material, Cupertino, layout, animações (em Dart)
+        │
+        ▼
+Engine (motor)          « desenha os pixels (em C++)
+        │
+        ▼
+Sistema do aparelho     « Android, iOS, web, Windows, macOS, Linux
+</pre>
+
+<dl class="anatomy">
+  <dt>Seu código</dt><dd>As telas do seu app: widgets que você monta.</dd>
+  <dt>Framework</dt><dd>A biblioteca de widgets prontos que vem com o Flutter, escrita em Dart. Inclui a coleção <strong>Material</strong> (o visual do Google, hoje na versão <strong>Material 3</strong>) e a <strong>Cupertino</strong> (o visual do iPhone).</dd>
+  <dt>Engine</dt><dd>O motor que transforma a árvore de widgets em pixels. Você quase nunca mexe nele diretamente.</dd>
+  <dt>Sistema</dt><dd>Entrega ao Flutter a área de pintura, os toques na tela, o teclado, a câmera.</dd>
+</dl>
+
+<div class="note">
+<strong>E o botão "de Android"?</strong>
+<p>Como o Flutter desenha sozinho, um botão Material fica igual em todos os aparelhos. Se você quiser o visual do iPhone num iPhone, usa os widgets Cupertino. A maioria dos apps escolhe um visual só, o Material, e usa nos dois.</p>
+</div>
+
+<hr>
+
+<h2>3. Onde o mesmo código roda</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Plataforma</th><th>O que sai</th><th>Para construir, você precisa de</th></tr>
+<tr><td>Android</td><td>Um app (<code>.apk</code> ou <code>.aab</code>, o formato da Play Store)</td><td>Windows, macOS ou Linux, com o Android SDK</td></tr>
+<tr><td>iOS (iPhone e iPad)</td><td>Um app para a App Store</td><td><strong>Um Mac</strong>, com o Xcode (exigência da Apple)</td></tr>
+<tr><td>Web</td><td>Um site (HTML, JavaScript e WebAssembly)</td><td>Qualquer sistema, com o Chrome para testar</td></tr>
+<tr><td>Windows</td><td>Um programa <code>.exe</code></td><td>Um Windows, com o Visual Studio</td></tr>
+<tr><td>macOS</td><td>Um programa de Mac</td><td>Um Mac, com o Xcode</td></tr>
+<tr><td>Linux</td><td>Um programa de Linux</td><td>Um Linux, com algumas bibliotecas de desenvolvimento</td></tr>
+</table>
+</div>
+
+<p>Repare na última coluna: o <strong>código</strong> é um só, mas cada sistema exige as próprias ferramentas para <strong>empacotar</strong> o app. Um app de iPhone, por exemplo, só se empacota num Mac. O comando que confere o que está faltando na sua máquina é o <a href="flutter-doctor.html"><code>flutter doctor</code></a>.</p>
+
+<p>Este guia ensina pensando primeiro em <strong>Android</strong> (o celular mais comum no Brasil), e as fotos das telas mostram o app no tamanho de um celular. As aulas de build mostram as outras plataformas.</p>
+
+<hr>
+
+<h2>4. A cara de um app Flutter</h2>
+<p>Chega de conversa: este é um app Flutter completo. Ele mostra uma tela com uma barra de título e uma frase no meio.</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Center(
+          child: Text('Bolo de cenoura'),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<figure class="tela"><img src="assets/telas/introducao-1.png" alt="Tela do app com fundo claro levemente rosado: no alto, à esquerda, o título 'Receitas da Ana'; no meio da tela, o texto pequeno 'Bolo de cenoura'; no canto superior direito, uma faixa vermelha escrita DEBUG" width="390" height="844" loading="lazy"><figcaption>O app rodando (Flutter 3.47.7, em tamanho de celular).</figcaption></figure>
+
+<p>Repare em três coisas na tela. O título ficou no alto, na barra (<code>AppBar</code>); a frase ficou exatamente no meio (<code>Center</code>); e as cores (o fundo claro, a letra escura) vieram sozinhas, do tema padrão do Material 3. A faixa vermelha <strong>DEBUG</strong> no canto avisa que o app está no modo de desenvolvimento, o modo do <code>flutter run</code>; ela some no app final (aula <a href="flutter-run.html">Rodando o App (flutter run)</a>).</p>
+
+<p>Você ainda não precisa entender cada linha (cada uma tem aula própria), mas já dá para reconhecer as peças:</p>
+
+<dl class="anatomy">
+  <dt>import 'package:flutter/material.dart';</dt><dd>Traz para o arquivo todos os widgets do Material: <code>MaterialApp</code>, <code>Scaffold</code>, <code>AppBar</code>, <code>Text</code>, <code>Center</code>. Quase todo arquivo de tela começa com essa linha.</dd>
+  <dt>void main() { runApp(...); }</dt><dd>O <code>main</code> é o mesmo do Dart: onde o programa começa. A diferença é o <code>runApp</code>, que pega um widget e o coloca na tela inteira. Aula <a href="primeiro-app.html">Seu Primeiro App (runApp)</a>.</dd>
+  <dt>class MeuApp extends StatelessWidget</dt><dd>O seu app é uma <strong>classe</strong> de Dart que "é um" widget. <code>StatelessWidget</code> é o widget que não muda sozinho (sem estado). Aula <a href="stateless.html">StatelessWidget</a>.</dd>
+  <dt>Widget build(BuildContext context)</dt><dd>O método que o Flutter chama para saber <strong>o que desenhar</strong>. Ele devolve a árvore de widgets.</dd>
+  <dt>MaterialApp → Scaffold → AppBar / Center → Text</dt><dd>As peças encaixadas: o app Material, o "andaime" da tela (<code>Scaffold</code>), a barra de cima com o título e, no corpo, um <code>Center</code> que centraliza um <code>Text</code>.</dd>
+  <dt>const</dt><dd>Avisa ao Dart que aquela peça nunca muda. O Flutter aproveita isso para não reconstruir o que já está pronto. Você vai ver <code>const</code> em todo canto.</dd>
+</dl>
+
+<p>Desenhada como árvore, a tela fica assim:</p>
+
+<pre>MaterialApp
+└── Scaffold
+    ├── appBar: AppBar
+    │           └── title: Text('Receitas da Ana')
+    └── body: Center
+              └── child: Text('Bolo de cenoura')
+</pre>
+
+<div class="tryflutter" data-goal="src:Text\('Bolo de fubá'\)">
+<p class="try-task"><strong>Missão:</strong> a Ana mudou de ideia sobre a receita do dia. Troque <code>Bolo de cenoura</code> por <code>Bolo de fubá</code> e clique em Rodar.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Center(
+          child: Text('Bolo de cenoura'),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Center(
+          child: Text('Bolo de fubá'),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<figure class="tela"><img src="assets/telas/introducao-2.png" alt="O resultado esperado: o mesmo app, com 'Receitas da Ana' no alto e 'Bolo de fubá' no meio da tela" width="390" height="844" loading="lazy"><figcaption>O resultado esperado da missão.</figcaption></figure>
+
+<hr>
+
+<h2>5. O que vem na caixa</h2>
+<p>Quando você instala o Flutter (aula <a href="instalar.html">Instalar o Flutter</a>), recebe uma pasta com tudo isto:</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Peça</th><th>Para que serve</th></tr>
+<tr><td>O comando <code>flutter</code></td><td>Cria projetos (<code>flutter create</code>), roda o app (<code>flutter run</code>), confere a instalação (<code>flutter doctor</code>), baixa pacotes (<code>flutter pub get</code>), empacota (<code>flutter build</code>)</td></tr>
+<tr><td>O Dart SDK</td><td>A linguagem, o comando <code>dart</code> e o analisador de código. Vem <strong>junto</strong>: não precisa instalar o Dart separado</td></tr>
+<tr><td>O framework</td><td>Os widgets prontos: Material 3, Cupertino, layout, animação, gestos</td></tr>
+<tr><td>O engine</td><td>O motor de desenho, já compilado para cada plataforma</td></tr>
+<tr><td>O DevTools</td><td>Ferramentas de depuração no navegador: inspecionar a árvore de widgets, ver desempenho e memória</td></tr>
+<tr><td>O hot reload</td><td>Troca o código do app <strong>enquanto ele está aberto</strong>, em menos de um segundo, sem perder o que estava na tela. Aula <a href="hot-reload.html">Hot Reload e Hot Restart</a></td></tr>
+</table>
+</div>
+
+<p>Fora do Flutter, você ainda vai precisar de um <strong>editor</strong> (aula <a href="editor.html">VS Code e Android Studio</a>) e, para Android, do <strong>Android SDK</strong>, que vem com o Android Studio.</p>
+
+<hr>
+
+<h2>Formas diferentes de fazer um app (e quando usar o Flutter)</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Jeito</th><th>Linguagem</th><th>Como desenha</th><th>Bom quando</th></tr>
+<tr><td><strong>Flutter</strong></td><td>Dart</td><td>Motor próprio, igual em todo aparelho</td><td>Você quer um código só para Android e iOS (e talvez web e desktop), com visual próprio e animações suaves</td></tr>
+<tr><td>Nativo Android</td><td>Kotlin (Jetpack Compose)</td><td>Componentes do Android</td><td>O app é só para Android e usa muito recurso específico do sistema</td></tr>
+<tr><td>Nativo iOS</td><td>Swift (SwiftUI)</td><td>Componentes do iOS</td><td>O app é só para iPhone</td></tr>
+<tr><td>React Native</td><td>JavaScript / TypeScript</td><td>Pede ao sistema os componentes nativos</td><td>A equipe já sabe React e JavaScript</td></tr>
+<tr><td>Site responsivo</td><td>HTML, CSS, JavaScript</td><td>O navegador</td><td>Não precisa estar na loja de apps nem funcionar sem internet</td></tr>
+</table>
+</div>
+
+<p>Curiosamente, o Jetpack Compose e o SwiftUI, os jeitos modernos de fazer app nativo, usam a <strong>mesma ideia</strong> do Flutter: a tela é descrita como uma árvore de componentes. O que você aprender aqui ajuda até se um dia mudar de ferramenta.</p>
+
+<div class="tip">
+<strong>Qual escolher?</strong>
+<p>Para quem já sabe Dart e quer o mesmo app no celular Android e no iPhone, o Flutter é a escolha mais direta: uma linguagem, um código, um visual. Os nativos ganham quando o app é de uma plataforma só ou depende de algo muito específico do sistema.</p>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+<p>Ainda não instalamos nada, mas vale conhecer desde já as três "caras" de um problema no Flutter, porque você vai encontrar todas neste guia:</p>
+
+<div class="cenario">
+<strong>1. O código nem compila</strong>
+<p>Um erro de escrita (um parêntese a mais, um nome errado) faz o Dart recusar o programa antes de rodar. O <code>flutter run</code> mostra a mensagem com o arquivo, a linha e a coluna, no formato <code>lib/main.dart:15:9: Error: ...</code>, e o app nem abre. Você vê exemplos reais em <a href="flutter-run.html">Rodando o App (flutter run)</a>.</p>
+</div>
+
+<div class="cenario">
+<strong>2. O app abre, mas a tela fica vermelha</strong>
+<p>Se algo dá errado <strong>enquanto</strong> o Flutter monta a tela, ele troca o pedaço com problema por uma tela vermelha com a mensagem de erro em amarelo (no modo de desenvolvimento) e escreve a explicação completa no terminal. Aula <a href="widgets.html">Tudo é Widget</a>.</p>
+</div>
+
+<div class="cenario">
+<strong>3. A tela abre, mas com listras amarelas e pretas</strong>
+<p>É o famoso erro de <strong>overflow</strong> (transbordamento): um widget ficou maior que o espaço disponível. O Flutter pinta a faixa que "vazou" com listras e diz no terminal quantos pixels sobraram. Tem aula só dele: <a href="overflow.html">O Famoso Erro de Overflow</a>.</p>
+</div>
+
+<p>Nos três casos, a regra é a mesma do Dart: <strong>leia a mensagem do terminal</strong>. Ela sai em inglês; o guia traduz e explica cada uma.</p>
+
+<hr>
+
+<h2>O que este guia ensina</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Nível</th><th>Você vai aprender</th></tr>
+<tr><td>1 · Iniciante</td><td>Instalar, criar e rodar um projeto; os widgets básicos (<code>Text</code>, <code>Icon</code>, <code>Image</code>, botões); layout (<code>Row</code>, <code>Column</code>, <code>Container</code>, <code>Stack</code>)</td></tr>
+<tr><td>2 · Intermediário</td><td>Estado (<code>StatefulWidget</code>, <code>setState</code>), listas, formulários, navegação entre telas</td></tr>
+<tr><td>3 · Avançado</td><td>Gerência de estado em apps grandes, internet, banco de dados, testes, publicação</td></tr>
+</table>
+</div>
+
+<p>Todas as telas e saídas do guia foram tiradas de um Flutter de verdade, na máquina fictícia da Ana (usuária <code>ana</code>, computador <code>notebook</code>). As caixas "Experimente" deixam você mexer no código direto na página (aula <a href="simulador.html">O Editor do Guia</a>).</p>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Termo</th><th>O que é</th></tr>
+<tr><td>Flutter</td><td>O kit (SDK) do Google para fazer apps de várias plataformas com um código só</td></tr>
+<tr><td>Dart</td><td>A linguagem em que se escreve o app Flutter</td></tr>
+<tr><td>Widget</td><td>Uma peça da tela: texto, botão, espaço, a tela inteira</td></tr>
+<tr><td>Árvore de widgets</td><td>Os widgets encaixados uns dentro dos outros, formando a tela</td></tr>
+<tr><td>Framework</td><td>A biblioteca de widgets prontos (Material, Cupertino)</td></tr>
+<tr><td>Engine (Impeller)</td><td>O motor que desenha os pixels</td></tr>
+<tr><td>Material 3</td><td>O visual padrão dos widgets do Flutter, criado pelo Google</td></tr>
+<tr><td><code>runApp</code></td><td>A função que coloca o primeiro widget na tela</td></tr>
+<tr><td>Hot reload</td><td>Recarga a quente: troca o código com o app aberto, sem perder o estado</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. A linguagem</h3>
+<p>Em que linguagem se escrevem as telas de um app Flutter?</p>
+<div class="ex-code">Linguagem: <input data-answer="Dart" aria-label="linguagem"></div>
+</div>
+
+<div class="exercise">
+<h3>2. A função que abre o app</h3>
+<p>Complete a linha que coloca o widget <code>MeuApp</code> na tela:</p>
+<div class="ex-code">void main() { <input data-answer="runApp" aria-label="nome da função">(const MeuApp()); }</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. Como o Flutter mostra um botão na tela?</p>
+<label><input type="radio" name="q3"> Pede ao Android ou ao iOS o botão do próprio sistema</label>
+<label><input type="radio" name="q3"> Desenha o botão sozinho, pixel por pixel, com o próprio motor</label>
+<label><input type="radio" name="q3"> Abre uma página de internet com o botão</label>
+<label><input type="radio" name="q3"> Usa o botão do navegador Chrome</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. A Ana tem um notebook com Windows. Qual destes apps ela <strong>não</strong> consegue empacotar nele?</p>
+<label><input type="radio" name="q4"> O app de Android</label>
+<label><input type="radio" name="q4"> O site (web)</label>
+<label><input type="radio" name="q4"> O app de iPhone</label>
+<label><input type="radio" name="q4"> O programa de Windows</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. No app desta aula, quem é o <strong>filho</strong> (<code>child</code>) do <code>Center</code>?</p>
+<label><input type="radio" name="q5"> <code>Text('Bolo de cenoura')</code></label>
+<label><input type="radio" name="q5"> <code>Scaffold</code></label>
+<label><input type="radio" name="q5"> <code>AppBar</code></label>
+<label><input type="radio" name="q5"> <code>MaterialApp</code></label>
+</div>
+
+<h3>Missão final: o título do app</h3>
+
+<div class="tryflutter" data-goal="src:Text\('Lanches da Ana'\);;src:Text\('Pão de queijo'\)">
+<p class="try-task"><strong>Missão:</strong> transforme o app de receitas no cardápio da lanchonete: o título da barra deve ser <code>Lanches da Ana</code> e a frase do meio, <code>Pão de queijo</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Center(
+          child: Text('Bolo de cenoura'),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lanches da Ana')),
+        body: const Center(
+          child: Text('Pão de queijo'),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<figure class="tela"><img src="assets/telas/introducao-3.png" alt="O resultado esperado: o título 'Lanches da Ana' no alto e o texto 'Pão de queijo' no meio da tela" width="390" height="844" loading="lazy"><figcaption>O resultado esperado da missão final.</figcaption></figure>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O Flutter é o kit gratuito do Google para fazer apps de Android, iOS, web, Windows, macOS e Linux com <strong>um código só</strong>, em <strong>Dart</strong>.</li>
+  <li>Tudo na tela é um <strong>widget</strong>, uma peça de montar; os widgets se encaixam uns nos outros e formam a <strong>árvore de widgets</strong>.</li>
+  <li>O Flutter não usa os botões do sistema: o <strong>motor</strong> dele (Impeller) desenha cada pixel, e por isso o app fica igual em todo aparelho.</li>
+  <li>O código é um só, mas cada plataforma pede as próprias ferramentas para empacotar (app de iPhone, só num Mac).</li>
+  <li>Um app mínimo tem o <code>import</code> do Material, um <code>main</code> com <code>runApp</code> e uma classe de widget com o método <code>build</code>.</li>
+  <li>Quando dá errado, o Flutter avisa de três jeitos: erro de compilação no terminal, tela vermelha e listras de overflow. Leia sempre a mensagem do terminal.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
