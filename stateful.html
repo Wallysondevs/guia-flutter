@@ -1,0 +1,681 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter StatefulWidget — o widget que lembra e muda | Guia Flutter</title>
+<meta name="description" content="StatefulWidget do Flutter para quem nunca fez um app: o que é estado, as duas classes (o widget e o State), createState, o build dentro do State, widget.nome para ler os parâmetros, fotos reais antes e depois do toque e o erro real de tentar mudar um StatelessWidget.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">StatefulWidget</span></h1>
+
+<p class="intro">Até aqui, todas as telas que você montou eram <strong>paradas</strong>: o texto, as cores e os ícones ficavam do jeito que o código mandou, do começo ao fim. Mas um app de verdade <strong>reage</strong>: o coração fica vermelho quando você curte, o número do carrinho sobe, o campo mostra o que você digitou. Para uma parte da tela mudar, ela precisa <strong>lembrar</strong> de alguma coisa. Essa memória se chama <strong>estado</strong> (em inglês, <em>state</em>), e o widget que tem estado é o <code>StatefulWidget</code> ("widget com estado").</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é <strong>estado</strong> e a diferença entre <code>StatelessWidget</code> e <code>StatefulWidget</code>.</li>
+  <li>Por que um <code>StatefulWidget</code> são <strong>duas classes</strong>: o widget e o seu <code>State</code>.</li>
+  <li>O que fazem o <code>createState</code>, o <code>build</code> dentro do <code>State</code> e o <code>setState</code>.</li>
+  <li>Como o <code>State</code> lê os parâmetros do widget com <code>widget.nome</code>.</li>
+  <li>O erro real de tentar mudar um valor num <code>StatelessWidget</code>.</li>
+</ul>
+</div>
+
+<p>Todas as telas desta aula foram tiradas de um Flutter de verdade, no laboratório da Ana, em tamanho de celular: uma foto <strong>antes</strong> e outra <strong>depois</strong> do toque no botão.</p>
+
+<hr>
+
+<h2>A ideia: a placa e o quadro de giz</h2>
+<p>Na frente da padaria tem duas coisas escritas. Uma é a <strong>placa</strong> com o nome da padaria, pintada na parede: ela nunca muda. A outra é o <strong>quadro de giz</strong> com "Pão de queijo saindo: 3 fornadas hoje": a atendente apaga e reescreve o número ao longo do dia.</p>
+<ul>
+  <li>O <code>StatelessWidget</code> (aula <a href="stateless.html">StatelessWidget</a>) é a <strong>placa</strong>: desenha o que recebeu e pronto.</li>
+  <li>O <code>StatefulWidget</code> é o <strong>quadro de giz</strong>: guarda um valor (o número de fornadas) e, quando o valor muda, se desenha de novo com o número novo.</li>
+</ul>
+<p>O "apagar e reescrever" tem um nome no Flutter: <code>setState</code> ("mude o estado"). Ele tem aula própria, a próxima (<a href="setstate.html">setState</a>); aqui você vai usá-lo do jeito mais simples.</p>
+
+<hr>
+
+<h2>1. O primeiro <code>StatefulWidget</code>: porções do bolo</h2>
+<p>A Ana quer, na receita do bolo, um botão que aumente o número de porções. O número começa em 4 e sobe a cada toque:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Center(child: Porcoes()),
+      ),
+    );
+  }
+}
+
+class Porcoes extends StatefulWidget {
+  const Porcoes({super.key});
+
+  @override
+  State&lt;Porcoes&gt; createState() =&gt; _PorcoesState();
+}
+
+class _PorcoesState extends State&lt;Porcoes&gt; {
+  int _porcoes = 4;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('Bolo de cenoura: $_porcoes porções',
+            style: const TextStyle(fontSize: 24)),
+        const SizedBox(height: 16),
+        FilledButton(
+          onPressed: () {
+            setState(() {
+              _porcoes++;
+            });
+          },
+          child: const Text('Mais uma porção'),
+        ),
+      ],
+    );
+  }
+}</pre>
+
+<p>Repare que o widget das porções é feito de <strong>duas classes</strong>. Por partes:</p>
+
+<dl class="anatomy">
+  <dt>class Porcoes extends StatefulWidget</dt><dd>O <strong>widget</strong>. Ele mesmo não guarda nada que muda; é só a "ficha" que diz qual <code>State</code> usar. Assim como o <code>StatelessWidget</code>, ele tem construtor <code>const</code> e a <code>key</code> (veja <a href="keys.html">Keys</a>).</dd>
+  <dt>State&lt;Porcoes&gt; createState() =&gt; _PorcoesState();</dt><dd>"Criar o estado." O Flutter chama este método <strong>uma vez</strong>, quando o widget aparece na tela pela primeira vez, e guarda o objeto <code>_PorcoesState</code> que ele devolve. É a única coisa que a classe do widget precisa fazer.</dd>
+  <dt>class _PorcoesState extends State&lt;Porcoes&gt;</dt><dd>O <strong>estado</strong>: a classe que guarda os valores que mudam e que desenha a tela. O <code>&lt;Porcoes&gt;</code> diz de qual widget ela é. O sublinhado no começo do nome (<code>_</code>) faz a classe ser <strong>privada</strong> do arquivo: ninguém de fora precisa mexer nela.</dd>
+  <dt>int _porcoes = 4;</dt><dd>O valor que muda, guardado num campo do <code>State</code>. Este campo <strong>não</strong> é <code>final</code>: ele vai receber valores novos. Também começa com <code>_</code>, porque só este <code>State</code> mexe nele.</dd>
+  <dt>Widget build(BuildContext context)</dt><dd>O mesmo <code>build</code> do <code>StatelessWidget</code>, só que <strong>aqui, dentro do <code>State</code></strong>. Ele lê o <code>_porcoes</code> atual e monta a tela com ele.</dd>
+  <dt>setState(() { _porcoes++; });</dt><dd>Muda o valor <strong>e avisa o Flutter</strong>: "o estado mudou, chame o meu <code>build</code> de novo". Sem esse aviso, o número mudaria na memória, mas a tela continuaria mostrando o antigo (veja <a href="setstate.html">setState</a>).</dd>
+</dl>
+
+<p>A tela logo que o app abre, e depois de a Ana tocar <strong>duas vezes</strong> no botão:</p>
+
+<figure class="tela"><img src="assets/telas/stateful-1.png" alt="Tela do app 'Receitas da Ana' com o texto 'Bolo de cenoura: 4 porções' no meio e, embaixo, um botão roxo arredondado 'Mais uma porção'" width="390" height="844" loading="lazy"><figcaption>Antes: o app acabou de abrir, com 4 porções.</figcaption></figure>
+<figure class="tela"><img src="assets/telas/stateful-2.png" alt="A mesma tela, agora com o texto 'Bolo de cenoura: 6 porções' acima do botão 'Mais uma porção'" width="390" height="844" loading="lazy"><figcaption>Depois de dois toques no botão: 6 porções.</figcaption></figure>
+
+<p>Só o número mudou: de <code>4 porções</code> para <code>6 porções</code>, um a mais por toque. O título, o botão e a posição de tudo continuaram iguais.</p>
+
+<h3>O que aconteceu a cada toque</h3>
+<ol class="passo">
+  <li>O app abre. O Flutter vê o widget <code>Porcoes</code>, chama o <code>createState</code> e ganha um <code>_PorcoesState</code> com <code>_porcoes = 4</code>.</li>
+  <li>O Flutter chama o <code>build</code> desse estado: a tela mostra <code>4 porções</code>.</li>
+  <li>A Ana toca no botão. O <code>onPressed</code> roda o <code>setState</code>, que soma 1 (agora <code>5</code>) e marca o widget como "precisa redesenhar".</li>
+  <li>No próximo quadro da tela (o Flutter desenha até 60 vezes por segundo), ele chama o <code>build</code> de novo, que agora monta <code>5 porções</code>.</li>
+</ol>
+<p>O objeto <code>_PorcoesState</code> é <strong>o mesmo</strong> o tempo todo; por isso ele lembra o número. Já os widgets que o <code>build</code> devolve (o <code>Column</code>, o <code>Text</code>, o botão) são <strong>criados de novo</strong> a cada <code>build</code>: eles são baratos, são só a "descrição" da tela.</p>
+
+<div class="tryflutter" data-goal="src:_porcoes\s*\+=\s*2|_porcoes\s*=\s*_porcoes\s*\+\s*2">
+<p class="try-task"><strong>Missão:</strong> o bolo da Ana sempre é cortado em pares. Faça o botão somar <strong>2</strong> porções a cada toque, em vez de 1. Depois toque no botão no app e confira: 4, 6, 8…</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Center(child: Porcoes()),
+      ),
+    );
+  }
+}
+
+class Porcoes extends StatefulWidget {
+  const Porcoes({super.key});
+
+  @override
+  State&lt;Porcoes&gt; createState() =&gt; _PorcoesState();
+}
+
+class _PorcoesState extends State&lt;Porcoes&gt; {
+  int _porcoes = 4;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('Bolo de cenoura: $_porcoes porções',
+            style: const TextStyle(fontSize: 24)),
+        const SizedBox(height: 16),
+        FilledButton(
+          onPressed: () {
+            setState(() {
+              _porcoes++;
+            });
+          },
+          child: const Text('Mais uma porção'),
+        ),
+      ],
+    );
+  }
+}</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Center(child: Porcoes()),
+      ),
+    );
+  }
+}
+
+class Porcoes extends StatefulWidget {
+  const Porcoes({super.key});
+
+  @override
+  State&lt;Porcoes&gt; createState() =&gt; _PorcoesState();
+}
+
+class _PorcoesState extends State&lt;Porcoes&gt; {
+  int _porcoes = 4;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('Bolo de cenoura: $_porcoes porções',
+            style: const TextStyle(fontSize: 24)),
+        const SizedBox(height: 16),
+        FilledButton(
+          onPressed: () {
+            setState(() {
+              _porcoes += 2;
+            });
+          },
+          child: const Text('Mais uma porção'),
+        ),
+      ],
+    );
+  }
+}</pre>
+</div>
+
+<hr>
+
+<h2>2. Cada widget com o seu próprio estado</h2>
+<p>Um <code>StatefulWidget</code> pode receber parâmetros, como qualquer widget, e pode aparecer <strong>várias vezes</strong> na tela. Cada cópia tem o seu <code>State</code> separado. A Ana fez uma lista de receitas com um coração em cada uma:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Column(
+          children: [
+            ReceitaFavorita(nome: 'Bolo de cenoura'),
+            ReceitaFavorita(nome: 'Pão de queijo'),
+            ReceitaFavorita(nome: 'Brigadeiro'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ReceitaFavorita extends StatefulWidget {
+  const ReceitaFavorita({super.key, required this.nome});
+
+  final String nome;
+
+  @override
+  State&lt;ReceitaFavorita&gt; createState() =&gt; _ReceitaFavoritaState();
+}
+
+class _ReceitaFavoritaState extends State&lt;ReceitaFavorita&gt; {
+  bool _favorita = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: Text(widget.nome),
+      trailing: IconButton(
+        icon: Icon(_favorita ? Icons.favorite : Icons.favorite_border),
+        color: Colors.red,
+        tooltip: 'Favoritar ${widget.nome}',
+        onPressed: () {
+          setState(() {
+            _favorita = !_favorita;
+          });
+        },
+      ),
+    );
+  }
+}</pre>
+
+<dl class="anatomy">
+  <dt>const ReceitaFavorita({super.key, required this.nome});</dt><dd>O parâmetro <code>nome</code> fica no <strong>widget</strong>, num campo <code>final</code>. Parâmetros são o que o pai manda; eles não mudam enquanto o widget está na tela.</dd>
+  <dt>bool _favorita = false;</dt><dd>O estado: cada receita começa "não favorita".</dd>
+  <dt>widget.nome</dt><dd>Dentro do <code>State</code>, a palavra <code>widget</code> é o widget dono deste estado. É assim que o <code>State</code> lê os parâmetros: <code>widget.nome</code>, e não só <code>nome</code>.</dd>
+  <dt>_favorita ? Icons.favorite : Icons.favorite_border</dt><dd>Escolhe o ícone pelo estado: coração cheio se for favorita, só o contorno se não for.</dd>
+  <dt>tooltip: 'Favoritar ${widget.nome}'</dt><dd>A dica que aparece quando a pessoa segura o dedo (ou o mouse) no ícone. Ela também é o que o leitor de tela fala para quem não enxerga: um botão só com ícone deve ter sempre um <code>tooltip</code>.</dd>
+  <dt>_favorita = !_favorita;</dt><dd>Inverte o valor: <code>false</code> vira <code>true</code> e vice-versa.</dd>
+</dl>
+
+<p>Antes e depois de a Ana tocar no coração do <strong>Pão de queijo</strong>:</p>
+
+<figure class="tela"><img src="assets/telas/stateful-3.png" alt="Tela 'Receitas da Ana' com três linhas: 'Bolo de cenoura', 'Pão de queijo' e 'Brigadeiro', cada uma com um coração vermelho vazado na direita" width="390" height="844" loading="lazy"><figcaption>Antes: nenhuma receita favorita.</figcaption></figure>
+<figure class="tela"><img src="assets/telas/stateful-4.png" alt="A mesma lista, agora com o coração do 'Pão de queijo' cheio de vermelho; os do 'Bolo de cenoura' e do 'Brigadeiro' continuam vazados" width="390" height="844" loading="lazy"><figcaption>Depois de tocar no coração do Pão de queijo.</figcaption></figure>
+
+<p>Só o coração do <strong>Pão de queijo</strong> ficou cheio. Os outros dois continuaram vazados, porque cada <code>ReceitaFavorita</code> tem o seu próprio <code>_favorita</code>: o toque chamou o <code>setState</code> de um estado só.</p>
+
+<p>A árvore de widgets mostra por quê: são três <code>ReceitaFavorita</code>, cada uma com o seu <code>State</code>:</p>
+<pre>MeuApp
+└─ MaterialApp
+   └─ Scaffold
+      └─ Column
+         ├─ ReceitaFavorita('Bolo de cenoura')  → _ReceitaFavoritaState (_favorita: false)
+         ├─ ReceitaFavorita('Pão de queijo')    → _ReceitaFavoritaState (_favorita: true)
+         └─ ReceitaFavorita('Brigadeiro')       → _ReceitaFavoritaState (_favorita: false)
+</pre>
+
+<div class="tryflutter" data-goal="src:ReceitaFavorita\(nome:\s*'Coxinha'\)">
+<p class="try-task"><strong>Missão:</strong> acrescente uma quarta receita, <code>Coxinha</code>, na lista. Depois curta duas receitas e veja que cada coração lembra o seu próprio estado.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Column(
+          children: [
+            ReceitaFavorita(nome: 'Bolo de cenoura'),
+            ReceitaFavorita(nome: 'Pão de queijo'),
+            ReceitaFavorita(nome: 'Brigadeiro'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ReceitaFavorita extends StatefulWidget {
+  const ReceitaFavorita({super.key, required this.nome});
+
+  final String nome;
+
+  @override
+  State&lt;ReceitaFavorita&gt; createState() =&gt; _ReceitaFavoritaState();
+}
+
+class _ReceitaFavoritaState extends State&lt;ReceitaFavorita&gt; {
+  bool _favorita = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: Text(widget.nome),
+      trailing: IconButton(
+        icon: Icon(_favorita ? Icons.favorite : Icons.favorite_border),
+        color: Colors.red,
+        tooltip: 'Favoritar ${widget.nome}',
+        onPressed: () {
+          setState(() {
+            _favorita = !_favorita;
+          });
+        },
+      ),
+    );
+  }
+}</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Column(
+          children: [
+            ReceitaFavorita(nome: 'Bolo de cenoura'),
+            ReceitaFavorita(nome: 'Pão de queijo'),
+            ReceitaFavorita(nome: 'Brigadeiro'),
+            ReceitaFavorita(nome: 'Coxinha'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ReceitaFavorita extends StatefulWidget {
+  const ReceitaFavorita({super.key, required this.nome});
+
+  final String nome;
+
+  @override
+  State&lt;ReceitaFavorita&gt; createState() =&gt; _ReceitaFavoritaState();
+}
+
+class _ReceitaFavoritaState extends State&lt;ReceitaFavorita&gt; {
+  bool _favorita = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: Text(widget.nome),
+      trailing: IconButton(
+        icon: Icon(_favorita ? Icons.favorite : Icons.favorite_border),
+        color: Colors.red,
+        tooltip: 'Favoritar ${widget.nome}',
+        onPressed: () {
+          setState(() {
+            _favorita = !_favorita;
+          });
+        },
+      ),
+    );
+  }
+}</pre>
+</div>
+
+<hr>
+
+<h2>3. Criando um <code>StatefulWidget</code> no editor</h2>
+<p>As duas classes são um bocado de texto para digitar. Os editores escrevem o esqueleto para você:</p>
+<ul>
+  <li><strong>VS Code</strong> (com a extensão Flutter): digite <code>stful</code> e aperte <kbd>Enter</kbd>. Aparece o esqueleto com o cursor no nome; digite <code>Porcoes</code> e as duas classes ganham o nome certo.</li>
+  <li><strong>Android Studio</strong>: o mesmo atalho, <code>stful</code> + <kbd>Tab</kbd>.</li>
+  <li>Já tem um <code>StatelessWidget</code> e quer transformá-lo? Ponha o cursor no nome da classe, aperte <kbd>Ctrl</kbd>+<kbd>.</kbd> (VS Code) ou <kbd>Alt</kbd>+<kbd>Enter</kbd> (Android Studio) e escolha <strong>Convert to StatefulWidget</strong>.</li>
+</ul>
+<p>Veja a aula <a href="editor.html">VS Code e Android Studio</a> para instalar as extensões.</p>
+
+<hr>
+
+<h2 id="formas">Stateless ou Stateful: qual usar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Pergunta</th><th>Se a resposta for "sim"</th></tr>
+<tr><td>Esta parte da tela muda sozinha depois de aparecer (toque, digitação, tempo passando)?</td><td><code>StatefulWidget</code></td></tr>
+<tr><td>Ela só mostra o que recebeu nos parâmetros?</td><td><code>StatelessWidget</code></td></tr>
+<tr><td>O valor que muda é usado por <strong>vários</strong> widgets (o total do carrinho no topo e nos itens)?</td><td>Guarde o estado no <strong>pai</strong> deles: <a href="elevar-estado.html">Elevando o Estado</a></td></tr>
+</table>
+</div>
+<p>A regra de boa prática é: <strong>comece com <code>StatelessWidget</code></strong> e só troque quando precisar. E deixe o <code>StatefulWidget</code> o menor possível: no exemplo 1, só o <code>Porcoes</code> tem estado; o <code>MeuApp</code>, o <code>AppBar</code> e o resto continuam <code>StatelessWidget</code>. Assim, cada <code>setState</code> redesenha só o pedaço que mudou.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Tentou mudar um valor dentro de um <code>StatelessWidget</code></strong>
+<pre class="file" data-file="lib/main.dart">  const Porcoes({super.key});
+
+  final int porcoes = 4;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('Bolo de cenoura: $porcoes porções',
+            style: const TextStyle(fontSize: 24)),
+        const SizedBox(height: 16),
+        FilledButton(
+          onPressed: () {
+            porcoes++;
+          },
+          child: const Text('Mais uma porção'),
+        ),
+      ],
+    );
+  }
+}</pre>
+<pre class="term">lib/main.dart:34:13: Error: The setter 'porcoes' isn't defined for the type 'Porcoes'.
+ - 'Porcoes' is from 'package:app/main.dart' ('lib/main.dart').
+Try correcting the name to the name of an existing setter, or defining a setter or field named 'porcoes'.
+            porcoes++;
+            ^^^^^^^</pre>
+<p>O app nem chega a abrir: o compilador recusa o código. Linha por linha: <code>lib/main.dart:34:13</code> é o arquivo, a linha 34 (no app completo) e a coluna 13, onde está o <code>porcoes++</code>. <code>The setter 'porcoes' isn't defined for the type 'Porcoes'</code> quer dizer "não existe um <em>setter</em> (um jeito de <strong>gravar</strong> um valor novo) chamado <code>porcoes</code> na classe <code>Porcoes</code>". Não existe porque o campo é <code>final</code>: dá para ler, mas não para mudar. A linha <code>Try correcting the name…</code> é uma sugestão genérica ("corrija o nome ou crie um setter"), que aqui não ajuda. E os <code>^^^^^^^</code> sublinham o trecho culpado. <strong>Como consertar:</strong> o <code>StatelessWidget</code> não foi feito para mudar; os campos dele são <code>final</code>. Transforme-o num <code>StatefulWidget</code> (o atalho <strong>Convert to StatefulWidget</strong>), mova o valor para o <code>State</code>, sem <code>final</code>, e mude-o dentro de um <code>setState</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Leu o parâmetro sem o <code>widget.</code></strong>
+<pre class="file" data-file="lib/main.dart">      title: Text(nome),</pre>
+<pre class="term">lib/main.dart:40:19: Error: The getter 'nome' isn't defined for the type '_ReceitaFavoritaState'.
+ - '_ReceitaFavoritaState' is from 'package:app/main.dart' ('lib/main.dart').
+Try correcting the name to the name of an existing getter, or defining a getter or field named 'nome'.
+      title: Text(nome),
+                  ^^^^</pre>
+<p>"Não existe um <em>getter</em> (um jeito de <strong>ler</strong>) chamado <code>nome</code> no tipo <code>_ReceitaFavoritaState</code>." O <code>nome</code> é um campo do <strong>widget</strong> (<code>ReceitaFavorita</code>), não do <strong>estado</strong>: são duas classes diferentes, e uma não enxerga os campos da outra diretamente. <strong>Como consertar:</strong> dentro do <code>State</code>, os parâmetros do widget ficam em <code>widget</code>: <code>Text(widget.nome)</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Guardou o estado no widget, e não no <code>State</code></strong>
+<p>Se você puser o <code>int porcoes = 4;</code> na classe <code>Porcoes</code> (a do widget) em vez de na <code>_PorcoesState</code>, vai contra a regra de que widgets são <em>imutáveis</em> (não mudam depois de criados), e o valor se perde: o widget é recriado a cada <code>build</code> do pai, e o número volta a valer 4. Só o <code>State</code> sobrevive aos <code>build</code>. <strong>Regra:</strong> o que muda mora no <code>State</code>; o que vem de fora mora no widget, como <code>final</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Peça</th><th>Onde fica</th><th>Para quê</th></tr>
+<tr><td><code>class X extends StatefulWidget</code></td><td>O widget</td><td>Recebe os parâmetros (<code>final</code>) e cria o estado</td></tr>
+<tr><td><code>State&lt;X&gt; createState() =&gt; _XState();</code></td><td>O widget</td><td>Diz qual <code>State</code> usar; roda uma vez</td></tr>
+<tr><td><code>class _XState extends State&lt;X&gt;</code></td><td>O estado</td><td>Guarda os valores que mudam</td></tr>
+<tr><td><code>Widget build(BuildContext context)</code></td><td>O estado</td><td>Monta a tela com os valores atuais</td></tr>
+<tr><td><code>setState(() { … });</code></td><td>O estado</td><td>Muda os valores e pede um novo <code>build</code></td></tr>
+<tr><td><code>widget.parametro</code></td><td>O estado</td><td>Lê um parâmetro do widget</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o esqueleto</h3>
+<p>Complete as partes que faltam:</p>
+<div class="ex-code">class Contador extends <input data-answer="StatefulWidget" aria-label="classe base do widget"> {<br>&nbsp;&nbsp;const Contador({super.key});<br>&nbsp;&nbsp;@override<br>&nbsp;&nbsp;State&lt;Contador&gt; <input data-answer="createState" aria-label="método que cria o estado">() =&gt; _ContadorState();<br>}<br>class _ContadorState extends <input data-answer="State&lt;Contador&gt;" aria-label="classe base do estado"> {<br>&nbsp;&nbsp;int _n = 0;<br>&nbsp;&nbsp;…<br>}</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. Onde fica o método <code>build</code> de um <code>StatefulWidget</code>?</p>
+<label><input type="radio" name="q2"> Na classe do widget</label>
+<label><input type="radio" name="q2"> Na classe do <code>State</code></label>
+<label><input type="radio" name="q2"> Nas duas</label>
+<label><input type="radio" name="q2"> No <code>main</code></label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. Dentro de <code>_ReceitaState</code>, como se lê o parâmetro <code>nome</code> do widget <code>Receita</code>?</p>
+<label><input type="radio" name="q3"> <code>nome</code></label>
+<label><input type="radio" name="q3"> <code>this.nome</code></label>
+<label><input type="radio" name="q3"> <code>widget.nome</code></label>
+<label><input type="radio" name="q3"> <code>Receita.nome</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. Uma tela mostra o logotipo da loja e o endereço, que nunca mudam. Qual widget usar?</p>
+<label><input type="radio" name="q4"> <code>StatelessWidget</code></label>
+<label><input type="radio" name="q4"> <code>StatefulWidget</code></label>
+<label><input type="radio" name="q4"> Tanto faz: o <code>StatefulWidget</code> é sempre melhor</label>
+</div>
+
+<h3>Missão final: o interruptor da luz</h3>
+
+<div class="tryflutter" data-goal="src:extends StatefulWidget;;src:setState\(;;src:_acesa\s*=\s*!_acesa">
+<p class="try-task"><strong>Missão:</strong> o interruptor ainda não funciona. Complete o <code>_LampadaState</code> seguindo os dois comentários: tire o <code>final</code> do campo <code>_acesa</code> (um campo <code>final</code> não pode mudar) e, no <code>onPressed</code>, inverta o valor dentro de um <code>setState</code> (<code>_acesa = !_acesa;</code>). O ícone e o texto já usam o <code>_acesa</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Casa da Ana')),
+        body: const Center(child: Lampada()),
+      ),
+    );
+  }
+}
+
+class Lampada extends StatefulWidget {
+  const Lampada({super.key});
+
+  @override
+  State&lt;Lampada&gt; createState() =&gt; _LampadaState();
+}
+
+class _LampadaState extends State&lt;Lampada&gt; {
+  // 1. tire o final: o _acesa vai precisar mudar
+  final bool _acesa = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          _acesa ? Icons.lightbulb : Icons.lightbulb_outline,
+          size: 96,
+          color: _acesa ? Colors.amber : Colors.grey,
+        ),
+        Text(_acesa ? 'Luz acesa' : 'Luz apagada',
+            style: const TextStyle(fontSize: 24)),
+        const SizedBox(height: 16),
+        FilledButton(
+          onPressed: () {
+            // 2. inverta o _acesa aqui, dentro de um setState
+          },
+          child: const Text('Interruptor'),
+        ),
+      ],
+    );
+  }
+}</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Casa da Ana')),
+        body: const Center(child: Lampada()),
+      ),
+    );
+  }
+}
+
+class Lampada extends StatefulWidget {
+  const Lampada({super.key});
+
+  @override
+  State&lt;Lampada&gt; createState() =&gt; _LampadaState();
+}
+
+class _LampadaState extends State&lt;Lampada&gt; {
+  bool _acesa = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          _acesa ? Icons.lightbulb : Icons.lightbulb_outline,
+          size: 96,
+          color: _acesa ? Colors.amber : Colors.grey,
+        ),
+        Text(_acesa ? 'Luz acesa' : 'Luz apagada',
+            style: const TextStyle(fontSize: 24)),
+        const SizedBox(height: 16),
+        FilledButton(
+          onPressed: () {
+            setState(() {
+              _acesa = !_acesa;
+            });
+          },
+          child: const Text('Interruptor'),
+        ),
+      ],
+    );
+  }
+}</pre>
+</div>
+
+<p>No lab, a solução abre com a lâmpada cinza vazada e o texto <code>Luz apagada</code>; depois de um toque em <strong>Interruptor</strong>, a lâmpada fica cheia e amarela e o texto vira <code>Luz acesa</code> (as duas fotos abaixo). Toque de novo e ela apaga.</p>
+
+<figure class="tela"><img src="assets/telas/stateful-5.png" alt="Tela Casa da Ana com uma lâmpada cinza vazada no meio, o texto Luz apagada e o botão roxo Interruptor" width="390" height="844" loading="lazy"><figcaption>Antes do toque: luz apagada.</figcaption></figure>
+<figure class="tela"><img src="assets/telas/stateful-6.png" alt="A mesma tela com a lâmpada cheia e amarela e o texto Luz acesa acima do botão Interruptor" width="390" height="844" loading="lazy"><figcaption>Depois de um toque no Interruptor: luz acesa.</figcaption></figure>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><strong>Estado</strong> é o que uma parte da tela precisa lembrar e que pode mudar depois que ela aparece.</li>
+  <li>Um <code>StatefulWidget</code> são duas classes: o <strong>widget</strong> (parâmetros <code>final</code> e o <code>createState</code>) e o <strong>State</strong> (os valores que mudam e o <code>build</code>).</li>
+  <li>O <code>State</code> é criado uma vez e sobrevive aos <code>build</code>; por isso ele lembra. Os widgets do <code>build</code> são recriados a cada vez.</li>
+  <li>Para mudar a tela: mude o valor dentro de <code>setState(() { … })</code>. Para ler um parâmetro: <code>widget.nome</code>.</li>
+  <li>Comece com <code>StatelessWidget</code>; use <code>StatefulWidget</code> só no pedaço que muda.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
