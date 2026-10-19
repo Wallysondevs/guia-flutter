@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter DevTools — inspecionar, medir e depurar o app | Guia Flutter</title>
+<meta name="description" content="O Flutter DevTools para quem nunca fez um app: como abrir (pelo link do flutter run, pelo editor ou com dart devtools), o Inspetor de widgets, a aba Performance, o CPU Profiler, a Memória, o Debugger com pontos de parada, a aba Network, o Logging com debugPrint, e os problemas mais comuns ao abrir.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">DevTools</span></h1>
+
+<p class="intro">O app da Ana às vezes "engasga" ao rolar a lista, e um botão aparece um pouco fora do lugar. Olhando só a tela, é difícil saber por quê. O <strong>Flutter DevTools</strong> (as "ferramentas do desenvolvedor") é um painel que abre no navegador, ligado ao app que está rodando, e mostra o que acontece por dentro: a <strong>árvore de widgets</strong>, o tamanho e a posição de cada caixa, quanto tempo cada quadro levou para ser desenhado, quanta memória o app usa, as mensagens de <code>print</code> e as requisições de rede.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como abrir o DevTools: pelo link que o <code>flutter run</code> mostra, pelo editor (VS Code, Android Studio) ou com <code>dart devtools</code>.</li>
+  <li>O que cada aba faz: <strong>Inspector</strong>, <strong>Performance</strong>, <strong>CPU Profiler</strong>, <strong>Memory</strong>, <strong>Debugger</strong>, <strong>Network</strong>, <strong>Logging</strong> e <strong>App Size</strong>.</li>
+  <li>Como usar o <code>debugPrint</code> para mandar recados ao console.</li>
+  <li>Por que medir desempenho em modo <strong>profile</strong>, e não em debug.</li>
+  <li>Os problemas mais comuns na hora de abrir.</li>
+</ul>
+</div>
+
+<div class="warning">
+<strong>O que é real e o que é ilustrativo nesta página</strong>
+<p>As saídas do terminal (<code>flutter run</code>, <code>dart devtools</code>) e o console do <code>debugPrint</code> vieram do <strong>Flutter 3.47.7</strong> (DevTools 2.60.0) da máquina da Ana. As descrições das abas do painel seguem a documentação oficial (<a href="https://docs.flutter.dev/tools/devtools" target="_blank" rel="noopener">docs.flutter.dev/tools/devtools</a>) e são <strong>ilustrativas</strong>: os nomes dos botões e a arrumação das abas mudam um pouco de uma versão do DevTools para outra.</p>
+</div>
+
+<hr>
+
+<h2>A ideia: o painel do mecânico</h2>
+<p>Quando um carro faz um barulho estranho, o mecânico não adivinha: ele liga um aparelho na tomada do painel e lê o que os sensores dizem (rotação, temperatura, erros gravados). O DevTools é esse aparelho para o app. O "cabo" que liga os dois é o <strong>Dart VM Service</strong>, um canal que todo app Flutter em modo <strong>debug</strong> ou <strong>profile</strong> abre enquanto roda. O DevTools se conecta nesse canal e pergunta coisas ao app: "quais widgets você tem?", "quanto tempo levou esse quadro?", "quanta memória está usando?".</p>
+
+<pre>  seu app rodando  ⇄  Dart VM Service (http://127.0.0.1:PORTA/…)  ⇄  DevTools no navegador
+</pre>
+
+<p>Por isso o DevTools <strong>não funciona</strong> com um app em modo <strong>release</strong> (o da loja): nele esse canal não existe.</p>
+
+<hr>
+
+<h2>1. Abrindo pelo <code>flutter run</code></h2>
+<p>O jeito mais direto: rode o app pelo terminal (veja <a href="flutter-run.html">flutter run</a>). Logo depois das teclas de atalho, o Flutter mostra dois links. A Ana rodou o app de compras como app de desktop do Linux:</p>
+
+<pre class="term">$ flutter run -d linux
+Launching lib/main.dart on Linux in debug mode...
+Building Linux application...
+✓ Built build/linux/x64/debug/bundle/compras
+[IMPORTANT:flutter/shell/platform/embedder/embedder_surface_gl_impeller.cc(126)] Using the Impeller rendering backend (OpenGLESSDF).
+Syncing files to device Linux...                                    84ms
+
+Flutter run key commands.
+r Hot reload. 🔥🔥🔥
+R Hot restart.
+h List all available interactive commands.
+d Detach (terminate "flutter run" but leave application running).
+c Clear the screen
+q Quit (terminate the application on the device).
+
+A Dart VM Service on Linux is available at: http://127.0.0.1:38595/a-alQiXiR-o=/
+The Flutter DevTools debugger and profiler on Linux is available at: http://127.0.0.1:38595/a-alQiXiR-o=/devtools/?uri=ws://127.0.0.1:38595/a-alQiXiR-o=/ws
+</pre>
+
+<dl class="anatomy">
+  <dt>[IMPORTANT:…] Using the Impeller rendering backend</dt><dd>Um aviso informativo do motor: o app está desenhando com o <strong>Impeller</strong>, o motor gráfico atual do Flutter. Não é erro.</dd>
+  <dt>A Dart VM Service … is available at: http://127.0.0.1:38595/a-alQiXiR-o=/</dt><dd>"O serviço da VM Dart está disponível em…". É o canal do app. <code>127.0.0.1</code> é o próprio computador; <code>38595</code> é a porta, sorteada a cada execução; <code>a-alQiXiR-o=</code> é uma senha curta que também muda a cada vez (só quem tem o link inteiro consegue se conectar).</dd>
+  <dt>The Flutter DevTools debugger and profiler … is available at: …/devtools/?uri=ws://…</dt><dd>"O depurador e medidor DevTools está disponível em…". <strong>Este</strong> é o link para abrir. Ele já leva no fim (<code>?uri=ws://…</code>) o endereço do canal do app, então o painel abre conectado. Na maioria dos terminais, segure <kbd>Ctrl</kbd> e clique no link.</dd>
+</dl>
+
+<p>Os links mudam toda vez que você roda o app: não adianta salvar nos favoritos. No celular Android ou no emulador, a linha é a mesma, com o nome do aparelho no lugar de <code>Linux</code>.</p>
+
+<h2>2. Outras formas de abrir</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Onde</th><th>Como</th></tr>
+<tr><td><strong>VS Code</strong> (extensão Flutter)</td><td>Com o app rodando pelo editor (<kbd>F5</kbd>), abra a paleta de comandos (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>) e procure <em>Open DevTools</em>. Ele pode abrir dentro do próprio VS Code ou no navegador (veja <a href="editor.html">O Editor</a>).</td></tr>
+<tr><td><strong>Android Studio</strong></td><td>Com o app rodando, a janela <em>Flutter Inspector</em> fica na lateral; o botão <em>Open DevTools</em> abre o painel completo.</td></tr>
+<tr><td><strong>Terminal, sem app</strong></td><td><code>dart devtools</code> sobe o painel sozinho; depois você cola nele o link do VM Service (a primeira linha que o <code>flutter run</code> mostra).</td></tr>
+</table>
+</div>
+
+<pre class="term">$ dart devtools --no-launch-browser
+Serving DevTools at http://127.0.0.1:9100.
+
+          Hit ctrl-c to terminate the server.
+</pre>
+<p>"Servindo o DevTools em http://127.0.0.1:9100. Aperte <kbd>Ctrl</kbd>+<kbd>C</kbd> para encerrar o servidor." Sem o <code>--no-launch-browser</code>, o navegador abre sozinho nesse endereço. A porta padrão é a <code>9100</code>; <code>--port=0</code> escolhe qualquer porta livre (está no <code>dart devtools --help</code>).</p>
+
+<hr>
+
+<h2>3. As abas, uma por uma</h2>
+<p>O painel tem uma barra de abas no topo. Cada uma responde uma pergunta diferente:</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Aba</th><th>Responde…</th><th>Quando a Ana usa</th></tr>
+<tr><td><strong>Flutter Inspector</strong></td><td>"Quais widgets estão na tela, um dentro do outro, e qual o tamanho de cada um?"</td><td>Um botão fora do lugar, um espaço que não devia existir, listras de estouro</td></tr>
+<tr><td><strong>Performance</strong></td><td>"Quanto tempo cada quadro levou?"</td><td>A rolagem engasga; uma animação treme</td></tr>
+<tr><td><strong>CPU Profiler</strong></td><td>"Qual função gastou mais tempo?"</td><td>Depois de achar o quadro lento, descobrir o culpado</td></tr>
+<tr><td><strong>Memory</strong></td><td>"Quanta memória o app usa, e ela só cresce?"</td><td>O app fica lento depois de muito tempo aberto</td></tr>
+<tr><td><strong>Debugger</strong></td><td>"Qual o valor das variáveis nesta linha?"</td><td>Um cálculo dá errado e ela quer ver passo a passo</td></tr>
+<tr><td><strong>Network</strong></td><td>"Que requisições o app fez, e o que voltou?"</td><td>A tela de receitas não carrega da internet (veja <a href="http.html">HTTP</a>)</td></tr>
+<tr><td><strong>Logging</strong></td><td>"O que o app escreveu no console?"</td><td>Ler os <code>debugPrint</code> e os erros do Flutter</td></tr>
+<tr><td><strong>App Size</strong></td><td>"O que ocupa espaço no APK?"</td><td>O app ficou grande demais (veja <a href="build-android.html">Gerando o APK</a>)</td></tr>
+</table>
+</div>
+
+<h3>3.1 Flutter Inspector: a árvore de widgets ao vivo</h3>
+<p>É a aba que você mais vai usar. À esquerda, a <strong>árvore</strong> do app, a mesma que você imagina ao ler o código. No app de compras, ela mostra algo assim (ilustrativo, resumido):</p>
+<pre>AppCompras
+└── MaterialApp
+    └── TelaCompras
+        └── Scaffold
+            ├── AppBar
+            │   └── Text "Compras da Ana"
+            ├── Column
+            │   ├── Padding
+            │   │   └── TextField
+            │   ├── Text "1 itens na lista"
+            │   └── Expanded
+            │       └── ListView
+            │           └── ListTile
+            │               └── Text "Arroz"
+            └── FloatingActionButton
+                └── Icon
+</pre>
+<p>Ao clicar num widget da árvore, o lado direito mostra as <strong>propriedades</strong> dele e um desenho das <strong>restrições</strong> e do tamanho final (largura × altura, o <em>padding</em>, o <code>flex</code>), o mesmo assunto de <a href="constraints.html">Restrições</a>. Três botões ajudam muito:</p>
+<ul>
+  <li><strong>Select Widget Mode</strong> ("modo selecionar widget"): você toca num pedaço da tela do app, no celular, e o Inspector pula para aquele widget na árvore. É o jeito mais rápido de descobrir "quem desenhou isto aqui?".</li>
+  <li><strong>Show Guidelines</strong> ("mostrar linhas-guia"): desenha, no próprio app, as bordas de cada caixa, o <em>padding</em> e o alinhamento.</li>
+  <li><strong>Layout Explorer</strong> ("explorador de layout"): para uma <code>Row</code> ou <code>Column</code>, mostra os filhos lado a lado e deixa você trocar o <code>mainAxisAlignment</code> e o <code>flex</code> ali mesmo, para testar antes de mudar o código.</li>
+</ul>
+
+<h3>3.2 Performance e CPU Profiler: o app engasgou</h3>
+<p>Para a tela parecer lisa, o Flutter precisa desenhar cerca de <strong>60 quadros por segundo</strong>: cerca de <strong>16 milissegundos</strong> por quadro (em telas de 120 Hz, a metade). A aba Performance mostra um gráfico de barras, uma barra por quadro. As barras que passaram do tempo aparecem em <strong>vermelho</strong>: são os "engasgos" (em inglês, <em>jank</em>). Clicando numa barra vermelha você vê o que aquele quadro fez. Em seguida, o <strong>CPU Profiler</strong> grava alguns segundos de uso e lista as funções que mais gastaram tempo: muitas vezes é um cálculo pesado dentro de um <code>build</code>, que roda a cada redesenho.</p>
+
+<div class="tip">
+<strong>Meça em modo profile</strong>
+<p>Em modo <strong>debug</strong> o app é bem mais lento de propósito (ele guarda informações para o <em>hot reload</em> e faz verificações extras). Para medir desempenho, rode <code>flutter run --profile</code> num <strong>aparelho de verdade</strong>: é quase tão rápido quanto o app da loja e ainda abre o canal para o DevTools. O modo profile não roda no emulador nem no navegador do jeito certo; a documentação recomenda o celular físico.</p>
+</div>
+
+<h3>3.3 Debugger: parar numa linha</h3>
+<p>Na aba Debugger, você abre o arquivo <code>main.dart</code>, clica à esquerda de uma linha (por exemplo, a do <code>setState</code> do <code>_adicionar</code>) e marca um <strong>ponto de parada</strong> (<em>breakpoint</em>). Quando a Ana toca no <strong>+</strong>, o app congela naquela linha e o painel mostra o valor de <code>texto</code> e de <code>_itens</code>. Os botões <em>Step over</em> ("pular por cima", a próxima linha) e <em>Resume</em> ("continuar") seguem dali. No VS Code e no Android Studio, o mesmo se faz direto no editor, clicando na margem do código.</p>
+
+<h3>3.4 Logging: os recados do app</h3>
+<p>A aba Logging junta tudo o que o app escreveu: os seus <code>print</code> e <code>debugPrint</code>, os erros do Flutter e as mensagens do sistema. Cada linha tem a hora; dá para filtrar por texto. É a mesma coisa que aparece no terminal do <code>flutter run</code>, só que organizada.</p>
+
+<hr>
+
+<h2>4. Mandando recados com <code>debugPrint</code></h2>
+<p>Antes de abrir o Debugger, muitas vezes basta um recado no console. A Ana acrescentou uma linha no <code>_adicionar</code> do app de compras (a aula <a href="testes-widget.html">Testes de Widget</a> mostra o app inteiro):</p>
+
+<pre class="file" data-file="lib/main.dart">  void _adicionar() {
+    final texto = _campo.text.trim();
+    if (texto.isEmpty) return;
+    setState(() =&gt; _itens.add(texto));
+    debugPrint('Item adicionado: $texto (total: ${_itens.length})');
+    _campo.clear();
+  }
+</pre>
+
+<p>Ela rodou o app, digitou "Arroz", tocou no <strong>+</strong>, digitou "Feijão" e tocou de novo. No console (e na aba Logging) apareceu:</p>
+
+<pre class="term">Item adicionado: Arroz (total: 1)
+Item adicionado: Feijão (total: 2)
+</pre>
+
+<figure class="tela"><img src="assets/telas/devtools-1.png" alt="Tela do app 'Compras da Ana' com o campo 'Novo item' vazio, a frase '2 itens na lista' e os itens 'Arroz' e 'Feijão' na lista, e o botão + no canto de baixo" width="390" height="844" loading="lazy"><figcaption>A tela no mesmo momento: dois itens, e um recado no console para cada toque no + (Flutter 3.47.7, modo debug).</figcaption></figure>
+
+<dl class="anatomy">
+  <dt>debugPrint('…')</dt><dd>Escreve uma linha no console, como o <code>print</code>. A diferença: se você mandar muito texto de uma vez, o <code>debugPrint</code> espera e manda aos poucos, para o Android não cortar linhas. No Flutter, prefira ele ao <code>print</code>.</dd>
+  <dt>$texto e ${_itens.length}</dt><dd>Interpolação de texto do Dart: o valor da variável entra no meio da frase.</dd>
+</dl>
+
+<div class="note">
+<strong>Recado não é para ficar</strong>
+<p>O <code>flutter analyze</code> reclama de <code>print</code> no código de <code>lib/</code> (a regra <code>avoid_print</code>), justamente para você não esquecer recados no app que vai para a loja. Use, descubra o problema e apague.</p>
+</div>
+
+<div class="tryflutter" data-goal="src:debugPrint\(">
+<p class="try-task"><strong>Missão:</strong> acrescente um <code>debugPrint</code> no <code>_adicionar</code>, logo depois do <code>setState</code>, mostrando o item e o total, como o da Ana. Rode, adicione dois itens e olhe o console do editor.</p>
+<figure class="tela"><img src="assets/telas/devtools-1.png" alt="O app de compras com 'Arroz' e 'Feijão' na lista e a frase '2 itens na lista'" width="390" height="844" loading="lazy"><figcaption>A tela não muda com o <code>debugPrint</code>: o recado vai para o console.</figcaption></figure>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const AppCompras());
+
+class AppCompras extends StatelessWidget {
+  const AppCompras({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      title: 'Compras da Ana',
+      home: TelaCompras(),
+    );
+  }
+}
+
+class TelaCompras extends StatefulWidget {
+  const TelaCompras({super.key});
+
+  @override
+  State&lt;TelaCompras&gt; createState() =&gt; _TelaComprasState();
+}
+
+class _TelaComprasState extends State&lt;TelaCompras&gt; {
+  final _campo = TextEditingController();
+  final _itens = &lt;String&gt;[];
+
+  void _adicionar() {
+    final texto = _campo.text.trim();
+    if (texto.isEmpty) return;
+    setState(() =&gt; _itens.add(texto));
+    _campo.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Compras da Ana')),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: TextField(
+              key: const Key('campo-item'),
+              controller: _campo,
+              decoration: const InputDecoration(labelText: 'Novo item'),
+            ),
+          ),
+          Text('${_itens.length} itens na lista'),
+          Expanded(
+            child: ListView(
+              children: [for (final item in _itens) ListTile(title: Text(item))],
+            ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _adicionar,
+        tooltip: 'Adicionar',
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const AppCompras());
+
+class AppCompras extends StatelessWidget {
+  const AppCompras({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      title: 'Compras da Ana',
+      home: TelaCompras(),
+    );
+  }
+}
+
+class TelaCompras extends StatefulWidget {
+  const TelaCompras({super.key});
+
+  @override
+  State&lt;TelaCompras&gt; createState() =&gt; _TelaComprasState();
+}
+
+class _TelaComprasState extends State&lt;TelaCompras&gt; {
+  final _campo = TextEditingController();
+  final _itens = &lt;String&gt;[];
+
+  void _adicionar() {
+    final texto = _campo.text.trim();
+    if (texto.isEmpty) return;
+    setState(() =&gt; _itens.add(texto));
+    debugPrint('Item adicionado: $texto (total: ${_itens.length})');
+    _campo.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Compras da Ana')),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: TextField(
+              key: const Key('campo-item'),
+              controller: _campo,
+              decoration: const InputDecoration(labelText: 'Novo item'),
+            ),
+          ),
+          Text('${_itens.length} itens na lista'),
+          Expanded(
+            child: ListView(
+              children: [for (final item in _itens) ListTile(title: Text(item))],
+            ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _adicionar,
+        tooltip: 'Adicionar',
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>5. Qual ferramenta usar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>O problema</th><th>Comece por</th></tr>
+<tr><td>"Por que esse widget está aqui / desse tamanho?"</td><td>Inspector + Select Widget Mode</td></tr>
+<tr><td>"Esse valor está certo nessa hora?"</td><td><code>debugPrint</code>; se não bastar, Debugger com ponto de parada</td></tr>
+<tr><td>"A rolagem engasga."</td><td><code>flutter run --profile</code> no celular → Performance → CPU Profiler</td></tr>
+<tr><td>"Os dados da internet não chegam."</td><td>Network</td></tr>
+<tr><td>"O APK está grande."</td><td>App Size (com <code>flutter build apk --analyze-size</code>)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>O <code>flutter run</code> não mostrou o link do DevTools</strong>
+<p>Rodando no dispositivo <code>web-server</code> (o app servido para qualquer navegador), a Ana não viu as linhas do VM Service. Em vez delas, apareceu este aviso:</p>
+<pre class="term">$ flutter run -d web-server --web-port 8099
+Launching lib/main.dart on Web Server in debug mode...
+Waiting for connection from debug service on Web Server...         24.7s
+lib/main.dart is being served at http://localhost:8099
+The web-server device requires the Dart Debug Chrome extension for debugging. Consider using the Chrome or Edge devices for an improved development workflow.
+</pre>
+<p>"O dispositivo web-server precisa da extensão <em>Dart Debug</em> do Chrome para depurar. Considere usar os dispositivos Chrome ou Edge para um fluxo de desenvolvimento melhor." <strong>Como resolver:</strong> rode com <code>flutter run -d chrome</code> (ou <code>-d edge</code>), ou num celular, emulador ou desktop. O link também não aparece com <code>--release</code>: em release não existe o canal.</p>
+</div>
+
+<div class="cenario">
+<strong>O painel abriu, mas diz que perdeu a conexão</strong>
+<p>Você fechou o app ou apertou <kbd>q</kbd> no terminal, e o DevTools ficou aberto. Ele mostra que se desconectou (ilustrativo). O link antigo não serve mais: a porta e a senha mudam a cada <code>flutter run</code>. <strong>Como resolver:</strong> rode o app de novo e abra o link <strong>novo</strong>.</p>
+</div>
+
+<div class="cenario">
+<strong>Os números da aba Performance assustam</strong>
+<p>Quadros vermelhos por toda parte, mesmo num app simples? Provavelmente o app está em <strong>debug</strong>. <strong>Como resolver:</strong> antes de concluir que o app é lento, meça com <code>flutter run --profile</code> num aparelho de verdade.</p>
+</div>
+
+<hr>
+
+<h2>Referência</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando / peça</th><th>Para que serve</th></tr>
+<tr><td><code>flutter run</code></td><td>Roda em debug e mostra o link do DevTools</td></tr>
+<tr><td><code>flutter run --profile</code></td><td>Roda em profile: para medir desempenho (aparelho de verdade)</td></tr>
+<tr><td><code>dart devtools</code></td><td>Sobe o painel sozinho (porta 9100 por padrão)</td></tr>
+<tr><td><code>dart devtools --port=0</code></td><td>Usa qualquer porta livre</td></tr>
+<tr><td><code>debugPrint('…')</code></td><td>Recado no console (e na aba Logging)</td></tr>
+<tr><td>Inspector → Select Widget Mode</td><td>Tocar na tela e achar o widget na árvore</td></tr>
+<tr><td>Debugger → breakpoint</td><td>Parar o app numa linha e ver as variáveis</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. O comando certo</h3>
+<p>Complete o comando que roda o app no modo certo para medir desempenho:</p>
+<div class="ex-code">$ flutter run <input data-answer="--profile" aria-label="opção do modo"></div>
+</div>
+
+<div class="exercise">
+<h3>2. O recado</h3>
+<p>Complete a linha que escreve no console o total de itens:</p>
+<div class="ex-code"><input data-answer="debugPrint" aria-label="função">('Total: ${_itens.length}');</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. Um botão aparece mais à direita do que devia. Que aba do DevTools ajuda primeiro?</p>
+<label><input type="radio" name="q3"> Network</label>
+<label><input type="radio" name="q3"> Memory</label>
+<label><input type="radio" name="q3"> Flutter Inspector</label>
+<label><input type="radio" name="q3"> App Size</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. Por que o DevTools não se conecta a um app em modo release?</p>
+<label><input type="radio" name="q4"> Porque em release o app não abre o Dart VM Service, o canal que o DevTools usa</label>
+<label><input type="radio" name="q4"> Porque o release só roda no iPhone</label>
+<label><input type="radio" name="q4"> Porque falta instalar o DevTools pelo pub.dev</label>
+<label><input type="radio" name="q4"> Conecta sim, é só esperar</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">5. Na aba Performance, o que significa uma barra vermelha?</p>
+<label><input type="radio" name="q5"> Um erro de compilação</label>
+<label><input type="radio" name="q5"> Um quadro que demorou mais que o tempo disponível (um engasgo, <em>jank</em>)</label>
+<label><input type="radio" name="q5"> Um widget com estouro de tamanho</label>
+<label><input type="radio" name="q5"> Uma requisição de rede que falhou</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">6. Você salvou nos favoritos o link do DevTools de ontem. Hoje ele não abre. Por quê?</p>
+<label><input type="radio" name="q6"> O DevTools expira depois de 24 horas</label>
+<label><input type="radio" name="q6"> Precisa rodar <code>flutter doctor</code> antes</label>
+<label><input type="radio" name="q6"> O navegador bloqueou o endereço 127.0.0.1</label>
+<label><input type="radio" name="q6"> A porta e a senha do link mudam a cada <code>flutter run</code></label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O DevTools é um painel no navegador que se liga ao app rodando (em debug ou profile) pelo Dart VM Service.</li>
+  <li>Abra pelo link que o <code>flutter run</code> mostra, pelo editor (<em>Open DevTools</em>) ou com <code>dart devtools</code>.</li>
+  <li>Inspector para layout; Performance e CPU Profiler para engasgos; Memory para memória; Debugger para parar numa linha; Network para a internet; Logging para os recados; App Size para o tamanho.</li>
+  <li><code>debugPrint</code> é o recado rápido; apague antes de publicar.</li>
+  <li>Desempenho se mede com <code>flutter run --profile</code> num aparelho de verdade.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
