@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Constraints — como o Flutter calcula o tamanho de cada widget | Guia Flutter</title>
+<meta name="description" content="Como o Flutter calcula tamanhos, para quem nunca fez um app: a regra 'as restrições descem, os tamanhos sobem, o pai decide a posição' (constraints go down, sizes go up, parent sets position), restrições folgadas e apertadas, o Container que ignora o width, o LayoutBuilder como raio-x das restrições, o infinito da Column e da Row, e o erro real 'unbounded height', com as telas fotografadas no Flutter de verdade.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Como o Flutter Calcula Tamanhos</span></h1>
+
+<p class="intro">Nas últimas aulas apareceram alguns mistérios: a <code>Column</code> que ficou da largura do filho mais largo, o <code>Expanded</code> que ignorou o <code>width</code>, o texto que estourou a <code>Row</code> mas quebrou a linha dentro de um <code>Expanded</code>. Todos têm a mesma explicação, e ela cabe numa frase que todo programador Flutter sabe de cor: <strong>as restrições descem, os tamanhos sobem, e o pai decide a posição</strong>. Em inglês, como está na documentação oficial: <em>"Constraints go down. Sizes go up. Parent sets position."</em> Entendida esta aula, layout no Flutter deixa de ser tentativa e erro.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A regra das três frases, passo a passo, com exemplos fotografados.</li>
+  <li>O que são as <strong>restrições</strong> (<em>constraints</em>): a largura e a altura mínimas e máximas que um widget pode ter.</li>
+  <li>A diferença entre restrições <strong>folgadas</strong> (<em>loose</em>) e <strong>apertadas</strong> (<em>tight</em>), e por que o <code>width</code> às vezes é ignorado.</li>
+  <li>Como <strong>ver</strong> as restrições na tela com o <code>LayoutBuilder</code>.</li>
+  <li>O "infinito" da <code>Column</code> e da <code>Row</code>, e o erro real que ele causa.</li>
+</ul>
+</div>
+
+<p>Todos os apps desta aula são um <code>lib/main.dart</code> completo, compilados pelo Flutter <span class="versao">Flutter 3.47</span> do laboratório para a web e fotografados no navegador, em tamanho de celular (390 × 844).</p>
+
+<hr>
+
+<h2>A ideia: a mesada</h2>
+<p>A Ana dá ao filho dela, o Léo, uma regra para o passeio: "você pode gastar <strong>de 0 a 50 reais</strong>". Essa regra é a <strong>restrição</strong>: um mínimo e um máximo. O Léo escolhe o que comprar <strong>dentro</strong> da regra (digamos, 30 reais) e, quando volta, conta para a mãe: "gastei 30". Só então a Ana decide <strong>onde</strong> guardar a sacola na mala do carro, porque agora ela sabe o tamanho.</p>
+<p>No Flutter é igual, para cada widget da árvore:</p>
+<ol class="passo">
+  <li><strong>As restrições descem.</strong> O pai diz ao filho: "você pode ter de tanto a tanto de largura, e de tanto a tanto de altura".</li>
+  <li><strong>Os tamanhos sobem.</strong> O filho escolhe o tamanho dele, <strong>dentro</strong> dessas restrições (ele não pode sair delas), e devolve a resposta ao pai.</li>
+  <li><strong>O pai decide a posição.</strong> Sabendo o tamanho do filho, o pai o coloca em algum lugar dentro de si. O filho não sabe (nem escolhe) onde está.</li>
+</ol>
+<p>Uma restrição no Flutter tem quatro números: largura mínima e máxima, altura mínima e máxima. Ela se escreve <code>BoxConstraints(0.0&lt;=w&lt;=390.0, 0.0&lt;=h&lt;=788.0)</code>: "a largura (<code>w</code>, de <em>width</em>) vai de 0 a 390, a altura (<code>h</code>, de <em>height</em>) vai de 0 a 788". Você já viu uma dessas: ela apareceu no console do overflow da aula <a href="row-column.html">Row e Column</a>.</p>
+
+<hr>
+
+<h2>1. Um <code>Container</code> de 100 × 100 no <code>body</code></h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Restrições')),
+        body: Container(width: 100, height: 100, color: Colors.red),
+      ),
+    );
+  }
+}
+</pre>
+
+<figure class="tela"><img src="assets/telas/constraints-1.png" alt="Abaixo da barra Restrições, um quadrado vermelho de 100 × 100 encostado no canto esquerdo" width="390" height="844" loading="lazy"><figcaption>Um quadrado vermelho de 100 × 100 no canto de cima, à esquerda.</figcaption></figure>
+
+<p>O que aconteceu, nas três frases:</p>
+<ol class="passo">
+  <li><strong>Descem:</strong> o <code>Scaffold</code> diz ao <code>Container</code>: "largura de 0 a 390, altura de 0 a 788" (a tela tem 844 de altura; 56 são da barra). É uma restrição <strong>folgada</strong>: o mínimo é zero, cabe qualquer tamanho até o máximo.</li>
+  <li><strong>Sobem:</strong> o <code>Container</code> quer 100 × 100. Está dentro da regra, então ele fica com 100 × 100 e avisa o pai.</li>
+  <li><strong>Posição:</strong> o <code>Scaffold</code> põe o <code>body</code> no começo da área dele: logo abaixo da barra, à esquerda.</li>
+</ol>
+
+<hr>
+
+<h2>2. O <code>Container</code> sem tamanho</h2>
+<p>Tire o <code>width</code> e o <code>height</code>:</p>
+
+<pre class="file" data-file="lib/main.dart (só o body)">        body: Container(color: Colors.red),
+</pre>
+
+<figure class="tela"><img src="assets/telas/constraints-2.png" alt="Abaixo da barra Restrições, toda a tela pintada de vermelho" width="390" height="844" loading="lazy"><figcaption>Sem <code>width</code> nem <code>height</code>: o Container ocupa todo o espaço do <code>body</code>.</figcaption></figure>
+
+<p>A tela inteira abaixo da barra ficou vermelha. O <code>Container</code> sem tamanho e sem filho tem uma regra própria: "fico do <strong>maior</strong> tamanho que a restrição deixar". A restrição era de 0 a 390 na largura e de 0 a 788 na altura; ele escolheu 390 × 788. (Com um filho, a regra muda: o <code>Container</code> sem tamanho fica do tamanho do filho, como nos exemplos de <a href="padding-margin.html">Padding e Margem</a>.)</p>
+
+<hr>
+
+<h2>3. Restrição apertada: o <code>width</code> ignorado</h2>
+<p>Agora o <code>Container</code> de 50 × 50 vai dentro de um <code>SizedBox</code> de 200 × 200:</p>
+
+<pre class="file" data-file="lib/main.dart (só o body)">        body: SizedBox(
+          width: 200,
+          height: 200,
+          child: Container(width: 50, height: 50, color: Colors.red),
+        ),
+</pre>
+
+<figure class="tela"><img src="assets/telas/constraints-3.png" alt="Abaixo da barra, um quadrado vermelho grande, de 200 × 200, no canto esquerdo" width="390" height="844" loading="lazy"><figcaption>O Container pediu 50 × 50, mas ficou com 200 × 200.</figcaption></figure>
+
+<p>O quadrado vermelho tem 200 × 200, e não os 50 × 50 que o <code>Container</code> pediu. Ninguém reclamou, nenhum erro no console: o <code>width: 50</code> e o <code>height: 50</code> simplesmente foram ignorados. Por quê?</p>
+
+<ol class="passo">
+  <li><strong>Descem:</strong> o <code>SizedBox</code> não dá uma faixa; ele dá uma restrição <strong>apertada</strong> (<em>tight</em>): mínimo e máximo iguais, "largura <strong>exatamente</strong> 200, altura <strong>exatamente</strong> 200".</li>
+  <li><strong>Sobem:</strong> o <code>Container</code> queria 50 × 50, mas o filho <strong>não pode</strong> sair da regra. O único tamanho permitido é 200 × 200, e é esse que ele fica.</li>
+  <li><strong>Posição:</strong> o <code>SizedBox</code> põe o filho no canto (que, do mesmo tamanho, ocupa ele todo).</li>
+</ol>
+<p>Esta é a resposta para o mistério do <code>Expanded</code>, na aula <a href="expanded.html">Expanded e Flexible</a>: o <code>Expanded</code> dá ao filho uma restrição apertada ("exatamente a sobra"), e por isso o <code>width: 100</code> foi ignorado. <strong>O <code>width</code> e o <code>height</code> são pedidos, não ordens</strong>: valem só se couberem na restrição que veio do pai.</p>
+
+<hr>
+
+<h2>4. Afrouxando a restrição: <code>Center</code> no meio</h2>
+<p>Como fazer o quadrado ter 50 × 50 dentro da caixa de 200? Ponha alguém no meio que <strong>afrouxe</strong> a regra. O <code>Center</code> (e o <code>Align</code>) faz exatamente isso: recebe a restrição apertada, ocupa os 200 × 200, mas diz ao filho "pode ter de 0 até 200":</p>
+
+<pre class="file" data-file="lib/main.dart (só o body)">        body: SizedBox(
+          width: 200,
+          height: 200,
+          child: Center(
+            child: Container(width: 50, height: 50, color: Colors.red),
+          ),
+        ),
+</pre>
+
+<figure class="tela"><img src="assets/telas/constraints-4.png" alt="Abaixo da barra, um quadrado vermelho pequeno, de 50 × 50, um pouco afastado da borda esquerda e do topo" width="390" height="844" loading="lazy"><figcaption>Com o <code>Center</code> no meio, o Container fica com 50 × 50, centralizado na área de 200 × 200.</figcaption></figure>
+
+<pre>SizedBox  ── "exatamente 200 × 200" ──▶  Center
+Center    ── "de 0 a 200, de 0 a 200" ──▶ Container
+Container ── "fico com 50 × 50" ──▶       Center
+Center    ── põe o filho no meio dos seus 200 × 200</pre>
+
+<p>Agora o vermelho tem os 50 × 50 que pediu, no meio de uma área invisível de 200 × 200 (por isso ele aparece a 75 da borda esquerda: (200 − 50) ÷ 2 = 75). A área do <code>SizedBox</code> continua lá, só que transparente: quem a ocupa é o <code>Center</code>.</p>
+
+<div class="tryflutter" data-goal="src:(Center|Align)\(">
+<p class="try-task"><strong>Missão:</strong> o selo deveria ter 80 × 80, mas está esticado até 300 × 150 por causa do <code>SizedBox</code>. Ponha um <code>Center</code> entre o <code>SizedBox</code> e o <code>Container</code> para afrouxar a restrição.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Restrições')),
+        body: SizedBox(
+          width: 300,
+          height: 150,
+          child: Container(width: 80, height: 80, color: Colors.green),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Restrições')),
+        body: SizedBox(
+          width: 300,
+          height: 150,
+          child: Center(
+            child: Container(width: 80, height: 80, color: Colors.green),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>5. O raio-x: vendo as restrições com <code>LayoutBuilder</code></h2>
+<p>As restrições são invisíveis, mas dá para mostrá-las na tela. O <code>LayoutBuilder</code> é um widget que recebe a restrição que veio do pai e deixa você montar o filho com ela na mão. Este app faz um widget "raio-x", que escreve a própria restrição num fundo amarelo, e o põe em quatro lugares diferentes:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class RaioX extends StatelessWidget {
+  const RaioX(this.lugar, {super.key});
+
+  final String lugar;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Container(
+          color: Colors.yellow.shade200,
+          padding: const EdgeInsets.all(4),
+          child: Text('$lugar:\n$constraints', style: const TextStyle(fontSize: 13)),
+        );
+      },
+    );
+  }
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Raio-x')),
+        body: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: 12,
+          children: [
+            RaioX('filho da Column'),
+            SizedBox(width: 260, height: 60, child: RaioX('dentro do SizedBox')),
+            Row(children: [RaioX('filho da Row')]),
+            Row(children: [Expanded(child: RaioX('Expanded na Row'))]),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>LayoutBuilder(builder: (context, constraints) { … })</dt><dd>Chama a função <code>builder</code> na hora do layout, entregando o <code>constraints</code> (do tipo <code>BoxConstraints</code>) que o pai mandou.</dd>
+  <dt>'$lugar:\n$constraints'</dt><dd>Escreve o nome do lugar e, na linha de baixo, a restrição como texto (o <code>toString()</code> do <code>BoxConstraints</code>).</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/constraints-5.png" alt="Quatro etiquetas amarelas com texto: filho da Column, BoxConstraints(0.0&lt;=w&lt;=390.0, 0.0&lt;=h&lt;=Infinity); dentro do SizedBox, BoxConstraints(w=260.0, h=60.0), numa caixa maior que o texto; filho da Row, BoxConstraints(unconstrained); e Expanded na Row, BoxConstraints(w=390.0, 0.0&lt;=h&lt;=Infinity), numa faixa da largura toda" width="390" height="844" loading="lazy"><figcaption>O raio-x: cada etiqueta amarela mostra a restrição que recebeu do pai.</figcaption></figure>
+
+<p>Linha por linha, o que o raio-x mostrou:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Lugar</th><th>Restrição que chegou</th><th>Em português</th></tr>
+<tr><td>filho da Column</td><td><code>BoxConstraints(0.0&lt;=w&lt;=390.0, 0.0&lt;=h&lt;=Infinity)</code></td><td>Largura de 0 a 390 (folgada); altura <strong>sem limite</strong>. A <code>Column</code> empilha e não sabe quantos filhos vêm, então não limita a altura de cada um.</td></tr>
+<tr><td>dentro do SizedBox</td><td><code>BoxConstraints(w=260.0, h=60.0)</code></td><td><strong>Apertada</strong>: exatamente 260 × 60. Por isso o fundo amarelo ficou bem maior que o texto.</td></tr>
+<tr><td>filho da Row</td><td><code>BoxConstraints(unconstrained)</code></td><td>"Sem restrição" nenhuma: largura e altura de 0 a infinito. A <code>Row</code> não limita a largura dos filhos, e ela própria, dentro da <code>Column</code>, recebeu altura sem limite e passou isso adiante.</td></tr>
+<tr><td>Expanded na Row</td><td><code>BoxConstraints(w=390.0, 0.0&lt;=h&lt;=Infinity)</code></td><td>Largura <strong>apertada</strong> em 390 (a sobra inteira da <code>Row</code>), altura ainda sem limite.</td></tr>
+</table>
+</div>
+<p>Nos três primeiros, o fundo amarelo tem o tamanho do texto (mais o padding), menos no <code>SizedBox</code>, que obrigou 260 × 60. No último, ele ocupa a largura toda: o <code>Expanded</code> obrigou.</p>
+
+<hr>
+
+<h2>6. Folgada, apertada e infinita</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Tipo</th><th>Como é</th><th>Exemplo</th><th>Quem dá</th></tr>
+<tr><td><strong>Apertada</strong> (<em>tight</em>)</td><td>Mínimo = máximo: um tamanho só</td><td><code>w=200.0, h=200.0</code></td><td><code>SizedBox</code> com tamanho, <code>Expanded</code>, <code>SizedBox.expand</code>, o <code>runApp</code> para o primeiro widget (o tamanho da tela)</td></tr>
+<tr><td><strong>Folgada</strong> (<em>loose</em>)</td><td>Mínimo 0, máximo um número</td><td><code>0.0&lt;=w&lt;=390.0</code></td><td><code>Center</code>, <code>Align</code>, o <code>body</code> do <code>Scaffold</code>, o <code>Flexible</code></td></tr>
+<tr><td><strong>Sem limite</strong> (<em>unbounded</em>)</td><td>Máximo <code>Infinity</code></td><td><code>0.0&lt;=h&lt;=Infinity</code></td><td>A <code>Column</code> na altura e a <code>Row</code> na largura, para os filhos comuns; as listas que rolam, na direção da rolagem</td></tr>
+</table>
+</div>
+
+<p>Agora os mistérios das outras aulas se explicam:</p>
+<ul>
+  <li><strong>O texto que estourou a <code>Row</code></strong> (<a href="row-column.html">Row e Column</a>): a <code>Row</code> dá aos filhos comuns largura <strong>sem limite</strong>. O texto respondeu com a largura da frase inteira, numa linha só; somado ao ícone, deu 172 a mais do que os 390 da tela, e a <code>Row</code> transbordou. Dentro de um <code>Expanded</code>, o texto recebe uma largura <strong>apertada</strong> e quebra a linha para caber.</li>
+  <li><strong>A <code>Column</code> da largura do filho mais largo</strong> (<a href="alinhamento.html">Alinhamento</a>): a <code>Column</code> recebeu do <code>body</code> uma largura folgada (de 0 a 390) e escolheu o menor tamanho que cabia os filhos. Dentro de um <code>SizedBox(width: double.infinity)</code>, a restrição vira apertada em 390, e a coluna não tem escolha.</li>
+  <li><strong>O <code>Center</code> que não centralizou na altura</strong> (<a href="center-align.html">Center e Align</a>): dentro de uma <code>Column</code>, a altura é sem limite. O <code>Center</code> não pode ocupar "infinito", então fica da altura do filho.</li>
+</ul>
+
+<hr>
+
+<h2 id="errado">Quando dá errado: o infinito</h2>
+
+<div class="cenario">
+<strong>Uma lista que rola dentro de uma <code>Column</code></strong>
+<p>Uma <code>ListView</code> (aula <a href="listview.html">ListView</a>) quer ocupar <strong>toda</strong> a altura que puder, para rolar dentro dela. Dentro de uma <code>Column</code>, a altura que ela recebe é infinita:</p>
+<pre class="file" data-file="lib/main.dart (só o body)">        body: Column(
+          children: [
+            const Text('Minhas receitas', style: TextStyle(fontSize: 24)),
+            ListView(
+              children: const [Text('Bolo'), Text('Pudim'), Text('Torta')],
+            ),
+          ],
+        ),
+</pre>
+<pre class="term">══╡ EXCEPTION CAUGHT BY RENDERING LIBRARY ╞═════════════════════════════════════════════════════════
+The following assertion was thrown during performResize():
+Vertical viewport was given unbounded height.
+Viewports expand in the scrolling direction to fill their container. In this case, a vertical
+viewport was given an unlimited amount of vertical space in which to expand. This situation
+typically happens when a scrollable widget is nested inside another scrollable widget.
+If this widget is always nested in a scrollable widget there is no need to use a viewport because
+there will always be enough vertical space for the children. In this case, consider using a Column
+or Wrap instead. Otherwise, consider using a CustomScrollView to concatenate arbitrary slivers into
+a single scrollable.
+
+The relevant error-causing widget was:
+  ListView ListView:file:///home/ana/app/lib/main.dart:17:13
+«  (a pilha e os detalhes)
+  constraints: BoxConstraints(0.0&lt;=w&lt;=390.0, 0.0&lt;=h&lt;=Infinity)
+  size: MISSING
+</pre>
+<dl class="anatomy">
+  <dt>Vertical viewport was given unbounded height.</dt><dd>"Uma área de rolagem vertical recebeu altura sem limite." <em>Viewport</em> ("janela de visualização") é a peça que mostra um pedaço da lista e rola o resto.</dd>
+  <dt>Viewports expand in the scrolling direction to fill their container.</dt><dd>"Elas crescem na direção da rolagem até encher o pai." Só que o pai (a <code>Column</code>) deixou a altura ir até o infinito.</dd>
+  <dt>This situation typically happens when a scrollable widget is nested inside another scrollable widget.</dt><dd>"Isso costuma acontecer com uma coisa que rola dentro de outra." Aqui não é o caso, mas a causa é a mesma: a <code>Column</code> também dá altura sem limite.</dd>
+  <dt>ListView … main.dart:17:13</dt><dd>O culpado, na linha 17.</dd>
+  <dt>constraints: BoxConstraints(0.0&lt;=w&lt;=390.0, 0.0&lt;=h&lt;=Infinity)</dt><dd>A restrição que chegou à lista: a mesma do "filho da Column" no raio-x da seção 5.</dd>
+</dl>
+<p><strong>Como consertar:</strong> dê à lista uma altura com limite. O jeito mais comum é um <code>Expanded</code> em volta da <code>ListView</code> ("ocupe a sobra da coluna"); outro é um <code>SizedBox(height: 300, child: ListView(…))</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Uma caixa "do tamanho máximo" num lugar sem máximo</strong>
+<pre class="file" data-file="lib/main.dart (só o body)">        body: const Row(
+          children: [
+            SizedBox(width: double.infinity, height: 50, child: ColoredBox(color: Colors.red)),
+          ],
+        ),
+</pre>
+<pre class="term">══╡ EXCEPTION CAUGHT BY RENDERING LIBRARY ╞═════════════════════════════════════════════════════════
+The following assertion was thrown during performLayout():
+BoxConstraints forces an infinite width.
+The offending constraints were:
+  BoxConstraints(w=Infinity, h=50.0)
+
+The relevant error-causing widget was:
+  SizedBox SizedBox:file:///home/ana/app/lib/main.dart:16:13
+«  (os detalhes)
+  constraints: BoxConstraints(0.0&lt;=w&lt;=Infinity, 0.0&lt;=h&lt;=788.0)
+  size: MISSING
+  additionalConstraints: BoxConstraints(w=Infinity, h=50.0)
+«  (…)
+Another exception was thrown: Assertion failed: file:///home/ana/flutter/packages/flutter/lib/src/rendering/box.dart:2251:12
+</pre>
+<p>O <code>double.infinity</code> quer dizer "o máximo que o pai deixar". Num lugar com limite, é um truque útil; mas aqui o pai é uma <code>Row</code>, que deu ao filho <code>0.0&lt;=w&lt;=Infinity</code> (a linha <code>constraints:</code>). O máximo é infinito, e o <code>SizedBox</code> tentou ter <strong>exatamente</strong> infinito de largura (<code>additionalConstraints: w=Infinity</code>): "as restrições obrigam uma largura infinita". O mesmo erro aparece com um <code>ListTile</code> dentro de uma <code>Row</code> (aula <a href="card.html">Card e ListTile</a>). <strong>Como consertar:</strong> numa <code>Row</code>, para ocupar a sobra, use <code>Expanded</code>, não <code>double.infinity</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Regra</th><th>Quer dizer</th></tr>
+<tr><td>As restrições descem</td><td>Cada pai diz ao filho os limites: largura e altura mínimas e máximas (<code>BoxConstraints</code>)</td></tr>
+<tr><td>Os tamanhos sobem</td><td>O filho escolhe o tamanho dele dentro dos limites e devolve ao pai</td></tr>
+<tr><td>O pai decide a posição</td><td>O pai coloca o filho; o filho não sabe onde está</td></tr>
+<tr><td><code>width</code>/<code>height</code> são pedidos</td><td>Só valem se couberem na restrição; numa apertada, são ignorados</td></tr>
+<tr><td><code>Center</code>/<code>Align</code> afrouxam</td><td>Transformam "exatamente X" em "de 0 a X"</td></tr>
+<tr><td><code>LayoutBuilder</code></td><td>Mostra (e deixa usar) a restrição que chegou</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">1. Um <code>Container(width: 50, height: 50)</code> dentro de um <code>SizedBox(width: 120, height: 120)</code> fica com que tamanho?</p>
+<label><input type="radio" name="q1"> 50 × 50</label>
+<label><input type="radio" name="q1"> 170 × 170</label>
+<label><input type="radio" name="q1"> 120 × 120</label>
+<label><input type="radio" name="q1"> Dá erro</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">2. Quem decide a <strong>posição</strong> de um widget na tela?</p>
+<label><input type="radio" name="q2"> O pai dele</label>
+<label><input type="radio" name="q2"> O próprio widget</label>
+<label><input type="radio" name="q2"> O filho dele</label>
+<label><input type="radio" name="q2"> O <code>MaterialApp</code></label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. A restrição <code>BoxConstraints(0.0&lt;=w&lt;=390.0, 0.0&lt;=h&lt;=Infinity)</code> é a que chega a…</p>
+<label><input type="radio" name="q3"> um filho de <code>Expanded</code> numa <code>Row</code></label>
+<label><input type="radio" name="q3"> um filho comum de uma <code>Column</code> (na tela de 390)</label>
+<label><input type="radio" name="q3"> um filho de <code>SizedBox(width: 390)</code></label>
+<label><input type="radio" name="q3"> o <code>body</code> do <code>Scaffold</code></label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. Qual frase está certa?</p>
+<label><input type="radio" name="q4"> O <code>width</code> de um <code>Container</code> sempre vale</label>
+<label><input type="radio" name="q4"> O filho pode ser maior que a restrição, se pedir</label>
+<label><input type="radio" name="q4"> A restrição sobe do filho para o pai</label>
+<label><input type="radio" name="q4"> O filho escolhe o tamanho, mas sempre dentro da restrição que o pai deu</label>
+</div>
+
+<h3>Missão final: a lista que não aparecia</h3>
+
+<div class="tryflutter" data-goal="src:Expanded\(\s*child:\s*ListView">
+<p class="try-task"><strong>Missão:</strong> este app mostra a tela vermelha de erro (altura infinita). Embrulhe a <code>ListView</code> num <code>Expanded</code>, para ela ocupar só a sobra da coluna.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: Column(
+          children: [
+            const Text('Minhas receitas', style: TextStyle(fontSize: 24)),
+            ListView(
+              children: const [
+                ListTile(title: Text('Bolo de cenoura')),
+                ListTile(title: Text('Pudim de leite')),
+                ListTile(title: Text('Torta de limão')),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: Column(
+          children: [
+            const Text('Minhas receitas', style: TextStyle(fontSize: 24)),
+            Expanded(
+              child: ListView(
+                children: const [
+                  ListTile(title: Text('Bolo de cenoura')),
+                  ListTile(title: Text('Pudim de leite')),
+                  ListTile(title: Text('Torta de limão')),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><strong>As restrições descem, os tamanhos sobem, o pai decide a posição.</strong></li>
+  <li>Uma restrição (<code>BoxConstraints</code>) tem largura e altura mínimas e máximas. O filho escolhe o tamanho, mas nunca fora dela.</li>
+  <li>Restrição <strong>apertada</strong> (mínimo = máximo) obriga um tamanho: o <code>width</code> do filho é ignorado. <code>Center</code> e <code>Align</code> afrouxam.</li>
+  <li>A <code>Column</code> (na altura) e a <code>Row</code> (na largura) dão aos filhos comuns restrição <strong>sem limite</strong>: quem quer "ocupar tudo" ali precisa de um <code>Expanded</code> ou de um tamanho fixo.</li>
+  <li>Na dúvida, ponha um <code>LayoutBuilder</code> e mostre o <code>constraints</code>: é o raio-x do layout.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
