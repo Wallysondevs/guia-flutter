@@ -1,0 +1,682 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter go_router — rotas com endereço, parâmetros e redirecionamento | Guia Flutter</title>
+<meta name="description" content="O pacote go_router do Flutter para quem nunca fez um app: instalar com flutter pub add, GoRouter e GoRoute, MaterialApp.router, context.go e context.push, parâmetros no caminho (/receita/:id) e na busca (?q=), sub-rotas e o botão voltar, página de erro, redirect para login e os erros reais explicados em português.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">go_router</span></h1>
+
+<p class="intro">Nas aulas <a href="navegacao.html">Navigator</a> e <a href="rotas-nomeadas.html">Rotas Nomeadas</a>, a Ana aprendeu a empilhar e desempilhar telas. Funciona, mas o app dela cresceu: agora tem receitas com número (<em>a receita 7</em>), uma busca, uma área só para quem fez login e uma versão web, onde cada tela precisa de um <strong>endereço</strong> que dê para copiar e mandar no WhatsApp (<code>/receita/7</code>). Para isso, a equipe do Flutter mantém o pacote <strong><code>go_router</code></strong>: você descreve as telas do app como uma lista de <strong>endereços</strong> (caminhos, como num site), e o pacote cuida da pilha, do botão voltar e da barra de endereço do navegador.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A instalar o pacote com <code>flutter pub add go_router</code> e o que muda no <code>pubspec.yaml</code>.</li>
+  <li>A descrever as rotas com <code>GoRouter</code> e <code>GoRoute</code> e a ligar tudo com <code>MaterialApp.router</code>.</li>
+  <li>A diferença entre <code>context.go</code> (ir para um endereço) e <code>context.push</code> (empilhar).</li>
+  <li>A passar dados pelo endereço: parâmetros no caminho (<code>/receita/:id</code>) e na busca (<code>?q=bolo</code>).</li>
+  <li>A aninhar rotas para o botão voltar aparecer sozinho.</li>
+  <li>A trocar a página de erro e a redirecionar quem não fez login (<code>redirect</code>).</li>
+  <li>Os erros mais comuns: <code>no routes for location</code>, <code>No GoRouter found in context</code> e <code>There is nothing to pop</code>.</li>
+</ul>
+</div>
+
+<div class="warning">
+<strong>Esta aula usa um pacote de fora</strong>
+<p>O <code>go_router</code> não vem com o Flutter: ele é baixado do <a href="https://pub.dev/packages/go_router">pub.dev</a>, o "repositório de pacotes" do Dart e do Flutter. No seu projeto, você precisa instalá-lo (seção 1). Nas caixas "Experimente" desta aula não precisa: o DartPad, que roda os apps do <a href="simulador.html">editor do guia</a>, já traz o <code>go_router</code> entre os pacotes dele. A versão usada aqui é a <strong>go_router 18.1.0</strong>, com o <strong>Flutter <span class="versao">3.47</span></strong>. O laboratório de fotos do guia compila um arquivo só, sem pacotes; por isso esta aula descreve as telas em vez de mostrar fotos, e você confere cada uma rodando as caixas.</p>
+</div>
+
+<hr>
+
+<h2>A ideia: o endereço da casa</h2>
+<p>Com o <code>Navigator.push</code>, navegar é como dar instruções a um motorista: "segue reto, vira à direita, agora à esquerda". Para voltar ao mesmo lugar outro dia, você precisa repetir o caminho inteiro. Com o <code>go_router</code>, cada tela tem um <strong>endereço</strong>, como uma casa: "Rua das Receitas, número 7". Você diz o endereço e o motorista descobre sozinho o caminho, de qualquer lugar onde esteja.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Na cidade</th><th>No go_router</th></tr>
+<tr><td>O mapa com todas as ruas</td><td>O <code>GoRouter</code>, com a lista de rotas</td></tr>
+<tr><td>Uma rua com uma casa</td><td>Um <code>GoRoute</code>: um caminho (<code>/receita</code>) e a tela dele</td></tr>
+<tr><td>O número da casa</td><td>Um parâmetro no caminho: <code>/receita/7</code></td></tr>
+<tr><td>"Leve-me a este endereço"</td><td><code>context.go('/receita/7')</code></td></tr>
+<tr><td>O porteiro que barra quem não tem crachá</td><td>O <code>redirect</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>1. Instalando o pacote</h2>
+<p>Dentro da pasta do projeto, um comando acrescenta o pacote:</p>
+
+<pre class="term">$ cd receitas_da_ana
+$ flutter pub add go_router
+« a saída (a lista dos pacotes baixados) não foi colhida no laboratório do guia, que ainda não tem terminal com o pub.dev
+</pre>
+
+<p>O comando faz duas coisas: escreve a dependência no <code>pubspec.yaml</code> (a "lista de ingredientes" do projeto, aula <a href="estrutura-projeto.html">As Pastas de um Projeto</a>) e baixa o pacote (o mesmo que <code>flutter pub get</code>). No <code>pubspec.yaml</code>, a seção <code>dependencies</code> ganha uma linha:</p>
+
+<pre class="file" data-file="pubspec.yaml">dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  go_router: ^18.1.0
+</pre>
+
+<dl class="anatomy">
+  <dt>go_router: ^18.1.0</dt><dd>O nome do pacote e a versão. O <code>^</code> quer dizer "esta ou qualquer 18.x mais nova": o <code>pub</code> aceita correções e novidades, mas não uma 19, que poderia quebrar o seu código.</dd>
+</dl>
+
+<p>Também dá para escrever a linha à mão no <code>pubspec.yaml</code> e rodar <code>flutter pub get</code>; o resultado é o mesmo.</p>
+
+<hr>
+
+<h2>2. As primeiras rotas</h2>
+<p>Duas telas: a lista de receitas, no endereço <code>/</code> (a "porta de entrada"), e a tela "Sobre", em <code>/sobre</code>:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+final _rotas = GoRouter(
+  routes: [
+    GoRoute(
+      path: '/',
+      builder: (context, state) =&gt; const InicioTela(),
+    ),
+    GoRoute(
+      path: '/sobre',
+      builder: (context, state) =&gt; const SobreTela(),
+    ),
+  ],
+);
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp.router(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      routerConfig: _rotas,
+    );
+  }
+}
+
+class InicioTela extends StatelessWidget {
+  const InicioTela({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: Center(
+        child: FilledButton(
+          onPressed: () =&gt; context.go('/sobre'),
+          child: const Text('Sobre o app'),
+        ),
+      ),
+    );
+  }
+}
+
+class SobreTela extends StatelessWidget {
+  const SobreTela({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Sobre')),
+      body: const Center(child: Text('Feito pela Ana, com carinho.')),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>import 'package:go_router/go_router.dart';</dt><dd>Traz o pacote para o arquivo. Sem o <code>flutter pub add</code> antes, esta linha não compila.</dd>
+  <dt>GoRouter(routes: [...])</dt><dd>O "mapa" do app. Fica numa variável de nível de arquivo (<code>final _rotas</code>), fora de qualquer <code>build</code>: o mapa é criado <strong>uma vez só</strong>, quando o app abre. O app começa no endereço <code>/</code> (dá para mudar com <code>initialLocation: '/sobre'</code>).</dd>
+  <dt>GoRoute(path:, builder:)</dt><dd>Uma rota: o caminho e a função que monta a tela. O <code>builder</code> recebe o <code>context</code> e o <code>state</code> (o "estado da rota": o endereço completo, os parâmetros; seção 4).</dd>
+  <dt>MaterialApp.router(routerConfig: _rotas)</dt><dd>Uma versão do <code>MaterialApp</code> que, em vez de <code>home</code> e <code>routes</code>, recebe um roteador pronto. O resto (<code>theme</code>, <code>title</code>…) continua igual.</dd>
+  <dt>context.go('/sobre')</dt><dd>"Vá para o endereço <code>/sobre</code>". O <code>go</code> é um método que o pacote acrescenta ao <code>context</code> (uma <strong>extensão</strong>, aula <a href="dart-para-flutter.html">O Dart que Você Precisa</a>).</dd>
+</dl>
+
+<p>O que você deve ver ao rodar (na caixa "Experimente" logo abaixo, ou no seu computador): a tela "Receitas da Ana" com o botão "Sobre o app" no meio; no toque, a tela troca para "Sobre", com o texto "Feito pela Ana, com carinho.". Na versão web, a barra de endereço do navegador muda para <code>/sobre</code> (ou <code>#/sobre</code>, conforme a configuração de URLs do app).</p>
+
+<div class="note">
+<strong>Cadê a seta de voltar?</strong>
+<p>Rodando o exemplo, a tela "Sobre" abre <strong>sem</strong> a seta de voltar na <code>AppBar</code>. Não é defeito: o <code>go</code> troca o endereço, e o endereço <code>/sobre</code>, do jeito que o mapa foi escrito, não está "dentro" de <code>/</code>. Para o <code>go_router</code>, a pilha é calculada a partir do endereço, e a pilha de <code>/sobre</code> tem uma tela só. As duas saídas, <code>push</code> e as sub-rotas, estão nas seções 3 e 5.</p>
+</div>
+
+<div class="tryflutter" data-goal="src:GoRoute\(\s*path:\s*'/compras';;src:context\.go\(\s*'/compras'\s*\)">
+<p class="try-task"><strong>Missão:</strong> acrescente uma rota <code>/compras</code> que mostre a <code>ComprasTela</code> e mude o botão para ir até ela. Rode e toque no botão.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+final _rotas = GoRouter(
+  routes: [
+    GoRoute(
+      path: '/',
+      builder: (context, state) =&gt; const InicioTela(),
+    ),
+  ],
+);
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp.router(routerConfig: _rotas);
+  }
+}
+
+class InicioTela extends StatelessWidget {
+  const InicioTela({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: Center(
+        child: FilledButton(
+          onPressed: () {},
+          child: const Text('Lista de compras'),
+        ),
+      ),
+    );
+  }
+}
+
+class ComprasTela extends StatelessWidget {
+  const ComprasTela({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Compras')),
+      body: const Center(child: Text('Arroz, feijão, café')),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+final _rotas = GoRouter(
+  routes: [
+    GoRoute(
+      path: '/',
+      builder: (context, state) =&gt; const InicioTela(),
+    ),
+    GoRoute(
+      path: '/compras',
+      builder: (context, state) =&gt; const ComprasTela(),
+    ),
+  ],
+);
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp.router(routerConfig: _rotas);
+  }
+}
+
+class InicioTela extends StatelessWidget {
+  const InicioTela({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: Center(
+        child: FilledButton(
+          onPressed: () =&gt; context.go('/compras'),
+          child: const Text('Lista de compras'),
+        ),
+      ),
+    );
+  }
+}
+
+class ComprasTela extends StatelessWidget {
+  const ComprasTela({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Compras')),
+      body: const Center(child: Text('Arroz, feijão, café')),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>3. <code>go</code> ou <code>push</code>?</h2>
+<p>O pacote tem os dois jeitos de navegar, e a diferença é a pilha de telas:</p>
+
+<pre class="file" data-file="lib/main.dart">FilledButton(
+  onPressed: () =&gt; context.go('/sobre'),     // vai para o endereço
+  child: const Text('go'),
+),
+FilledButton(
+  onPressed: () =&gt; context.push('/sobre'),   // empilha por cima da tela atual
+  child: const Text('push'),
+),
+</pre>
+
+<dl class="anatomy">
+  <dt>context.go('/sobre')</dt><dd>Troca o endereço. A pilha passa a ser a <strong>do endereço novo</strong>, calculada pelo mapa; a tela de onde você saiu some da pilha (a não ser que o mapa diga que <code>/sobre</code> fica "dentro" dela, seção 5). É o jeito "de site": cada tela tem um lugar fixo.</dd>
+  <dt>context.push('/sobre')</dt><dd>Empilha a tela de <code>/sobre</code> <strong>por cima</strong> da atual, como o <code>Navigator.push</code>. A seta de voltar aparece e leva de volta. Bom para telas "de passagem", que você abre e fecha (um detalhe, um formulário).</dd>
+  <dt>context.pop()</dt><dd>Tira a tela de cima da pilha, como o <code>Navigator.pop</code>. Também aceita um resultado: <code>context.pop(true)</code>.</dd>
+</dl>
+
+<hr>
+
+<h2>4. Dados no endereço: <code>:id</code> e <code>?q=</code></h2>
+<p>A Ana tem uma tela de detalhe para cada receita. Em vez de criar uma rota por receita, ela escreve <strong>um</strong> caminho com um "buraco", o <strong>parâmetro</strong> <code>:id</code>:</p>
+
+<pre class="file" data-file="lib/main.dart">final _rotas = GoRouter(
+  routes: [
+    GoRoute(
+      path: '/',
+      builder: (context, state) =&gt; const InicioTela(),
+    ),
+    GoRoute(
+      path: '/receita/:id',
+      builder: (context, state) {
+        final id = state.pathParameters['id']!;
+        return ReceitaTela(id: id);
+      },
+    ),
+    GoRoute(
+      path: '/busca',
+      builder: (context, state) {
+        final termo = state.uri.queryParameters['q'] ?? '';
+        return BuscaTela(termo: termo);
+      },
+    ),
+  ],
+);
+</pre>
+
+<dl class="anatomy">
+  <dt>'/receita/:id'</dt><dd>Os dois-pontos marcam um parâmetro: <code>/receita/7</code>, <code>/receita/42</code> e <code>/receita/bolo</code> caem todos nesta rota, com <code>id</code> valendo <code>'7'</code>, <code>'42'</code> e <code>'bolo'</code>.</dd>
+  <dt>state.pathParameters['id']!</dt><dd>Um <code>Map</code> com os parâmetros do caminho. O valor é sempre <strong>texto</strong> (<code>String</code>): para usar como número, converta com <code>int.parse(id)</code>. O <code>!</code> diz ao Dart "aqui com certeza tem valor"; se você errar o nome (<code>['ID']</code>), vem <code>null</code> e o <code>!</code> quebra (veja <a href="#errado">Quando dá errado</a>).</dd>
+  <dt>state.uri.queryParameters['q']</dt><dd>Os parâmetros de <strong>busca</strong>, os que vêm depois do <code>?</code>: em <code>/busca?q=bolo</code>, <code>q</code> vale <code>'bolo'</code>. São opcionais (o endereço <code>/busca</code> sozinho também casa com a rota), por isso o <code>?? ''</code>: "se não veio, use texto vazio".</dd>
+</dl>
+
+<p>Para navegar, basta montar o endereço com interpolação: <code>context.go('/receita/$id')</code>, <code>context.go('/busca?q=bolo')</code>. A tela recebe o dado pelo construtor, como em <a href="passar-dados-telas.html">Passando Dados entre Telas</a>.</p>
+
+<div class="tip">
+<strong>E para passar um objeto inteiro?</strong>
+<p>O endereço só carrega texto. Para passar um objeto (uma <code>Receita</code> com nome, foto e ingredientes), existe o <code>extra</code>: <code>context.go('/receita/7', extra: receita)</code>, lido com <code>state.extra as Receita</code>. Mas o <code>extra</code> <strong>não vai no endereço</strong>: se alguém abrir o link <code>/receita/7</code> direto, ele chega <code>null</code>. Prefira passar o <code>id</code> e buscar a receita a partir dele.</p>
+</div>
+
+<hr>
+
+<h2>5. Sub-rotas: a seta de voltar de graça</h2>
+<p>Uma receita "fica dentro" da lista de receitas. Dizendo isso ao mapa, com <code>routes:</code> dentro do <code>GoRoute</code>, o <code>go('/receita/7')</code> monta a pilha <strong>inteira</strong>: a lista embaixo, o detalhe em cima, e a seta de voltar aparece sozinha:</p>
+
+<pre class="file" data-file="lib/main.dart">final _rotas = GoRouter(
+  routes: [
+    GoRoute(
+      path: '/',
+      builder: (context, state) =&gt; const InicioTela(),
+      routes: [
+        GoRoute(
+          path: 'receita/:id',
+          builder: (context, state) =&gt;
+              ReceitaTela(id: state.pathParameters['id']!),
+        ),
+        GoRoute(
+          path: 'sobre',
+          builder: (context, state) =&gt; const SobreTela(),
+        ),
+      ],
+    ),
+  ],
+);
+</pre>
+
+<dl class="anatomy">
+  <dt>routes: [...] dentro do GoRoute</dt><dd>As <strong>sub-rotas</strong>: rotas que ficam "dentro" de <code>/</code>. O endereço completo é a soma: <code>/</code> + <code>receita/:id</code> = <code>/receita/:id</code>.</dd>
+  <dt>path: 'receita/:id' (sem a barra no começo)</dt><dd>Nas sub-rotas, o caminho é <strong>relativo</strong> ao de cima e não começa com <code>/</code>. Só as rotas do primeiro nível começam com barra.</dd>
+</dl>
+
+<p>Agora, <code>context.go('/receita/7')</code> mostra a receita com a seta de voltar, e a seta leva à lista, mesmo que a Ana tenha aberto o link <code>/receita/7</code> direto no navegador. É a grande vantagem do <code>go_router</code>: a pilha vem do endereço, não do caminho que a Ana fez.</p>
+
+<hr>
+
+<h2>6. Página de erro e <code>redirect</code></h2>
+
+<h3>Endereço que não existe</h3>
+<p>Se o app recebe um endereço que não está no mapa (um link velho, um erro de digitação), o <code>go_router</code> mostra uma página de erro própria, em inglês, com o título <strong>Page Not Found</strong>, a mensagem <code>GoException: no routes for location: /endereço</code> e um botão <strong>Home</strong> que leva a <code>/</code>. Para trocá-la por uma sua, use o <code>errorBuilder</code>:</p>
+
+<pre class="file" data-file="lib/main.dart">final _rotas = GoRouter(
+  errorBuilder: (context, state) =&gt; Scaffold(
+    appBar: AppBar(title: const Text('Ops!')),
+    body: Center(child: Text('Não achei a página ${state.uri}')),
+  ),
+  routes: [ ... ],
+);
+</pre>
+
+<h3>O porteiro: <code>redirect</code></h3>
+<p>A área "Minhas receitas" é só para quem fez login. Em vez de conferir isso em cada botão, a Ana põe um porteiro no mapa: antes de cada navegação, o <code>redirect</code> é chamado e pode mandar para outro endereço:</p>
+
+<pre class="file" data-file="lib/main.dart">var logada = false;
+
+final _rotas = GoRouter(
+  redirect: (context, state) {
+    final indoParaMinhas = state.matchedLocation.startsWith('/minhas');
+    if (indoParaMinhas &amp;&amp; !logada) return '/login';
+    return null;
+  },
+  routes: [ ... ],
+);
+</pre>
+
+<dl class="anatomy">
+  <dt>redirect: (context, state) { ... }</dt><dd>Chamado a cada navegação, antes de a tela aparecer.</dd>
+  <dt>state.matchedLocation</dt><dd>O endereço para onde a Ana está indo (sem a parte do <code>?</code>).</dd>
+  <dt>return '/login';</dt><dd>"Em vez disso, vá para <code>/login</code>."</dd>
+  <dt>return null;</dt><dd>"Pode passar": segue para o endereço pedido. Esquecer este <code>return null</code> no fim é um erro comum: sem ele, o Dart não deixa compilar (a função precisa devolver algo em todo caminho).</dd>
+</dl>
+
+<p>(Aqui o <code>logada</code> é uma variável solta só para mostrar a ideia; num app de verdade, o login fica num objeto de estado, aula <a href="provider.html">Provider</a>.)</p>
+
+<hr>
+
+<h2>Formas diferentes de fazer</h2>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Jeito</th><th>Quando usar</th></tr>
+<tr><td><code>Navigator.push</code> / <code>pop</code> (sem pacote)</td><td>Apps pequenos, poucas telas, sem versão web nem links. É o que o Flutter já traz</td></tr>
+<tr><td>Rotas nomeadas do <code>MaterialApp</code></td><td>Ainda funcionam, mas a própria documentação do Flutter não as recomenda para a maioria dos apps (não lidam bem com links e com a web)</td></tr>
+<tr><td><code>go_router</code></td><td>Apps com muitas telas, links (deep links), versão web, telas protegidas por login</td></tr>
+<tr><td>Nomes nas rotas: <code>GoRoute(name: 'receita', ...)</code> + <code>context.goNamed('receita', pathParameters: {'id': '7'})</code></td><td>Para não espalhar o texto do caminho pelo app: se o endereço mudar, você muda num lugar só</td></tr>
+<tr><td><code>StatefulShellRoute.indexedStack</code></td><td>Barra de navegação inferior em que cada aba tem o próprio endereço e a própria pilha (a ideia do <code>IndexedStack</code> da aula <a href="bottom-navigation.html">Barra de Navegação Inferior</a>, com rotas)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+<div class="note"><strong>Ilustrativo</strong><p>as mensagens desta seção foram tiradas do código-fonte do <code>go_router</code> 18.1.0 e do Flutter 3.47, não de um app rodado no laboratório (ele não tem pacotes). Rode o erro numa caixa "Experimente" para vê-lo no console do DartPad.</p></div>
+
+<div class="cenario">
+<strong>Endereço escrito errado: <code>no routes for location</code></strong>
+<pre class="file" data-file="lib/main.dart">onPressed: () =&gt; context.go('/receitas/7'),   // a rota é /receita/:id
+</pre>
+<p>O app não quebra: ele mostra a página de erro <strong>Page Not Found</strong>, com o texto <code>GoException: no routes for location: /receitas/7</code> ("nenhuma rota para o endereço <code>/receitas/7</code>"). O <code>go_router</code> compara o endereço com o mapa, letra por letra (diferenciando maiúsculas de minúsculas), e nenhuma rota casou. <strong>Como consertar:</strong> confira o endereço contra os <code>path</code> do mapa. Para errar menos, use nomes (<code>goNamed</code>) em vez de escrever o caminho em todo lugar.</p>
+</div>
+
+<div class="cenario">
+<strong><code>No GoRouter found in context</code></strong>
+<pre class="file" data-file="lib/main.dart">return MaterialApp(
+  home: const InicioTela(),
+);
+</pre>
+<p>A Ana usou o <code>MaterialApp</code> comum e, no botão, chamou <code>context.go('/sobre')</code>. No toque, o Flutter acusa o erro <code>No GoRouter found in context</code> ("nenhum <code>GoRouter</code> encontrado no context"). O <code>context.go</code> procura o roteador subindo pela árvore, e ele não está lá: quem coloca o roteador na árvore é o <code>MaterialApp.router(routerConfig: ...)</code>. <strong>Como consertar:</strong> troque <code>MaterialApp(home: ...)</code> por <code>MaterialApp.router(routerConfig: _rotas)</code>.</p>
+</div>
+
+<div class="cenario">
+<strong><code>There is nothing to pop</code></strong>
+<pre class="file" data-file="lib/main.dart">onPressed: () =&gt; context.pop(),
+</pre>
+<p>Um botão "Fechar" na tela <code>/sobre</code>, aberta com <code>go</code> numa rota de primeiro nível (seção 2). No toque: <code>There is nothing to pop</code> ("não há nada para desempilhar"). A pilha de <code>/sobre</code> tem uma tela só, e não dá para tirar a última. <strong>Como consertar:</strong> abra a tela com <code>context.push</code>, ou faça de <code>sobre</code> uma sub-rota de <code>/</code> (seção 5), ou, num botão "Fechar" que deve sempre funcionar, confira antes com <code>context.canPop()</code> e, se não der, use <code>context.go('/')</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>O nome do parâmetro errado</strong>
+<pre class="file" data-file="lib/main.dart">GoRoute(
+  path: '/receita/:id',
+  builder: (context, state) =&gt; ReceitaTela(id: state.pathParameters['codigo']!),
+),
+</pre>
+<p>O caminho chama o parâmetro de <code>id</code>, mas o <code>builder</code> pede <code>'codigo'</code>. O <code>Map</code> devolve <code>null</code>, e o <code>!</code> quebra com <code>Null check operator used on a null value</code> ("operador de checagem de nulo usado num valor nulo"), na hora de montar a tela. <strong>Como consertar:</strong> use no <code>pathParameters[...]</code> exatamente o nome que está depois dos dois-pontos no <code>path</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>flutter pub add go_router</code></td><td>Acrescenta o pacote ao <code>pubspec.yaml</code> e baixa</td></tr>
+<tr><td><code>import 'package:go_router/go_router.dart';</code></td><td>Usa o pacote no arquivo</td></tr>
+<tr><td><code>GoRouter(routes: [...], initialLocation: '/')</code></td><td>O mapa de rotas, criado uma vez</td></tr>
+<tr><td><code>GoRoute(path: '/x', builder: (context, state) =&gt; ...)</code></td><td>Uma rota</td></tr>
+<tr><td><code>MaterialApp.router(routerConfig: _rotas)</code></td><td>Liga o roteador ao app</td></tr>
+<tr><td><code>context.go('/x')</code></td><td>Vai para o endereço (pilha calculada pelo mapa)</td></tr>
+<tr><td><code>context.push('/x')</code> / <code>context.pop()</code></td><td>Empilha / desempilha</td></tr>
+<tr><td><code>'/receita/:id'</code> + <code>state.pathParameters['id']</code></td><td>Parâmetro no caminho (sempre <code>String</code>)</td></tr>
+<tr><td><code>state.uri.queryParameters['q']</code></td><td>Parâmetro de busca (<code>?q=...</code>), opcional</td></tr>
+<tr><td><code>routes: [...]</code> dentro do <code>GoRoute</code></td><td>Sub-rotas; caminho sem <code>/</code> no começo</td></tr>
+<tr><td><code>errorBuilder: (context, state) =&gt; ...</code></td><td>Página de erro própria</td></tr>
+<tr><td><code>redirect: (context, state) =&gt; ... '/login' ou null</code></td><td>Porteiro: desvia ou deixa passar</td></tr>
+</table>
+</div>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Mensagem</th><th>Causa provável</th></tr>
+<tr><td><code>GoException: no routes for location: /...</code> (página "Page Not Found")</td><td>Endereço que não está no mapa</td></tr>
+<tr><td><code>No GoRouter found in context</code></td><td><code>MaterialApp</code> comum em vez de <code>MaterialApp.router</code></td></tr>
+<tr><td><code>There is nothing to pop</code></td><td><code>pop</code> numa pilha de uma tela só</td></tr>
+<tr><td><code>Null check operator used on a null value</code> no <code>builder</code></td><td>Nome do parâmetro diferente do que está no <code>path</code></td></tr>
+<tr><td><code>Target of URI doesn't exist: 'package:go_router/go_router.dart'</code></td><td>Faltou o <code>flutter pub add go_router</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Instalando</h3>
+<p>Complete o comando que acrescenta o pacote ao projeto:</p>
+<div class="ex-code">flutter pub <input data-answer="add" aria-label="subcomando"> go_router</div>
+</div>
+
+<div class="exercise">
+<h3>2. Ligando ao app</h3>
+<p>Complete o construtor do <code>MaterialApp</code> que recebe o roteador:</p>
+<div class="ex-code">MaterialApp.<input data-answer="router" aria-label="construtor">(routerConfig: _rotas)</div>
+</div>
+
+<div class="exercise">
+<h3>3. Lendo o parâmetro</h3>
+<p>Com <code>path: '/receita/:id'</code>, complete para ler o <code>id</code>:</p>
+<div class="ex-code">state.<input data-answer="pathParameters" aria-label="propriedade">['id']</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. Qual a diferença entre <code>context.go('/sobre')</code> e <code>context.push('/sobre')</code>?</p>
+<label><input type="radio" name="q4"> Nenhuma: são sinônimos</label>
+<label><input type="radio" name="q4"> O <code>go</code> troca o endereço e a pilha vem do mapa; o <code>push</code> empilha por cima da tela atual</label>
+<label><input type="radio" name="q4"> O <code>push</code> só funciona na web</label>
+<label><input type="radio" name="q4"> O <code>go</code> abre em outra janela</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">5. Em <code>/busca?q=bolo</code>, onde está o <code>'bolo'</code>?</p>
+<label><input type="radio" name="q5"> <code>state.pathParameters['q']</code></label>
+<label><input type="radio" name="q5"> <code>state.extra</code></label>
+<label><input type="radio" name="q5"> <code>state.name</code></label>
+<label><input type="radio" name="q5"> <code>state.uri.queryParameters['q']</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">6. Numa sub-rota de <code>/</code>, como se escreve o caminho da receita?</p>
+<label><input type="radio" name="q6"> <code>'receita/:id'</code>, sem barra no começo</label>
+<label><input type="radio" name="q6"> <code>'/receita/:id'</code>, com barra</label>
+<label><input type="radio" name="q6"> <code>'//receita/:id'</code></label>
+<label><input type="radio" name="q6"> <code>':id'</code> só</label>
+</div>
+
+<h3>Missão final: a receita pelo endereço</h3>
+
+<div class="tryflutter" data-goal="src:path:\s*'receita/:id';;src:pathParameters\[\s*'id'\s*\];;src:context\.go\(\s*'/receita/7'\s*\)">
+<p class="try-task"><strong>Missão:</strong> acrescente uma sub-rota <code>receita/:id</code> dentro de <code>/</code> que mostre <code>ReceitaTela(id: ...)</code> com o parâmetro <code>id</code>, e faça o botão ir para <code>/receita/7</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+final _rotas = GoRouter(
+  routes: [
+    GoRoute(
+      path: '/',
+      builder: (context, state) =&gt; const InicioTela(),
+    ),
+  ],
+);
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp.router(routerConfig: _rotas);
+  }
+}
+
+class InicioTela extends StatelessWidget {
+  const InicioTela({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: Center(
+        child: FilledButton(
+          onPressed: () {},
+          child: const Text('Ver a receita 7'),
+        ),
+      ),
+    );
+  }
+}
+
+class ReceitaTela extends StatelessWidget {
+  const ReceitaTela({super.key, required this.id});
+
+  final String id;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Receita $id')),
+      body: Center(child: Text('Detalhes da receita $id')),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+final _rotas = GoRouter(
+  routes: [
+    GoRoute(
+      path: '/',
+      builder: (context, state) =&gt; const InicioTela(),
+      routes: [
+        GoRoute(
+          path: 'receita/:id',
+          builder: (context, state) =&gt;
+              ReceitaTela(id: state.pathParameters['id']!),
+        ),
+      ],
+    ),
+  ],
+);
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp.router(routerConfig: _rotas);
+  }
+}
+
+class InicioTela extends StatelessWidget {
+  const InicioTela({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: Center(
+        child: FilledButton(
+          onPressed: () =&gt; context.go('/receita/7'),
+          child: const Text('Ver a receita 7'),
+        ),
+      ),
+    );
+  }
+}
+
+class ReceitaTela extends StatelessWidget {
+  const ReceitaTela({super.key, required this.id});
+
+  final String id;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Receita $id')),
+      body: Center(child: Text('Detalhes da receita $id')),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O <code>go_router</code> é um pacote do pub.dev, mantido pela equipe do Flutter: instale com <code>flutter pub add go_router</code>.</li>
+  <li>Cada tela tem um endereço: <code>GoRouter(routes: [GoRoute(path:, builder:)])</code>, ligado com <code>MaterialApp.router(routerConfig:)</code>.</li>
+  <li><code>context.go</code> vai para um endereço (a pilha vem do mapa); <code>context.push</code> empilha; <code>context.pop</code> desempilha.</li>
+  <li>Parâmetros: <code>/receita/:id</code> → <code>state.pathParameters['id']</code>; <code>?q=</code> → <code>state.uri.queryParameters['q']</code>. Sempre texto.</li>
+  <li>Sub-rotas (<code>routes:</code> dentro do <code>GoRoute</code>, caminho sem barra) dão a seta de voltar mesmo quando o app abre direto no endereço.</li>
+  <li><code>errorBuilder</code> troca a página "Page Not Found"; <code>redirect</code> é o porteiro (devolve outro endereço ou <code>null</code>).</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
