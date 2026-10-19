@@ -578,7 +578,7 @@ class _ListaDeComprasState extends State&lt;ListaDeCompras&gt; {
 
 <div class="cenario">
 <strong>O item saiu da tela, mas não saiu da lista</strong>
-<p>Um engano muito comum: trocar o <code>removeAt</code> pelo <code>remove</code>. Os dois existem, mas fazem coisas diferentes: <code>removeAt(0)</code> tira o item da <strong>posição</strong> 0; <code>remove(0)</code> procura o <strong>valor</strong> <code>0</code> na lista. Numa lista de textos não existe o número 0, então nada sai, e o Dart nem reclama:</p>
+<p>Um engano muito comum: trocar o <code>removeAt</code> pelo <code>remove</code>. Os dois existem, mas fazem coisas diferentes: <code>removeAt(0)</code> tira o item da <strong>posição</strong> 0; <code>remove(0)</code> procura o <strong>valor</strong> <code>0</code> na lista. Numa lista de textos não existe o número 0, então nada sai. O app compila e roda; só o <code>flutter analyze</code> (e o sublinhado do editor) dá uma dica discreta: <code>info • The argument type 'int' isn't related to 'String'. … • collection_methods_unrelated_type</code> ("o tipo <code>int</code> não tem relação com <code>String</code>").</p>
 <pre class="file" data-file="lib/main.dart (trecho)">onDismissed: (direction) {
   setState(() {
     itens.remove(index); // errado: procura o número index, que não está na lista
