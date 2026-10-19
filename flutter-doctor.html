@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>flutter doctor — o exame que diz o que falta na sua máquina | Guia Flutter</title>
+<meta name="description" content="O comando flutter doctor explicado linha por linha com a saída real do Flutter 3.47.7: os sinais [✓], [✗] e [!], cada categoria (Flutter, Android toolchain, Chrome, Linux toolchain, Connected device, Network resources), o flutter doctor -v, o --android-licenses, o flutter devices, e como resolver cada problema que ele aponta.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1><span class="hl">flutter doctor</span></h1>
+
+<p class="intro">Instalar o Flutter é só a primeira parte. Para fazer um app de Android, falta o Android SDK; para testar na web, falta um Chrome; para um programa de Linux, faltam compiladores. Ninguém precisa decorar essa lista: o comando <code>flutter doctor</code> ("doutor") faz um <strong>exame</strong> da sua máquina e diz, item por item, o que está pronto e o que falta, com a dica de como resolver.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A rodar o <code>flutter doctor</code> e a ler o resultado.</li>
+  <li>O que querem dizer os sinais <code>[✓]</code>, <code>[✗]</code> e <code>!</code>.</li>
+  <li>O que é cada categoria: Flutter, Android toolchain, Chrome, Linux toolchain, Connected device, Network resources.</li>
+  <li>O <code>flutter doctor -v</code>, com os detalhes.</li>
+  <li>O <code>flutter doctor --android-licenses</code> e o <code>flutter devices</code>.</li>
+  <li>Que um <code>[✗]</code> nem sempre é problema: depende de para onde você vai fazer apps.</li>
+</ul>
+</div>
+
+<p>Todas as saídas desta aula saíram da máquina da Ana: um Ubuntu recém-instalado, com o Flutter 3.47.7 em <code>/home/ana/flutter</code> (aula <a href="instalar.html">Instalar o Flutter</a>) e <strong>mais nada</strong>: sem Android Studio, sem Chrome. É a situação de quem acabou de instalar. Num trecho, a versão do kernel do Linux foi cortada e trocada por <code>…</code>.</p>
+
+<hr>
+
+<h2>A ideia: o check-up</h2>
+<p>No check-up, o médico não faz uma pergunta só: confere a pressão, o coração, a visão, cada coisa numa linha da ficha, com um "ok" ou um "atenção". No fim, entrega a ficha e diz o que você precisa fazer.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>No check-up</th><th>No <code>flutter doctor</code></th></tr>
+<tr><td>Cada exame (pressão, coração, visão)</td><td>Cada <strong>categoria</strong>: Flutter, Android, Chrome, Linux...</td></tr>
+<tr><td>"Ok"</td><td><code>[✓]</code></td></tr>
+<tr><td>"Precisa tratar"</td><td><code>[✗]</code> (falta algo) ou <code>[!]</code> (aviso)</td></tr>
+<tr><td>A receita do médico</td><td>As linhas de baixo de cada categoria, com o que instalar</td></tr>
+<tr><td>"Vamos repetir o exame depois do tratamento"</td><td>Rodar o <code>flutter doctor</code> de novo</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>1. O primeiro exame</h2>
+
+<pre class="term">$ flutter doctor
+Doctor summary (to see all details, run flutter doctor -v):
+[✓] Flutter (Channel stable, 3.47.7, on Ubuntu 26.04.1 LTS …, locale pt_BR.UTF-8)
+[✗] Android toolchain - develop for Android devices
+    ✗ Unable to locate Android SDK.
+      Install Android Studio from: https://developer.android.com/studio/index.html
+      On first launch it will assist you in installing the Android SDK components.
+      (or visit https://flutter.dev/to/linux-android-setup for detailed instructions).
+      If the Android SDK has been installed to a custom location, please use
+      `flutter config --android-sdk` to update to that location.
+
+[✗] Chrome - develop for the web (Cannot find Chrome executable at google-chrome)
+    ! Cannot find Chrome. Try setting CHROME_EXECUTABLE to a Chrome executable.
+[✗] Linux toolchain - develop for Linux desktop
+    ✗ clang++ is required for Linux development.
+      It is likely available from your distribution (e.g.: apt install clang), or can be downloaded from https://releases.llvm.org/
+    ✗ CMake is required for Linux development.
+      It is likely available from your distribution (e.g.: apt install cmake), or can be downloaded from https://cmake.org/download/
+    ✗ ninja is required for Linux development.
+      It is likely available from your distribution (e.g.: apt install ninja-build), or can be downloaded from https://github.com/ninja-build/ninja/releases
+    ✗ pkg-config is required for Linux development.
+      It is likely available from your distribution (e.g.: apt install pkg-config), or can be downloaded from https://www.freedesktop.org/wiki/Software/pkg-config/
+[✓] Connected device (1 available)
+[✓] Network resources
+
+! Doctor found issues in 3 categories.
+</pre>
+
+<p>Parece muita coisa vermelha, mas calma: é o resultado normal de uma máquina nova. Vamos por partes.</p>
+
+<dl class="anatomy">
+  <dt>Doctor summary (to see all details, run flutter doctor -v):</dt><dd>"Resumo do doutor (para ver todos os detalhes, rode <code>flutter doctor -v</code>)".</dd>
+  <dt>[✓] / [✗]</dt><dd>O resultado de cada categoria: <code>✓</code> é "tudo certo"; <code>✗</code> é "falta alguma coisa". Em outras máquinas aparece também <code>[!]</code>: "funciona, mas tem um aviso" (uma versão antiga, uma licença não aceita).</dd>
+  <dt>As linhas recuadas</dt><dd>Os detalhes de cada categoria, com <code>✗</code> (o que falta), <code>!</code> (aviso) ou <code>•</code> (informação), e as instruções de como resolver.</dd>
+  <dt>! Doctor found issues in 3 categories.</dt><dd>"O doutor encontrou problemas em 3 categorias": o resumo final. Com tudo pronto, a frase vira <em>"No issues found!"</em> ("nenhum problema encontrado").</dd>
+</dl>
+
+<hr>
+
+<h2>2. Categoria por categoria</h2>
+
+<h3>Flutter</h3>
+<p><code>[✓] Flutter (Channel stable, 3.47.7, on Ubuntu 26.04.1 LTS …, locale pt_BR.UTF-8)</code>: o próprio SDK está ok. Mostra o canal (<code>stable</code>), a versão (<code>3.47.7</code>), o sistema (Ubuntu 26.04.1) e o idioma da máquina (<code>pt_BR.UTF-8</code>). Se esta categoria der <code>[✗]</code> ou <code>[!]</code>, o problema é na instalação do Flutter em si, e é o primeiro a resolver.</p>
+
+<h3>Android toolchain</h3>
+<p>"Ferramentas do Android: para desenvolver para aparelhos Android". <code>Unable to locate Android SDK</code>: "não foi possível achar o Android SDK". O próprio doutor dá a receita, linha por linha:</p>
+<dl class="anatomy">
+  <dt>Install Android Studio from: https://developer.android.com/studio/index.html</dt><dd>"Instale o Android Studio a partir deste endereço."</dd>
+  <dt>On first launch it will assist you in installing the Android SDK components.</dt><dd>"Ao abrir pela primeira vez, ele vai ajudar você a instalar os componentes do Android SDK."</dd>
+  <dt>(or visit https://flutter.dev/to/linux-android-setup ...)</dt><dd>"Ou visite este endereço para instruções detalhadas" (a página de configuração do Android para Linux).</dd>
+  <dt>If the Android SDK has been installed to a custom location, please use `flutter config --android-sdk` ...</dt><dd>"Se o Android SDK foi instalado num lugar diferente do padrão, use <code>flutter config --android-sdk</code> para informar o lugar."</dd>
+</dl>
+<p>Os passos do Android Studio (SDK Manager, emulador) estão na aula <a href="editor.html">VS Code e Android Studio</a>.</p>
+
+<h3>Chrome</h3>
+<p>"Chrome: para desenvolver para a web". O Flutter procurou o Chrome com o nome <code>google-chrome</code> e não achou. <code>Try setting CHROME_EXECUTABLE to a Chrome executable</code>: "tente apontar a variável <code>CHROME_EXECUTABLE</code> para um executável do Chrome". Instalar o Google Chrome resolve; se você usa o Chromium ou o Chrome está num lugar diferente, a variável <code>CHROME_EXECUTABLE</code> diz onde ele está.</p>
+
+<h3>Linux toolchain</h3>
+<p>"Ferramentas do Linux: para desenvolver programas de Linux". Faltam quatro programas de compilação: <code>clang++</code> (o compilador de C++), <code>CMake</code> e <code>ninja</code> (que organizam a compilação) e <code>pkg-config</code> (que acha as bibliotecas). A dica do doutor diz que eles provavelmente estão disponíveis na sua distribuição, com o nome do pacote: <code>apt install clang</code>, <code>apt install cmake</code>, <code>apt install ninja-build</code>, <code>apt install pkg-config</code>. Essa categoria só aparece no Linux; no Windows, no lugar dela aparece <strong>Visual Studio</strong> (para programas de Windows) e, no Mac, <strong>Xcode</strong> (para iOS e macOS).</p>
+
+<h3>Connected device</h3>
+<p>"Aparelho conectado (1 disponível)". Mesmo sem Android e sem Chrome, há um aparelho: o próprio computador, como programa de Linux (o detalhe aparece no <code>-v</code>, logo abaixo). Quando você abrir um emulador ou ligar um celular no cabo, o número aumenta.</p>
+
+<h3>Network resources</h3>
+<p>"Recursos de rede": o Flutter conseguiu falar com os servidores de que precisa (os de pacotes, por exemplo). Se der <code>[✗]</code>, confira a internet, o proxy ou o firewall.</p>
+
+<hr>
+
+<h2>3. Os detalhes: <code>flutter doctor -v</code></h2>
+<p>O <code>-v</code> (de <em>verbose</em>, "detalhado") mostra o que cada exame encontrou, com o tempo que levou. O começo, na máquina da Ana:</p>
+
+<pre class="term">$ flutter doctor -v
+[✓] Flutter (Channel stable, 3.47.7, on Ubuntu 26.04.1 LTS …, locale pt_BR.UTF-8) [53ms]
+    • Flutter version 3.47.7 on channel stable at /home/ana/flutter
+    • Upstream repository https://github.com/flutter/flutter.git
+    • Framework revision abaf9c5237 (11 days ago), 2026-10-08 09:51:21 -0700
+    • Engine revision deb287481e
+    • Dart version 3.13.5
+    • DevTools version 2.60.0
+    • Feature flags: enable-web, enable-linux-desktop, enable-macos-desktop, enable-windows-desktop, enable-android, enable-ios, cli-animations, enable-native-assets, enable-record-use, enable-swift-package-manager, omit-legacy-version-file, enable-lldb-debugging, enable-uiscene-migration
+«  ... Android toolchain, Chrome e Linux toolchain iguais ao resumo, com o tempo de cada um
+[✓] Connected device (1 available) [28ms]
+    • Linux (desktop) • linux • linux-x64 • Ubuntu 26.04.1 LTS …
+
+[✓] Network resources [148ms]
+    • All expected network resources are available.
+
+! Doctor found issues in 3 categories.
+</pre>
+
+<dl class="anatomy">
+  <dt>[53ms]</dt><dd>Quanto tempo o exame daquela categoria levou.</dd>
+  <dt>• Flutter version 3.47.7 on channel stable at /home/ana/flutter</dt><dd><strong>Onde</strong> o Flutter está instalado. Útil quando você tem mais de um e quer saber qual está valendo.</dd>
+  <dt>• Feature flags: ...</dt><dd>As plataformas e recursos ligados: web, desktop de Linux, macOS e Windows, Android, iOS e outros. Dá para desligar uma plataforma que você não usa com <code>flutter config</code>.</dd>
+  <dt>• Linux (desktop) • linux • linux-x64 • Ubuntu ...</dt><dd>O aparelho encontrado, em quatro colunas: o nome, o <strong>id</strong> (usado no <code>flutter run -d linux</code>), a arquitetura e o sistema.</dd>
+  <dt>• All expected network resources are available.</dt><dd>"Todos os recursos de rede esperados estão disponíveis."</dd>
+</dl>
+
+<div class="tip">
+<strong>Pedindo ajuda na internet?</strong>
+<p>Quem vai ajudar você num fórum quase sempre pede a saída do <code>flutter doctor -v</code>. Antes de colar, confira: ela mostra caminhos de pastas (com o seu nome de usuário) e o sistema.</p>
+</div>
+
+<hr>
+
+<h2>4. Os comandos vizinhos</h2>
+
+<h3><code>flutter devices</code>: quais aparelhos estão disponíveis</h3>
+<pre class="term">$ flutter devices
+Found 1 connected device:
+  Linux (desktop) • linux • linux-x64 • Ubuntu 26.04.1 LTS …
+
+Run "flutter emulators" to list and start any available device emulators.
+
+If you expected another device to be detected, please run "flutter doctor" to diagnose potential issues. You may also try increasing the time to wait for connected devices with the "--device-timeout" flag. Visit https://flutter.dev/setup/ for troubleshooting tips.
+</pre>
+<p>"Encontrei 1 aparelho conectado", e duas dicas: "rode <code>flutter emulators</code> para listar e abrir emuladores" e "se você esperava outro aparelho, rode o <code>flutter doctor</code> para descobrir o problema, ou aumente o tempo de espera com <code>--device-timeout</code>".</p>
+
+<h3><code>flutter emulators</code>: os emuladores de Android</h3>
+<pre class="term">$ flutter emulators
+Unable to find any emulator sources. Please ensure you have some
+Android AVD images available.
+</pre>
+<p>"Não encontrei nenhuma fonte de emuladores. Confira se você tem imagens de AVD do Android." <strong>AVD</strong> (<em>Android Virtual Device</em>) é o celular de mentira que você cria no Device Manager do Android Studio. Sem Android Studio, não há nenhum.</p>
+
+<h3><code>flutter doctor --android-licenses</code>: aceitar as licenças</h3>
+<p>Depois de instalar o Android Studio e o SDK, o doutor costuma pedir que você aceite as licenças de uso do Android SDK. Esse comando mostra cada licença e pergunta se você aceita (responda <code>y</code>, de <em>yes</em>, depois de ler). No fim, a documentação oficial diz que aparece <em>"All SDK package licenses accepted."</em> ("todas as licenças aceitas"). Na máquina da Ana, ainda sem o Android SDK, ele só pode responder:</p>
+<pre class="term">$ flutter doctor --android-licenses
+Unable to locate Android SDK.
+</pre>
+
+<hr>
+
+<h2>Experimente: a ficha do doutor</h2>
+<p>Um app que imita a ficha da Ana. Cada linha é um <code>Text</code> dentro de uma <code>Column</code> (uma coluna de widgets, aula <a href="row-column.html">Row e Column</a>).</p>
+
+<div class="tryflutter" data-goal="src:Text\('\[✓\] Android toolchain'\)">
+<p class="try-task"><strong>Missão:</strong> a Ana instalou o Android Studio, e o doutor ficou feliz. Troque a linha <code>[✗] Android toolchain</code> por <code>[✓] Android toolchain</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(
+    const MaterialApp(
+      home: Scaffold(
+        body: Padding(
+          padding: EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Ficha do doutor'),
+              Text('[✓] Flutter'),
+              Text('[✗] Android toolchain'),
+              Text('[✓] Network resources'),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(
+    const MaterialApp(
+      home: Scaffold(
+        body: Padding(
+          padding: EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Ficha do doutor'),
+              Text('[✓] Flutter'),
+              Text('[✓] Android toolchain'),
+              Text('[✓] Network resources'),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+</pre>
+</div>
+
+<figure class="tela"><img src="assets/telas/flutter-doctor-1.png" alt="O resultado esperado: no canto superior esquerdo, afastadas da borda, quatro linhas de texto, uma embaixo da outra: Ficha do doutor, [✓] Flutter, [✓] Android toolchain e [✓] Network resources" width="390" height="844" loading="lazy"><figcaption>O resultado esperado: as três categorias com <code>[✓]</code>.</figcaption></figure>
+
+<hr>
+
+<h2>Um <code>[✗]</code> é sempre problema?</h2>
+<p><strong>Não.</strong> Cada categoria corresponde a uma plataforma. Se você só vai fazer apps de Android, o <code>[✗]</code> do Linux toolchain não atrapalha em nada; o <code>[✗]</code> do Chrome também não. O que importa é ter <code>[✓]</code> no <strong>Flutter</strong> e nas plataformas que você vai usar.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Você quer fazer apps para</th><th>Precisa de <code>[✓]</code> em</th></tr>
+<tr><td>Android</td><td>Flutter, Android toolchain (e Android Studio, quando aparecer) e Connected device com um emulador ou celular</td></tr>
+<tr><td>Web</td><td>Flutter e Chrome</td></tr>
+<tr><td>iOS / macOS</td><td>Flutter e Xcode (só num Mac)</td></tr>
+<tr><td>Windows</td><td>Flutter e Visual Studio (só no Windows)</td></tr>
+<tr><td>Linux</td><td>Flutter e Linux toolchain (só no Linux)</td></tr>
+</table>
+</div>
+
+<p>Para não ver o <code>[✗]</code> de uma plataforma que você nunca vai usar, dá para desligá-la. Por exemplo, <code>flutter config --no-enable-linux-desktop</code> desliga a de Linux.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>"Unable to locate Android SDK" mesmo com o Android Studio instalado</strong>
+<p>O Android Studio foi instalado, mas nunca foi aberto (o SDK só é baixado no primeiro uso), ou o SDK foi para uma pasta diferente da padrão. <strong>Como consertar:</strong> abra o Android Studio e termine a configuração inicial; se o SDK estiver em outro lugar, informe a pasta com <code>flutter config --android-sdk CAMINHO</code> e rode o <code>flutter doctor</code> de novo.</p>
+</div>
+
+<div class="cenario">
+<strong>O aviso das licenças do Android</strong>
+<p>Com o SDK instalado, o próximo aviso costuma ser o das licenças não aceitas, com a dica de rodar <code>flutter doctor --android-licenses</code> (ilustrativo: a máquina da Ana não tem o Android SDK). <strong>Como consertar:</strong> rode o comando, leia e aceite as licenças com <code>y</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>"Cannot find Chrome" tendo o Chromium</strong>
+<p>O Flutter procura o Chrome pelo nome <code>google-chrome</code>. Se você usa o Chromium, aponte o executável: <code>export CHROME_EXECUTABLE=/usr/bin/chromium</code> (no <code>~/.bashrc</code>, para valer sempre; o caminho depende do sistema).</p>
+</div>
+
+<div class="cenario">
+<strong>O doutor demora ou trava em "Network resources"</strong>
+<p>Sem internet (ou atrás de um proxy), o exame de rede espera e depois dá <code>[✗]</code>. As outras categorias não dependem dele. <strong>Como consertar:</strong> confira a conexão; numa rede com proxy, configure as variáveis <code>HTTP_PROXY</code> e <code>HTTPS_PROXY</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>flutter doctor</code></td><td>O resumo do exame</td></tr>
+<tr><td><code>flutter doctor -v</code></td><td>O exame com todos os detalhes (caminhos, versões, tempos)</td></tr>
+<tr><td><code>flutter doctor --android-licenses</code></td><td>Mostra e pede para aceitar as licenças do Android SDK</td></tr>
+<tr><td><code>flutter devices</code></td><td>Lista os aparelhos disponíveis agora</td></tr>
+<tr><td><code>flutter emulators</code></td><td>Lista (e abre, com <code>--launch</code>) os emuladores de Android</td></tr>
+<tr><td><code>flutter config --android-sdk CAMINHO</code></td><td>Diz ao Flutter onde está o Android SDK</td></tr>
+<tr><td><code>flutter config --no-enable-linux-desktop</code></td><td>Desliga uma plataforma que você não usa</td></tr>
+</table>
+</div>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Sinal</th><th>Quer dizer</th></tr>
+<tr><td><code>[✓]</code></td><td>Tudo certo</td></tr>
+<tr><td><code>[!]</code></td><td>Funciona, mas há um aviso</td></tr>
+<tr><td><code>[✗]</code></td><td>Falta alguma coisa</td></tr>
+<tr><td><code>•</code></td><td>Uma informação</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Os detalhes</h3>
+<p>Complete o comando que mostra o exame com todos os detalhes:</p>
+<div class="ex-code">$ flutter doctor <input data-answer="-v" aria-label="opção"></div>
+</div>
+
+<div class="exercise">
+<h3>2. As licenças</h3>
+<p>Complete o comando que aceita as licenças do Android SDK:</p>
+<div class="ex-code">$ flutter doctor --<input data-answer="android-licenses" aria-label="opção"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. A Ana só vai fazer apps de Android. O doutor mostra <code>[✗] Linux toolchain</code>. O que ela deve fazer?</p>
+<label><input type="radio" name="q3"> Reinstalar o Flutter</label>
+<label><input type="radio" name="q3"> Nada: essa categoria é só para programas de Linux</label>
+<label><input type="radio" name="q3"> Instalar o Chrome</label>
+<label><input type="radio" name="q3"> Trocar de computador</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. Na máquina da Ana, sem Android Studio e sem Chrome, qual aparelho o <code>flutter devices</code> encontrou?</p>
+<label><input type="radio" name="q4"> Nenhum</label>
+<label><input type="radio" name="q4"> Um emulador de Android</label>
+<label><input type="radio" name="q4"> O Chrome</label>
+<label><input type="radio" name="q4"> O próprio computador, como programa de Linux</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. O que quer dizer <code>Unable to locate Android SDK</code>?</p>
+<label><input type="radio" name="q5"> O Flutter não achou as ferramentas do Android (o Android SDK)</label>
+<label><input type="radio" name="q5"> O celular está desligado</label>
+<label><input type="radio" name="q5"> O Flutter não está instalado</label>
+<label><input type="radio" name="q5"> A internet caiu</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>flutter doctor</code> examina a máquina e mostra uma linha por categoria: <code>[✓]</code> ok, <code>[!]</code> aviso, <code>[✗]</code> falta algo.</li>
+  <li>Embaixo de cada problema vem a receita de como resolver (em inglês): leia com calma.</li>
+  <li>Numa máquina nova, é normal ver <code>[✗]</code> no Android, no Chrome e no Linux toolchain.</li>
+  <li>Só importam as categorias das plataformas que você vai usar; para Android: Flutter, Android toolchain e um aparelho conectado.</li>
+  <li><code>flutter doctor -v</code> mostra os detalhes; <code>--android-licenses</code> aceita as licenças; <code>flutter devices</code> e <code>flutter emulators</code> listam os aparelhos.</li>
+  <li>Depois de cada "tratamento", rode o <code>flutter doctor</code> de novo.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
