@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Mensagens de Erro Comuns — o que querem dizer e como resolver | Guia Flutter</title>
+<meta name="description" content="Referência do Guia Flutter: as mensagens de erro mais comuns do Flutter 3.47 e do Dart 3.13, como saíram de verdade no laboratório (Expected ',', getter isn't defined, argument type, setState isn't defined, Not a constant expression, RenderFlex overflowed, unbounded height e width, Incorrect use of ParentDataWidget, No Material widget found, Navigator, RangeError, Null check), com a tradução, a causa e a solução de cada uma.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Mensagens de Erro Comuns</span></h1>
+
+<p class="intro">As mensagens de erro do Flutter são compridas e em inglês, mas quase sempre dizem exatamente o que está errado. Esta página reúne as que mais aparecem para quem está começando, <strong>como saíram de verdade</strong> no laboratório do guia (Flutter 3.47.7, Dart 3.13.5), com a tradução, a causa e a solução de cada uma. Use <kbd>Ctrl</kbd>+<kbd>F</kbd> com um pedaço da mensagem que você recebeu. O passo a passo de como ler uma mensagem qualquer está em <a href="erros-comuns.html">Erros Comuns e Como Ler</a>.</p>
+
+<div class="note">
+<strong>Dois tipos de erro</strong>
+<ul>
+  <li><strong>De compilação:</strong> o app nem chega a abrir. A mensagem tem a forma <code>lib/main.dart:LINHA:COLUNA: Error: …</code>, com a linha do código e os <code>^^^</code> embaixo do ponto exato. O VS Code sublinha esses erros em vermelho antes mesmo de rodar, e o <code>flutter analyze</code> também os lista (veja <a href="ref-cli.html">Comandos flutter</a>).</li>
+  <li><strong>Em tempo de execução:</strong> o app abre, e o erro aparece quando aquele pedaço roda. A mensagem vem num bloco <code>══╡ EXCEPTION CAUGHT BY … ╞══</code> no console, e às vezes a tela fica vermelha (erro no <code>build</code>) ou com listras amarelas e pretas (<em>overflow</em>).</li>
+</ul>
+<p>Os erros de tempo de execução abaixo foram colhidos no navegador (é onde o lab roda os apps). Quando você roda com <code>flutter run</code> num celular, a mensagem principal é a mesma; mudam os detalhes da pilha (as linhas com os arquivos de dentro do Flutter).</p>
+</div>
+
+<hr>
+
+<h2>Tabela rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Mensagem (pedaço)</th><th>Quer dizer</th><th>Solução mais comum</th></tr>
+<tr><td><a href="#virgula"><code>Expected ',' before this.</code></a></td><td>Faltou uma vírgula entre dois parâmetros</td><td>Pôr a vírgula no fim da linha anterior</td></tr>
+<tr><td><a href="#getter"><code>The getter 'x' isn't defined</code></a></td><td>Esse nome não existe ali</td><td>Conferir a grafia ou criar a variável</td></tr>
+<tr><td><a href="#tipo"><code>The argument type 'int' can't be assigned to the parameter type 'String'</code></a></td><td>Tipo errado num parâmetro</td><td>Converter (<code>'$n'</code>, <code>n.toString()</code>)</td></tr>
+<tr><td><a href="#setstate"><code>The method 'setState' isn't defined</code></a></td><td><code>setState</code> num <code>StatelessWidget</code></td><td>Transformar em <code>StatefulWidget</code></td></tr>
+<tr><td><a href="#const"><code>Not a constant expression.</code></a></td><td>Valor que muda dentro de um <code>const</code></td><td>Tirar o <code>const</code> de cima</td></tr>
+<tr><td><a href="#overflow"><code>A RenderFlex overflowed by N pixels</code></a></td><td>O conteúdo não coube na <code>Row</code>/<code>Column</code></td><td><code>Expanded</code>, <code>Flexible</code> ou rolagem</td></tr>
+<tr><td><a href="#unbounded-height"><code>Vertical viewport was given unbounded height.</code></a></td><td>Lista dentro de <code>Column</code> sem altura</td><td><code>Expanded</code> em volta da lista</td></tr>
+<tr><td><a href="#unbounded-width"><code>An InputDecorator … cannot have an unbounded width.</code></a></td><td><code>TextField</code> dentro de <code>Row</code> sem largura</td><td><code>Expanded</code> em volta do campo</td></tr>
+<tr><td><a href="#parentdata"><code>Incorrect use of ParentDataWidget.</code></a></td><td><code>Expanded</code> fora de <code>Row</code>/<code>Column</code></td><td>Tirar o <code>Expanded</code> ou pô-lo direto na <code>Row</code>/<code>Column</code></td></tr>
+<tr><td><a href="#material"><code>No Material widget found.</code></a></td><td>Widget do Material sem <code>Scaffold</code>/<code>Material</code> acima</td><td>Pôr a tela dentro de um <code>Scaffold</code></td></tr>
+<tr><td><a href="#navigator"><code>Navigator operation requested with a context that does not include a Navigator.</code></a></td><td><code>context</code> acima do <code>MaterialApp</code></td><td>Separar a tela num widget próprio</td></tr>
+<tr><td><a href="#range"><code>RangeError (index): Index out of range</code></a></td><td>Posição que não existe na lista</td><td>Conferir o tamanho antes de ler</td></tr>
+<tr><td><a href="#nulo"><code>Null check operator used on a null value</code> / <code>Unexpected null value.</code></a></td><td>O <code>!</code> encontrou um <code>null</code></td><td>Tratar o nulo (<code>??</code>, <code>if</code>)</td></tr>
+<tr><td><a href="#null-subtype"><code>type 'Null' is not a subtype of type 'double'</code></a></td><td>Esperava um valor e veio <code>null</code> (ex.: chave errada no JSON)</td><td>Conferir o nome da chave</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Erros de compilação</h2>
+
+<h3 id="virgula"><code>Expected ',' before this.</code></h3>
+<p>Faltou a vírgula depois do <code>appBar: AppBar(…)</code>, antes do <code>body:</code>:</p>
+<pre class="file" data-file="lib/main.dart (trecho errado)">appBar: AppBar(title: const Text('Erros da Ana'))
+body: const Text('Olá')
+</pre>
+<pre class="term">lib/main.dart:14:9: Error: Expected ',' before this.
+        body: const Text('Olá')
+        ^^^^
+</pre>
+<p>"Esperava uma vírgula antes disto." O <code>^^^^</code> aponta para o <code>body</code>, mas a vírgula que falta é no <strong>fim da linha anterior</strong>: o Dart só percebe o problema quando encontra a palavra seguinte. <strong>Solução:</strong> vírgula depois de cada parâmetro, inclusive o último (a "vírgula final" ainda ajuda o formatador a quebrar as linhas direito).</p>
+
+<h3 id="getter"><code>The getter 'nome' isn't defined for the type 'ErroApp'.</code></h3>
+<pre class="term">lib/main.dart:14:20: Error: The getter 'nome' isn't defined for the type 'ErroApp'.
+ - 'ErroApp' is from 'package:app/main.dart' ('lib/main.dart').
+Try correcting the name to the name of an existing getter, or defining a getter or field named 'nome'.
+        body: Text(nome),
+                   ^^^^
+</pre>
+<p>"O <em>getter</em> <code>nome</code> não está definido para o tipo <code>ErroApp</code>." Em português claro: não existe nada chamado <code>nome</code> ali. A última linha sugere: corrija o nome, ou crie o campo. <strong>Causas comuns:</strong> erro de digitação (<code>_contador</code> × <code>contador</code>), variável criada dentro de outra função, ou campo do <code>StatefulWidget</code> usado direto na classe do estado (lá, é <code>widget.nome</code>; veja <a href="passar-dados-telas.html">Passando Dados entre Telas</a>).</p>
+
+<h3 id="tipo"><code>The argument type 'int' can't be assigned to the parameter type 'String'.</code></h3>
+<pre class="term">lib/main.dart:14:20: Error: The argument type 'int' can't be assigned to the parameter type 'String'.
+        body: Text(42),
+                   ^
+</pre>
+<p>"O argumento do tipo <code>int</code> não pode ser passado para o parâmetro do tipo <code>String</code>." O <code>Text</code> só aceita texto. <strong>Solução:</strong> converta: <code>Text('42')</code>, <code>Text('$quantidade')</code> ou <code>Text(quantidade.toString())</code> (veja <a href="text.html">Text</a>).</p>
+
+<h3 id="setstate"><code>The method 'setState' isn't defined for the type 'Contador'.</code></h3>
+<pre class="term">lib/main.dart:27:11: Error: The method 'setState' isn't defined for the type 'Contador'.
+ - 'Contador' is from 'package:app/main.dart' ('lib/main.dart').
+Try correcting the name to the name of an existing method, or defining a method named 'setState'.
+          setState(() {
+          ^^^^^^^^
+</pre>
+<p>O <code>Contador</code> era um <code>StatelessWidget</code>, e só a classe <code>State</code> de um <code>StatefulWidget</code> tem o <code>setState</code>. <strong>Solução:</strong> transforme o widget em <code>StatefulWidget</code> e leve as variáveis que mudam para campos da classe do estado (não para dentro do <code>build</code>, onde seriam zeradas a cada redesenho). No VS Code, com o cursor no nome da classe, <kbd>Ctrl</kbd>+<kbd>.</kbd> oferece "Convert to StatefulWidget". Veja <a href="stateful.html">StatefulWidget</a>.</p>
+
+<h3 id="const"><code>Not a constant expression.</code></h3>
+<pre class="term">lib/main.dart:77:20:
+Error: Not a constant expression.
+            Text('$_seguidores seguidores'),
+                   ^^^^^^^^^^^
+</pre>
+<p>Um valor que muda (aqui, um campo do estado) ficou dentro de um <code>const</code>. Costuma vir junto com <code>Cannot invoke a non-'const' constructor where a const expression is expected.</code> <strong>Solução:</strong> tire o <code>const</code> do widget de cima e ponha <code>const</code> só nos que continuam fixos. O caso completo, com as seis mensagens que um único <code>const</code> gerou, está no <a href="projeto-perfil.html">Projeto Cartão de Perfil</a>.</p>
+
+<hr>
+
+<h2>Erros de layout</h2>
+
+<h3 id="overflow"><code>A RenderFlex overflowed by 59 pixels on the right.</code></h3>
+<p>Um texto comprido numa <code>Row</code>:</p>
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ErroApp());
+
+class ErroApp extends StatelessWidget {
+  const ErroApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Erros da Ana')),
+        body: const Row(
+          children: [
+            Icon(Icons.cake),
+            Text('Bolo de cenoura com cobertura de chocolate e granulado colorido'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<figure class="tela"><img src="assets/telas/ref-erros-overflow.png" alt="Tela 'Erros da Ana' com uma linha no alto: um ícone de bolo e o texto 'Bolo de cenoura com cobertura de chocolate e gra', cortado; no fim da linha, um bloco de listras amarelas e pretas e, em pé, em letras vermelhas pequenas, 'RIGHT OVERFLOWED'" width="390" height="844" loading="lazy"><figcaption>As listras amarelas e pretas marcam onde o conteúdo passou da borda.</figcaption></figure>
+<pre class="term">══╡ EXCEPTION CAUGHT BY RENDERING LIBRARY ╞════════════════════════════════════════════════════════
+The following assertion was thrown during layout:
+A RenderFlex overflowed by 59 pixels on the right.
+
+The relevant error-causing widget was:
+  Row Row:file:///home/ana/app/lib/main.dart:14:21
+
+The overflowing RenderFlex has an orientation of Axis.horizontal.
+The edge of the RenderFlex that is overflowing has been marked in the rendering with a yellow and
+black striped pattern. This is usually caused by the contents being too big for the RenderFlex.
+Consider applying a flex factor (e.g. using an Expanded widget) to force the children of the
+RenderFlex to fit within the available space instead of being sized to their natural size.
+«  … (a explicação continua, e depois vem a ficha técnica da Row) …
+</pre>
+<p>"Um <code>RenderFlex</code> (a <code>Row</code>) estourou 59 pixels à direita." A mensagem já dá a solução: "considere aplicar um fator <em>flex</em> (por exemplo, com um widget <code>Expanded</code>)". A linha <code>Row:file:///home/ana/app/lib/main.dart:14:21</code> diz qual <code>Row</code> é. <strong>Soluções:</strong> <code>Expanded</code> ou <code>Flexible</code> em volta do texto (ele quebra a linha), ou uma rolagem, se o conteúdo for mesmo maior que a tela. Aula completa: <a href="overflow.html">O Famoso Erro de Overflow</a>.</p>
+
+<div class="tryflutter" data-goal="src:Expanded\(">
+<p class="try-task"><strong>Missão:</strong> conserte o <em>overflow</em>: envolva o <code>Text</code> num <code>Expanded(child: …)</code>. As listras devem sumir, e o texto deve quebrar em duas linhas.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ErroApp());
+
+class ErroApp extends StatelessWidget {
+  const ErroApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Erros da Ana')),
+        body: const Row(
+          children: [
+            Icon(Icons.cake),
+            Text('Bolo de cenoura com cobertura de chocolate e granulado colorido'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ErroApp());
+
+class ErroApp extends StatelessWidget {
+  const ErroApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Erros da Ana')),
+        body: const Row(
+          children: [
+            Icon(Icons.cake),
+            Expanded(
+              child: Text(
+                'Bolo de cenoura com cobertura de chocolate e granulado colorido',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<h3 id="unbounded-height"><code>Vertical viewport was given unbounded height.</code></h3>
+<p>Um <code>ListView</code> direto dentro de uma <code>Column</code>. A lista quer "toda a altura possível", e a coluna oferece "infinita":</p>
+<pre class="term">══╡ EXCEPTION CAUGHT BY RENDERING LIBRARY ╞═════════════════════════════════════════════════════════
+The following assertion was thrown during performResize():
+Vertical viewport was given unbounded height.
+Viewports expand in the scrolling direction to fill their container. In this case, a vertical
+viewport was given an unlimited amount of vertical space in which to expand. This situation
+typically happens when a scrollable widget is nested inside another scrollable widget.
+«  …
+</pre>
+<p><strong>Solução:</strong> <code>Expanded(child: ListView…)</code>, ou uma altura fixa com <code>SizedBox</code>. O caso completo, com a foto da tela quebrada, está no <a href="projeto-tarefas.html">Projeto Lista de Tarefas</a>.</p>
+
+<h3 id="unbounded-width"><code>An InputDecorator, which is typically created by a TextField, cannot have an unbounded width.</code></h3>
+<p>Um <code>TextField</code> direto dentro de uma <code>Row</code>:</p>
+<pre class="file" data-file="lib/main.dart (trecho errado)">const Row(
+  children: [
+    TextField(),
+    Text('OK'),
+  ],
+),
+</pre>
+<pre class="term">══╡ EXCEPTION CAUGHT BY RENDERING LIBRARY ╞════════════════════════════════════════════════════════
+The following assertion was thrown during performLayout():
+Assertion failed:
+file:///home/ana/flutter/packages/flutter/lib/src/material/input_decorator.dart:964:7
+constraints.maxWidth &lt; double.infinity
+"An InputDecorator, which is typically created by a TextField, cannot have an unbounded width.\nThis
+happens when the parent widget does not provide a finite width constraint. For example, if the
+InputDecorator is contained by a Row, then its width must be constrained. An Expanded widget or a
+SizedBox can be used to constrain the width of the InputDecorator or the TextField that contains
+it."
+
+The relevant error-causing widget was:
+  TextField TextField:file:///home/ana/app/lib/main.dart:16:13
+«  … e depois várias linhas "Another exception was thrown: …" …
+</pre>
+<p>"Um <code>InputDecorator</code>, que normalmente é criado por um <code>TextField</code>, não pode ter largura sem limite. Isso acontece quando o pai não dá uma largura finita. Por exemplo, se estiver dentro de uma <code>Row</code>, a largura precisa ser limitada. Um <code>Expanded</code> ou um <code>SizedBox</code> resolvem." É o mesmo problema do anterior, deitado: a <code>Row</code> deixa cada filho ter a largura que quiser, e o campo de texto quer "toda". No lab, abaixo da barra do topo a tela ficou em branco: nem o campo nem o "OK" apareceram. <strong>Solução:</strong> <code>Expanded(child: TextField(…))</code>, como no <a href="projeto-tarefas.html">Projeto Lista de Tarefas</a>.</p>
+
+<h3 id="parentdata"><code>Incorrect use of ParentDataWidget.</code></h3>
+<pre class="file" data-file="lib/main.dart (trecho errado)">const Center(
+  child: Expanded(child: Text('Bolo')),
+),
+</pre>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═════════════════════════════════════════════════════════
+The following assertion was thrown while applying parent data.:
+Incorrect use of ParentDataWidget.
+The ParentDataWidget Expanded(flex: 1) wants to apply ParentData of type FlexParentData to a
+RenderObject, which has been set up to accept ParentData of incompatible type BoxParentData.
+Usually, this means that the Expanded widget has the wrong ancestor RenderObjectWidget. Typically,
+Expanded widgets are placed directly inside Flex widgets.
+The offending Expanded is currently placed inside a Center widget.
+«  …
+</pre>
+<p>"Uso incorreto de <code>ParentDataWidget</code>." A frase que importa é a penúltima: "o <code>Expanded</code> culpado está dentro de um <code>Center</code>". <code>Expanded</code>, <code>Flexible</code> e <code>Spacer</code> só funcionam como filhos <strong>diretos</strong> de <code>Row</code>, <code>Column</code> ou <code>Flex</code>; <code>Positioned</code>, só dentro de <code>Stack</code>. <strong>Solução:</strong> tire o <code>Expanded</code>, ou mova-o para ficar direto na <code>Row</code>/<code>Column</code> (veja <a href="expanded.html">Expanded e Flexible</a>).</p>
+
+<h3 id="material"><code>No Material widget found.</code></h3>
+<p>Um <code>TextField</code> direto no <code>home</code>, sem <code>Scaffold</code>:</p>
+<pre class="file" data-file="lib/main.dart (trecho errado)">return const MaterialApp(
+  home: Center(child: TextField()),
+);
+</pre>
+<figure class="tela"><img src="assets/telas/ref-erros-material.png" alt="Tela inteira vermelho-escura coberta de texto amarelo, começando por 'No Material widget found.' e 'TextField widgets require a Material widget ancestor within the closest LookupBoundary.', seguido da explicação e de uma longa lista de widgets ancestrais, que passa da borda de baixo da tela" width="390" height="844" loading="lazy"><figcaption>A tela vermelha do modo debug, com a mensagem inteira.</figcaption></figure>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═════════════════════════════════════════════════════════
+The following assertion was thrown building TextField(dirty, dependencies: [MediaQuery,
+UnmanagedRestorationScope], state: _TextFieldState#cd88d):
+No Material widget found.
+TextField widgets require a Material widget ancestor within the closest LookupBoundary.
+In Material Design, most widgets are conceptually "printed" on a sheet of material. In Flutter's
+material library, that material is represented by the Material widget. It is the Material widget
+that renders ink splashes, for instance. Because of this, many material library widgets require that
+there be a Material widget in the tree above them.
+To introduce a Material widget, you can either directly include one, or use a widget that contains
+Material itself, such as a Card, Dialog, Drawer, or Scaffold.
+«  …
+</pre>
+<p>"Nenhum widget <code>Material</code> encontrado. O <code>TextField</code> precisa de um <code>Material</code> acima dele." No Material Design, os widgets são "impressos" numa folha de material, e é essa folha que desenha, por exemplo, o efeito de respingo do toque. A própria mensagem dá a solução: "use um widget que já contém o <code>Material</code>, como <code>Card</code>, <code>Dialog</code>, <code>Drawer</code> ou <code>Scaffold</code>". <strong>Solução:</strong> toda tela começa com um <code>Scaffold</code> (veja <a href="scaffold.html">Scaffold e AppBar</a>).</p>
+
+<hr>
+
+<h2>Erros com dados e navegação</h2>
+
+<h3 id="navigator"><code>Navigator operation requested with a context that does not include a Navigator.</code></h3>
+<pre class="term">══╡ EXCEPTION CAUGHT BY GESTURE ╞═══════════════════════════════════════════════════════════════════
+The following assertion was thrown while handling a gesture:
+Navigator operation requested with a context that does not include a Navigator.
+The context used to push or pop routes from the Navigator must be that of a widget that is a
+descendant of a Navigator widget.
+«  …
+</pre>
+<p>O <code>Navigator.push(context, …)</code> foi chamado com o <code>context</code> do mesmo <code>build</code> que cria o <code>MaterialApp</code>, e esse <code>context</code> fica <strong>acima</strong> do <code>Navigator</code>. <strong>Solução:</strong> separe a tela num widget próprio. O caso completo está no <a href="projeto-receitas.html">Projeto App de Receitas</a>.</p>
+
+<h3 id="range"><code>RangeError (index): Index out of range: index should be less than 3: 3</code></h3>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following IndexError was thrown building QuizPage(dirty, dependencies: [InheritedCupertinoTheme,
+_InheritedTheme, _LocalizationsScope-[GlobalKey#5629a]], state: _QuizPageState#94e83):
+RangeError (index): Index out of range: index should be less than 3: 3
+«  …
+</pre>
+<p>"Índice fora do intervalo: deveria ser menor que 3, e foi 3." Uma lista com 3 itens tem as posições 0, 1 e 2. Como o erro aconteceu no <code>build</code>, a tela fica vermelha. <strong>Solução:</strong> confira o tamanho antes de ler (<code>if (i &lt; lista.length)</code>). O caso completo, com a foto, está no <a href="projeto-quiz.html">Projeto Quiz</a>.</p>
+
+<h3 id="nulo"><code>Null check operator used on a null value</code></h3>
+<p>O operador <code>!</code> ("pode confiar, não é nulo") encontrou um <code>null</code>. Num programa Dart rodando no terminal da Ana:</p>
+<pre class="term">$ cat nulo.dart
+void main() {
+  String? apelido;
+  print(apelido!);
+}
+$ dart run nulo.dart
+Unhandled exception:
+Null check operator used on a null value
+#0      main (file:///home/ana/nulo.dart:3:16)
+«  … mais duas linhas da pilha, de dentro do Dart …
+</pre>
+<p>"Operador de checagem de nulo usado num valor nulo", na linha 3, coluna 16 (o <code>!</code>). No navegador, a mesma situação num <code>build</code> (<code>Text(apelido!)</code>) deu uma mensagem mais curta, com a tela vermelha:</p>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═════════════════════════════════════════════════════════
+The following TypeErrorImpl was thrown building ErroApp(dirty):
+Unexpected null value.
+«  …
+</pre>
+<p><strong>Solução:</strong> use o <code>!</code> só quando tiver certeza. No lugar dele, trate o nulo: <code>Text(apelido ?? 'sem apelido')</code>, ou um <code>if (apelido != null)</code> antes (veja <a href="dart-para-flutter.html">O Dart que Você Precisa</a>).</p>
+
+<h3 id="null-subtype"><code>type 'Null' is not a subtype of type 'double'</code></h3>
+<pre class="term">TypeError: null: type 'Null' is not a subtype of type 'double'</pre>
+<p>Um <code>as double</code> (ou <code>as String</code>, <code>as int</code>…) recebeu <code>null</code>. O caso clássico é ler um JSON com o nome errado da chave: <code>json['temperatura']</code> quando a API manda <code>temperature_2m</code>. <strong>Solução:</strong> copie o nome da chave da resposta real. O caso completo, com a tela de erro, está no <a href="projeto-clima.html">Projeto Previsão do Tempo</a>; mais sobre JSON em <a href="json-modelos.html">JSON e Classes de Modelo</a>.</p>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">1. Apareceu <code>Expected ',' before this.</code> apontando para a linha 20. Onde está, quase sempre, a vírgula que falta?</p>
+<label><input type="radio" name="q1"> Na linha 21.</label>
+<label><input type="radio" name="q1"> No fim da linha 19, a anterior.</label>
+<label><input type="radio" name="q1"> No começo do arquivo.</label>
+<label><input type="radio" name="q1"> Dentro do <code>pubspec.yaml</code>.</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">2. O console mostra <code>Incorrect use of ParentDataWidget</code> e "The offending Expanded is currently placed inside a Padding widget". O que fazer?</p>
+<label><input type="radio" name="q2"> Trocar o <code>Padding</code> por um <code>Container</code>.</label>
+<label><input type="radio" name="q2"> Pôr um <code>const</code> no <code>Expanded</code>.</label>
+<label><input type="radio" name="q2"> Rodar <code>flutter clean</code>.</label>
+<label><input type="radio" name="q2"> Fazer o <code>Expanded</code> ser filho direto da <code>Row</code>/<code>Column</code> (com o <code>Padding</code> dentro dele).</label>
+</div>
+
+<div class="exercise">
+<h3>3. Qual widget resolve?</h3>
+<p>Para os erros <code>A RenderFlex overflowed</code> (texto comprido numa <code>Row</code>), <code>Vertical viewport was given unbounded height</code> e <code>An InputDecorator … cannot have an unbounded width</code>, o mesmo widget costuma ser a solução: <input data-answer="Expanded" aria-label="nome do widget"></p>
+</div>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
