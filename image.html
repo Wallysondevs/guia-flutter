@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Image — imagens da internet e do app | Guia Flutter</title>
+<meta name="description" content="O widget Image do Flutter: Image.network (imagem da internet) e Image.asset (imagem dentro do app, com o pubspec.yaml), width, height e fit (BoxFit.cover, contain, fill), bordas arredondadas com ClipRRect, o que mostrar enquanto carrega e quando falha (loadingBuilder e errorBuilder), e os erros reais de asset não declarado, com fotos da tela e missões no editor.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Image</span>: imagens</h1>
+
+<p class="intro">Um app de receitas sem foto do bolo não dá água na boca. Uma lojinha sem foto do produto não vende. No Flutter, toda imagem na tela é um widget <code>Image</code>, e ele tem dois jeitos principais de achar a imagem: buscar na <strong>internet</strong> (<code>Image.network</code>) ou pegar um arquivo que viaja <strong>dentro do app</strong> (<code>Image.asset</code>).</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A mostrar uma imagem da internet com <code>Image.network</code>.</li>
+  <li>A controlar o tamanho (<code>width</code>, <code>height</code>) e o encaixe (<code>fit</code>).</li>
+  <li>A arredondar os cantos com <code>ClipRRect</code>.</li>
+  <li>O que mostrar enquanto a imagem carrega e quando ela falha.</li>
+  <li>A pôr uma imagem dentro do app com <code>Image.asset</code> e o <code>pubspec.yaml</code>.</li>
+  <li>Os erros reais: endereço quebrado e imagem não declarada no <code>pubspec.yaml</code>.</li>
+</ul>
+</div>
+
+<p>Todos os apps desta aula foram compilados com o Flutter 3.47.7 do laboratório e fotografados numa tela do tamanho de um celular. A foto de exemplo é a coruja que a própria documentação oficial do Flutter usa nos exemplos de <code>Image</code> (do repositório <code>flutter/assets-for-api-docs</code>, licença BSD, a mesma do Flutter): um endereço estável, que o leitor também consegue abrir.</p>
+
+<hr>
+
+<h2>A ideia: o porta-retratos</h2>
+<p>Um porta-retratos tem um tamanho; a foto que você põe nele tem outro. Ou você corta a foto para encher a moldura, ou deixa sobrar espaço em volta, ou estica a foto (e a tia fica achatada). O <code>Image</code> é o porta-retratos, e o parâmetro <code>fit</code> é a decisão de como a foto entra nele.</p>
+
+<hr>
+
+<h2>1. Uma imagem da internet: <code>Image.network</code></h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: Image.network(
+          'https://flutter.github.io/assets-for-api-docs/assets/widgets/owl.jpg',
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>Image.network( ... )</dt><dd>"Imagem da rede": baixa a imagem do endereço e a mostra. Repare que é <code>Image.network</code>, um <strong>construtor com nome</strong> da classe <code>Image</code> (você viu construtores com nome no Dart).</dd>
+  <dt>'https://...'</dt><dd>O endereço (URL) da imagem. Tem de ser o endereço do <strong>arquivo</strong> da imagem (que termina em <code>.png</code>, <code>.jpg</code>, <code>.webp</code>...), e não de uma página que mostra a imagem.</dd>
+  <dt>sem const</dt><dd><code>Image.network</code> não pode ser <code>const</code>: ele guarda o que baixou enquanto o app roda.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/image-1.png" alt="Foto de uma coruja marrom com pintas brancas e olhos amarelos, pousada numa pedra, ocupando toda a largura da tela logo abaixo da barra 'Receitas da Ana'; o resto da tela, embaixo, fica vazio" width="390" height="844" loading="lazy"><figcaption><code>Image.network</code> sem tamanho: a foto ocupa a largura da tela, na proporção dela.</figcaption></figure>
+
+<hr>
+
+<h2>2. Tamanho e encaixe: <code>width</code>, <code>height</code> e <code>fit</code></h2>
+<p>A Ana ainda não fotografou o bolo, então ensaia com a coruja: quer a foto como uma faixa no topo da receita, com a largura da tela toda e pouca altura. Mas a foto não tem esse formato. Como ela entra numa moldura comprida? O <code>fit</code> decide:</p>
+
+<pre class="file" data-file="lib/main.dart">        body: ListView(
+          children: [
+            const Text('BoxFit.cover'),
+            Image.network(endereco, width: 390, height: 120, fit: BoxFit.cover),
+            const Text('BoxFit.contain'),
+            Image.network(endereco, width: 390, height: 120, fit: BoxFit.contain),
+            const Text('BoxFit.fill'),
+            Image.network(endereco, width: 390, height: 120, fit: BoxFit.fill),
+          ],
+        ),
+</pre>
+
+<dl class="anatomy">
+  <dt>width: 390, height: 120</dt><dd>O tamanho da moldura, em pontos lógicos.</dd>
+  <dt>fit: BoxFit.cover</dt><dd>"Cobrir": a foto aumenta até <strong>encher</strong> a moldura toda, mantendo a proporção; o que sobra é cortado. É o mais usado para fotos de capa.</dd>
+  <dt>fit: BoxFit.contain</dt><dd>"Conter": a foto <strong>inteira</strong> cabe na moldura, mantendo a proporção; sobra espaço vazio dos lados.</dd>
+  <dt>fit: BoxFit.fill</dt><dd>"Preencher": estica a foto para o tamanho exato da moldura, <strong>sem</strong> manter a proporção. A foto fica deformada.</dd>
+  <dt>ListView</dt><dd>Uma lista que rola (aula <a href="listview.html">ListView</a>); entrou aqui para caber tudo. O <code>endereco</code> é uma variável com o mesmo endereço da seção 1.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/image-2.png" alt="Três faixas da mesma foto da coruja, com o nome de cada fit em cima: em BoxFit.cover a faixa toda é preenchida por um pedaço ampliado do corpo da coruja; em BoxFit.contain a coruja inteira aparece pequena no meio, com espaço vazio dos lados; em BoxFit.fill a coruja inteira aparece achatada e esticada na largura" width="390" height="844" loading="lazy"><figcaption>As três faixas têm o mesmo tamanho (390 × 120); só o <code>fit</code> muda.</figcaption></figure>
+
+<div class="tryflutter" data-goal="src:fit:\s*BoxFit\.cover;;src:height:\s*200">
+<p class="try-task"><strong>Missão:</strong> a foto da coruja está deformada. Faça a faixa ter <code>200</code> de altura e use o <code>fit</code> que <strong>enche</strong> a moldura sem deformar a foto.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: Image.network(
+          'https://flutter.github.io/assets-for-api-docs/assets/widgets/owl.jpg',
+          width: double.infinity,
+          height: 100,
+          fit: BoxFit.fill,
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: Image.network(
+          'https://flutter.github.io/assets-for-api-docs/assets/widgets/owl.jpg',
+          width: double.infinity,
+          height: 200,
+          fit: BoxFit.cover,
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<p>O <code>width: double.infinity</code> da missão quer dizer "a largura toda que houver": é o jeito de pedir a largura da tela sem saber quantos pontos ela tem.</p>
+
+<hr>
+
+<h2>3. Cantos arredondados: <code>ClipRRect</code></h2>
+
+<pre class="file" data-file="lib/main.dart">        body: Center(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: Image.network(
+              'https://flutter.github.io/assets-for-api-docs/assets/widgets/owl.jpg',
+              width: 240,
+              height: 240,
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+</pre>
+
+<dl class="anatomy">
+  <dt>ClipRRect</dt><dd>"Recorte retangular arredondado" (o <code>RRect</code> é <em>rounded rectangle</em>). Ele recorta o filho com cantos arredondados, como uma tesoura de picotar cantos.</dd>
+  <dt>borderRadius: BorderRadius.circular(24)</dt><dd>O raio dos cantos: 24 pontos em todos. Quanto maior, mais redondo.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/image-3.png" alt="A foto da coruja, quadrada e com os quatro cantos arredondados, no meio da tela" width="390" height="844" loading="lazy"><figcaption><code>ClipRRect</code> com raio 24.</figcaption></figure>
+
+<p>Para uma foto <strong>redonda</strong> (a de perfil, por exemplo), troque o <code>ClipRRect</code> por <code>ClipOval</code>, ou use o <code>CircleAvatar</code>, que você vai ver no <a href="projeto-perfil.html">Projeto: Cartão de Perfil</a>.</p>
+
+<hr>
+
+<h2>4. Enquanto carrega e quando falha</h2>
+<p>Imagem da internet demora um pouco, e às vezes não vem (sem internet, endereço errado). Por padrão, o <code>Image.network</code> mostra <strong>nada</strong> enquanto carrega. Dá para mostrar uma rodinha de "carregando" e, se falhar, um ícone no lugar:</p>
+
+<pre class="file" data-file="lib/main.dart">        body: Center(
+          child: Image.network(
+            'https://flutter.github.io/assets-for-api-docs/assets/widgets/nao-existe.jpg',
+            width: 240,
+            height: 240,
+            loadingBuilder: (context, child, progresso) {
+              if (progresso == null) return child;
+              return const CircularProgressIndicator();
+            },
+            errorBuilder: (context, erro, pilha) {
+              return const Icon(Icons.broken_image, size: 96, color: Colors.grey);
+            },
+          ),
+        ),
+</pre>
+
+<dl class="anatomy">
+  <dt>loadingBuilder: (context, child, progresso) { ... }</dt><dd>Uma função que o Flutter chama enquanto baixa. Quando <code>progresso</code> é <code>null</code>, a imagem já chegou: devolva o <code>child</code> (a própria imagem). Senão, devolva o que mostrar enquanto isso: aqui, a rodinha <code>CircularProgressIndicator</code>.</dd>
+  <dt>errorBuilder: (context, erro, pilha) { ... }</dt><dd>Uma função que o Flutter chama se der erro. Devolve o widget que fica no lugar da imagem: aqui, o ícone de imagem quebrada.</dd>
+  <dt>nao-existe.jpg</dt><dd>Um endereço que não existe, de propósito, para ver o <code>errorBuilder</code> em ação.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/image-4.png" alt="No meio da tela, um ícone cinza grande de imagem quebrada, um quadrado com um zigue-zague no meio" width="390" height="844" loading="lazy"><figcaption>O endereço não existe: o <code>errorBuilder</code> pôs o ícone no lugar da foto.</figcaption></figure>
+
+<hr>
+
+<h2>5. A imagem dentro do app: <code>Image.asset</code></h2>
+<p>O logotipo da lojinha, um ícone próprio, a foto da tela de boas-vindas: imagens que <strong>sempre</strong> estão no app não deveriam depender da internet. Elas viajam dentro do app como <strong>assets</strong> ("recursos"). São três passos:</p>
+
+<ol class="passo">
+  <li>Ponha o arquivo numa pasta do projeto, por exemplo <code>assets/img/bolo.png</code> (ao lado da pasta <code>lib</code>).</li>
+  <li>Avise o Flutter no <code>pubspec.yaml</code>, na seção <code>flutter:</code>:
+<pre class="file" data-file="pubspec.yaml">flutter:
+  uses-material-design: true
+  assets:
+    - assets/img/bolo.png
+</pre>
+  (Ou <code>- assets/img/</code>, com a barra no fim, para todos os arquivos da pasta.) A indentação importa: <code>assets:</code> fica dois espaços para dentro de <code>flutter:</code>.</li>
+  <li>Use no código, com o mesmo caminho:
+<pre class="file" data-file="lib/main.dart">        body: Image.asset('assets/img/bolo.png'),
+</pre></li>
+</ol>
+
+<p>Depois de mexer no <code>pubspec.yaml</code>, pare o app e rode de novo (<code>flutter run</code>): a recarga a quente não pega assets novos. A aula <a href="assets.html">Assets</a> conta tudo, inclusive imagens em várias resoluções. Os parâmetros <code>width</code>, <code>height</code> e <code>fit</code> funcionam igual aos do <code>Image.network</code>.</p>
+
+<div class="note">
+<strong>No editor do guia, só <code>Image.network</code></strong>
+<p>As caixas "Experimente" rodam no DartPad, que tem um arquivo só (o <code>main.dart</code>), sem <code>pubspec.yaml</code> nem pasta de assets. Por isso as missões desta aula usam <code>Image.network</code>. Para testar o <code>Image.asset</code>, use um projeto seu (aula <a href="criar-projeto.html">Criando um Projeto</a>).</p>
+</div>
+
+<hr>
+
+<h2>Formas diferentes de mostrar uma imagem</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Forma</th><th>Quando usar</th></tr>
+<tr><td><code>Image.network(url)</code></td><td>Imagens que mudam ou que são muitas: fotos de produtos, de receitas vindas de um servidor.</td></tr>
+<tr><td><code>Image.asset('assets/...')</code></td><td>Imagens fixas, que o app sempre tem: logotipo, ilustrações. Funcionam sem internet, mas aumentam o tamanho do app.</td></tr>
+<tr><td><code>Icon(Icons.cake)</code></td><td>Símbolos simples: são mais leves e mudam de cor com o tema (aula <a href="icon.html">Ícones</a>).</td></tr>
+<tr><td><code>Image.file(...)</code> / <code>Image.memory(...)</code></td><td>Uma foto que o usuário tirou com a câmera, ou bytes que chegaram de outro lugar (aula <a href="plataforma.html">Recursos do Aparelho</a>).</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Endereço quebrado, sem <code>errorBuilder</code></strong>
+<pre class="file" data-file="lib/main.dart">        body: Image.network(
+          'https://flutter.github.io/assets-for-api-docs/assets/widgets/nao-existe.jpg',
+        ),
+</pre>
+<figure class="tela"><img src="assets/telas/image-6.png" alt="Logo abaixo da barra, uma faixa fina de borda vermelha com um X atravessado e, dentro, em letras minúsculas, 'HTTP request failed, statusCode: 404,' seguido do endereço da imagem" width="390" height="844" loading="lazy"><figcaption><code>Image.network</code> com endereço quebrado e sem <code>errorBuilder</code>.</figcaption></figure>
+<p>No modo debug, no lugar da imagem aparece um retângulo de borda vermelha com um X, e a mensagem espremida dentro dele. No console:</p>
+<pre class="devtools">Failed to load resource: the server responded with a status of 404 ()
+══╡ EXCEPTION CAUGHT BY IMAGE RESOURCE SERVICE ╞════════════════════════════════════════════════════
+The following NetworkImageLoadException was thrown resolving an image stream completer:
+HTTP request failed, statusCode: 404,
+https://flutter.github.io/assets-for-api-docs/assets/widgets/nao-existe.jpg
+…
+════════════════════════════════════════════════════════════════════════════════════════════════════
+</pre>
+<dl class="anatomy">
+  <dt>EXCEPTION CAUGHT BY IMAGE RESOURCE SERVICE</dt><dd>Quem reclamou foi o serviço que busca imagens.</dd>
+  <dt>NetworkImageLoadException</dt><dd>"Falha ao carregar uma imagem da rede".</dd>
+  <dt>HTTP request failed, statusCode: 404,</dt><dd>O servidor respondeu <strong>404</strong>, o famoso "não encontrado": o endereço está errado ou a imagem foi apagada. Outros números comuns: <code>403</code> (proibido) e, sem internet, um erro de conexão.</dd>
+</dl>
+<p>O app não quebra: o resto da tela continua funcionando. Mas o usuário vê um buraco. <strong>Como consertar:</strong> confira o endereço (abra-o no navegador: tem de aparecer só a imagem) e use sempre um <code>errorBuilder</code> (seção 4) em imagens da internet, porque um dia a rede falha.</p>
+</div>
+
+<div class="cenario">
+<strong><code>Image.asset</code> sem declarar no <code>pubspec.yaml</code></strong>
+<pre class="file" data-file="lib/main.dart">        body: Image.asset('assets/img/bolo.png'),
+</pre>
+<figure class="tela"><img src="assets/telas/image-5.png" alt="Logo abaixo da barra, um retângulo com bordas vermelhas e um X vermelho atravessado, com o texto 'Unable to load asset: "assets/img/bolo.png". The asset does not exist or has empty data.'" width="390" height="844" loading="lazy"><figcaption>O <code>Image.asset</code> sem o arquivo declarado: o retângulo de erro do modo debug.</figcaption></figure>
+<p>O código compila (o compilador não confere se o arquivo existe), e o erro aparece com o app rodando:</p>
+<pre class="devtools">══╡ EXCEPTION CAUGHT BY IMAGE RESOURCE SERVICE ╞════════════════════════════════════════════════════
+The following assertion was thrown resolving an image codec:
+Unable to load asset: "assets/img/bolo.png".
+The asset does not exist or has empty data.
+…
+Image provider: AssetImage(bundle: null, name: "assets/img/bolo.png")
+…
+════════════════════════════════════════════════════════════════════════════════════════════════════
+</pre>
+<dl class="anatomy">
+  <dt>Unable to load asset: "assets/img/bolo.png".</dt><dd>"Não consegui carregar o asset". O Flutter só põe dentro do app os arquivos listados no <code>pubspec.yaml</code>; este não estava lá (no lab, nem o arquivo existia).</dd>
+  <dt>The asset does not exist or has empty data.</dt><dd>"O asset não existe ou está vazio".</dd>
+  <dt>Image provider: AssetImage(... name: "assets/img/bolo.png")</dt><dd>Qual imagem deu problema: confira se o caminho é <strong>exatamente</strong> o mesmo do <code>pubspec.yaml</code>, letra por letra (maiúsculas contam).</dd>
+</dl>
+<p><strong>Como consertar:</strong> confira as três coisas, nesta ordem: o arquivo está mesmo nessa pasta do projeto? Ele está listado em <code>flutter: assets:</code> no <code>pubspec.yaml</code>, com a indentação certa? Você parou o app e rodou de novo depois de mexer no <code>pubspec.yaml</code>?</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>Image.network('https://...')</code></td><td>Imagem da internet</td></tr>
+<tr><td><code>Image.asset('assets/img/x.png')</code></td><td>Imagem do app (declarada no <code>pubspec.yaml</code>)</td></tr>
+<tr><td><code>width:</code> / <code>height:</code></td><td>Tamanho da moldura; <code>double.infinity</code> = tudo o que houver</td></tr>
+<tr><td><code>fit: BoxFit.cover</code></td><td>Enche a moldura, corta o que sobra</td></tr>
+<tr><td><code>fit: BoxFit.contain</code></td><td>A imagem inteira, sobra espaço</td></tr>
+<tr><td><code>fit: BoxFit.fill</code></td><td>Estica, deforma</td></tr>
+<tr><td><code>ClipRRect(borderRadius: BorderRadius.circular(16), child: ...)</code></td><td>Cantos arredondados</td></tr>
+<tr><td><code>loadingBuilder</code> / <code>errorBuilder</code></td><td>O que mostrar carregando / se falhar</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Da internet</h3>
+<p>Complete o construtor da imagem da internet:</p>
+<div class="ex-code">Image.<input data-answer="network" aria-label="construtor">('https://...')</div>
+</div>
+
+<div class="exercise">
+<h3>2. Encher sem deformar</h3>
+<p>Complete o <code>fit</code> que enche a moldura mantendo a proporção:</p>
+<div class="ex-code">fit: BoxFit.<input data-answer="cover" aria-label="encaixe"></div>
+</div>
+
+<div class="exercise">
+<h3>3. Cantos redondos</h3>
+<p>Qual widget recorta a imagem com cantos arredondados?</p>
+<div class="ex-code"><input data-answer="ClipRRect" aria-label="widget">(borderRadius: BorderRadius.circular(16), child: imagem)</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. A Ana pôs o logotipo em <code>assets/logo.png</code> e usou <code>Image.asset('assets/logo.png')</code>, mas deu erro. O que provavelmente faltou?</p>
+<label><input type="radio" name="q4"> Trocar por <code>Image.network</code></label>
+<label><input type="radio" name="q4"> Pôr o <code>const</code> antes do <code>Image.asset</code></label>
+<label><input type="radio" name="q4"> Declarar o arquivo na seção <code>flutter: assets:</code> do <code>pubspec.yaml</code></label>
+<label><input type="radio" name="q4"> Converter a imagem para <code>.jpg</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. Com <code>BoxFit.fill</code>, uma foto quadrada numa moldura comprida fica...</p>
+<label><input type="radio" name="q5"> esticada e deformada</label>
+<label><input type="radio" name="q5"> cortada nas pontas</label>
+<label><input type="radio" name="q5"> inteira, com espaço vazio dos lados</label>
+<label><input type="radio" name="q5"> do tamanho original, ignorando a moldura</label>
+</div>
+
+<h3>Missão final: a capa da receita</h3>
+
+<div class="tryflutter" data-goal="src:ClipRRect;;src:BorderRadius\.circular\(\s*16\s*\);;src:BoxFit\.cover;;src:errorBuilder">
+<p class="try-task"><strong>Missão:</strong> deixe a foto da coruja com cantos arredondados de raio <code>16</code> (<code>ClipRRect</code>), com <code>BoxFit.cover</code>, e com um <code>errorBuilder</code> que mostre o ícone <code>Icons.broken_image</code> se a foto não carregar.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Bolo de cenoura')),
+        body: Center(
+          child: Image.network(
+            'https://flutter.github.io/assets-for-api-docs/assets/widgets/owl.jpg',
+            width: 300,
+            height: 200,
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Bolo de cenoura')),
+        body: Center(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Image.network(
+              'https://flutter.github.io/assets-for-api-docs/assets/widgets/owl.jpg',
+              width: 300,
+              height: 200,
+              fit: BoxFit.cover,
+              errorBuilder: (context, erro, pilha) {
+                return const Icon(Icons.broken_image, size: 96);
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>Image.network(url)</code> mostra uma imagem da internet; <code>Image.asset(caminho)</code>, uma imagem que vai dentro do app.</li>
+  <li><code>Image.asset</code> exige o arquivo declarado no <code>pubspec.yaml</code> (<code>flutter: assets:</code>) e um <code>flutter run</code> novo.</li>
+  <li><code>width</code> e <code>height</code> dão o tamanho da moldura; <code>fit</code> decide o encaixe: <code>cover</code> (enche e corta), <code>contain</code> (inteira), <code>fill</code> (deforma).</li>
+  <li><code>ClipRRect</code> arredonda os cantos.</li>
+  <li><code>loadingBuilder</code> e <code>errorBuilder</code> cuidam do "carregando" e da falha.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
