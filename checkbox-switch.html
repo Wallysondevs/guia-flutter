@@ -1,0 +1,629 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Checkbox, Switch e Radio — caixas de marcar, chaves e escolha única | Guia Flutter</title>
+<meta name="description" content="Checkbox, Switch e Radio no Flutter para quem nunca fez um app: o valor que mora no estado e o onChanged que o troca, CheckboxListTile e SwitchListTile com o texto clicável, escolha única com RadioGroup e RadioListTile (o jeito novo), desligar com onChanged: null e os erros reais (bool? × bool, a caixa que não marca).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Checkbox, Switch e Radio</span></h1>
+
+<p class="intro">Nem tudo se responde digitando. "Aceito os termos": sim ou não. "Modo escuro": ligado ou desligado. "Tamanho da pizza": pequena, média <strong>ou</strong> grande. Para essas perguntas, o Material tem três controles prontos: a <strong>caixa de marcar</strong> (<code>Checkbox</code>), a <strong>chave</strong> de ligar e desligar (<code>Switch</code>) e o <strong>botão de opção</strong> (<code>Radio</code>), em que só um do grupo fica marcado.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A regra dos três: o <strong>valor</strong> mora no seu estado, e o <code>onChanged</code> avisa quando a pessoa quer trocá-lo.</li>
+  <li><code>Checkbox</code> e <code>CheckboxListTile</code> (a linha inteira clicável, com texto).</li>
+  <li><code>Switch</code> e <code>SwitchListTile</code>.</li>
+  <li>Escolha única com <code>RadioGroup</code> e <code>RadioListTile</code>, o jeito atual (o antigo, com <code>groupValue</code> em cada <code>Radio</code>, ficou obsoleto depois do Flutter 3.32).</li>
+  <li>Como desligar um controle (<code>onChanged: null</code>) e qual usar em cada caso.</li>
+  <li>Os erros reais: <code>bool</code> × <code>bool?</code> e a caixa que não marca.</li>
+</ul>
+</div>
+
+<hr>
+
+<h2>A ideia: o interruptor da parede não lembra de nada</h2>
+<p>Parece estranho, mas o <code>Checkbox</code> do Flutter <strong>não guarda</strong> se está marcado. Ele é como um desenho de interruptor: mostra "ligado" ou "desligado" conforme você mandar (o parâmetro <code>value</code>). Quando a pessoa toca nele, ele não muda sozinho; ele <strong>avisa</strong> você ("querem trocar para <code>true</code>") pelo <code>onChanged</code>. Quem decide e guarda o novo valor é o seu <code>State</code>, com <code>setState</code>.</p>
+<ol class="passo">
+  <li>O estado tem <code>bool aceito = false;</code>.</li>
+  <li>O <code>build</code> desenha <code>Checkbox(value: aceito, …)</code>: desmarcado.</li>
+  <li>A pessoa toca. O Flutter chama <code>onChanged(true)</code>.</li>
+  <li>Você faz <code>setState(() =&gt; aceito = true)</code>, e o <code>build</code> desenha a caixa marcada.</li>
+</ol>
+<p>Os três controles desta aula funcionam assim. Esse jeito se chama <strong>controle controlado</strong>: o valor vem de fora, o widget só mostra e avisa.</p>
+
+<hr>
+
+<h2>1. <code>Checkbox</code>: a caixa de marcar</h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Termos()));
+
+class Termos extends StatefulWidget {
+  const Termos({super.key});
+
+  @override
+  State&lt;Termos&gt; createState() =&gt; _TermosState();
+}
+
+class _TermosState extends State&lt;Termos&gt; {
+  bool aceito = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Cadastro')),
+      body: Column(
+        children: [
+          Row(
+            children: [
+              Checkbox(
+                value: aceito,
+                onChanged: (novo) {
+                  setState(() {
+                    aceito = novo!;
+                  });
+                },
+              ),
+              const Text('Li e aceito os termos'),
+            ],
+          ),
+          FilledButton(
+            onPressed: aceito ? () {} : null,
+            child: const Text('Continuar'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>bool aceito = false;</dt><dd>O valor, no estado. A caixa começa desmarcada.</dd>
+  <dt>value: aceito</dt><dd>O que a caixa <strong>mostra</strong>: <code>true</code> = marcada (com o ✓), <code>false</code> = vazia.</dd>
+  <dt>onChanged: (novo) { … }</dt><dd>Chamado no toque, com o valor que a caixa <strong>quer</strong> ter. O tipo é <code>bool?</code> (pode ser nulo), porque existe uma caixa de três estados (o <code>tristate</code>, mais abaixo). Por isso o <code>!</code> em <code>novo!</code>: numa caixa comum ele nunca vem nulo.</dd>
+  <dt>onPressed: aceito ? () {} : null</dt><dd>Um bônus: o botão Continuar só fica ativo com a caixa marcada. <code>onPressed: null</code> deixa qualquer botão cinza e sem toque (veja <a href="botoes.html">Botões</a>).</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/checkbox-switch-1.png" alt="Tela &#39;Cadastro&#39; com uma caixinha quadrada vazia e, ao lado, &#39;Li e aceito os termos&#39;; embaixo, o botão &#39;Continuar&#39; apagado, em cinza claro" width="390" height="844" loading="lazy"><figcaption>Ao abrir: caixa vazia e o botão Continuar desativado.</figcaption></figure>
+
+<h3>A linha inteira clicável: <code>CheckboxListTile</code></h3>
+<p>No exemplo acima, só o quadradinho responde ao toque: tocar no texto não faz nada. E o quadradinho é pequeno para um dedo. O <code>CheckboxListTile</code> junta a caixa e o texto numa linha de lista (veja <a href="card.html">Card e ListTile</a>), e a <strong>linha inteira</strong> fica clicável:</p>
+
+<pre class="file" data-file="lib/main.dart (trecho)">CheckboxListTile(
+  title: const Text('Li e aceito os termos'),
+  subtitle: const Text('Você pode ler os termos no site'),
+  value: aceito,
+  onChanged: (novo) {
+    setState(() {
+      aceito = novo!;
+    });
+  },
+)
+</pre>
+
+<p>No app da seção 1 com este <code>CheckboxListTile</code> no lugar do <code>Row</code>, a Ana tocou no <strong>texto</strong> (não na caixa). A caixa marcou e o Continuar acendeu:</p>
+<figure class="tela"><img src="assets/telas/checkbox-switch-2.png" alt="A linha com &#39;Li e aceito os termos&#39; em cima e &#39;Você pode ler os termos no site&#39; embaixo, à esquerda, e a caixinha marcada em roxo com um visto, na ponta direita; abaixo, o botão &#39;Continuar&#39; roxo, ativo" width="390" height="844" loading="lazy"><figcaption>Depois do toque no texto.</figcaption></figure>
+<p>Por padrão, a caixa fica à <strong>direita</strong> (no fim da linha). Para pôr à esquerda: <code>controlAffinity: ListTileControlAffinity.leading</code>.</p>
+
+<div class="tryflutter" data-goal="src:CheckboxListTile">
+<p class="try-task"><strong>Missão:</strong> a lista de tarefas da Ana usa um <code>Row</code> com <code>Checkbox</code> e <code>Text</code>, e só o quadradinho responde. Troque o <code>Row</code> por um <code>CheckboxListTile</code> com <code>title: const Text('Regar as plantas')</code>, e toque no texto para marcar.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Tarefa()));
+
+class Tarefa extends StatefulWidget {
+  const Tarefa({super.key});
+
+  @override
+  State&lt;Tarefa&gt; createState() =&gt; _TarefaState();
+}
+
+class _TarefaState extends State&lt;Tarefa&gt; {
+  bool feita = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Tarefas')),
+      body: Row(
+        children: [
+          Checkbox(
+            value: feita,
+            onChanged: (novo) {
+              setState(() {
+                feita = novo!;
+              });
+            },
+          ),
+          const Text('Regar as plantas'),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Tarefa()));
+
+class Tarefa extends StatefulWidget {
+  const Tarefa({super.key});
+
+  @override
+  State&lt;Tarefa&gt; createState() =&gt; _TarefaState();
+}
+
+class _TarefaState extends State&lt;Tarefa&gt; {
+  bool feita = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Tarefas')),
+      body: CheckboxListTile(
+        title: const Text('Regar as plantas'),
+        value: feita,
+        onChanged: (novo) {
+          setState(() {
+            feita = novo!;
+          });
+        },
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>2. <code>Switch</code>: a chave de ligar e desligar</h2>
+<p>O <code>Switch</code> é o mesmo sim/não, com outra cara: uma chavinha que desliza. A diferença é de <strong>sentido</strong>: o <code>Checkbox</code> é "marque o que se aplica" (escolher itens, aceitar algo); o <code>Switch</code> é "ligue ou desligue" uma configuração que vale <strong>na hora</strong> (Wi-Fi, notificações, modo escuro).</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Configuracoes()));
+
+class Configuracoes extends StatefulWidget {
+  const Configuracoes({super.key});
+
+  @override
+  State&lt;Configuracoes&gt; createState() =&gt; _ConfiguracoesState();
+}
+
+class _ConfiguracoesState extends State&lt;Configuracoes&gt; {
+  bool notificacoes = true;
+  bool somNoturno = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Configurações')),
+      body: Column(
+        children: [
+          SwitchListTile(
+            title: const Text('Notificações'),
+            subtitle: const Text('Avisar quando chegar pedido'),
+            value: notificacoes,
+            onChanged: (novo) {
+              setState(() {
+                notificacoes = novo;
+              });
+            },
+          ),
+          SwitchListTile(
+            title: const Text('Som à noite'),
+            value: somNoturno,
+            onChanged: notificacoes
+                ? (novo) {
+                    setState(() {
+                      somNoturno = novo;
+                    });
+                  }
+                : null,
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>SwitchListTile(…)</dt><dd>A chave com texto, na linha inteira clicável. Existe também o <code>Switch</code> sozinho, com os mesmos <code>value</code> e <code>onChanged</code>.</dd>
+  <dt>onChanged: (novo) { … notificacoes = novo; }</dt><dd>Aqui <strong>não tem <code>!</code></strong>: no <code>Switch</code>, o valor é <code>bool</code> (não existe chave "meio ligada"), diferente do <code>Checkbox</code>.</dd>
+  <dt>onChanged: notificacoes ? (novo) {…} : null</dt><dd>Com as notificações desligadas, o <code>onChanged</code> vira <code>null</code>, e a chave "Som à noite" fica <strong>desativada</strong>: cinza e sem resposta ao toque. Vale para os três controles da aula.</dd>
+</dl>
+
+<div class="table-wrap"><table class="ref"><tr><td><figure class="tela"><img src="assets/telas/checkbox-switch-3.png" alt="Tela &#39;Configurações&#39; com duas linhas: &#39;Notificações&#39;, com o subtítulo &#39;Avisar quando chegar pedido&#39; e a chave ligada, roxa, com a bolinha branca à direita; e &#39;Som à noite&#39;, com a chave desligada, cinza, bolinha à esquerda" width="390" height="844" loading="lazy"><figcaption>Ao abrir: notificações ligadas.</figcaption></figure></td><td><figure class="tela"><img src="assets/telas/checkbox-switch-4.png" alt="A mesma tela depois do toque: a chave de Notificações desligada, cinza; a linha &#39;Som à noite&#39; inteira desbotada, texto e chave em cinza bem claro" width="390" height="844" loading="lazy"><figcaption>Depois de tocar em Notificações: o Som à noite ficou desativado.</figcaption></figure></td></tr></table></div>
+
+<hr>
+
+<h2>3. <code>Radio</code>: só um do grupo</h2>
+<p>Pizza pequena, média ou grande: marcar uma <strong>desmarca</strong> as outras. É como os botões de estação dos rádios antigos de carro (daí o nome): apertar um faz o outro saltar. No Flutter atual, o grupo é um widget, o <code>RadioGroup</code>, que guarda <strong>qual</strong> opção está escolhida e avisa quando muda; dentro dele, cada <code>RadioListTile</code> só diz o <strong>seu</strong> valor:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Pedido()));
+
+enum Tamanho { pequena, media, grande }
+
+class Pedido extends StatefulWidget {
+  const Pedido({super.key});
+
+  @override
+  State&lt;Pedido&gt; createState() =&gt; _PedidoState();
+}
+
+class _PedidoState extends State&lt;Pedido&gt; {
+  Tamanho? tamanho = Tamanho.media;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Pizza')),
+      body: RadioGroup&lt;Tamanho&gt;(
+        groupValue: tamanho,
+        onChanged: (novo) {
+          setState(() {
+            tamanho = novo;
+          });
+        },
+        child: Column(
+          children: [
+            const RadioListTile(value: Tamanho.pequena, title: Text('Pequena')),
+            const RadioListTile(value: Tamanho.media, title: Text('Média')),
+            const RadioListTile(value: Tamanho.grande, title: Text('Grande')),
+            Text('Escolhida: ${tamanho?.name}'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>enum Tamanho { pequena, media, grande }</dt><dd>As opções possíveis, num <code>enum</code> (uma lista fechada de valores; veja o <a href="https://wallysondevs.github.io/guia-dart/">Guia Dart</a>). Poderia ser <code>String</code> ou <code>int</code>, mas com <code>enum</code> o Dart avisa se você escrever uma opção que não existe.</dd>
+  <dt>Tamanho? tamanho = Tamanho.media;</dt><dd>A opção escolhida, no estado. É <code>Tamanho?</code> (pode ser nula) porque um grupo pode começar sem nada marcado.</dd>
+  <dt>RadioGroup&lt;Tamanho&gt;(groupValue: …, onChanged: …, child: …)</dt><dd>O grupo. <code>groupValue</code> é o valor escolhido; <code>onChanged</code> recebe o valor do botão tocado. Todos os <code>Radio</code>/<code>RadioListTile</code> que estiverem <strong>dentro</strong> do <code>child</code>, em qualquer profundidade, fazem parte do grupo.</dd>
+  <dt>RadioListTile(value: Tamanho.pequena, title: …)</dt><dd>Cada opção diz só o <strong>seu</strong> valor. Está marcada quando o seu <code>value</code> é igual ao <code>groupValue</code> do grupo. O tipo (<code>RadioListTile&lt;Tamanho&gt;</code>) o Dart descobre sozinho pelo <code>value</code>.</dd>
+  <dt>tamanho?.name</dt><dd>O nome da opção do <code>enum</code> como texto: <code>'media'</code>.</dd>
+</dl>
+
+<div class="table-wrap"><table class="ref"><tr><td><figure class="tela"><img src="assets/telas/checkbox-switch-5.png" alt="Tela &#39;Pizza&#39; com três opções redondas, Pequena, Média e Grande; só a da Média está preenchida em roxo; embaixo, &#39;Escolhida: media&#39;" width="390" height="844" loading="lazy"><figcaption>Ao abrir: Média.</figcaption></figure></td><td><figure class="tela"><img src="assets/telas/checkbox-switch-6.png" alt="A mesma tela com só a opção Grande preenchida em roxo e, embaixo, &#39;Escolhida: grande&#39;" width="390" height="844" loading="lazy"><figcaption>Depois de tocar em Grande: a Média desmarcou sozinha.</figcaption></figure></td></tr></table></div>
+
+<div class="warning">
+<strong>O jeito antigo, que você vai ver em tutoriais</strong>
+<p>Nas versões antigas do Flutter, cada <code>Radio</code> recebia o <code>groupValue</code> e o <code>onChanged</code>: <code>Radio(value: …, groupValue: tamanho, onChanged: …)</code>. Isso ainda compila, mas ficou <strong>obsoleto</strong> (<em>deprecated</em>) depois do 3.32 (a mensagem diz <code>deprecated after v3.32.0-0.0.pre</code>), e o <code>flutter analyze</code> reclama:</p>
+<pre class="term">   info • 'groupValue' is deprecated and shouldn't be used. Use a RadioGroup ancestor to manage group value instead. This feature was deprecated after v3.32.0-0.0.pre. Try replacing the use of the deprecated member with the replacement • lib/main.dart:25:13 • deprecated_member_use
+   info • 'onChanged' is deprecated and shouldn't be used. Use RadioGroup to handle value change instead. This feature was deprecated after v3.32.0-0.0.pre. Try replacing the use of the deprecated member with the replacement • lib/main.dart:26:13 • deprecated_member_use
+</pre>
+<p>"<code>groupValue</code> está obsoleto e não deveria ser usado. Use um <code>RadioGroup</code> acima para cuidar do valor do grupo." É um <code>info</code> (uma dica), não um erro: o app roda. Mas o que é obsoleto pode ser removido numa versão futura.</p>
+<p>Em código novo, use o <code>RadioGroup</code>.</p>
+</div>
+
+<div class="tryflutter" data-goal="src:Tamanho\.familia|familia">
+<p class="try-task"><strong>Missão:</strong> a pizzaria da Ana tem um tamanho novo, a <strong>Família</strong>. Acrescente <code>familia</code> ao <code>enum</code> e um <code>RadioListTile</code> para ela, com o texto <code>'Família'</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Pedido()));
+
+enum Tamanho { pequena, media, grande }
+
+class Pedido extends StatefulWidget {
+  const Pedido({super.key});
+
+  @override
+  State&lt;Pedido&gt; createState() =&gt; _PedidoState();
+}
+
+class _PedidoState extends State&lt;Pedido&gt; {
+  Tamanho? tamanho = Tamanho.media;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Pizza')),
+      body: RadioGroup&lt;Tamanho&gt;(
+        groupValue: tamanho,
+        onChanged: (novo) {
+          setState(() {
+            tamanho = novo;
+          });
+        },
+        child: Column(
+          children: [
+            const RadioListTile(value: Tamanho.pequena, title: Text('Pequena')),
+            const RadioListTile(value: Tamanho.media, title: Text('Média')),
+            const RadioListTile(value: Tamanho.grande, title: Text('Grande')),
+            Text('Escolhida: ${tamanho?.name}'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Pedido()));
+
+enum Tamanho { pequena, media, grande, familia }
+
+class Pedido extends StatefulWidget {
+  const Pedido({super.key});
+
+  @override
+  State&lt;Pedido&gt; createState() =&gt; _PedidoState();
+}
+
+class _PedidoState extends State&lt;Pedido&gt; {
+  Tamanho? tamanho = Tamanho.media;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Pizza')),
+      body: RadioGroup&lt;Tamanho&gt;(
+        groupValue: tamanho,
+        onChanged: (novo) {
+          setState(() {
+            tamanho = novo;
+          });
+        },
+        child: Column(
+          children: [
+            const RadioListTile(value: Tamanho.pequena, title: Text('Pequena')),
+            const RadioListTile(value: Tamanho.media, title: Text('Média')),
+            const RadioListTile(value: Tamanho.grande, title: Text('Grande')),
+            const RadioListTile(value: Tamanho.familia, title: Text('Família')),
+            Text('Escolhida: ${tamanho?.name}'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2 id="formas">Qual usar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Pergunta</th><th>Controle</th><th>Exemplo</th></tr>
+<tr><td>Marcar quantos itens quiser, ou aceitar algo</td><td><code>Checkbox</code> / <code>CheckboxListTile</code></td><td>Ingredientes extras; "aceito os termos"; tarefa feita</td></tr>
+<tr><td>Ligar ou desligar algo que vale na hora</td><td><code>Switch</code> / <code>SwitchListTile</code></td><td>Notificações, modo escuro, Wi-Fi</td></tr>
+<tr><td>Escolher <strong>um</strong> entre poucos (2 a 5), todos à vista</td><td><code>RadioGroup</code> + <code>RadioListTile</code></td><td>Tamanho da pizza, forma de pagamento</td></tr>
+<tr><td>Escolher um entre muitos</td><td><code>DropdownMenu</code> (aula <a href="slider-dropdown.html">Slider e Dropdown</a>)</td><td>Estado, cidade, país</td></tr>
+<tr><td>Escolher um ou vários, com botões lado a lado</td><td><code>SegmentedButton</code> (Material 3)</td><td>Dia / Semana / Mês</td></tr>
+</table>
+</div>
+
+<div class="tip">
+<strong>Prefira a versão <code>ListTile</code></strong>
+<p><code>CheckboxListTile</code>, <code>SwitchListTile</code> e <code>RadioListTile</code> deixam a linha inteira clicável, com uma área de toque grande, e os leitores de tela leem o texto junto com o controle. Use o controle sozinho só quando ele vai num lugar sem texto (dentro de uma tabela, por exemplo).</p>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>A caixa não marca</strong>
+<pre class="file" data-file="lib/main.dart (trecho)">Checkbox(
+  value: aceito,
+  onChanged: (novo) {
+    aceito = novo!;
+  },
+)
+</pre>
+<p>Nenhuma mensagem de erro: a pessoa toca, a variável muda, mas a tela continua igual. Faltou o <code>setState</code>: sem ele, o Flutter não sabe que precisa redesenhar (veja <a href="setstate.html">setState</a>). O mesmo acontece se você esquecer o <code>onChanged</code> inteiro ou usar um valor fixo (<code>value: false</code>): lembre que o controle não guarda nada sozinho. <strong>Como consertar:</strong> <code>setState(() { aceito = novo!; });</code>.</p>
+</div>
+
+<div class="cenario">
+<strong><code>bool</code> no lugar de <code>bool?</code> no <code>Checkbox</code></strong>
+<p>No <code>Switch</code> o <code>onChanged</code> recebe <code>bool</code>; no <code>Checkbox</code>, <code>bool?</code>. Quem escreve o tipo do parâmetro à mão costuma trocar os dois:</p>
+<pre class="file" data-file="lib/main.dart (trecho)">Checkbox(
+  value: aceito,
+  onChanged: (bool novo) {
+    setState(() {
+      aceito = novo;
+    });
+  },
+)
+</pre>
+<p>Com essa troca no app da seção 1, ele nem compila. O <code>flutter analyze</code> (e o editor, sublinhando em vermelho) mostra:</p>
+<pre class="term">  error • The argument type 'void Function(bool)' can't be assigned to the parameter type 'ValueChanged&lt;bool?&gt;?'.  • lib/main.dart:25:28 • argument_type_not_assignable
+</pre>
+<p>"O tipo do argumento, uma função que recebe <code>bool</code>, não pode ser usado onde se espera um <code>ValueChanged&lt;bool?&gt;?</code>" (uma função que recebe <code>bool?</code>; o <code>?</code> do fim diz que a função toda pode faltar, que é o <code>onChanged: null</code>). A posição <code>25:28</code> é o começo do <code>(bool novo)</code>. <strong>Como consertar:</strong> não escreva o tipo, deixe o Dart descobrir: <code>onChanged: (novo) { … aceito = novo!; }</code>; ou escreva certo: <code>(bool? novo)</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Caixa com valor nulo, sem <code>tristate</code></strong>
+<p>A Ana declarou <code>bool? aceito;</code> (sem valor inicial, então <code>null</code>) e passou para o <code>Checkbox</code>. Compila, mas, ao abrir a tela:</p>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following assertion was thrown building Termos(dirty, state: _TermosState#6860a):
+'package:flutter/src/material/checkbox.dart': Failed assertion: line 105 pos 15: 'tristate || value
+!= null': is not true.
+</pre>
+<p>"Afirmação falhou: <code>tristate || value != null</code> não é verdade." Ou seja: o valor só pode ser <code>null</code> se a caixa for de <strong>três estados</strong>. <strong>Como consertar:</strong> dê um valor inicial (<code>bool aceito = false;</code>), ou, se você quer mesmo o terceiro estado (um tracinho: "alguns marcados", como o "selecionar todos" de uma lista), passe <code>tristate: true</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Widget</th><th>Valor</th><th><code>onChanged</code> recebe</th></tr>
+<tr><td><code>Checkbox</code> / <code>CheckboxListTile</code></td><td><code>value: bool?</code></td><td><code>bool?</code> (use <code>novo!</code>)</td></tr>
+<tr><td><code>Switch</code> / <code>SwitchListTile</code></td><td><code>value: bool</code></td><td><code>bool</code></td></tr>
+<tr><td><code>RadioGroup&lt;T&gt;</code></td><td><code>groupValue: T?</code></td><td><code>T?</code>, o <code>value</code> do botão tocado</td></tr>
+<tr><td><code>RadioListTile</code> / <code>Radio</code></td><td><code>value: T</code> (o valor desta opção)</td><td>(o grupo cuida)</td></tr>
+</table>
+</div>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Parâmetro</th><th>O que faz</th></tr>
+<tr><td><code>onChanged: null</code></td><td>Desativa o controle (cinza, sem toque)</td></tr>
+<tr><td><code>title</code> / <code>subtitle</code></td><td>Texto das versões <code>ListTile</code></td></tr>
+<tr><td><code>controlAffinity: ListTileControlAffinity.leading</code></td><td>Põe o controle no começo da linha</td></tr>
+<tr><td><code>tristate: true</code></td><td><code>Checkbox</code> com 3 estados: <code>true</code>, <code>false</code> e <code>null</code> (traço)</td></tr>
+<tr><td><code>activeColor</code></td><td>Cor quando marcado/ligado</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o Switch</h3>
+<div class="ex-code">SwitchListTile(<br>&nbsp;&nbsp;title: const Text('Modo escuro'),<br>&nbsp;&nbsp;<input data-answer="value" aria-label="parâmetro do valor">: escuro,<br>&nbsp;&nbsp;onChanged: (novo) {<br>&nbsp;&nbsp;&nbsp;&nbsp;<input data-answer="setState" aria-label="função que redesenha">(() {<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;escuro = novo;<br>&nbsp;&nbsp;&nbsp;&nbsp;});<br>&nbsp;&nbsp;},<br>)</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. A pessoa toca num <code>Checkbox</code>. O que acontece se o <code>onChanged</code> não chamar <code>setState</code>?</p>
+<label><input type="radio" name="q2"> A caixa marca sozinha</label>
+<label><input type="radio" name="q2"> A caixa continua como estava na tela</label>
+<label><input type="radio" name="q2"> Dá erro de compilação</label>
+<label><input type="radio" name="q2"> O app fecha</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. Como deixar um <code>Switch</code> cinza e sem resposta ao toque?</p>
+<label><input type="radio" name="q3"> <code>value: null</code></label>
+<label><input type="radio" name="q3"> <code>enabled: false</code></label>
+<label><input type="radio" name="q3"> <code>onChanged: null</code></label>
+<label><input type="radio" name="q3"> Tirar o <code>value</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. Forma de pagamento: Pix, cartão ou dinheiro, só uma. Qual controle?</p>
+<label><input type="radio" name="q4"> <code>RadioGroup</code> com três <code>RadioListTile</code></label>
+<label><input type="radio" name="q4"> Três <code>Checkbox</code></label>
+<label><input type="radio" name="q4"> Três <code>Switch</code></label>
+<label><input type="radio" name="q4"> Um <code>TextField</code></label>
+</div>
+
+<h3>Missão final: ingredientes extras</h3>
+<div class="tryflutter" data-goal="src:CheckboxListTile[\s\S]*CheckboxListTile">
+<p class="try-task"><strong>Missão:</strong> a pizza da Ana pode ter extras: <strong>Borda recheada</strong> e <strong>Bacon</strong>, os dois ou nenhum. Crie mais um <code>bool</code> no estado (<code>bacon</code>) e mais um <code>CheckboxListTile</code> para ele.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Extras()));
+
+class Extras extends StatefulWidget {
+  const Extras({super.key});
+
+  @override
+  State&lt;Extras&gt; createState() =&gt; _ExtrasState();
+}
+
+class _ExtrasState extends State&lt;Extras&gt; {
+  bool borda = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Extras')),
+      body: Column(
+        children: [
+          CheckboxListTile(
+            title: const Text('Borda recheada'),
+            value: borda,
+            onChanged: (novo) {
+              setState(() {
+                borda = novo!;
+              });
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Extras()));
+
+class Extras extends StatefulWidget {
+  const Extras({super.key});
+
+  @override
+  State&lt;Extras&gt; createState() =&gt; _ExtrasState();
+}
+
+class _ExtrasState extends State&lt;Extras&gt; {
+  bool borda = false;
+  bool bacon = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Extras')),
+      body: Column(
+        children: [
+          CheckboxListTile(
+            title: const Text('Borda recheada'),
+            value: borda,
+            onChanged: (novo) {
+              setState(() {
+                borda = novo!;
+              });
+            },
+          ),
+          CheckboxListTile(
+            title: const Text('Bacon'),
+            value: bacon,
+            onChanged: (novo) {
+              setState(() {
+                bacon = novo!;
+              });
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>Checkbox</code>, <code>Switch</code> e <code>Radio</code> não guardam nada: o valor mora no seu estado, e o <code>onChanged</code> + <code>setState</code> o troca.</li>
+  <li>No <code>Checkbox</code>, o valor é <code>bool?</code> (use <code>novo!</code>); no <code>Switch</code>, <code>bool</code>.</li>
+  <li>Escolha única: um <code>RadioGroup</code> com <code>groupValue</code> e <code>onChanged</code>, e dentro dele um <code>RadioListTile</code> por opção, cada um com o seu <code>value</code>.</li>
+  <li><code>onChanged: null</code> desativa o controle.</li>
+  <li>Prefira as versões <code>ListTile</code>: a linha toda é clicável e tem texto.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
