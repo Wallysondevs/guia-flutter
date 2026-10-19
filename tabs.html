@@ -1,0 +1,812 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter TabBar — abas no topo da tela | Guia Flutter</title>
+<meta name="description" content="Abas (TabBar) no Flutter para quem nunca fez um app: DefaultTabController, TabBar no bottom da AppBar, TabBarView com o conteúdo de cada aba, Tab com texto e ícone, abas roláveis (isScrollable), trocar de aba por código, o TabController próprio e os erros reais (No TabController, length que não bate) explicados em português.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Abas (TabBar)</span></h1>
+
+<p class="intro">Na tela de receitas, a Ana quer separar <strong>Doces</strong>, <strong>Salgados</strong> e <strong>Bebidas</strong>. Não são partes diferentes do app (como "Receitas" e "Compras", que ficam na <a href="bottom-navigation.html">barra de baixo</a>): são três "gavetinhas" da <strong>mesma</strong> tela. Para isso existem as <strong>abas</strong>: uma fileira de títulos logo abaixo da <code>AppBar</code>, com um tracinho embaixo da aba atual. Você toca no título ou arrasta o conteúdo para o lado, e a aba troca. No Flutter, são três peças que trabalham juntas: <code>TabBar</code>, <code>TabBarView</code> e um controlador.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>As três peças das abas: <code>DefaultTabController</code>, <code>TabBar</code> e <code>TabBarView</code>, e por que elas precisam combinar.</li>
+  <li>A pôr as abas na <code>AppBar</code> com o parâmetro <code>bottom</code>.</li>
+  <li>A fazer abas com texto, ícone ou os dois (<code>Tab</code>).</li>
+  <li>A fazer abas roláveis quando há muitas (<code>isScrollable</code>).</li>
+  <li>A trocar de aba por código (<code>DefaultTabController.of(context).animateTo</code>).</li>
+  <li>Quando vale a pena criar o seu próprio <code>TabController</code>.</li>
+  <li>Os erros reais: <code>No TabController for TabBar</code> e o <code>length</code> que não bate com o número de abas.</li>
+</ul>
+</div>
+
+<p>Tudo nesta aula foi compilado com o <strong>Flutter <span class="versao">3.47</span></strong> no laboratório do guia. Você precisa conhecer o <a href="scaffold.html"><code>Scaffold</code> e a <code>AppBar</code></a> e os <a href="icon.html">ícones</a>.</p>
+
+<hr>
+
+<h2>A ideia: o fichário com divisórias</h2>
+<p>A Ana guarda as receitas em papel num fichário com divisórias coloridas: "Doces", "Salgados", "Bebidas". As orelhas das divisórias ficam à vista em cima; ela puxa uma e o fichário abre naquela parte.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>No fichário</th><th>No Flutter</th></tr>
+<tr><td>As orelhas das divisórias, à vista</td><td>O <code>TabBar</code>, com um <code>Tab</code> por divisória</td></tr>
+<tr><td>As folhas de cada parte</td><td>O <code>TabBarView</code>, com uma tela por aba</td></tr>
+<tr><td>O "marcador" que sabe em que parte o fichário está aberto</td><td>O controlador (<code>DefaultTabController</code>), que avisa as duas peças</td></tr>
+<tr><td>Quantas divisórias o fichário tem</td><td>O <code>length</code> do controlador: tem de ser igual ao número de abas e de telas</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>1. As primeiras abas</h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const ReceitasPage(),
+    );
+  }
+}
+
+class ReceitasPage extends StatelessWidget {
+  const ReceitasPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Receitas da Ana'),
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Doces'),
+              Tab(text: 'Salgados'),
+              Tab(text: 'Bebidas'),
+            ],
+          ),
+        ),
+        body: const TabBarView(
+          children: [
+            Center(child: Text('Bolo de cenoura')),
+            Center(child: Text('Coxinha')),
+            Center(child: Text('Suco de maracujá')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<figure class="tela"><img src="assets/telas/tabs-1.png" alt="Barra 'Receitas da Ana' com três abas logo abaixo: Doces, Salgados e Bebidas; 'Doces' em marrom alaranjado, com um tracinho embaixo; no meio da tela, 'Bolo de cenoura'" width="390" height="844" loading="lazy"><figcaption>As três abas abaixo do título; "Doces" é a aba atual.</figcaption></figure>
+
+<dl class="anatomy">
+  <dt>DefaultTabController(length: 3, child: ...)</dt><dd>O "marcador" das abas: guarda qual aba está aberta e anima a troca. Ele fica <strong>em volta</strong> do <code>Scaffold</code>, para que as duas peças lá dentro (o <code>TabBar</code> e o <code>TabBarView</code>) o encontrem. O <code>length</code> é o número de abas.</dd>
+  <dt>AppBar(bottom: ...)</dt><dd>O <code>bottom</code> ("parte de baixo") da <code>AppBar</code> é uma faixa extra sob o título, feita para coisas como as abas. A <code>AppBar</code> fica mais alta para caber.</dd>
+  <dt>TabBar(tabs: [...])</dt><dd>A fileira de títulos. Cada <code>Tab</code> é uma aba; o <code>text</code> é o título. O <code>TabBar</code> desenha o tracinho (o <strong>indicador</strong>) sob a aba atual e cuida do toque.</dd>
+  <dt>TabBarView(children: [...])</dt><dd>O conteúdo: uma tela para cada aba, <strong>na mesma ordem</strong>. Arrastar o dedo para o lado troca de aba, e o indicador acompanha.</dd>
+</dl>
+
+<p>Tocando em "Salgados", o indicador desliza e o conteúdo troca:</p>
+
+<figure class="tela"><img src="assets/telas/tabs-2.png" alt="As mesmas abas, agora com 'Salgados' destacada e o tracinho embaixo dela; no meio da tela, 'Coxinha'" width="390" height="844" loading="lazy"><figcaption>Depois do toque em "Salgados".</figcaption></figure>
+
+<p>A árvore, para ver quem fica dentro de quem:</p>
+
+<pre>DefaultTabController (length: 3)
+ └─ Scaffold
+     ├─ appBar: AppBar
+     │   ├─ title: Text 'Receitas da Ana'
+     │   └─ bottom: TabBar
+     │       ├─ Tab 'Doces'
+     │       ├─ Tab 'Salgados'
+     │       └─ Tab 'Bebidas'
+     └─ body: TabBarView
+         ├─ Center → Text 'Bolo de cenoura'
+         ├─ Center → Text 'Coxinha'
+         └─ Center → Text 'Suco de maracujá'
+</pre>
+
+<div class="note">
+<strong>Repare: nenhum <code>setState</code></strong>
+<p>Na <a href="bottom-navigation.html">barra de baixo</a>, quem guardava o índice era você, com <code>setState</code>. Aqui, quem guarda é o <code>DefaultTabController</code>, e a página pode continuar um <code>StatelessWidget</code>. É por isso que as abas precisam dele: sem o controlador, o <code>TabBar</code> e o <code>TabBarView</code> não teriam como saber, um do outro, qual aba está aberta.</p>
+</div>
+
+<div class="tryflutter" data-goal="src:length:\s*4;;src:Tab\(\s*text:\s*'Lanches'">
+<p class="try-task"><strong>Missão:</strong> acrescente uma quarta aba, <code>Lanches</code>, com o texto <code>Sanduíche natural</code>. Lembre-se das <strong>três</strong> coisas que precisam combinar: o <code>length</code>, os <code>tabs</code> e os <code>children</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const ReceitasPage(),
+    );
+  }
+}
+
+class ReceitasPage extends StatelessWidget {
+  const ReceitasPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Receitas da Ana'),
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Doces'),
+              Tab(text: 'Salgados'),
+              Tab(text: 'Bebidas'),
+            ],
+          ),
+        ),
+        body: const TabBarView(
+          children: [
+            Center(child: Text('Bolo de cenoura')),
+            Center(child: Text('Coxinha')),
+            Center(child: Text('Suco de maracujá')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const ReceitasPage(),
+    );
+  }
+}
+
+class ReceitasPage extends StatelessWidget {
+  const ReceitasPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 4,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Receitas da Ana'),
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Doces'),
+              Tab(text: 'Salgados'),
+              Tab(text: 'Bebidas'),
+              Tab(text: 'Lanches'),
+            ],
+          ),
+        ),
+        body: const TabBarView(
+          children: [
+            Center(child: Text('Bolo de cenoura')),
+            Center(child: Text('Coxinha')),
+            Center(child: Text('Suco de maracujá')),
+            Center(child: Text('Sanduíche natural')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>2. Abas com ícone</h2>
+<p>O <code>Tab</code> aceita um <code>icon</code>, sozinho ou junto com o <code>text</code>. Com os dois, o ícone fica em cima e o texto embaixo, e a faixa das abas fica mais alta:</p>
+
+<pre class="file" data-file="lib/main.dart">bottom: const TabBar(
+  tabs: [
+    Tab(icon: Icon(Icons.cake), text: 'Doces'),
+    Tab(icon: Icon(Icons.lunch_dining), text: 'Salgados'),
+    Tab(icon: Icon(Icons.local_drink), text: 'Bebidas'),
+  ],
+),
+</pre>
+
+<figure class="tela"><img src="assets/telas/tabs-3.png" alt="Abas mais altas, cada uma com um ícone em cima e o texto embaixo: um bolo em Doces (destacada), um hambúrguer em Salgados e um copo em Bebidas" width="390" height="844" loading="lazy"><figcaption>Abas com ícone e texto.</figcaption></figure>
+
+<dl class="anatomy">
+  <dt>Tab(text: ...)</dt><dd>Só o título.</dd>
+  <dt>Tab(icon: ...)</dt><dd>Só o ícone. Economiza espaço, mas a Ana tem de adivinhar o que cada ícone quer dizer.</dd>
+  <dt>Tab(icon: ..., text: ...)</dt><dd>Os dois, um sobre o outro. É o mais claro quando cabe.</dd>
+  <dt>Tab(child: ...)</dt><dd>Qualquer widget seu, quando nenhum dos formatos prontos serve (por exemplo, um título com um <code>Badge</code>).</dd>
+</dl>
+
+<hr>
+
+<h2>3. Muitas abas: <code>isScrollable</code></h2>
+<p>Por padrão, o <code>TabBar</code> divide a largura da tela em partes iguais, uma por aba. Com três abas, ótimo. Com sete, os títulos ficam espremidos e cortados. A saída é deixar a fileira <strong>rolar</strong> para o lado:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const CardapioPage(),
+    );
+  }
+}
+
+class CardapioPage extends StatelessWidget {
+  const CardapioPage({super.key});
+
+  static const _dias = [
+    'Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: _dias.length,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Cardápio da semana'),
+          bottom: TabBar(
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
+            tabs: [for (final dia in _dias) Tab(text: dia)],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            for (final dia in _dias) Center(child: Text('Almoço de $dia')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<figure class="tela"><img src="assets/telas/tabs-4.png" alt="Barra 'Cardápio da semana' com uma fileira de abas Domingo, Segunda, Terça, Quarta e Quinta, a última cortada na borda direita; Domingo destacada; no meio, 'Almoço de Domingo'" width="390" height="844" loading="lazy"><figcaption>Sete abas numa fileira que rola para o lado.</figcaption></figure>
+
+<dl class="anatomy">
+  <dt>isScrollable: true</dt><dd>Cada aba fica com a largura do próprio título, e a fileira rola para o lado quando não cabe. Ao tocar numa aba perto da borda, a fileira rola sozinha para mostrá-la.</dd>
+  <dt>tabAlignment: TabAlignment.start</dt><dd>Encosta as abas no começo da fileira. Sem ele, as abas roláveis do Material 3 começam com um pequeno recuo à esquerda (o padrão, <code>TabAlignment.startOffset</code>).</dd>
+  <dt>length: _dias.length</dt><dd>O <code>length</code> vem da própria lista, e os <code>tabs</code> e os <code>children</code> são gerados dela com <code>for</code>. Assim os três números <strong>nunca</strong> desencontram: é a melhor proteção contra o erro de <code>length</code> (veja <a href="#errado">Quando dá errado</a>).</dd>
+</dl>
+
+<hr>
+
+<h2>4. Trocando de aba por código</h2>
+<p>A Ana quer um botão "Ver as bebidas" na aba de doces. O <code>DefaultTabController</code> pode ser encontrado de qualquer ponto abaixo dele com <code>DefaultTabController.of(context)</code>, e o <code>animateTo(índice)</code> troca de aba com animação. Como na aula <a href="drawer.html">Drawer</a>, o <code>context</code> tem de estar <strong>abaixo</strong> do controlador; por isso o botão fica num <code>Builder</code>:</p>
+
+<pre class="file" data-file="lib/main.dart">body: TabBarView(
+  children: [
+    Center(
+      child: Builder(
+        builder: (ctx) =&gt; FilledButton(
+          onPressed: () =&gt; DefaultTabController.of(ctx).animateTo(2),
+          child: const Text('Ver as bebidas'),
+        ),
+      ),
+    ),
+    const Center(child: Text('Coxinha')),
+    const Center(child: Text('Suco de maracujá')),
+  ],
+),
+</pre>
+
+<dl class="anatomy">
+  <dt>DefaultTabController.of(ctx)</dt><dd>Sobe pela árvore a partir do botão até achar o controlador.</dd>
+  <dt>.animateTo(2)</dt><dd>Vai para a aba de índice 2 ("Bebidas"; a contagem começa em 0), com a mesma animação do toque. O <code>.index</code> do controlador diz qual aba está aberta agora.</dd>
+</dl>
+
+<p>Tocando no botão, o app vai para "Bebidas":</p>
+
+<figure class="tela"><img src="assets/telas/tabs-5.png" alt="As abas Doces, Salgados e Bebidas com 'Bebidas' destacada e o tracinho embaixo dela; no meio da tela, 'Suco de maracujá'" width="390" height="844" loading="lazy"><figcaption>Depois do toque em "Ver as bebidas".</figcaption></figure>
+
+<div class="tryflutter" data-goal="src:DefaultTabController\.of\(\s*\w+\s*\)\.animateTo\(\s*1\s*\)">
+<p class="try-task"><strong>Missão:</strong> mude o botão para que ele leve à aba <strong>Salgados</strong>, e troque o texto do botão para <code>Ver os salgados</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const ReceitasPage(),
+    );
+  }
+}
+
+class ReceitasPage extends StatelessWidget {
+  const ReceitasPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Receitas da Ana'),
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Doces'),
+              Tab(text: 'Salgados'),
+              Tab(text: 'Bebidas'),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            Center(
+              child: Builder(
+                builder: (ctx) =&gt; FilledButton(
+                  onPressed: () =&gt; DefaultTabController.of(ctx).animateTo(2),
+                  child: const Text('Ver as bebidas'),
+                ),
+              ),
+            ),
+            const Center(child: Text('Coxinha')),
+            const Center(child: Text('Suco de maracujá')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const ReceitasPage(),
+    );
+  }
+}
+
+class ReceitasPage extends StatelessWidget {
+  const ReceitasPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Receitas da Ana'),
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Doces'),
+              Tab(text: 'Salgados'),
+              Tab(text: 'Bebidas'),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            Center(
+              child: Builder(
+                builder: (ctx) =&gt; FilledButton(
+                  onPressed: () =&gt; DefaultTabController.of(ctx).animateTo(1),
+                  child: const Text('Ver os salgados'),
+                ),
+              ),
+            ),
+            const Center(child: Text('Coxinha')),
+            const Center(child: Text('Suco de maracujá')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Formas diferentes de fazer</h2>
+
+<h3>O seu próprio <code>TabController</code></h3>
+<p>O <code>DefaultTabController</code> é o jeito fácil: ele cria e descarta o controlador sozinho. Quando a página precisa <strong>reagir</strong> à troca de aba (por exemplo, mudar o botão flutuante conforme a aba) ou mexer no controlador de fora da árvore, você pode criar o controlador na mão. Ele precisa de um "relógio" para animar, que vem do <code>SingleTickerProviderStateMixin</code>, e tem de ser descartado no <code>dispose</code>:</p>
+
+<pre class="file" data-file="lib/main.dart">class _ReceitasPageState extends State&lt;ReceitasPage&gt;
+    with SingleTickerProviderStateMixin {
+  late final TabController _abas = TabController(length: 3, vsync: this);
+
+  @override
+  void dispose() {
+    _abas.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Receitas da Ana'),
+        bottom: TabBar(
+          controller: _abas,
+          tabs: const [Tab(text: 'Doces'), Tab(text: 'Salgados'), Tab(text: 'Bebidas')],
+        ),
+      ),
+      body: TabBarView(
+        controller: _abas,
+        children: const [
+          Center(child: Text('Bolo de cenoura')),
+          Center(child: Text('Coxinha')),
+          Center(child: Text('Suco de maracujá')),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>with SingleTickerProviderStateMixin</dt><dd>Dá ao <code>State</code> um <strong>ticker</strong>, o "relógio" que bate a cada quadro da tela e move a animação do indicador. Por isso a página precisa ser um <a href="stateful.html"><code>StatefulWidget</code></a>.</dd>
+  <dt>TabController(length: 3, vsync: this)</dt><dd>O controlador, com o número de abas e o relógio (<code>vsync: this</code>, "use o relógio deste State").</dd>
+  <dt>controller: _abas</dt><dd>O mesmo controlador entregue às <strong>duas</strong> peças. Sem o <code>DefaultTabController</code>, é isso que as liga.</dd>
+  <dt>_abas.dispose()</dt><dd>Desliga o controlador quando a tela sai. O porquê do <code>dispose</code> está em <a href="ciclo-de-vida.html">Ciclo de Vida do Widget</a>.</dd>
+</dl>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Jeito</th><th>Quando usar</th></tr>
+<tr><td><code>DefaultTabController</code></td><td>Quase sempre: abas simples, sem precisar saber da troca fora delas</td></tr>
+<tr><td><code>DefaultTabController.of(ctx).animateTo(i)</code></td><td>Um botão dentro das abas que leva a outra aba</td></tr>
+<tr><td><code>TabController</code> próprio</td><td>A página reage à aba atual (ouvindo o controlador) ou o número de abas muda com o app rodando</td></tr>
+</table>
+</div>
+
+<h3>Abas, barra de baixo ou gaveta?</h3>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Caso</th><th>Escolha</th></tr>
+<tr><td>Partes "irmãs" de uma mesma tela (Doces / Salgados / Bebidas)</td><td>Abas</td></tr>
+<tr><td>As 3 a 5 partes principais do app</td><td><a href="bottom-navigation.html">Barra de navegação inferior</a></td></tr>
+<tr><td>Muitas partes, ou partes pouco usadas</td><td><a href="drawer.html">Gaveta</a></td></tr>
+</table>
+</div>
+<p>As três convivem: um app pode ter a barra de baixo com "Receitas" e "Compras" e, dentro de "Receitas", as abas Doces/Salgados/Bebidas.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Esqueceu o <code>DefaultTabController</code></strong>
+<pre class="file" data-file="lib/main.dart">  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Receitas da Ana'),
+        bottom: const TabBar(
+          tabs: [Tab(text: 'Doces'), Tab(text: 'Salgados'), Tab(text: 'Bebidas')],
+        ),
+      ),
+      body: const TabBarView(
+        children: [
+          Center(child: Text('Bolo de cenoura')),
+          Center(child: Text('Coxinha')),
+          Center(child: Text('Suco de maracujá')),
+        ],
+      ),
+    );
+  }
+</pre>
+<p>O código compila, mas, ao abrir, a tela fica vermelha, com as duas mensagens em amarelo, e o console diz:</p>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following assertion was thrown building KeyedSubtree-[GlobalKey#28485]:
+No TabController for TabBarView.
+When creating a TabBarView, you must either provide an explicit TabController using the "controller"
+property, or you must ensure that there is a DefaultTabController above the TabBarView.
+In this case, there was neither an explicit controller nor a default controller.
+
+The relevant error-causing widget was:
+  Scaffold Scaffold:file:///home/ana/app/lib/main.dart:23:12
+
+When the exception was thrown, this was the stack:
+«  … as linhas da pilha, todas dentro do Flutter
+════════════════════════════════════════════════════════════════════════════════════════════════════
+Another exception was thrown: No TabController for TabBar.
+</pre>
+<figure class="tela"><img src="assets/telas/tabs-erro1.png" alt="Tela toda vermelha com dois blocos de texto amarelo: 'No TabController for TabBar.' e 'No TabController for TabBarView.', cada um com a explicação em inglês e o link docs.flutter.dev/testing/errors" width="390" height="844" loading="lazy"><figcaption>A tela vermelha de erro do modo debug, com as duas mensagens.</figcaption></figure>
+<dl class="anatomy">
+  <dt>No TabController for TabBarView.</dt><dd>"Não há <code>TabController</code> para o <code>TabBarView</code>". O <code>TabBarView</code> subiu pela árvore procurando um controlador e não achou nenhum.</dd>
+  <dt>When creating a TabBarView, you must either provide an explicit TabController using the "controller" property, or you must ensure that there is a DefaultTabController above the TabBarView.</dt><dd>"Ao criar um <code>TabBarView</code>, você precisa ou entregar um <code>TabController</code> no parâmetro <code>controller</code>, ou garantir que haja um <code>DefaultTabController</code> acima dele." São exatamente as duas formas desta aula.</dd>
+  <dt>In this case, there was neither an explicit controller nor a default controller.</dt><dd>"Neste caso, não havia nem um nem outro."</dd>
+  <dt>The relevant error-causing widget was: Scaffold … main.dart:23:12</dt><dd>O widget do seu código ligado ao erro: o <code>Scaffold</code> da linha 23, que é onde o <code>DefaultTabController</code> deveria estar em volta.</dd>
+  <dt>Another exception was thrown: No TabController for TabBar.</dt><dd>"Outra exceção foi lançada": o <code>TabBar</code> tem o mesmo problema. Quando o mesmo tipo de erro se repete, o Flutter mostra só a primeira linha das seguintes, para não encher o console.</dd>
+</dl>
+<p><strong>Como consertar:</strong> envolva o <code>Scaffold</code> num <code>DefaultTabController(length: 3, child: Scaffold(...))</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>O <code>length</code> não bate com o número de abas</strong>
+<p>A Ana acrescentou a aba "Lanches" nos <code>tabs</code> e nos <code>children</code>, mas esqueceu o <code>length</code>:</p>
+<pre class="file" data-file="lib/main.dart">return DefaultTabController(
+  length: 3,
+  child: Scaffold(
+    appBar: AppBar(
+      title: const Text('Receitas da Ana'),
+      bottom: const TabBar(
+        tabs: [
+          Tab(text: 'Doces'),
+          Tab(text: 'Salgados'),
+          Tab(text: 'Bebidas'),
+          Tab(text: 'Lanches'),
+        ],
+      ),
+    ),
+    body: const TabBarView(
+      children: [
+        Center(child: Text('Bolo de cenoura')),
+        Center(child: Text('Coxinha')),
+        Center(child: Text('Suco de maracujá')),
+        Center(child: Text('Sanduíche natural')),
+      ],
+    ),
+  ),
+);
+</pre>
+<p>Surpresa: a tela abre <strong>normal</strong>, com as quatro abas. Mas o console já reclama na abertura, e tocar em "Lanches" não faz nada, a não ser mais erros:</p>
+<pre class="term">══╡ EXCEPTION CAUGHT BY SCHEDULER LIBRARY ╞═════════════════════════════════════════════════════════
+The following assertion was thrown during a scheduler callback:
+Controller's length property (3) does not match the number of children (4) present in TabBarView's
+children property.
+
+When the exception was thrown, this was the stack:
+lib/_engine/engine/frame_service.dart 163:9                                  &lt;fn&gt;
+«  … mais linhas da pilha
+════════════════════════════════════════════════════════════════════════════════════════════════════
+Another exception was thrown: Controller's length property (3) does not match the number of tabs (4) present in TabBar's tabs property.
+Another exception was thrown: Controller's length property (3) does not match the number of tabs (4) present in TabBar's tabs property.
+[erro na página] Assertion failed: file:///home/ana/flutter/packages/flutter/lib/src/material/tab_controller.dart:202:12
+value &gt;= 0 &amp;&amp; (value &lt; length || length == 0)
+is not true
+[erro na página] Unexpected null value.
+</pre>
+<figure class="tela"><img src="assets/telas/tabs-erro2.png" alt="As quatro abas Doces, Salgados, Bebidas e Lanches, com Doces destacada e 'Bolo de cenoura' no meio: a tela parece normal" width="390" height="844" loading="lazy"><figcaption>A tela parece certa; o erro está no console.</figcaption></figure>
+<dl class="anatomy">
+  <dt>EXCEPTION CAUGHT BY SCHEDULER LIBRARY / during a scheduler callback</dt><dd>O erro não aconteceu ao montar a tela, e sim numa conferência que o Flutter agenda para logo depois do primeiro quadro (o <em>scheduler</em> é o "agendador" de tarefas). Por isso a tela chegou a aparecer inteira.</dd>
+  <dt>Controller's length property (3) does not match the number of children (4) present in TabBarView's children property.</dt><dd>"O <code>length</code> do controlador (3) não bate com o número de filhos (4) do <code>TabBarView</code>." Os números entre parênteses dizem exatamente o que está errado.</dd>
+  <dt>Another exception was thrown: … number of tabs (4) present in TabBar's tabs property.</dt><dd>A mesma conferência no <code>TabBar</code>: 3 no controlador, 4 abas.</dd>
+  <dt>tab_controller.dart:202:12 / value &gt;= 0 &amp;&amp; (value &lt; length || length == 0)</dt><dd>Este aparece no toque em "Lanches": a aba de índice 3 não existe para um controlador de 3 abas (índices 0, 1 e 2), e a troca é recusada. O <code>Unexpected null value</code> logo depois é consequência dele.</dd>
+</dl>
+<p><strong>Como consertar:</strong> o <code>length</code>, o número de <code>tabs</code> e o número de <code>children</code> do <code>TabBarView</code> têm de ser iguais. O jeito à prova de esquecimento é gerar os três da mesma lista (seção 3).</p>
+</div>
+
+<div class="cenario">
+<strong>O <code>TabBarView</code> dentro de uma <code>Column</code></strong>
+<p>Se você puser o <code>TabBarView</code> numa <code>Column</code> (por exemplo, com um texto em cima), ele não sabe que altura ter: ele quer ocupar todo o espaço, e a <code>Column</code> oferece espaço sem limite. O resultado é o erro de tamanho que você conheceu em <a href="constraints.html">Como o Flutter Calcula Tamanhos</a>. <strong>Como consertar:</strong> envolva o <code>TabBarView</code> num <a href="expanded.html"><code>Expanded</code></a>, que dá a ele "o que sobrar" da altura.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>DefaultTabController(length: n, child: ...)</code></td><td>Controlador automático, em volta do <code>Scaffold</code></td></tr>
+<tr><td><code>AppBar(bottom: TabBar(...))</code></td><td>Abas logo abaixo do título</td></tr>
+<tr><td><code>TabBar(tabs: [Tab(...), ...])</code></td><td>A fileira de títulos</td></tr>
+<tr><td><code>Tab(text:)</code> / <code>Tab(icon:)</code> / <code>Tab(icon:, text:)</code> / <code>Tab(child:)</code></td><td>Formatos de uma aba</td></tr>
+<tr><td><code>TabBarView(children: [...])</code></td><td>O conteúdo, uma tela por aba, na mesma ordem</td></tr>
+<tr><td><code>isScrollable: true</code> + <code>tabAlignment: TabAlignment.start</code></td><td>Fileira rolável, encostada no começo</td></tr>
+<tr><td><code>DefaultTabController.of(ctx).animateTo(i)</code></td><td>Troca de aba por código (<code>ctx</code> abaixo do controlador)</td></tr>
+<tr><td><code>TabController(length:, vsync: this)</code> + <code>controller:</code> nas duas peças</td><td>Controlador próprio (com <code>SingleTickerProviderStateMixin</code> e <code>dispose</code>)</td></tr>
+</table>
+</div>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Mensagem</th><th>Causa provável</th></tr>
+<tr><td><code>No TabController for TabBar.</code></td><td>Faltou o <code>DefaultTabController</code> em volta (ou o <code>controller:</code>)</td></tr>
+<tr><td><code>Controller's length property (3) does not match the number of tabs (4)…</code></td><td>O <code>length</code> não acompanhou os <code>tabs</code></td></tr>
+<tr><td><code>…does not match the number of children…present in TabBarView's children property.</code></td><td>O número de telas do <code>TabBarView</code> é diferente do <code>length</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. O controlador</h3>
+<p>Complete o widget que fica em volta do <code>Scaffold</code>:</p>
+<div class="ex-code"><input data-answer="DefaultTabController" aria-label="widget">(length: 3, child: Scaffold(...))</div>
+</div>
+
+<div class="exercise">
+<h3>2. O lugar das abas</h3>
+<p>Complete o parâmetro da <code>AppBar</code> onde vai o <code>TabBar</code>:</p>
+<div class="ex-code">AppBar(title: Text('Receitas'), <input data-answer="bottom" aria-label="parâmetro">: TabBar(...))</div>
+</div>
+
+<div class="exercise">
+<h3>3. O conteúdo</h3>
+<p>Qual widget mostra uma tela para cada aba?</p>
+<div class="ex-code">body: <input data-answer="TabBarView" aria-label="widget">(children: [...])</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. Um <code>DefaultTabController(length: 2)</code> com três <code>Tab</code> no <code>TabBar</code>. O que acontece?</p>
+<label><input type="radio" name="q4"> A terceira aba é ignorada</label>
+<label><input type="radio" name="q4"> Erro de compilação</label>
+<label><input type="radio" name="q4"> Erro ao rodar: o <code>length</code> não bate com o número de abas</label>
+<label><input type="radio" name="q4"> Funciona normalmente</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. A Ana tem 8 categorias de receitas e os títulos ficaram cortados. O que resolve?</p>
+<label><input type="radio" name="q5"> <code>isScrollable: true</code> no <code>TabBar</code></label>
+<label><input type="radio" name="q5"> Aumentar o <code>length</code></label>
+<label><input type="radio" name="q5"> Trocar o <code>TabBarView</code> por uma <code>Column</code></label>
+<label><input type="radio" name="q5"> Tirar o <code>DefaultTabController</code></label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">6. Por que a página das abas pode ser um <code>StatelessWidget</code>, sem <code>setState</code>?</p>
+<label><input type="radio" name="q6"> Porque as abas não mudam nunca</label>
+<label><input type="radio" name="q6"> Porque quem guarda a aba atual é o <code>DefaultTabController</code></label>
+<label><input type="radio" name="q6"> Porque o <code>TabBar</code> é <code>const</code></label>
+<label><input type="radio" name="q6"> Não pode: precisa ser <code>StatefulWidget</code></label>
+</div>
+
+<h3>Missão final: as abas da lista de compras</h3>
+
+<div class="tryflutter" data-goal="src:DefaultTabController\(;;src:TabBar\(;;src:TabBarView\(;;src:'Mercado';;src:'Feira'">
+<p class="try-task"><strong>Missão:</strong> a tela de compras da Ana ainda não tem abas. Monte duas abas, <code>Mercado</code> e <code>Feira</code>, com o conteúdo <code>Arroz, feijão, café</code> e <code>Banana, tomate, alface</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ComprasApp());
+
+class ComprasApp extends StatelessWidget {
+  const ComprasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.green),
+      home: const ComprasPage(),
+    );
+  }
+}
+
+class ComprasPage extends StatelessWidget {
+  const ComprasPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Lista de compras')),
+      body: const Center(child: Text('Arroz, feijão, café')),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ComprasApp());
+
+class ComprasApp extends StatelessWidget {
+  const ComprasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.green),
+      home: const ComprasPage(),
+    );
+  }
+}
+
+class ComprasPage extends StatelessWidget {
+  const ComprasPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Lista de compras'),
+          bottom: const TabBar(
+            tabs: [Tab(text: 'Mercado'), Tab(text: 'Feira')],
+          ),
+        ),
+        body: const TabBarView(
+          children: [
+            Center(child: Text('Arroz, feijão, café')),
+            Center(child: Text('Banana, tomate, alface')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Abas = três peças: o controlador (<code>DefaultTabController</code>), a fileira de títulos (<code>TabBar</code>) e o conteúdo (<code>TabBarView</code>).</li>
+  <li>O <code>DefaultTabController</code> fica em volta do <code>Scaffold</code>; o <code>TabBar</code> vai no <code>bottom</code> da <code>AppBar</code>; o <code>TabBarView</code> no <code>body</code>.</li>
+  <li>O <code>length</code>, os <code>tabs</code> e os <code>children</code> precisam ter o mesmo tamanho e a mesma ordem. Gere os três de uma lista só.</li>
+  <li><code>Tab</code> aceita <code>text</code>, <code>icon</code>, os dois ou um <code>child</code> qualquer. Muitas abas: <code>isScrollable: true</code>.</li>
+  <li>Trocar por código: <code>DefaultTabController.of(ctx).animateTo(i)</code>. Controle total: o seu <code>TabController</code>, com <code>SingleTickerProviderStateMixin</code> e <code>dispose</code>.</li>
+  <li>Sem controlador: <code>No TabController for TabBar</code>. Tamanhos diferentes: <code>Controller's length property … does not match …</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
