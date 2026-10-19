@@ -1,0 +1,1206 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Projeto: App de Receitas — navegação entre telas, passo a passo | Guia Flutter</title>
+<meta name="description" content="Projeto do Guia Flutter: o app de receitas da Ana em 3 versões. Versão 1 com uma classe de modelo e a lista de receitas em Cards; versão 2 abrindo a tela de detalhe com Navigator.push e MaterialPageRoute, passando a receita pelo construtor; versão 3 devolvendo um resultado com Navigator.pop e mostrando um SnackBar. Código completo, fotos reais das telas e o erro real do Navigator sem contexto.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Projeto: App de Receitas</span></h1>
+
+<p class="intro">Quase todo app tem mais de uma tela: a lista de produtos e a página do produto, a caixa de entrada e o e-mail aberto. Neste projeto, a Ana monta o <strong>caderno de receitas</strong> dela no celular: uma tela com a lista de receitas e, ao tocar numa delas, uma segunda tela com o tempo de preparo e os ingredientes. O app cresce em <strong>3 versões</strong>, cada uma com o código completo, a foto real e uma missão no editor.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Versão 1: organizar os dados numa <strong>classe de modelo</strong> (<code>Receita</code>) e mostrar a lista com <code>Card</code> e <code>ListTile</code>.</li>
+  <li>Versão 2: abrir a tela de detalhe com <code>Navigator.push</code> e <code>MaterialPageRoute</code>, <strong>passando a receita</strong> pelo construtor.</li>
+  <li>Versão 3: <strong>voltar com uma resposta</strong>, usando <code>Navigator.pop(context, valor)</code>, e mostrar um <code>SnackBar</code> na tela da lista.</li>
+  <li>O erro real "Navigator operation requested with a context that does not include a Navigator", e como resolver.</li>
+</ul>
+</div>
+
+<p>Aulas que ajudam: <a href="navegacao.html">Indo de uma Tela para Outra</a>, <a href="passar-dados-telas.html">Passando Dados entre Telas</a>, <a href="card.html">Card e ListTile</a>, <a href="listview-builder.html">ListView.builder</a> e <a href="dialogos.html">Diálogos e SnackBar</a>.</p>
+
+<hr>
+
+<h2>O plano: duas telas e uma pilha</h2>
+<p>Pense numa pilha de pratos. Quando o app abre, a lista de receitas é o primeiro prato. Tocar numa receita põe um prato <strong>em cima</strong> (a tela de detalhe): é o <code>push</code> ("empurrar"). A seta de voltar tira o prato de cima e a lista reaparece, do jeito que estava: é o <code>pop</code> ("tirar"). O <code>Navigator</code> do Flutter é exatamente essa pilha de telas.</p>
+
+<pre>ReceitasApp (MaterialApp, que cria o Navigator)
+│
+├── tela 1: ListaPage (Scaffold)
+│   └── ListView.builder → Card → ListTile (uma por receita)
+│          │  toque: Navigator.push(…)
+│          ▼
+└── tela 2: DetalhePage(receita: …) (Scaffold)
+    └── ListView: tempo, 'Ingredientes', um ListTile por ingrediente,
+                  botão 'Fiz esta receita!' → Navigator.pop(context, nome)
+</pre>
+
+<hr>
+
+<h2>Versão 1: a lista de receitas</h2>
+<p>Cada receita tem um nome, um tempo de preparo e uma lista de ingredientes. Em vez de espalhar isso em várias listas, tudo fica junto numa classe <code>Receita</code>, e as receitas da Ana ficam numa lista constante no alto do arquivo.</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class Receita {
+  const Receita({
+    required this.nome,
+    required this.minutos,
+    required this.ingredientes,
+  });
+
+  final String nome;
+  final int minutos;
+  final List&lt;String&gt; ingredientes;
+}
+
+const receitas = [
+  Receita(
+    nome: 'Bolo de cenoura',
+    minutos: 50,
+    ingredientes: ['3 cenouras', '4 ovos', '1 xícara de óleo', '2 xícaras de açúcar', '2 xícaras de farinha'],
+  ),
+  Receita(
+    nome: 'Brigadeiro',
+    minutos: 20,
+    ingredientes: ['1 lata de leite condensado', '1 colher de manteiga', '3 colheres de chocolate em pó'],
+  ),
+  Receita(
+    nome: 'Pão de queijo',
+    minutos: 40,
+    ingredientes: ['500 g de polvilho', '2 ovos', '1 xícara de leite', '200 g de queijo'],
+  ),
+];
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Receitas da Ana',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const ListaPage(),
+    );
+  }
+}
+
+class ListaPage extends StatelessWidget {
+  const ListaPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: ListView.builder(
+        itemCount: receitas.length,
+        itemBuilder: (context, index) {
+          final receita = receitas[index];
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            child: ListTile(
+              leading: const Icon(Icons.restaurant_menu),
+              title: Text(receita.nome),
+              subtitle: Text(
+                '${receita.minutos} min · ${receita.ingredientes.length} ingredientes',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>class Receita { const Receita({required this.nome, …}); … }</dt><dd>A classe de modelo. Os campos são <code>final</code> (uma receita não muda depois de criada) e o construtor é <code>const</code>, o que permite criar as receitas como constantes. Os parâmetros são nomeados e obrigatórios (<code>required</code>): ninguém esquece o tempo de preparo.</dd>
+  <dt>const receitas = [ Receita(…), … ];</dt><dd>Os dados do app: uma lista constante, fora de qualquer widget. Num app real, eles viriam da internet ou de um banco de dados (veja <a href="http.html">http</a> e <a href="sqlite.html">sqflite</a>); aqui, a lista fixa deixa o foco na navegação.</dd>
+  <dt>final receita = receitas[index];</dt><dd>Dentro do <code>itemBuilder</code>, pega a receita daquela linha. Daqui para baixo, <code>receita.nome</code> é mais claro do que <code>receitas[index].nome</code> repetido.</dd>
+  <dt>Card(margin: …, child: ListTile(…))</dt><dd>Cada receita num cartão, com 16 pixels dos lados e 6 entre um cartão e outro.</dd>
+  <dt>subtitle: Text('${receita.minutos} min · ${receita.ingredientes.length} ingredientes')</dt><dd>A segunda linha, menor, com o tempo e a quantidade de ingredientes, montada com interpolação.</dd>
+  <dt>trailing: const Icon(Icons.chevron_right)</dt><dd>A setinha à direita: o sinal visual de "toque aqui para abrir". Por enquanto, tocar não faz nada.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/projeto-receitas-1.png" alt="Tela com o título 'Receitas da Ana' e três cartões claros, cor de pêssego, um embaixo do outro; cada um com um ícone de garfo e faca cruzados à esquerda, o nome da receita, uma linha menor com o tempo e o número de ingredientes, e uma setinha para a direita: Bolo de cenoura, 50 min · 5 ingredientes; Brigadeiro, 20 min · 3 ingredientes; Pão de queijo, 40 min · 4 ingredientes" width="390" height="844" loading="lazy"><figcaption>A versão 1: a lista de receitas em cartões.</figcaption></figure>
+
+<p>A semente laranja (<code>Colors.orange</code>) deu ao app um fundo levemente rosado e cartões cor de pêssego. Cada cartão tem o ícone <code>restaurant_menu</code> (garfo e faca), o nome, a linha de baixo com o tempo e a contagem de ingredientes (calculada com <code>ingredientes.length</code>: ninguém escreveu "5 ingredientes" à mão) e a setinha à direita.</p>
+
+<div class="tryflutter" data-goal="src:nome:\s*'Pudim'">
+<p class="try-task"><strong>Missão:</strong> acrescente uma quarta receita à lista: <code>Receita(nome: 'Pudim', minutos: 60, ingredientes: [...])</code>, com os ingredientes que quiser. Repare que a contagem de ingredientes na segunda linha aparece sozinha.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class Receita {
+  const Receita({
+    required this.nome,
+    required this.minutos,
+    required this.ingredientes,
+  });
+
+  final String nome;
+  final int minutos;
+  final List&lt;String&gt; ingredientes;
+}
+
+const receitas = [
+  Receita(
+    nome: 'Bolo de cenoura',
+    minutos: 50,
+    ingredientes: ['3 cenouras', '4 ovos', '1 xícara de óleo', '2 xícaras de açúcar', '2 xícaras de farinha'],
+  ),
+  Receita(
+    nome: 'Brigadeiro',
+    minutos: 20,
+    ingredientes: ['1 lata de leite condensado', '1 colher de manteiga', '3 colheres de chocolate em pó'],
+  ),
+  Receita(
+    nome: 'Pão de queijo',
+    minutos: 40,
+    ingredientes: ['500 g de polvilho', '2 ovos', '1 xícara de leite', '200 g de queijo'],
+  ),
+];
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Receitas da Ana',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const ListaPage(),
+    );
+  }
+}
+
+class ListaPage extends StatelessWidget {
+  const ListaPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: ListView.builder(
+        itemCount: receitas.length,
+        itemBuilder: (context, index) {
+          final receita = receitas[index];
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            child: ListTile(
+              leading: const Icon(Icons.restaurant_menu),
+              title: Text(receita.nome),
+              subtitle: Text(
+                '${receita.minutos} min · ${receita.ingredientes.length} ingredientes',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class Receita {
+  const Receita({
+    required this.nome,
+    required this.minutos,
+    required this.ingredientes,
+  });
+
+  final String nome;
+  final int minutos;
+  final List&lt;String&gt; ingredientes;
+}
+
+const receitas = [
+  Receita(
+    nome: 'Bolo de cenoura',
+    minutos: 50,
+    ingredientes: ['3 cenouras', '4 ovos', '1 xícara de óleo', '2 xícaras de açúcar', '2 xícaras de farinha'],
+  ),
+  Receita(
+    nome: 'Brigadeiro',
+    minutos: 20,
+    ingredientes: ['1 lata de leite condensado', '1 colher de manteiga', '3 colheres de chocolate em pó'],
+  ),
+  Receita(
+    nome: 'Pão de queijo',
+    minutos: 40,
+    ingredientes: ['500 g de polvilho', '2 ovos', '1 xícara de leite', '200 g de queijo'],
+  ),
+  Receita(
+    nome: 'Pudim',
+    minutos: 60,
+    ingredientes: ['1 lata de leite condensado', '2 latas de leite', '3 ovos'],
+  ),
+];
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Receitas da Ana',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const ListaPage(),
+    );
+  }
+}
+
+class ListaPage extends StatelessWidget {
+  const ListaPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: ListView.builder(
+        itemCount: receitas.length,
+        itemBuilder: (context, index) {
+          final receita = receitas[index];
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            child: ListTile(
+              leading: const Icon(Icons.restaurant_menu),
+              title: Text(receita.nome),
+              subtitle: Text(
+                '${receita.minutos} min · ${receita.ingredientes.length} ingredientes',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Versão 2: tocar e abrir o detalhe</h2>
+<p>Agora cada cartão abre uma segunda tela, a <code>DetalhePage</code>, que recebe <strong>a receita tocada</strong> pelo construtor, como qualquer parâmetro de widget. Em relação à versão 1, mudaram duas coisas: o <code>onTap</code> no <code>ListTile</code> e a classe nova no fim do arquivo.</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class Receita {
+  const Receita({
+    required this.nome,
+    required this.minutos,
+    required this.ingredientes,
+  });
+
+  final String nome;
+  final int minutos;
+  final List&lt;String&gt; ingredientes;
+}
+
+const receitas = [
+  Receita(
+    nome: 'Bolo de cenoura',
+    minutos: 50,
+    ingredientes: ['3 cenouras', '4 ovos', '1 xícara de óleo', '2 xícaras de açúcar', '2 xícaras de farinha'],
+  ),
+  Receita(
+    nome: 'Brigadeiro',
+    minutos: 20,
+    ingredientes: ['1 lata de leite condensado', '1 colher de manteiga', '3 colheres de chocolate em pó'],
+  ),
+  Receita(
+    nome: 'Pão de queijo',
+    minutos: 40,
+    ingredientes: ['500 g de polvilho', '2 ovos', '1 xícara de leite', '200 g de queijo'],
+  ),
+];
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Receitas da Ana',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const ListaPage(),
+    );
+  }
+}
+
+class ListaPage extends StatelessWidget {
+  const ListaPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: ListView.builder(
+        itemCount: receitas.length,
+        itemBuilder: (context, index) {
+          final receita = receitas[index];
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            child: ListTile(
+              leading: const Icon(Icons.restaurant_menu),
+              title: Text(receita.nome),
+              subtitle: Text(
+                '${receita.minutos} min · ${receita.ingredientes.length} ingredientes',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =&gt; DetalhePage(receita: receita),
+                  ),
+                );
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class DetalhePage extends StatelessWidget {
+  const DetalhePage({super.key, required this.receita});
+
+  final Receita receita;
+
+  @override
+  Widget build(BuildContext context) {
+    final textos = Theme.of(context).textTheme;
+    return Scaffold(
+      appBar: AppBar(title: Text(receita.nome)),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text('Tempo: ${receita.minutos} minutos', style: textos.titleMedium),
+          const SizedBox(height: 16),
+          Text('Ingredientes', style: textos.titleLarge),
+          for (final item in receita.ingredientes)
+            ListTile(
+              leading: const Icon(Icons.check_circle_outline),
+              title: Text(item),
+            ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>onTap: () { Navigator.push(…); }</dt><dd>O que acontece no toque: pôr uma tela nova em cima da pilha.</dd>
+  <dt>Navigator.push(context, …)</dt><dd>O <code>context</code> diz ao Flutter <strong>onde</strong> você está na árvore; a partir dele, o <code>Navigator</code> mais próximo (o que o <code>MaterialApp</code> criou) é encontrado.</dd>
+  <dt>MaterialPageRoute(builder: (context) =&gt; DetalhePage(receita: receita))</dt><dd>A "rota": o pacote que leva a tela nova, com a animação de entrada padrão do Android (ou do iPhone, no iOS). O <code>builder</code> é uma função que constrói a tela quando for a hora.</dd>
+  <dt>class DetalhePage … final Receita receita;</dt><dd>A tela de detalhe guarda a receita que recebeu num campo <code>final</code>, e o <code>build</code> usa esse campo. É assim que dados passam de uma tela para a próxima (veja <a href="passar-dados-telas.html">Passando Dados entre Telas</a>).</dd>
+  <dt>final textos = Theme.of(context).textTheme;</dt><dd>Os estilos de texto do tema (<code>titleMedium</code>, <code>titleLarge</code>…). Usar o tema em vez de tamanhos fixos deixa o app coerente (veja <a href="temas.html">Temas</a>).</dd>
+  <dt>appBar: AppBar(title: Text(receita.nome))</dt><dd>O título da barra é o nome da receita. Repare que você <strong>não</strong> escreveu a seta de voltar: a <code>AppBar</code> percebe que há uma tela embaixo na pilha e põe a seta sozinha. Tocar nela faz o <code>pop</code>.</dd>
+  <dt>for (final item in receita.ingredientes) ListTile(…)</dt><dd>Um <code>for</code> dentro da lista <code>children</code> (o "collection for" do Dart): gera um <code>ListTile</code> por ingrediente.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/projeto-receitas-2.png" alt="Tela de detalhe com uma seta de voltar à esquerda e o título 'Bolo de cenoura'; embaixo, 'Tempo: 50 minutos', o subtítulo maior 'Ingredientes' e cinco linhas com um ícone de visto num círculo: 3 cenouras, 4 ovos, 1 xícara de óleo, 2 xícaras de açúcar, 2 xícaras de farinha" width="390" height="844" loading="lazy"><figcaption>A versão 2: a tela de detalhe do bolo de cenoura, aberta com um toque na lista.</figcaption></figure>
+
+<p>No lab, a foto foi tirada depois de um clique no cartão "Bolo de cenoura" (e uma pequena espera, para a animação de entrada terminar). A tela nova cobriu a lista inteira. No alto, a seta de voltar que ninguém programou, e o título com o nome da receita recebida. O tempo usa o estilo <code>titleMedium</code> e "Ingredientes" o <code>titleLarge</code>, maior: as duas medidas vêm do tema.</p>
+
+<div class="tryflutter" data-goal="src:Icons\.shopping_basket">
+<p class="try-task"><strong>Missão:</strong> na tela de detalhe, troque o ícone de cada ingrediente (<code>Icons.check_circle_outline</code>) por uma cestinha de compras: <code>Icons.shopping_basket</code>. Toque numa receita para ver o detalhe e use a seta para voltar.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class Receita {
+  const Receita({
+    required this.nome,
+    required this.minutos,
+    required this.ingredientes,
+  });
+
+  final String nome;
+  final int minutos;
+  final List&lt;String&gt; ingredientes;
+}
+
+const receitas = [
+  Receita(
+    nome: 'Bolo de cenoura',
+    minutos: 50,
+    ingredientes: ['3 cenouras', '4 ovos', '1 xícara de óleo', '2 xícaras de açúcar', '2 xícaras de farinha'],
+  ),
+  Receita(
+    nome: 'Brigadeiro',
+    minutos: 20,
+    ingredientes: ['1 lata de leite condensado', '1 colher de manteiga', '3 colheres de chocolate em pó'],
+  ),
+  Receita(
+    nome: 'Pão de queijo',
+    minutos: 40,
+    ingredientes: ['500 g de polvilho', '2 ovos', '1 xícara de leite', '200 g de queijo'],
+  ),
+];
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Receitas da Ana',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const ListaPage(),
+    );
+  }
+}
+
+class ListaPage extends StatelessWidget {
+  const ListaPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: ListView.builder(
+        itemCount: receitas.length,
+        itemBuilder: (context, index) {
+          final receita = receitas[index];
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            child: ListTile(
+              leading: const Icon(Icons.restaurant_menu),
+              title: Text(receita.nome),
+              subtitle: Text(
+                '${receita.minutos} min · ${receita.ingredientes.length} ingredientes',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =&gt; DetalhePage(receita: receita),
+                  ),
+                );
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class DetalhePage extends StatelessWidget {
+  const DetalhePage({super.key, required this.receita});
+
+  final Receita receita;
+
+  @override
+  Widget build(BuildContext context) {
+    final textos = Theme.of(context).textTheme;
+    return Scaffold(
+      appBar: AppBar(title: Text(receita.nome)),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text('Tempo: ${receita.minutos} minutos', style: textos.titleMedium),
+          const SizedBox(height: 16),
+          Text('Ingredientes', style: textos.titleLarge),
+          for (final item in receita.ingredientes)
+            ListTile(
+              leading: const Icon(Icons.check_circle_outline),
+              title: Text(item),
+            ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class Receita {
+  const Receita({
+    required this.nome,
+    required this.minutos,
+    required this.ingredientes,
+  });
+
+  final String nome;
+  final int minutos;
+  final List&lt;String&gt; ingredientes;
+}
+
+const receitas = [
+  Receita(
+    nome: 'Bolo de cenoura',
+    minutos: 50,
+    ingredientes: ['3 cenouras', '4 ovos', '1 xícara de óleo', '2 xícaras de açúcar', '2 xícaras de farinha'],
+  ),
+  Receita(
+    nome: 'Brigadeiro',
+    minutos: 20,
+    ingredientes: ['1 lata de leite condensado', '1 colher de manteiga', '3 colheres de chocolate em pó'],
+  ),
+  Receita(
+    nome: 'Pão de queijo',
+    minutos: 40,
+    ingredientes: ['500 g de polvilho', '2 ovos', '1 xícara de leite', '200 g de queijo'],
+  ),
+];
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Receitas da Ana',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const ListaPage(),
+    );
+  }
+}
+
+class ListaPage extends StatelessWidget {
+  const ListaPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: ListView.builder(
+        itemCount: receitas.length,
+        itemBuilder: (context, index) {
+          final receita = receitas[index];
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            child: ListTile(
+              leading: const Icon(Icons.restaurant_menu),
+              title: Text(receita.nome),
+              subtitle: Text(
+                '${receita.minutos} min · ${receita.ingredientes.length} ingredientes',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =&gt; DetalhePage(receita: receita),
+                  ),
+                );
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class DetalhePage extends StatelessWidget {
+  const DetalhePage({super.key, required this.receita});
+
+  final Receita receita;
+
+  @override
+  Widget build(BuildContext context) {
+    final textos = Theme.of(context).textTheme;
+    return Scaffold(
+      appBar: AppBar(title: Text(receita.nome)),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text('Tempo: ${receita.minutos} minutos', style: textos.titleMedium),
+          const SizedBox(height: 16),
+          Text('Ingredientes', style: textos.titleLarge),
+          for (final item in receita.ingredientes)
+            ListTile(
+              leading: const Icon(Icons.shopping_basket),
+              title: Text(item),
+            ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Versão 3: voltar com uma resposta</h2>
+<p>A Ana quer marcar as receitas que já fez. Na tela de detalhe entra um botão <strong>Fiz esta receita!</strong>, que fecha a tela e <strong>leva uma resposta</strong> de volta: o nome da receita. A lista recebe essa resposta e mostra um aviso no rodapé, o <code>SnackBar</code>.</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class Receita {
+  const Receita({
+    required this.nome,
+    required this.minutos,
+    required this.ingredientes,
+  });
+
+  final String nome;
+  final int minutos;
+  final List&lt;String&gt; ingredientes;
+}
+
+const receitas = [
+  Receita(
+    nome: 'Bolo de cenoura',
+    minutos: 50,
+    ingredientes: ['3 cenouras', '4 ovos', '1 xícara de óleo', '2 xícaras de açúcar', '2 xícaras de farinha'],
+  ),
+  Receita(
+    nome: 'Brigadeiro',
+    minutos: 20,
+    ingredientes: ['1 lata de leite condensado', '1 colher de manteiga', '3 colheres de chocolate em pó'],
+  ),
+  Receita(
+    nome: 'Pão de queijo',
+    minutos: 40,
+    ingredientes: ['500 g de polvilho', '2 ovos', '1 xícara de leite', '200 g de queijo'],
+  ),
+];
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Receitas da Ana',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const ListaPage(),
+    );
+  }
+}
+
+class ListaPage extends StatelessWidget {
+  const ListaPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: ListView.builder(
+        itemCount: receitas.length,
+        itemBuilder: (context, index) {
+          final receita = receitas[index];
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            child: ListTile(
+              leading: const Icon(Icons.restaurant_menu),
+              title: Text(receita.nome),
+              subtitle: Text(
+                '${receita.minutos} min · ${receita.ingredientes.length} ingredientes',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () async {
+                final feita = await Navigator.push&lt;String&gt;(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =&gt; DetalhePage(receita: receita),
+                  ),
+                );
+                if (feita == null || !context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Parabéns! Você fez: $feita')),
+                );
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class DetalhePage extends StatelessWidget {
+  const DetalhePage({super.key, required this.receita});
+
+  final Receita receita;
+
+  @override
+  Widget build(BuildContext context) {
+    final textos = Theme.of(context).textTheme;
+    return Scaffold(
+      appBar: AppBar(title: Text(receita.nome)),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text('Tempo: ${receita.minutos} minutos', style: textos.titleMedium),
+          const SizedBox(height: 16),
+          Text('Ingredientes', style: textos.titleLarge),
+          for (final item in receita.ingredientes)
+            ListTile(
+              leading: const Icon(Icons.check_circle_outline),
+              title: Text(item),
+            ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: () =&gt; Navigator.pop(context, receita.nome),
+            icon: const Icon(Icons.done),
+            label: const Text('Fiz esta receita!'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>onPressed: () =&gt; Navigator.pop(context, receita.nome)</dt><dd>Tira a tela de detalhe da pilha <strong>e</strong> entrega um valor a quem a abriu. O segundo argumento do <code>pop</code> é a resposta.</dd>
+  <dt>onTap: () async { final feita = await Navigator.push&lt;String&gt;(…); … }</dt><dd>O <code>push</code> devolve um <code>Future</code>: uma promessa de resposta, que só chega quando a tela de cima sair. O <code>await</code> espera por ela (por isso o <code>async</code>). O <code>&lt;String&gt;</code> diz o tipo da resposta esperada. Mais sobre <code>Future</code> em <a href="futurebuilder.html">FutureBuilder</a>.</dd>
+  <dt>if (feita == null || !context.mounted) return;</dt><dd>Duas proteções. Se a pessoa voltou pela seta, e não pelo botão, a resposta é <code>null</code>: não há o que avisar. E o <code>context.mounted</code> confere se a tela da lista ainda existe depois da espera, uma boa prática sempre que se usa o <code>context</code> depois de um <code>await</code>.</dd>
+  <dt>ScaffoldMessenger.of(context).showSnackBar(SnackBar(…))</dt><dd>Mostra o aviso no rodapé da tela, que some sozinho depois de alguns segundos (veja <a href="dialogos.html">Diálogos e SnackBar</a>).</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/projeto-receitas-3.png" alt="Tela de detalhe com a seta de voltar e o título 'Brigadeiro'; embaixo, 'Tempo: 20 minutos', o subtítulo 'Ingredientes', três ingredientes com ícone de visto (1 lata de leite condensado, 1 colher de manteiga, 3 colheres de chocolate em pó) e um botão marrom largo 'Fiz esta receita!' com um ícone de visto" width="390" height="844" loading="lazy"><figcaption>A versão 3: o detalhe do brigadeiro, com o botão "Fiz esta receita!" no fim.</figcaption></figure>
+
+<p>No lab, o clique foi em "Brigadeiro". A mesma <code>DetalhePage</code> agora mostra outra receita, com três ingredientes: a tela é uma só, e o que muda é a <code>Receita</code> que ela recebe. No fim, o botão novo, que ocupa a largura toda porque está direto num <code>ListView</code> (que estica os filhos na largura).</p>
+
+<figure class="tela"><img src="assets/telas/projeto-receitas-4.png" alt="De volta à lista de receitas com os três cartões; no rodapé, uma faixa escura de ponta a ponta com o texto 'Parabéns! Você fez: Bolo de cenoura'" width="390" height="844" loading="lazy"><figcaption>Depois de tocar no botão: de volta à lista, com o aviso no rodapé.</figcaption></figure>
+
+<p>Esta foto foi tirada em outra rodada do lab: um clique em "Bolo de cenoura", outro em "Fiz esta receita!". A tela de detalhe saiu da pilha, a lista voltou do jeito que estava e, embaixo, apareceu a faixa escura do <code>SnackBar</code> com o nome que o <code>pop</code> levou: <code>Parabéns! Você fez: Bolo de cenoura</code>.</p>
+
+<div class="tryflutter" data-goal="src:Que delícia: \$feita">
+<p class="try-task"><strong>Missão:</strong> troque a mensagem do aviso para <code>'Que delícia: $feita'</code>. Abra uma receita, toque em "Fiz esta receita!" e veja o aviso novo. Depois, abra outra e volte pela seta: o aviso não aparece. Por quê?</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class Receita {
+  const Receita({
+    required this.nome,
+    required this.minutos,
+    required this.ingredientes,
+  });
+
+  final String nome;
+  final int minutos;
+  final List&lt;String&gt; ingredientes;
+}
+
+const receitas = [
+  Receita(
+    nome: 'Bolo de cenoura',
+    minutos: 50,
+    ingredientes: ['3 cenouras', '4 ovos', '1 xícara de óleo', '2 xícaras de açúcar', '2 xícaras de farinha'],
+  ),
+  Receita(
+    nome: 'Brigadeiro',
+    minutos: 20,
+    ingredientes: ['1 lata de leite condensado', '1 colher de manteiga', '3 colheres de chocolate em pó'],
+  ),
+  Receita(
+    nome: 'Pão de queijo',
+    minutos: 40,
+    ingredientes: ['500 g de polvilho', '2 ovos', '1 xícara de leite', '200 g de queijo'],
+  ),
+];
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Receitas da Ana',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const ListaPage(),
+    );
+  }
+}
+
+class ListaPage extends StatelessWidget {
+  const ListaPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: ListView.builder(
+        itemCount: receitas.length,
+        itemBuilder: (context, index) {
+          final receita = receitas[index];
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            child: ListTile(
+              leading: const Icon(Icons.restaurant_menu),
+              title: Text(receita.nome),
+              subtitle: Text(
+                '${receita.minutos} min · ${receita.ingredientes.length} ingredientes',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () async {
+                final feita = await Navigator.push&lt;String&gt;(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =&gt; DetalhePage(receita: receita),
+                  ),
+                );
+                if (feita == null || !context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Parabéns! Você fez: $feita')),
+                );
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class DetalhePage extends StatelessWidget {
+  const DetalhePage({super.key, required this.receita});
+
+  final Receita receita;
+
+  @override
+  Widget build(BuildContext context) {
+    final textos = Theme.of(context).textTheme;
+    return Scaffold(
+      appBar: AppBar(title: Text(receita.nome)),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text('Tempo: ${receita.minutos} minutos', style: textos.titleMedium),
+          const SizedBox(height: 16),
+          Text('Ingredientes', style: textos.titleLarge),
+          for (final item in receita.ingredientes)
+            ListTile(
+              leading: const Icon(Icons.check_circle_outline),
+              title: Text(item),
+            ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: () =&gt; Navigator.pop(context, receita.nome),
+            icon: const Icon(Icons.done),
+            label: const Text('Fiz esta receita!'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class Receita {
+  const Receita({
+    required this.nome,
+    required this.minutos,
+    required this.ingredientes,
+  });
+
+  final String nome;
+  final int minutos;
+  final List&lt;String&gt; ingredientes;
+}
+
+const receitas = [
+  Receita(
+    nome: 'Bolo de cenoura',
+    minutos: 50,
+    ingredientes: ['3 cenouras', '4 ovos', '1 xícara de óleo', '2 xícaras de açúcar', '2 xícaras de farinha'],
+  ),
+  Receita(
+    nome: 'Brigadeiro',
+    minutos: 20,
+    ingredientes: ['1 lata de leite condensado', '1 colher de manteiga', '3 colheres de chocolate em pó'],
+  ),
+  Receita(
+    nome: 'Pão de queijo',
+    minutos: 40,
+    ingredientes: ['500 g de polvilho', '2 ovos', '1 xícara de leite', '200 g de queijo'],
+  ),
+];
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Receitas da Ana',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const ListaPage(),
+    );
+  }
+}
+
+class ListaPage extends StatelessWidget {
+  const ListaPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: ListView.builder(
+        itemCount: receitas.length,
+        itemBuilder: (context, index) {
+          final receita = receitas[index];
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            child: ListTile(
+              leading: const Icon(Icons.restaurant_menu),
+              title: Text(receita.nome),
+              subtitle: Text(
+                '${receita.minutos} min · ${receita.ingredientes.length} ingredientes',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () async {
+                final feita = await Navigator.push&lt;String&gt;(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =&gt; DetalhePage(receita: receita),
+                  ),
+                );
+                if (feita == null || !context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Que delícia: $feita')),
+                );
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class DetalhePage extends StatelessWidget {
+  const DetalhePage({super.key, required this.receita});
+
+  final Receita receita;
+
+  @override
+  Widget build(BuildContext context) {
+    final textos = Theme.of(context).textTheme;
+    return Scaffold(
+      appBar: AppBar(title: Text(receita.nome)),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text('Tempo: ${receita.minutos} minutos', style: textos.titleMedium),
+          const SizedBox(height: 16),
+          Text('Ingredientes', style: textos.titleLarge),
+          for (final item in receita.ingredientes)
+            ListTile(
+              leading: const Icon(Icons.check_circle_outline),
+              title: Text(item),
+            ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: () =&gt; Navigator.pop(context, receita.nome),
+            icon: const Icon(Icons.done),
+            label: const Text('Fiz esta receita!'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Formas diferentes de fazer</h2>
+<h3><code>Navigator.push</code> com a rota, ou rotas nomeadas?</h3>
+<p>Aqui, a tela nova é criada na hora, com <code>MaterialPageRoute</code>. Outra forma é dar nomes às telas no <code>MaterialApp</code> e navegar pelo nome:</p>
+<pre class="file" data-file="lib/main.dart (trecho)">MaterialApp(
+  routes: {
+    '/': (context) =&gt; const ListaPage(),
+    '/sobre': (context) =&gt; const SobrePage(),
+  },
+);
+
+// em algum botão:
+Navigator.pushNamed(context, '/sobre');
+</pre>
+<p><strong>Qual usar:</strong> para passar um objeto (como a <code>Receita</code>), o <code>push</code> com <code>MaterialPageRoute</code> é o mais simples e já vem com a checagem de tipos do Dart. Rotas nomeadas ajudam quando o app tem muitas telas fixas, e o pacote <code>go_router</code> é o caminho para apps maiores e para a web, com endereços de verdade (veja <a href="rotas-nomeadas.html">Rotas Nomeadas</a> e <a href="go-router.html">go_router</a>).</p>
+
+<h3>A seta da <code>AppBar</code> ou um botão seu?</h3>
+<p>Para só voltar, a seta automática basta. Um botão próprio com <code>Navigator.pop(context)</code> faz o mesmo, e com <code>Navigator.pop(context, valor)</code> ainda leva uma resposta, como na versão 3. No Android, o botão "voltar" do sistema também faz <code>pop</code> (e devolve <code>null</code>).</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<h3>O <code>Navigator</code> que não estava lá</h3>
+<p>Para economizar uma classe, a Ana escreveu a tela da lista direto no <code>home</code> do <code>MaterialApp</code>, no mesmo <code>build</code>:</p>
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: ListTile(
+          title: const Text('Bolo de cenoura'),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) =&gt; const Scaffold(
+                  body: Center(child: Text('Detalhe')),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<p>O app abre normalmente. Mas, ao tocar em "Bolo de cenoura", nada acontece na tela, e o console mostra:</p>
+<p>(No lab, o toque não abriu nada. A mensagem abaixo foi colhida com um teste de widget, o <code>flutter test</code>, que toca em "Bolo de cenoura"; rodando o app com <code>flutter run</code>, ela aparece no terminal.)</p>
+<pre class="term">══╡ EXCEPTION CAUGHT BY GESTURE ╞═══════════════════════════════════════════════════════════════════
+The following assertion was thrown while handling a gesture:
+Navigator operation requested with a context that does not include a Navigator.
+The context used to push or pop routes from the Navigator must be that of a widget that is a
+descendant of a Navigator widget.
+
+When the exception was thrown, this was the stack:
+#0      Navigator.of.&lt;anonymous closure&gt; (package:flutter/src/widgets/navigator.dart:2959:9)
+#1      Navigator.of (package:flutter/src/widgets/navigator.dart:2966:6)
+#2      Navigator.push (package:flutter/src/widgets/navigator.dart:2337:22)
+#3      ReceitasApp.build.&lt;anonymous closure&gt; (package:app/main.dart:18:23)
+#4      _InkResponseState.handleTap (package:flutter/src/material/ink_well.dart:1224:21)
+«  … mais 30 linhas da pilha, todas dentro do Flutter …
+Handler: "onTap"
+Recognizer:
+  TapGestureRecognizer#77d7f
+════════════════════════════════════════════════════════════════════════════════════════════════════
+</pre>
+<p>Linha por linha:</p>
+<dl class="anatomy">
+  <dt>EXCEPTION CAUGHT BY GESTURE</dt><dd>"Exceção capturada pelos gestos": o erro aconteceu enquanto o Flutter tratava um toque.</dd>
+  <dt>Navigator operation requested with a context that does not include a Navigator.</dt><dd>"Pediram uma operação de navegação com um <code>context</code> que não tem um <code>Navigator</code>." O <code>Navigator.push(context, …)</code> procura um <code>Navigator</code> <strong>acima</strong> do <code>context</code> na árvore e não achou nenhum.</dd>
+  <dt>must be that of a widget that is a descendant of a Navigator widget</dt><dd>"O <code>context</code> precisa ser de um widget que esteja <strong>abaixo</strong> de um <code>Navigator</code>." Aqui está a pista: o <code>context</code> usado é o do <code>build</code> do <code>ReceitasApp</code>, que fica <strong>acima</strong> do <code>MaterialApp</code>, e é o <code>MaterialApp</code> que cria o <code>Navigator</code>.</dd>
+  <dt>#3 ReceitasApp.build.&lt;anonymous closure&gt; (package:app/main.dart:18:23)</dt><dd>A primeira linha da pilha que é do <strong>seu</strong> código: a função anônima (o <code>onTap</code>) dentro do <code>build</code> do <code>ReceitasApp</code>, linha 18, onde está o <code>Navigator.push</code>. As linhas #0 a #2 são do Flutter; procure sempre a primeira com <code>main.dart</code>.</dd>
+  <dt>Handler: "onTap"</dt><dd>Qual tratador de gesto estava rodando: o <code>onTap</code>.</dd>
+</dl>
+<p><strong>Como resolver:</strong> separe a tela num widget próprio (a <code>ListaPage</code> das versões acima). O <code>build</code> dela recebe um <code>context</code> que fica <strong>abaixo</strong> do <code>MaterialApp</code>, e lá o <code>Navigator</code> existe. Outra saída é envolver o <code>ListTile</code> num <code>Builder</code>, que cria um <code>context</code> novo naquele ponto; mas o widget separado é mais claro.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida do projeto</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Peça</th><th>Para que serviu aqui</th><th>Aula</th></tr>
+<tr><td>classe <code>Receita</code></td><td>Juntar nome, tempo e ingredientes num objeto</td><td><a href="json-modelos.html">JSON e Classes de Modelo</a></td></tr>
+<tr><td><code>Card</code> + <code>ListTile</code></td><td>Cada receita da lista</td><td><a href="card.html">Card e ListTile</a></td></tr>
+<tr><td><code>Navigator.push</code> + <code>MaterialPageRoute</code></td><td>Abrir a tela de detalhe</td><td><a href="navegacao.html">Navigator</a></td></tr>
+<tr><td>parâmetro no construtor</td><td>Levar a receita para a tela nova</td><td><a href="passar-dados-telas.html">Passando Dados entre Telas</a></td></tr>
+<tr><td><code>Navigator.pop(context, valor)</code> + <code>await</code></td><td>Voltar com uma resposta</td><td><a href="passar-dados-telas.html">Passando Dados entre Telas</a></td></tr>
+<tr><td><code>ScaffoldMessenger</code> + <code>SnackBar</code></td><td>O aviso no rodapé</td><td><a href="dialogos.html">Diálogos e SnackBar</a></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete a navegação</h3>
+<div class="ex-code">Navigator.<input data-answer="push" aria-label="método que abre a tela">(<br>&nbsp;&nbsp;context,<br>&nbsp;&nbsp;<input data-answer="MaterialPageRoute" aria-label="tipo de rota">(builder: (context) =&gt; DetalhePage(receita: receita)),<br>);</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">2. Na versão 3, a Ana abre o detalhe e volta pela seta da <code>AppBar</code>. O que o <code>await Navigator.push</code> devolve?</p>
+<label><input type="radio" name="q2"> O nome da receita.</label>
+<label><input type="radio" name="q2"> Uma string vazia.</label>
+<label><input type="radio" name="q2"> <code>null</code>.</label>
+<label><input type="radio" name="q2"> Um erro.</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">3. Quem põe a seta de voltar na <code>AppBar</code> da tela de detalhe?</p>
+<label><input type="radio" name="q3"> A própria <code>AppBar</code>, quando há uma tela embaixo na pilha.</label>
+<label><input type="radio" name="q3"> O <code>MaterialPageRoute</code>, dentro do <code>body</code>.</label>
+<label><input type="radio" name="q3"> Ninguém: é preciso escrever um <code>IconButton</code>.</label>
+<label><input type="radio" name="q3"> O <code>Card</code> da lista.</label>
+</div>
+
+<div class="exercise">
+<h3>4. Desafio: as receitas feitas</h3>
+<p>Transforme a <code>ListaPage</code> em <code>StatefulWidget</code> e guarde um <code>Set&lt;String&gt;</code> com os nomes das receitas feitas. Quando a resposta do detalhe chegar, acrescente o nome no conjunto (dentro de <code>setState</code>) e troque o <code>trailing</code> das receitas feitas por <code>Icon(Icons.check, color: Colors.green)</code>.</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O <code>Navigator</code> é uma pilha de telas: <code>push</code> põe uma tela em cima, <code>pop</code> tira.</li>
+  <li><code>Navigator.push(context, MaterialPageRoute(builder: (context) =&gt; Tela(…)))</code> abre uma tela; os dados vão pelo construtor dela.</li>
+  <li>A <code>AppBar</code> põe a seta de voltar sozinha quando há tela embaixo.</li>
+  <li><code>Navigator.pop(context, valor)</code> volta com uma resposta; quem abriu recebe com <code>await</code>, e recebe <code>null</code> se a pessoa voltou pela seta.</li>
+  <li>Depois de um <code>await</code>, confira <code>context.mounted</code> antes de usar o <code>context</code>.</li>
+  <li>O <code>context</code> do mesmo <code>build</code> que cria o <code>MaterialApp</code> não enxerga o <code>Navigator</code>: separe as telas em widgets próprios.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
