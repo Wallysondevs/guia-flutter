@@ -1,0 +1,854 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Form — formulários e validação de campos | Guia Flutter</title>
+<meta name="description" content="Formulários no Flutter para quem nunca fez um app: Form, TextFormField, a chave GlobalKey&lt;FormState&gt;, o validator que devolve a mensagem de erro, validate(), save() e onSaved, reset(), validar enquanto digita com autovalidateMode, conferir e-mail, número e senha repetida, e os erros reais (o Form sem key).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Form</span> e validação</h1>
+
+<p class="intro">Na aula <a href="textfield.html">TextField</a>, a Ana aprendeu a pôr campos na tela. Agora ela quer um <strong>cadastro</strong> de clientes para a lojinha: nome, e-mail e idade. E não quer que ninguém aperte "Salvar" com o nome em branco ou um e-mail sem <code>@</code>. Conferir se o que foi digitado presta se chama <strong>validar</strong>, e o Flutter tem uma dupla pronta para isso: o <code>Form</code> ("formulário") e o <code>TextFormField</code> ("campo de formulário").</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como agrupar campos num <code>Form</code> e trocar o <code>TextField</code> pelo <code>TextFormField</code>.</li>
+  <li>O que é o <code>validator</code>: uma função que devolve a <strong>mensagem de erro</strong> ou <code>null</code> se está tudo certo.</li>
+  <li>Como conferir todos os campos de uma vez com uma <code>GlobalKey&lt;FormState&gt;</code> e <code>validate()</code>.</li>
+  <li>Como guardar os valores com <code>onSaved</code> e <code>save()</code>, e limpar tudo com <code>reset()</code>.</li>
+  <li>Como validar enquanto a pessoa digita (<code>autovalidateMode</code>).</li>
+  <li>Validações comuns: obrigatório, e-mail, número, tamanho mínimo, senha repetida.</li>
+  <li>O erro real mais comum: esquecer a <code>key</code> do <code>Form</code>.</li>
+</ul>
+</div>
+
+<hr>
+
+<h2>A ideia: a recepcionista que confere a ficha</h2>
+<p>Lembra da ficha de papel na recepção? Quando você a entrega, a recepcionista passa os olhos em cada linha e devolve: "faltou o telefone", "esse CPF está com um número a menos". Ela confere <strong>tudo de uma vez</strong> e marca <strong>cada linha</strong> que está errada.</p>
+<ul>
+  <li>Cada <strong>linha</strong> da ficha sabe a sua regra ("o telefone tem de ter 11 números"). No Flutter, essa regra é o <code>validator</code> do <code>TextFormField</code>.</li>
+  <li>A <strong>ficha inteira</strong> é o <code>Form</code>. Ele junta as linhas.</li>
+  <li>A <strong>recepcionista</strong> que confere tudo é você, chamando <code>validate()</code> no botão "Salvar". Para alcançar o <code>Form</code> lá do botão, você usa uma <strong>chave</strong> (<code>GlobalKey</code>), como o crachá que diz "esta é a ficha do cliente 42".</li>
+</ul>
+
+<hr>
+
+<h2>1. Um campo obrigatório</h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Cadastro()));
+
+class Cadastro extends StatefulWidget {
+  const Cadastro({super.key});
+
+  @override
+  State&lt;Cadastro&gt; createState() =&gt; _CadastroState();
+}
+
+class _CadastroState extends State&lt;Cadastro&gt; {
+  final _formKey = GlobalKey&lt;FormState&gt;();
+
+  void salvar() {
+    if (_formKey.currentState!.validate()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cliente salvo!')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Novo cliente')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              TextFormField(
+                decoration: const InputDecoration(
+                  labelText: 'Nome',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (valor) {
+                  if (valor == null || valor.trim().isEmpty) {
+                    return 'Digite o nome do cliente';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              FilledButton(onPressed: salvar, child: const Text('Salvar')),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>final _formKey = GlobalKey&lt;FormState&gt;();</dt><dd>A <strong>chave</strong> do formulário, criada uma vez no <code>State</code>. Ela dá acesso ao <code>FormState</code>, o "estado" do formulário, de qualquer lugar da tela. O <code>_</code> no começo do nome a deixa privada ao arquivo (convenção do Dart).</dd>
+  <dt>Form(key: _formKey, child: …)</dt><dd>O formulário. Ele não desenha nada: só junta os <code>TextFormField</code> que estão <strong>dentro</strong> dele, em qualquer profundidade (aqui, dentro de uma <code>Column</code>).</dd>
+  <dt>TextFormField(…)</dt><dd>Um <code>TextField</code> que sabe participar de um <code>Form</code>. Aceita os mesmos parâmetros (<code>decoration</code>, <code>keyboardType</code>, <code>obscureText</code>, <code>controller</code>…) e mais alguns: <code>validator</code>, <code>onSaved</code>, <code>initialValue</code>.</dd>
+  <dt>validator: (valor) { … }</dt><dd>A regra do campo. Recebe o texto (um <code>String?</code>) e devolve: <strong>um texto</strong>, que é a mensagem de erro, se o valor não presta; ou <strong><code>null</code></strong>, que quer dizer "está certo". Parece ao contrário, mas pense assim: a função responde "<em>qual é o problema?</em>"; <code>null</code> = "nenhum".</dd>
+  <dt>_formKey.currentState!.validate()</dt><dd>Chama o <code>validator</code> de <strong>todos</strong> os campos do formulário, mostra as mensagens de erro embaixo de cada campo errado e devolve <code>true</code> só se todos responderam <code>null</code>. O <code>!</code> diz ao Dart "eu garanto que o formulário existe" (o <code>currentState</code> pode ser <code>null</code> se a chave não estiver em nenhum <code>Form</code>; veja <a href="#errado">Quando dá errado</a>).</dd>
+</dl>
+
+<p>Ao abrir, o campo está vazio e sem erro nenhum: o <code>validator</code> só roda quando alguém chama <code>validate()</code>.</p>
+<figure class="tela"><img src="assets/telas/formularios-1.png" alt="Tela &#39;Novo cliente&#39; com um campo de borda cinza escrito &#39;Nome&#39; e, embaixo, um botão roxo arredondado &#39;Salvar&#39;" width="390" height="844" loading="lazy"><figcaption>O formulário ao abrir: sem erro nenhum.</figcaption></figure>
+<p>A Ana tocou em <strong>Salvar</strong> sem escrever nada. O <code>validate()</code> rodou o <code>validator</code>, que devolveu <code>'Digite o nome do cliente'</code>:</p>
+<figure class="tela"><img src="assets/telas/formularios-2.png" alt="O mesmo formulário com a borda do campo e a palavra &#39;Nome&#39; em vermelho e, embaixo do campo, em letra pequena vermelha, &#39;Digite o nome do cliente&#39;; o botão Salvar desceu um pouco para dar lugar à mensagem" width="390" height="844" loading="lazy"><figcaption>Depois de tocar em Salvar com o campo vazio.</figcaption></figure>
+<p>Ela escreveu o nome e tocou em Salvar de novo. Agora o <code>validator</code> devolveu <code>null</code>, o <code>validate()</code> deu <code>true</code> e o <code>SnackBar</code> apareceu:</p>
+<figure class="tela"><img src="assets/telas/formularios-3.png" alt="O campo com &#39;Dona Marta&#39; digitado, borda cinza de novo, sem mensagem vermelha; no pé da tela, uma barra escura com &#39;Cliente salvo!&#39;" width="390" height="844" loading="lazy"><figcaption>Nome preenchido e Salvar: o validate() deu true.</figcaption></figure>
+
+<div class="tryflutter" data-goal="src:return\s+'Digite o nome do cliente'">
+<p class="try-task"><strong>Missão:</strong> o <code>validator</code> abaixo aceita tudo (sempre devolve <code>null</code>). Faça ele devolver <code>'Digite o nome do cliente'</code> quando o valor estiver vazio, e toque em Salvar com o campo em branco.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Cadastro()));
+
+class Cadastro extends StatefulWidget {
+  const Cadastro({super.key});
+
+  @override
+  State&lt;Cadastro&gt; createState() =&gt; _CadastroState();
+}
+
+class _CadastroState extends State&lt;Cadastro&gt; {
+  final _formKey = GlobalKey&lt;FormState&gt;();
+
+  void salvar() {
+    if (_formKey.currentState!.validate()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cliente salvo!')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Novo cliente')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              TextFormField(
+                decoration: const InputDecoration(
+                  labelText: 'Nome',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (valor) {
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              FilledButton(onPressed: salvar, child: const Text('Salvar')),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Cadastro()));
+
+class Cadastro extends StatefulWidget {
+  const Cadastro({super.key});
+
+  @override
+  State&lt;Cadastro&gt; createState() =&gt; _CadastroState();
+}
+
+class _CadastroState extends State&lt;Cadastro&gt; {
+  final _formKey = GlobalKey&lt;FormState&gt;();
+
+  void salvar() {
+    if (_formKey.currentState!.validate()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cliente salvo!')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Novo cliente')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              TextFormField(
+                decoration: const InputDecoration(
+                  labelText: 'Nome',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (valor) {
+                  if (valor == null || valor.trim().isEmpty) {
+                    return 'Digite o nome do cliente';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              FilledButton(onPressed: salvar, child: const Text('Salvar')),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>2. Vários campos, cada um com a sua regra</h2>
+<p>O cadastro completo da Ana: nome, e-mail e idade. Cada campo tem o seu <code>validator</code>, e o <code>validate()</code> confere os três de uma vez:</p>
+
+<pre class="file" data-file="lib/main.dart (trecho)">TextFormField(
+  decoration: const InputDecoration(labelText: 'Nome', border: OutlineInputBorder()),
+  validator: (valor) {
+    if (valor == null || valor.trim().isEmpty) return 'Digite o nome do cliente';
+    if (valor.trim().length &lt; 3) return 'O nome precisa de pelo menos 3 letras';
+    return null;
+  },
+),
+const SizedBox(height: 16),
+TextFormField(
+  keyboardType: TextInputType.emailAddress,
+  decoration: const InputDecoration(labelText: 'E-mail', border: OutlineInputBorder()),
+  validator: (valor) {
+    if (valor == null || valor.isEmpty) return 'Digite o e-mail';
+    if (!valor.contains('@') || !valor.contains('.')) return 'E-mail inválido';
+    return null;
+  },
+),
+const SizedBox(height: 16),
+TextFormField(
+  keyboardType: TextInputType.number,
+  decoration: const InputDecoration(labelText: 'Idade', border: OutlineInputBorder()),
+  validator: (valor) {
+    final idade = int.tryParse(valor ?? '');
+    if (idade == null) return 'Digite a idade em números';
+    if (idade &lt; 18) return 'O cliente precisa ter 18 anos ou mais';
+    return null;
+  },
+),
+</pre>
+
+<dl class="anatomy">
+  <dt>if (…) return '…';</dt><dd>As regras vão da mais básica para a mais detalhada. A <strong>primeira</strong> que falhar devolve a sua mensagem, e as outras nem são testadas: a pessoa vê um problema de cada vez, o mais importante primeiro.</dd>
+  <dt>valor.contains('@')</dt><dd>Uma conferência simples de e-mail: tem <code>@</code> e tem ponto. Não garante que o e-mail existe (só mandando uma mensagem para ele dá para saber), mas pega os erros de digitação mais comuns.</dd>
+  <dt>int.tryParse(valor ?? '')</dt><dd>Tenta transformar o texto em número inteiro; se não der (<code>'vinte'</code>, <code>''</code>), devolve <code>null</code>, sem erro. O <code>?? ''</code> troca um <code>valor</code> nulo por texto vazio. Lembre: o <code>keyboardType: TextInputType.number</code> só escolhe o teclado, não impede a pessoa de colar letras, então a conferência é necessária.</dd>
+</dl>
+
+<p>A Ana preencheu errado de propósito: nome <code>Jo</code>, e-mail <code>ana.com</code> e idade <code>16</code>, e tocou em Salvar (no app completo, que está na seção 3). Os três campos ficaram vermelhos, cada um com a <strong>sua</strong> mensagem:</p>
+<figure class="tela"><img src="assets/telas/formularios-4.png" alt="Formulário com três campos de borda vermelha: Nome com &#39;Jo&#39; e a mensagem &#39;O nome precisa de pelo menos 3 letras&#39;; E-mail com &#39;ana.com&#39; e &#39;E-mail inválido&#39;; Idade com &#39;16&#39; e &#39;O cliente precisa ter 18 anos ou mais&#39;; embaixo, o botão Salvar" width="390" height="844" loading="lazy"><figcaption>Um validate() conferiu os três campos de uma vez.</figcaption></figure>
+
+<hr>
+
+<h2>3. Guardando os valores: <code>onSaved</code> e <code>save()</code></h2>
+<p>Validou, deu certo. E agora, como pegar o que foi digitado? Uma forma é dar um <code>TextEditingController</code> a cada campo (como na aula <a href="textfield.html">TextField</a>). Outra, mais limpa num formulário grande, é o par <code>onSaved</code> + <code>save()</code>:</p>
+
+<pre class="file" data-file="lib/main.dart (trecho)">String nome = '';
+String email = '';
+int idade = 0;
+
+void salvar() {
+  final form = _formKey.currentState!;
+  if (form.validate()) {
+    form.save();
+    debugPrint('Salvo: $nome, $email, $idade anos');
+  }
+}
+
+// nos campos:
+TextFormField(
+  decoration: const InputDecoration(labelText: 'Nome'),
+  validator: …,
+  onSaved: (valor) =&gt; nome = valor!.trim(),
+),
+TextFormField(
+  decoration: const InputDecoration(labelText: 'E-mail'),
+  validator: …,
+  onSaved: (valor) =&gt; email = valor!,
+),
+TextFormField(
+  decoration: const InputDecoration(labelText: 'Idade'),
+  validator: …,
+  onSaved: (valor) =&gt; idade = int.parse(valor!),
+),
+</pre>
+
+<dl class="anatomy">
+  <dt>form.save()</dt><dd>Chama o <code>onSaved</code> de <strong>todos</strong> os campos. Só chame depois que o <code>validate()</code> deu <code>true</code>: assim você sabe que os valores prestam.</dd>
+  <dt>onSaved: (valor) =&gt; nome = valor!.trim()</dt><dd>Recebe o texto do campo e guarda numa variável do <code>State</code>. O <code>!</code> é seguro aqui porque o <code>validator</code> já garantiu que não é nulo.</dd>
+  <dt>int.parse(valor!)</dt><dd>Agora pode ser <code>parse</code> (que dá erro se não for número) em vez de <code>tryParse</code>, porque o <code>validator</code> já conferiu.</dd>
+</dl>
+
+<p>O cadastro completo, juntando os validadores da seção 2, o <code>onSaved</code> e o <code>reset()</code> (que você vai ver logo abaixo):</p>
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Cadastro()));
+
+class Cadastro extends StatefulWidget {
+  const Cadastro({super.key});
+
+  @override
+  State&lt;Cadastro&gt; createState() =&gt; _CadastroState();
+}
+
+class _CadastroState extends State&lt;Cadastro&gt; {
+  final _formKey = GlobalKey&lt;FormState&gt;();
+  String nome = '';
+  String email = '';
+  int idade = 0;
+
+  void salvar() {
+    final form = _formKey.currentState!;
+    if (form.validate()) {
+      form.save();
+      debugPrint('Salvo: $nome, $email, $idade anos');
+      form.reset();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Novo cliente')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              TextFormField(
+                decoration: const InputDecoration(
+                  labelText: 'Nome',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (valor) {
+                  if (valor == null || valor.trim().isEmpty) {
+                    return 'Digite o nome do cliente';
+                  }
+                  if (valor.trim().length &lt; 3) {
+                    return 'O nome precisa de pelo menos 3 letras';
+                  }
+                  return null;
+                },
+                onSaved: (valor) =&gt; nome = valor!.trim(),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'E-mail',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (valor) {
+                  if (valor == null || valor.isEmpty) return 'Digite o e-mail';
+                  if (!valor.contains('@') || !valor.contains('.')) {
+                    return 'E-mail inválido';
+                  }
+                  return null;
+                },
+                onSaved: (valor) =&gt; email = valor!,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Idade',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (valor) {
+                  final idade = int.tryParse(valor ?? '');
+                  if (idade == null) return 'Digite a idade em números';
+                  if (idade &lt; 18) return 'O cliente precisa ter 18 anos ou mais';
+                  return null;
+                },
+                onSaved: (valor) =&gt; idade = int.parse(valor!),
+              ),
+              const SizedBox(height: 16),
+              FilledButton(onPressed: salvar, child: const Text('Salvar')),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<p>A Ana preencheu <code>Joana Lima</code>, <code>joana@exemplo.com</code> e <code>34</code> e tocou em Salvar. O <code>debugPrint</code> escreveu no console:</p>
+<pre class="term">Salvo: Joana Lima, joana@exemplo.com, 34 anos
+</pre>
+<p>E o <code>reset()</code> deixou o formulário em branco, pronto para o próximo cliente:</p>
+<figure class="tela"><img src="assets/telas/formularios-5.png" alt="O formulário com os três campos, Nome, E-mail e Idade, vazios de novo e sem nenhuma mensagem de erro, e o botão Salvar" width="390" height="844" loading="lazy"><figcaption>Depois do save() e do reset().</figcaption></figure>
+
+<h3>Limpar tudo: <code>reset()</code></h3>
+<p>Depois de salvar, a Ana quer o formulário em branco para o próximo cliente. O <code>reset()</code> volta todos os campos ao valor inicial (o <code>initialValue</code>, ou vazio) e apaga as mensagens de erro:</p>
+<pre class="file" data-file="lib/main.dart (trecho)">form.save();
+form.reset();
+</pre>
+
+<hr>
+
+<h2>4. Validar enquanto a pessoa digita: <code>autovalidateMode</code></h2>
+<p>Do jeito que está, o erro só aparece quando a pessoa toca em Salvar. Às vezes é melhor avisar <strong>na hora</strong>: errou uma letra do e-mail, a mensagem já aparece. O <code>autovalidateMode</code> escolhe <strong>quando</strong> o <code>validator</code> roda sozinho:</p>
+
+<pre class="file" data-file="lib/main.dart (trecho)">Form(
+  key: _formKey,
+  autovalidateMode: AutovalidateMode.onUserInteraction,
+  child: …,
+)
+</pre>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th><code>AutovalidateMode.</code></th><th>O <code>validator</code> roda sozinho…</th></tr>
+<tr><td><code>disabled</code> (padrão)</td><td>nunca: só quando você chama <code>validate()</code></td></tr>
+<tr><td><code>onUserInteraction</code></td><td>a cada mudança, mas só nos campos que a pessoa já mexeu (os outros continuam limpos)</td></tr>
+<tr><td><code>always</code></td><td>sempre, desde o começo: o formulário já abre cheio de erros vermelhos, o que assusta</td></tr>
+</table>
+</div>
+
+<p>Dá para pôr o <code>autovalidateMode</code> no <code>Form</code> (vale para todos) ou num <code>TextFormField</code> só. Um padrão bom e comum: começar com <code>disabled</code> e, depois da primeira tentativa de salvar que falhou, trocar para <code>onUserInteraction</code>, para a mensagem sumir assim que a pessoa conserta:</p>
+
+<pre class="file" data-file="lib/main.dart (trecho)">AutovalidateMode modo = AutovalidateMode.disabled;
+
+void salvar() {
+  if (_formKey.currentState!.validate()) {
+    // … salvar
+  } else {
+    setState(() {
+      modo = AutovalidateMode.onUserInteraction;
+    });
+  }
+}
+
+// no build:
+Form(key: _formKey, autovalidateMode: modo, child: …)
+</pre>
+
+<hr>
+
+<h2>5. Um campo que depende de outro: "repita a senha"</h2>
+<p>O <code>validator</code> é uma função comum: pode olhar outras variáveis. Para conferir a senha repetida, dê um controlador ao primeiro campo e compare no segundo:</p>
+
+<pre class="file" data-file="lib/main.dart (trecho)">final senha = TextEditingController();
+
+// no build:
+TextFormField(
+  controller: senha,
+  obscureText: true,
+  decoration: const InputDecoration(labelText: 'Senha'),
+  validator: (valor) {
+    if (valor == null || valor.length &lt; 6) return 'A senha precisa de 6 caracteres ou mais';
+    return null;
+  },
+),
+TextFormField(
+  obscureText: true,
+  decoration: const InputDecoration(labelText: 'Repita a senha'),
+  validator: (valor) {
+    if (valor != senha.text) return 'As senhas não são iguais';
+    return null;
+  },
+),
+</pre>
+<p>Não esqueça o <code>senha.dispose()</code> no <code>dispose()</code> do <code>State</code>.</p>
+
+<div class="tryflutter" data-goal="src:As senhas não são iguais">
+<p class="try-task"><strong>Missão:</strong> o segundo campo aceita qualquer coisa. Escreva o <code>validator</code> dele para devolver <code>'As senhas não são iguais'</code> quando o valor for diferente de <code>senha.text</code>. Teste com senhas diferentes e depois iguais.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: CriarConta()));
+
+class CriarConta extends StatefulWidget {
+  const CriarConta({super.key});
+
+  @override
+  State&lt;CriarConta&gt; createState() =&gt; _CriarContaState();
+}
+
+class _CriarContaState extends State&lt;CriarConta&gt; {
+  final _formKey = GlobalKey&lt;FormState&gt;();
+  final senha = TextEditingController();
+
+  @override
+  void dispose() {
+    senha.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Criar conta')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              TextFormField(
+                controller: senha,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Senha'),
+                validator: (valor) {
+                  if (valor == null || valor.length &lt; 6) {
+                    return 'A senha precisa de 6 caracteres ou mais';
+                  }
+                  return null;
+                },
+              ),
+              TextFormField(
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Repita a senha'),
+              ),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: () =&gt; _formKey.currentState!.validate(),
+                child: const Text('Criar conta'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: CriarConta()));
+
+class CriarConta extends StatefulWidget {
+  const CriarConta({super.key});
+
+  @override
+  State&lt;CriarConta&gt; createState() =&gt; _CriarContaState();
+}
+
+class _CriarContaState extends State&lt;CriarConta&gt; {
+  final _formKey = GlobalKey&lt;FormState&gt;();
+  final senha = TextEditingController();
+
+  @override
+  void dispose() {
+    senha.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Criar conta')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              TextFormField(
+                controller: senha,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Senha'),
+                validator: (valor) {
+                  if (valor == null || valor.length &lt; 6) {
+                    return 'A senha precisa de 6 caracteres ou mais';
+                  }
+                  return null;
+                },
+              ),
+              TextFormField(
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Repita a senha'),
+                validator: (valor) {
+                  if (valor != senha.text) {
+                    return 'As senhas não são iguais';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: () =&gt; _formKey.currentState!.validate(),
+                child: const Text('Criar conta'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>O que usar</th></tr>
+<tr><td>Vários campos conferidos juntos num botão</td><td><code>Form</code> + <code>TextFormField</code> + <code>validate()</code></td></tr>
+<tr><td>Pegar os valores depois de validar</td><td><code>onSaved</code> + <code>save()</code>, ou um <code>TextEditingController</code> por campo</td></tr>
+<tr><td>Um campo só, sem <code>Form</code> (uma busca, por exemplo)</td><td><code>TextField</code> com <code>InputDecoration(errorText: …)</code>: quando <code>errorText</code> não é <code>null</code>, o campo fica vermelho com a mensagem</td></tr>
+<tr><td>Avisar o erro enquanto a pessoa digita</td><td><code>autovalidateMode: AutovalidateMode.onUserInteraction</code></td></tr>
+<tr><td>A mesma regra em vários campos (obrigatório)</td><td>Uma função sua, <code>String? obrigatorio(String? v) =&gt; …</code>, passada como <code>validator: obrigatorio</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Esqueceu o <code>key: _formKey</code> no <code>Form</code></strong>
+<p>O app da seção 1 sem a linha <code>key: _formKey,</code>. Ele abre normalmente, com o campo e o botão. O problema só aparece quando a Ana toca em <strong>Salvar</strong>: nada acontece na tela, e o console mostra (aqui, de um teste que toca no botão; no <code>flutter run</code> o texto é o mesmo, com <code>lib/main.dart</code>):</p>
+<pre class="term">══╡ EXCEPTION CAUGHT BY GESTURE ╞═══════════════════════════════════════════════════════════════════
+The following _TypeError was thrown while handling a gesture:
+Null check operator used on a null value
+
+When the exception was thrown, this was the stack:
+#0      _CadastroState.salvar (file:///home/ana/app/test/form_semkey_test.dart:16:30)
+#1      _InkResponseState.handleTap (package:flutter/src/material/ink_well.dart:1224:21)
+…
+</pre>
+<dl class="anatomy">
+  <dt>EXCEPTION CAUGHT BY GESTURE</dt><dd>O erro aconteceu enquanto o Flutter tratava um <strong>gesto</strong> (o toque no botão).</dd>
+  <dt>Null check operator used on a null value</dt><dd>"O operador de checagem de nulo (o <code>!</code>) foi usado num valor nulo." Você prometeu ao Dart, com o <code>!</code> de <code>currentState!</code>, que o formulário existia; mas a chave não estava presa a nenhum <code>Form</code>, então <code>currentState</code> era <code>null</code>.</dd>
+  <dt>#0 _CadastroState.salvar (…:16:30)</dt><dd>A primeira linha da pilha é a que importa: o erro foi na função <code>salvar</code>, linha 16, coluna 30 (bem no <code>!</code> de <code>_formKey.currentState!.validate()</code>). As outras linhas são o caminho do toque dentro do Flutter.</dd>
+</dl>
+<p><strong>Como consertar:</strong> <code>Form(key: _formKey, child: …)</code>. Sempre que aparecer <code>Null check operator used on a null value</code> junto de um <code>currentState!</code>, desconfie da chave.</p>
+</div>
+
+<div class="cenario">
+<strong>O <code>validator</code> que nunca devolve <code>null</code></strong>
+<pre class="file" data-file="lib/main.dart (trecho)">validator: (valor) {
+  if (valor == null || valor.isEmpty) {
+    return 'Digite o nome';
+  }
+  return '';
+},
+</pre>
+<p>Parece inofensivo, mas o texto vazio <code>''</code> <strong>não é</strong> <code>null</code>: para o <code>Form</code>, é uma mensagem de erro (vazia). O <code>validate()</code> devolve sempre <code>false</code> e o botão Salvar nunca funciona. <strong>Como consertar:</strong> no fim do <code>validator</code>, <code>return null;</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Usou <code>TextField</code> em vez de <code>TextFormField</code></strong>
+<p>O <code>TextField</code> não tem <code>validator</code>: se você tentar passar um, o app nem compila. Trocando o <code>TextFormField</code> do app da seção 1 por <code>TextField</code>, o <code>flutter analyze</code> mostra:</p>
+<pre class="term">$ flutter analyze lib
+Analyzing lib...
+  error • The named parameter 'validator' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'validator' • lib/main.dart:38:17 • undefined_named_parameter
+1 issue found. (ran in 3.7s)
+</pre>
+<p>("o parâmetro nomeado <code>validator</code> não existe"). E um <code>TextField</code> dentro de um <code>Form</code> é ignorado pelo <code>validate()</code>, <code>save()</code> e <code>reset()</code>. <strong>Como consertar:</strong> dentro de um <code>Form</code>, use <code>TextFormField</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Peça</th><th>O que faz</th></tr>
+<tr><td><code>final _formKey = GlobalKey&lt;FormState&gt;();</code></td><td>A chave para alcançar o formulário (crie no <code>State</code>)</td></tr>
+<tr><td><code>Form(key: _formKey, child: …)</code></td><td>Junta os <code>TextFormField</code> de dentro</td></tr>
+<tr><td><code>TextFormField(validator: (v) { … })</code></td><td>Devolve a mensagem de erro, ou <code>null</code> se está certo</td></tr>
+<tr><td><code>_formKey.currentState!.validate()</code></td><td>Roda todos os validadores; <code>true</code> se nenhum reclamou</td></tr>
+<tr><td><code>onSaved: (v) =&gt; …</code> + <code>save()</code></td><td>Entrega os valores de todos os campos</td></tr>
+<tr><td><code>reset()</code></td><td>Volta os campos ao início e apaga os erros</td></tr>
+<tr><td><code>initialValue: 'Ana'</code></td><td>Texto inicial (não use junto com <code>controller</code>)</td></tr>
+<tr><td><code>autovalidateMode:</code></td><td><code>disabled</code> (padrão), <code>onUserInteraction</code>, <code>always</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o validador</h3>
+<p>Complete para o campo reclamar quando estiver vazio e aceitar quando tiver algo:</p>
+<div class="ex-code">validator: (valor) {<br>&nbsp;&nbsp;if (valor == null || valor.isEmpty) {<br>&nbsp;&nbsp;&nbsp;&nbsp;return 'Campo obrigatório';<br>&nbsp;&nbsp;}<br>&nbsp;&nbsp;return <input data-answer="null" aria-label="valor de 'está tudo certo'">;<br>},</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. O que o <code>validate()</code> devolve quando um dos três campos está errado?</p>
+<label><input type="radio" name="q2"> A mensagem de erro do campo</label>
+<label><input type="radio" name="q2"> <code>false</code>, e mostra a mensagem embaixo do campo errado</label>
+<label><input type="radio" name="q2"> <code>true</code>, porque dois estão certos</label>
+<label><input type="radio" name="q2"> <code>null</code></label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">3. Quando o <code>onSaved</code> dos campos roda?</p>
+<label><input type="radio" name="q3"> A cada letra digitada</label>
+<label><input type="radio" name="q3"> Quando o <code>validate()</code> dá <code>true</code>, sozinho</label>
+<label><input type="radio" name="q3"> Quando a pessoa sai do campo</label>
+<label><input type="radio" name="q3"> Quando você chama <code>_formKey.currentState!.save()</code></label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. Qual <code>autovalidateMode</code> mostra o erro enquanto a pessoa digita, mas só nos campos em que ela já mexeu?</p>
+<label><input type="radio" name="q4"> <code>AutovalidateMode.always</code></label>
+<label><input type="radio" name="q4"> <code>AutovalidateMode.disabled</code></label>
+<label><input type="radio" name="q4"> <code>AutovalidateMode.onUserInteraction</code></label>
+<label><input type="radio" name="q4"> <code>AutovalidateMode.onSave</code></label>
+</div>
+
+<h3>Missão final: o telefone com 11 números</h3>
+<div class="tryflutter" data-goal="src:length\s*!=\s*11">
+<p class="try-task"><strong>Missão:</strong> acrescente ao formulário um campo <strong>Celular</strong> (<code>keyboardType: TextInputType.phone</code>) cujo <code>validator</code> devolva <code>'O celular tem 11 números (com DDD)'</code> quando o valor não tiver exatamente 11 caracteres (<code>valor.length != 11</code>).</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Cadastro()));
+
+class Cadastro extends StatefulWidget {
+  const Cadastro({super.key});
+
+  @override
+  State&lt;Cadastro&gt; createState() =&gt; _CadastroState();
+}
+
+class _CadastroState extends State&lt;Cadastro&gt; {
+  final _formKey = GlobalKey&lt;FormState&gt;();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Novo cliente')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              TextFormField(
+                decoration: const InputDecoration(labelText: 'Nome'),
+                validator: (valor) {
+                  if (valor == null || valor.trim().isEmpty) {
+                    return 'Digite o nome do cliente';
+                  }
+                  return null;
+                },
+              ),
+              // o campo Celular vai aqui
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: () =&gt; _formKey.currentState!.validate(),
+                child: const Text('Salvar'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Cadastro()));
+
+class Cadastro extends StatefulWidget {
+  const Cadastro({super.key});
+
+  @override
+  State&lt;Cadastro&gt; createState() =&gt; _CadastroState();
+}
+
+class _CadastroState extends State&lt;Cadastro&gt; {
+  final _formKey = GlobalKey&lt;FormState&gt;();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Novo cliente')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              TextFormField(
+                decoration: const InputDecoration(labelText: 'Nome'),
+                validator: (valor) {
+                  if (valor == null || valor.trim().isEmpty) {
+                    return 'Digite o nome do cliente';
+                  }
+                  return null;
+                },
+              ),
+              TextFormField(
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(labelText: 'Celular'),
+                validator: (valor) {
+                  if (valor == null || valor.length != 11) {
+                    return 'O celular tem 11 números (com DDD)';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: () =&gt; _formKey.currentState!.validate(),
+                child: const Text('Salvar'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O <code>Form</code> junta os campos; cada <code>TextFormField</code> tem o seu <code>validator</code>.</li>
+  <li>O <code>validator</code> devolve a <strong>mensagem de erro</strong> ou <code>null</code> (= "está certo"). Texto vazio <code>''</code> também conta como erro.</li>
+  <li>A <code>GlobalKey&lt;FormState&gt;</code> no <code>key</code> do <code>Form</code> deixa o botão chamar <code>validate()</code>, <code>save()</code> e <code>reset()</code>.</li>
+  <li><code>validate()</code> confere tudo e mostra os erros; <code>save()</code> chama os <code>onSaved</code>; <code>reset()</code> limpa.</li>
+  <li><code>autovalidateMode: AutovalidateMode.onUserInteraction</code> confere enquanto a pessoa digita.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
