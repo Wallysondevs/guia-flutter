@@ -610,7 +610,7 @@ Carrinho: [Café, Pão de queijo]
 <p>…mas o selo continua em <strong>0</strong>, igual à primeira foto da seção 4. O carrinho mudou, só que ninguém avisou o <code>IconeCarrinho</code>, então o <code>build</code> dele não rodou de novo. <strong>Como consertar:</strong> todo método que muda os dados termina com <code>notifyListeners()</code>.</p>
 </div>
 
-<div class="tryflutter" data-goal="src:void adicionar\(String item\) \{[^}]*notifyListeners\(\)">
+<div class="tryflutter" data-goal="src:void adicionar\(String item\) \{[^}]*notifyListeners\(\)" data-foto="assets/telas/provider-2.png" data-foto-alt="A Lojinha da Ana depois de dois toques nos botões de adicionar: o selo do carrinho, no canto de cima, mostra 2">
 <p class="try-task"><strong>Missão:</strong> este é o carrinho sem aviso. Rode, toque nos botões e veja o selo parado em 0 (a lista aparece no console do DartPad). Conserte o método <code>adicionar</code> para o selo voltar a contar.</p>
 <pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
