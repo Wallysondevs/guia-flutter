@@ -1,0 +1,649 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter FutureBuilder — mostrando dados que ainda vão chegar | Guia Flutter</title>
+<meta name="description" content="O FutureBuilder do Flutter para quem nunca fez um app: o que é um Future, os três estados da tela (carregando, deu certo, deu erro), o AsyncSnapshot (connectionState, hasData, hasError, data, error), por que criar o Future no initState e não no build, e a tela vermelha do snapshot.data! nulo.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">FutureBuilder</span></h1>
+
+<p class="intro">Quase todo app de verdade mostra dados que <strong>não estão prontos</strong> quando a tela abre: as receitas vêm de um servidor, o saldo vem do banco, a foto vem da internet. Isso leva tempo, às vezes meio segundo, às vezes dez. Enquanto isso, a tela não pode ficar congelada nem em branco: ela precisa mostrar "carregando…", depois os dados, ou uma mensagem de erro se algo falhou. O <code>FutureBuilder</code> é o widget que faz essa troca de telas para você.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é um <code>Future</code> (um valor que vai chegar depois), em uma revisão rápida do Dart.</li>
+  <li>Como o <code>FutureBuilder</code> redesenha a tela quando o valor chega.</li>
+  <li>Os três estados de toda tela que espera dados: <strong>carregando</strong>, <strong>deu certo</strong> e <strong>deu erro</strong>.</li>
+  <li>O <code>AsyncSnapshot</code>: <code>connectionState</code>, <code>hasData</code>, <code>data</code>, <code>hasError</code> e <code>error</code>.</li>
+  <li>Por que o <code>Future</code> deve ser criado no <code>initState</code>, e não dentro do <code>build</code>.</li>
+  <li>A tela vermelha do <code>snapshot.data!</code> quando o dado ainda não chegou.</li>
+</ul>
+</div>
+
+<p>Os exemplos desta aula foram rodados no laboratório do guia, com o <span class="versao">Flutter 3.47</span>. Para não depender da internet, a busca no servidor é <strong>de mentirinha</strong>: um <code>Future.delayed</code> que espera 2 segundos e devolve uma lista. Na aula <a href="http.html">Buscando Dados na Internet</a>, você troca essa mentirinha por uma busca de verdade, e o <code>FutureBuilder</code> continua igual.</p>
+
+<hr>
+
+<h2>A ideia: a senha da padaria</h2>
+<p>Na padaria, a Ana pede um bolo que ainda está no forno. A atendente não faz a Ana esperar parada no balcão: entrega uma <strong>senha</strong> e diz "quando ficar pronto, eu chamo". A senha não é o bolo; é a <strong>promessa</strong> de um bolo. Enquanto espera, a Ana pode olhar a vitrine. Quando o número dela é chamado, chegou uma de duas notícias: "<strong>seu bolo está pronto</strong>" ou "<strong>queimou, desculpe</strong>".</p>
+<p>No Dart, essa senha se chama <code>Future</code> ("futuro"). Uma função <code>async</code> devolve um <code>Future&lt;List&lt;String&gt;&gt;</code>: "<em>uma lista de textos, no futuro</em>". E o <code>FutureBuilder</code> é o painel da padaria: mostra "aguarde" enquanto a senha não é chamada, e troca para o resultado (ou para o aviso de erro) quando ela é.</p>
+
+<div class="tip">
+<strong>Revisão de Dart: <code>async</code>, <code>await</code> e <code>Future</code></strong>
+<p>Uma função marcada com <code>async</code> sempre devolve um <code>Future</code>. Dentro dela, <code>await</code> espera um outro <code>Future</code> terminar sem travar o app. Fora de um widget, você usaria <code>final receitas = await buscarReceitas();</code>. Mas o método <code>build</code> de um widget <strong>não pode</strong> ser <code>async</code> nem esperar nada: ele tem de devolver um widget na hora. É por isso que existe o <code>FutureBuilder</code>. (A revisão completa está no <a href="https://wallysondevs.github.io/guia-dart/">Guia Dart</a>.)</p>
+</div>
+
+<hr>
+
+<h2>1. O primeiro <code>FutureBuilder</code></h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaReceitas(),
+    );
+  }
+}
+
+// Finge que vai buscar as receitas num servidor: demora 2 segundos.
+Future&lt;List&lt;String&gt;&gt; buscarReceitas() async {
+  await Future.delayed(const Duration(seconds: 2));
+  return ['Bolo de cenoura', 'Feijoada', 'Pão de queijo'];
+}
+
+class TelaReceitas extends StatefulWidget {
+  const TelaReceitas({super.key});
+
+  @override
+  State&lt;TelaReceitas&gt; createState() =&gt; _TelaReceitasState();
+}
+
+class _TelaReceitasState extends State&lt;TelaReceitas&gt; {
+  late final Future&lt;List&lt;String&gt;&gt; _receitas;
+
+  @override
+  void initState() {
+    super.initState();
+    _receitas = buscarReceitas();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: FutureBuilder&lt;List&lt;String&gt;&gt;(
+        future: _receitas,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Erro: ${snapshot.error}'));
+          }
+          final receitas = snapshot.data!;
+          return ListView(
+            children: [
+              for (final nome in receitas)
+                ListTile(
+                  leading: const Icon(Icons.restaurant_menu),
+                  title: Text(nome),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>Future&lt;List&lt;String&gt;&gt; buscarReceitas() async</dt><dd>A "busca no servidor" de mentirinha. O <code>await Future.delayed(…)</code> espera 2 segundos; depois, o <code>return</code> entrega a lista. Quem chama recebe o <code>Future</code> <strong>na hora</strong> (a senha) e a lista <strong>2 segundos depois</strong>.</dd>
+  <dt>StatefulWidget e late final Future… _receitas</dt><dd>A tela guarda a senha num campo do <code>State</code>. O <code>late</code> diz ao Dart "vou dar valor a ele antes de usar" (no <code>initState</code>); o <code>final</code>, que ele não muda depois.</dd>
+  <dt>initState() { … _receitas = buscarReceitas(); }</dt><dd>A busca começa <strong>uma vez</strong>, quando a tela nasce (veja <a href="ciclo-de-vida.html">Ciclo de Vida</a>). Isso é importante: a seção <a href="#errado">Quando dá errado</a> mostra o que acontece se você chamar <code>buscarReceitas()</code> dentro do <code>build</code>.</dd>
+  <dt>FutureBuilder&lt;List&lt;String&gt;&gt;</dt><dd>O widget que acompanha o <code>Future</code>. O tipo entre <code>&lt; &gt;</code> é o tipo do dado que vai chegar.</dd>
+  <dt>future: _receitas</dt><dd>A senha que ele acompanha.</dd>
+  <dt>builder: (context, snapshot) { … }</dt><dd>A função que desenha a tela. O <code>FutureBuilder</code> chama ela <strong>várias vezes</strong>: uma logo de cara (ainda esperando) e outra quando o <code>Future</code> termina. O <code>snapshot</code> ("fotografia instantânea") diz como está o <code>Future</code> naquele momento.</dd>
+  <dt>snapshot.connectionState == ConnectionState.waiting</dt><dd>Ainda esperando: mostra a rodinha girando (<code>CircularProgressIndicator</code>) no meio da tela.</dd>
+  <dt>snapshot.hasError e snapshot.error</dt><dd>O <code>Future</code> terminou com erro: <code>error</code> guarda o erro que foi lançado.</dd>
+  <dt>snapshot.data!</dt><dd>O dado que chegou. Ele é <code>List&lt;String&gt;?</code> (pode ser nulo, porque antes de chegar não existe); o <code>!</code> diz ao Dart "aqui ele já existe", o que é verdade, porque os dois <code>if</code> acima já trataram a espera e o erro.</dd>
+</dl>
+
+<p>O app logo que abriu e, depois, passados os 2 segundos:</p>
+
+<figure class="tela"><img src="assets/telas/futurebuilder-1.png" alt="App Receitas da Ana: abaixo do título, a tela vazia com uma rodinha roxa de carregando no meio" width="390" height="844" loading="lazy"><figcaption>Carregando: o <code>Future</code> ainda não terminou (<code>ConnectionState.waiting</code>).</figcaption></figure>
+
+<figure class="tela"><img src="assets/telas/futurebuilder-2.png" alt="App Receitas da Ana com a lista: Bolo de cenoura, Feijoada e Pão de queijo, cada uma com um ícone de garfo e colher" width="390" height="844" loading="lazy"><figcaption>Deu certo: o <code>Future</code> terminou com a lista (<code>ConnectionState.done</code> e <code>hasData</code>).</figcaption></figure>
+
+<h3>A ordem dos acontecimentos</h3>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Momento</th><th><code>connectionState</code></th><th><code>hasData</code> / <code>hasError</code></th><th>O que o <code>builder</code> desenha</th></tr>
+<tr><td>A tela abre</td><td><code>waiting</code></td><td><code>false</code> / <code>false</code></td><td>A rodinha</td></tr>
+<tr><td>2 segundos depois, a lista chega</td><td><code>done</code></td><td><code>true</code> / <code>false</code></td><td>A lista de receitas</td></tr>
+<tr><td>(ou) a busca falha</td><td><code>done</code></td><td><code>false</code> / <code>true</code></td><td>A mensagem de erro</td></tr>
+</table>
+</div>
+
+<div class="tryflutter" data-goal="src:'Brigadeiro'">
+<p class="try-task"><strong>Missão:</strong> o "servidor" ganhou uma receita nova. Acrescente <code>'Brigadeiro'</code> no fim da lista devolvida por <code>buscarReceitas()</code> e veja a rodinha e, depois, as quatro receitas.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaReceitas(),
+    );
+  }
+}
+
+// Finge que vai buscar as receitas num servidor: demora 2 segundos.
+Future&lt;List&lt;String&gt;&gt; buscarReceitas() async {
+  await Future.delayed(const Duration(seconds: 2));
+  return ['Bolo de cenoura', 'Feijoada', 'Pão de queijo'];
+}
+
+class TelaReceitas extends StatefulWidget {
+  const TelaReceitas({super.key});
+
+  @override
+  State&lt;TelaReceitas&gt; createState() =&gt; _TelaReceitasState();
+}
+
+class _TelaReceitasState extends State&lt;TelaReceitas&gt; {
+  late final Future&lt;List&lt;String&gt;&gt; _receitas;
+
+  @override
+  void initState() {
+    super.initState();
+    _receitas = buscarReceitas();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: FutureBuilder&lt;List&lt;String&gt;&gt;(
+        future: _receitas,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Erro: ${snapshot.error}'));
+          }
+          final receitas = snapshot.data!;
+          return ListView(
+            children: [
+              for (final nome in receitas)
+                ListTile(
+                  leading: const Icon(Icons.restaurant_menu),
+                  title: Text(nome),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaReceitas(),
+    );
+  }
+}
+
+// Finge que vai buscar as receitas num servidor: demora 2 segundos.
+Future&lt;List&lt;String&gt;&gt; buscarReceitas() async {
+  await Future.delayed(const Duration(seconds: 2));
+  return ['Bolo de cenoura', 'Feijoada', 'Pão de queijo', 'Brigadeiro'];
+}
+
+class TelaReceitas extends StatefulWidget {
+  const TelaReceitas({super.key});
+
+  @override
+  State&lt;TelaReceitas&gt; createState() =&gt; _TelaReceitasState();
+}
+
+class _TelaReceitasState extends State&lt;TelaReceitas&gt; {
+  late final Future&lt;List&lt;String&gt;&gt; _receitas;
+
+  @override
+  void initState() {
+    super.initState();
+    _receitas = buscarReceitas();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: FutureBuilder&lt;List&lt;String&gt;&gt;(
+        future: _receitas,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Erro: ${snapshot.error}'));
+          }
+          final receitas = snapshot.data!;
+          return ListView(
+            children: [
+              for (final nome in receitas)
+                ListTile(
+                  leading: const Icon(Icons.restaurant_menu),
+                  title: Text(nome),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>2. Quando a busca dá erro</h2>
+<p>Servidor fora do ar, internet caindo, senha errada: a busca pode falhar. Uma função <code>async</code> que <strong>lança</strong> uma exceção (com <code>throw</code>) termina o <code>Future</code> com erro, e o <code>FutureBuilder</code> mostra isso em <code>snapshot.hasError</code>. Para ver acontecer, troque o <code>return</code> por um <code>throw</code>:</p>
+
+<pre class="file" data-file="lib/main.dart (só a função muda)">Future&lt;List&lt;String&gt;&gt; buscarReceitas() async {
+  await Future.delayed(const Duration(seconds: 2));
+  throw Exception('Sem conexão com o servidor');
+}
+</pre>
+
+<figure class="tela"><img src="assets/telas/futurebuilder-3.png" alt="App Receitas da Ana com a tela vazia e, no meio, o texto Erro: Exception: Sem conexão com o servidor" width="390" height="844" loading="lazy"><figcaption>Deu erro: depois da rodinha, a mensagem.</figcaption></figure>
+
+<p>A tela mostra <code>Erro: Exception: Sem conexão com o servidor</code>. O <code>Erro: </code> veio do nosso <code>Text</code>; o resto é o <code>snapshot.error</code> transformado em texto: <code>Exception: </code> e a mensagem que passamos ao <code>throw</code>. O app <strong>não</strong> quebrou: o erro foi "pego" pelo <code>FutureBuilder</code> e virou uma tela. É exatamente isso que você quer quando a internet cai.</p>
+
+<div class="tryflutter" data-goal="src:Não deu para carregar">
+<p class="try-task"><strong>Missão:</strong> a mensagem <code>Exception: …</code> assusta quem usa o app. Troque o texto do erro por <code>'Não deu para carregar as receitas.'</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaReceitas(),
+    );
+  }
+}
+
+// Finge que vai buscar as receitas num servidor: demora 2 segundos.
+Future&lt;List&lt;String&gt;&gt; buscarReceitas() async {
+  await Future.delayed(const Duration(seconds: 2));
+  throw Exception('Sem conexão com o servidor');
+}
+
+class TelaReceitas extends StatefulWidget {
+  const TelaReceitas({super.key});
+
+  @override
+  State&lt;TelaReceitas&gt; createState() =&gt; _TelaReceitasState();
+}
+
+class _TelaReceitasState extends State&lt;TelaReceitas&gt; {
+  late final Future&lt;List&lt;String&gt;&gt; _receitas;
+
+  @override
+  void initState() {
+    super.initState();
+    _receitas = buscarReceitas();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: FutureBuilder&lt;List&lt;String&gt;&gt;(
+        future: _receitas,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Erro: ${snapshot.error}'));
+          }
+          final receitas = snapshot.data!;
+          return ListView(
+            children: [
+              for (final nome in receitas)
+                ListTile(
+                  leading: const Icon(Icons.restaurant_menu),
+                  title: Text(nome),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaReceitas(),
+    );
+  }
+}
+
+// Finge que vai buscar as receitas num servidor: demora 2 segundos.
+Future&lt;List&lt;String&gt;&gt; buscarReceitas() async {
+  await Future.delayed(const Duration(seconds: 2));
+  throw Exception('Sem conexão com o servidor');
+}
+
+class TelaReceitas extends StatefulWidget {
+  const TelaReceitas({super.key});
+
+  @override
+  State&lt;TelaReceitas&gt; createState() =&gt; _TelaReceitasState();
+}
+
+class _TelaReceitasState extends State&lt;TelaReceitas&gt; {
+  late final Future&lt;List&lt;String&gt;&gt; _receitas;
+
+  @override
+  void initState() {
+    super.initState();
+    _receitas = buscarReceitas();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: FutureBuilder&lt;List&lt;String&gt;&gt;(
+        future: _receitas,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Não deu para carregar as receitas.'));
+          }
+          final receitas = snapshot.data!;
+          return ListView(
+            children: [
+              for (final nome in receitas)
+                ListTile(
+                  leading: const Icon(Icons.restaurant_menu),
+                  title: Text(nome),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>3. Outras formas de escrever o <code>builder</code></h2>
+
+<h3>Perguntando por <code>hasData</code> primeiro</h3>
+<p>Em vez de testar a espera, dá para testar o que chegou. É a forma que você mais vai ver em exemplos da internet:</p>
+<pre class="file" data-file="trecho do builder">if (snapshot.hasData) {
+  return ListaReceitas(receitas: snapshot.data!);
+} else if (snapshot.hasError) {
+  return Center(child: Text('Erro: ${snapshot.error}'));
+}
+return const Center(child: CircularProgressIndicator());
+</pre>
+<p>Os dois jeitos funcionam. A diferença aparece quando o <code>Future</code> devolve <code>null</code> de propósito (por exemplo, "nenhum usuário logado"): aí <code>hasData</code> é <code>false</code> mesmo com o <code>Future</code> terminado, e a rodinha ficaria girando para sempre. Testar o <code>connectionState</code> primeiro não tem esse problema.</p>
+
+<h3>Com <code>switch</code> e padrões do Dart 3</h3>
+<pre class="file" data-file="trecho do builder">return switch (snapshot) {
+  AsyncSnapshot(hasError: true) =&gt; Center(child: Text('Erro: ${snapshot.error}')),
+  AsyncSnapshot(hasData: true, :final data) =&gt; ListaReceitas(receitas: data!),
+  _ =&gt; const Center(child: CircularProgressIndicator()),
+};
+</pre>
+<p>Mais curto, mas exige conhecer os padrões (<em>patterns</em>) do Dart 3. Use o que você entende melhor.</p>
+
+<h3>Com um valor inicial: <code>initialData</code></h3>
+<p>Se você já tem algo para mostrar enquanto espera (a lista da última vez, guardada no aparelho), passe em <code>initialData: const ['Bolo de cenoura']</code>. Aí o <code>snapshot.data</code> já começa com esse valor, e <code>hasData</code> é <code>true</code> desde o início.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Qual usar</th></tr>
+<tr><td>Um dado que chega <strong>uma vez</strong> (a lista de receitas, o perfil do usuário)</td><td><code>FutureBuilder</code></td></tr>
+<tr><td>Dados que <strong>continuam chegando</strong> (o cronômetro, as mensagens de um chat)</td><td><code>StreamBuilder</code> (próxima aula, <a href="streambuilder.html">StreamBuilder</a>)</td></tr>
+<tr><td>A busca precisa ser refeita quando o usuário pede (puxar para atualizar)</td><td><code>FutureBuilder</code> com o <code>Future</code> trocado dentro de um <code>setState</code>, ou guardar os dados no estado e chamar <code>setState</code> quando chegarem</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Usou <code>snapshot.data!</code> sem esperar</strong>
+<p>A Ana apagou o <code>if</code> da espera, achando que não fazia falta:</p>
+<pre class="file" data-file="lib/main.dart (o builder sem o teste de espera)">builder: (context, snapshot) {
+  if (snapshot.hasError) {
+    return Center(child: Text('Erro: ${snapshot.error}'));
+  }
+  final receitas = snapshot.data!;
+  …
+</pre>
+<figure class="tela"><img src="assets/telas/futurebuilder-4.png" alt="Abaixo da barra Receitas da Ana, a tela toda vermelho-escura com, em letras amarelas, Null check operator used on a null value e See also: https://docs.flutter.dev/testing/errors" width="390" height="844" loading="lazy"><figcaption>Nos primeiros 2 segundos, a tela de erro.</figcaption></figure>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following NullError was thrown building FutureBuilder&lt;List&lt;String&gt;&gt;(dirty, state:
+_FutureBuilderState&lt;List&lt;String&gt;&gt;#65796):
+Null check operator used on a null value
+…
+════════════════════════════════════════════════════════════════════════════════════════════════════
+</pre>
+<p>Linha por linha: <code>EXCEPTION CAUGHT BY WIDGETS LIBRARY</code> é "exceção pega pela biblioteca de widgets"; <code>The following NullError was thrown building FutureBuilder…</code> diz que o erro aconteceu enquanto o <code>FutureBuilder</code> se desenhava; e <code>Null check operator used on a null value</code> é a causa: "o operador de checagem de nulo (o <code>!</code>) foi usado num valor nulo". Na primeira chamada do <code>builder</code>, a lista ainda não tinha chegado, o <code>snapshot.data</code> era <code>null</code>, e o <code>!</code> explodiu. Em modo debug, o Flutter troca o widget quebrado por essa <strong>tela vermelha</strong> com a mensagem. (A mensagem acima saiu do console do navegador do laboratório; o nome <code>NullError</code> é o do Flutter web. Cortamos, no <code>…</code>, o parágrafo sobre "widget creation tracking", que no seu <code>flutter run</code> é trocado pela linha do arquivo onde está o widget culpado.)</p>
+<p><strong>Como consertar:</strong> trate a espera antes de usar o <code>!</code> (o <code>if (snapshot.connectionState == ConnectionState.waiting)</code> do exemplo 1), ou teste <code>snapshot.hasData</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Criou o <code>Future</code> dentro do <code>build</code></strong>
+<p>Este não mostra erro nenhum, e por isso é traiçoeiro. A Ana pôs um botão de curtir na tela e chamou <code>buscarReceitas()</code> direto no <code>future:</code>:</p>
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaReceitas(),
+    );
+  }
+}
+
+Future&lt;List&lt;String&gt;&gt; buscarReceitas() async {
+  print('Buscando receitas no servidor...');
+  await Future.delayed(const Duration(seconds: 2));
+  return ['Bolo de cenoura', 'Feijoada', 'Pão de queijo'];
+}
+
+class TelaReceitas extends StatefulWidget {
+  const TelaReceitas({super.key});
+
+  @override
+  State&lt;TelaReceitas&gt; createState() =&gt; _TelaReceitasState();
+}
+
+class _TelaReceitasState extends State&lt;TelaReceitas&gt; {
+  int _curtidas = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Curtidas: $_curtidas')),
+      floatingActionButton: FloatingActionButton(
+        tooltip: 'Curtir',
+        onPressed: () =&gt; setState(() =&gt; _curtidas++),
+        child: const Icon(Icons.favorite),
+      ),
+      body: FutureBuilder&lt;List&lt;String&gt;&gt;(
+        future: buscarReceitas(), // ERRADO: cria um Future novo a cada build
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          return ListView(
+            children: [
+              for (final nome in snapshot.data!) ListTile(title: Text(nome)),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+</pre>
+<p>No laboratório, o app abriu, esperou a lista e, depois, a Ana tocou <strong>uma vez</strong> no coração:</p>
+<figure class="tela"><img src="assets/telas/futurebuilder-5.png" alt="O título agora diz Curtidas: 1; a lista de receitas sumiu e, no meio da tela vazia, aparece o começo da rodinha de carregando; embaixo, à direita, o botão redondo com um coração" width="390" height="844" loading="lazy"><figcaption>Logo depois do toque no coração: a lista sumiu e a rodinha voltou (a foto pegou a rodinha bem no começo do giro, quando ela é só um risquinho).</figcaption></figure>
+<p>E o console mostrou a busca <strong>duas vezes</strong>, uma quando a tela abriu e outra no toque:</p>
+<pre class="term">Buscando receitas no servidor...
+Buscando receitas no servidor...
+</pre>
+<p>O que aconteceu: o <code>setState</code> do botão manda o Flutter rodar o <code>build</code> de novo. O <code>build</code> chama <code>buscarReceitas()</code>, que cria um <code>Future</code> <strong>novo</strong>; o <code>FutureBuilder</code> vê um <code>Future</code> diferente, volta para <code>waiting</code> e espera tudo de novo. Num app de verdade, isso é uma ida ao servidor a cada curtida, a lista piscando, a internet do usuário gasta à toa. <strong>Como consertar:</strong> crie o <code>Future</code> no <code>initState</code>, guarde num campo e passe o campo para o <code>future:</code>, como no exemplo 1. O <code>build</code> pode rodar quantas vezes quiser: o <code>Future</code> continua o mesmo.</p>
+</div>
+
+<div class="cenario">
+<strong>Esqueceu de tratar o erro</strong>
+<p>Sem o <code>if (snapshot.hasError)</code>, quando a busca falha, o <code>snapshot.data</code> continua nulo, e o <code>snapshot.data!</code> derruba a tela com a mesma tela vermelha do primeiro cenário. Toda tela que espera dados precisa dos <strong>três</strong> estados: carregando, deu certo e deu erro.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>FutureBuilder&lt;T&gt;(future: f, builder: (context, snapshot) =&gt; …)</code></td><td>Redesenha com o <code>builder</code> conforme o <code>Future</code> <code>f</code> anda</td></tr>
+<tr><td><code>initialData: valor</code></td><td>O dado que o <code>snapshot</code> tem antes de o <code>Future</code> terminar</td></tr>
+<tr><td><code>snapshot.connectionState</code></td><td><code>none</code> (sem <code>Future</code>), <code>waiting</code> (esperando), <code>done</code> (terminou)</td></tr>
+<tr><td><code>snapshot.hasData</code> / <code>snapshot.data</code></td><td>Se chegou um dado não nulo / o dado (tipo <code>T?</code>)</td></tr>
+<tr><td><code>snapshot.hasError</code> / <code>snapshot.error</code></td><td>Se o <code>Future</code> terminou com erro / o erro</td></tr>
+<tr><td><code>CircularProgressIndicator()</code></td><td>A rodinha de "carregando"</td></tr>
+<tr><td><code>late final Future&lt;T&gt; _x;</code> + <code>initState</code></td><td>O lugar certo para começar a busca: uma vez, quando a tela nasce</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o teste de espera</h3>
+<div class="ex-code">if (snapshot.<input data-answer="connectionState" aria-label="propriedade do estado"> == ConnectionState.<input data-answer="waiting" aria-label="valor da espera">) {<br>&nbsp;&nbsp;return const Center(child: CircularProgressIndicator());<br>}</div>
+</div>
+
+<div class="exercise">
+<h3>2. Onde começar a busca</h3>
+<p>Em qual método do <code>State</code> você cria o <code>Future</code> que o <code>FutureBuilder</code> acompanha?</p>
+<div class="ex-code">No método <input data-answer="initState" aria-label="nome do método"></div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. Um <code>Future</code> que demora 2 segundos e dá certo. Quantas vezes, no mínimo, o <code>builder</code> do <code>FutureBuilder</code> é chamado?</p>
+<label><input type="radio" name="q3"> Uma, quando o dado chega</label>
+<label><input type="radio" name="q3"> Uma por segundo</label>
+<label><input type="radio" name="q3"> Duas: uma esperando e outra quando o dado chega</label>
+<label><input type="radio" name="q3"> Nenhuma: o <code>FutureBuilder</code> não usa o <code>builder</code></label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. Por que o método <code>build</code> não pode simplesmente fazer <code>await buscarReceitas()</code>?</p>
+<label><input type="radio" name="q4"> Porque o <code>await</code> não existe no Flutter</label>
+<label><input type="radio" name="q4"> Porque o <code>build</code> tem de devolver um widget na hora, sem esperar</label>
+<label><input type="radio" name="q4"> Porque o <code>await</code> só funciona com <code>Stream</code></label>
+<label><input type="radio" name="q4"> Pode, só fica mais lento</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. A função de busca faz <code>throw Exception('Servidor fora do ar')</code>. O que o <code>snapshot</code> mostra quando ela termina?</p>
+<label><input type="radio" name="q5"> <code>hasError</code> é <code>true</code> e <code>error</code> guarda a exceção</label>
+<label><input type="radio" name="q5"> <code>hasData</code> é <code>true</code> com o texto do erro</label>
+<label><input type="radio" name="q5"> O <code>connectionState</code> fica em <code>waiting</code> para sempre</label>
+<label><input type="radio" name="q5"> O app fecha sem mostrar nada</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Um <code>Future</code> é a promessa de um valor que chega depois. O <code>build</code> não pode esperar; o <code>FutureBuilder</code> espera por ele e redesenha a tela quando o valor chega.</li>
+  <li>O <code>builder</code> recebe um <code>snapshot</code>: <code>connectionState</code> (<code>waiting</code>, <code>done</code>), <code>hasData</code>/<code>data</code> e <code>hasError</code>/<code>error</code>.</li>
+  <li>Toda tela que espera dados tem três estados: <strong>carregando</strong> (a rodinha), <strong>deu certo</strong> (os dados) e <strong>deu erro</strong> (uma mensagem).</li>
+  <li>Crie o <code>Future</code> <strong>no <code>initState</code></strong> e guarde num campo. Criado no <code>build</code>, ele recomeça a cada reconstrução.</li>
+  <li>Só use <code>snapshot.data!</code> depois de tratar a espera e o erro; antes disso, ele é <code>null</code> e derruba a tela.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
