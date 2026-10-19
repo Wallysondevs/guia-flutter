@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Scaffold e AppBar — a estrutura de uma tela | Guia Flutter</title>
+<meta name="description" content="Scaffold e AppBar no Flutter 3 com Material 3: body, appBar com title, centerTitle, backgroundColor, actions e leading, o botão flutuante (floatingActionButton), a cor de fundo da tela, e os erros reais de um AppBar no lugar errado e de um Scaffold sem MaterialApp, com fotos da tela e missões no editor.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Scaffold</span> e <span class="hl">AppBar</span></h1>
+
+<p class="intro">Abra quase qualquer app no seu celular: no topo, uma barra com o nome da tela; no meio, o conteúdo; às vezes, um botão redondo no canto de baixo. Essa estrutura é tão comum que o Flutter tem um widget só para ela, o <code>Scaffold</code>. E a barra do topo é o <code>AppBar</code>. Nesta aula a Ana monta a tela principal do app de receitas com os dois.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é o <code>Scaffold</code> e as "vagas" que ele tem: <code>appBar</code>, <code>body</code>, <code>floatingActionButton</code>.</li>
+  <li>A pôr uma barra no topo com <code>AppBar</code> e um título.</li>
+  <li>A centralizar o título, mudar a cor da barra e pôr botões nela (<code>actions</code> e <code>leading</code>).</li>
+  <li>A pôr o botão flutuante e mudar a cor de fundo da tela.</li>
+  <li>Os erros reais: um <code>Text</code> no lugar do <code>AppBar</code> e um <code>Scaffold</code> sem <code>MaterialApp</code>.</li>
+</ul>
+</div>
+
+<p>Todos os apps desta aula foram compilados com o Flutter estável do laboratório e fotografados numa tela do tamanho de um celular.</p>
+
+<hr>
+
+<h2>A ideia: um formulário com campos marcados</h2>
+<p>Pense num formulário de papel com quadradinhos já desenhados: "Nome", "Endereço", "Assinatura". Você não decide onde fica cada coisa; só preenche os quadradinhos. Os que você deixa em branco simplesmente não aparecem.</p>
+
+<p>O <code>Scaffold</code> ("andaime", em inglês) é esse formulário para uma tela. Cada parâmetro é um quadradinho com lugar marcado:</p>
+
+<pre>┌─────────────────────────┐
+│ appBar                  │  ← a barra do topo
+├─────────────────────────┤
+│                         │
+│                         │
+│ body                    │  ← o conteúdo da tela
+│                         │
+│                    ┌──┐ │
+│                    │+ │ │  ← floatingActionButton
+│                    └──┘ │
+└─────────────────────────┘
+</pre>
+
+<hr>
+
+<h2>1. Só o <code>body</code></h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      home: Scaffold(
+        body: Text('Bolo de cenoura'),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>Scaffold( ... )</dt><dd>A estrutura da tela. Ele pinta o fundo com a cor do tema e organiza as partes.</dd>
+  <dt>body:</dt><dd>"Corpo": o conteúdo principal. Recebe <strong>um</strong> widget (que pode ter vários dentro, como você vai ver em <a href="row-column.html">Row e Column</a>).</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/scaffold-1.png" alt="Tela de fundo branco levemente rosado com 'Bolo de cenoura' colado no canto de cima à esquerda e a faixa DEBUG no canto direito" width="390" height="844" loading="lazy"><figcaption>Só o <code>body</code>: o <code>Scaffold</code> pintou o fundo, e o texto foi para o canto.</figcaption></figure>
+<p>Igual ao que você viu com o <code>Text</code> solto, o <code>body</code> começa no canto de cima, à esquerda. A diferença é que agora o fundo tem cor (a do tema) e a faixa DEBUG apareceu, sinal de que o <code>MaterialApp</code> está lá em cima.</p>
+
+<hr>
+
+<h2>2. A barra do topo: <code>appBar</code></h2>
+
+<pre class="file" data-file="lib/main.dart">    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(
+          title: const Text('Receitas da Ana'),
+        ),
+        body: const Text('Bolo de cenoura'),
+      ),
+    );
+</pre>
+
+<dl class="anatomy">
+  <dt>appBar:</dt><dd>A vaga da barra do topo. Ela só aceita widgets "de barra" (que sabem a própria altura), e o mais comum é o <code>AppBar</code>.</dd>
+  <dt>AppBar( ... )</dt><dd>A barra do topo do Material, com lugar para título, botões e ícone de voltar.</dd>
+  <dt>title: const Text('Receitas da Ana')</dt><dd>O título da barra. É um <strong>widget</strong> (quase sempre um <code>Text</code>), e não uma string: por isso o <code>Text(...)</code> em volta.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/scaffold-2.png" alt="Tela com 'Receitas da Ana' em letra maior no topo, à esquerda, numa barra da mesma cor do fundo, e 'Bolo de cenoura' logo abaixo, colado à esquerda" width="390" height="844" loading="lazy"><figcaption>Com o <code>AppBar</code>: o título no topo e o <code>body</code> começando logo abaixo da barra.</figcaption></figure>
+<p>Repare: o <code>body</code> agora começa <strong>abaixo</strong> da barra. O <code>Scaffold</code> reservou o espaço do <code>appBar</code> e deu ao <code>body</code> só o resto. No Material 3, a barra tem a mesma cor do fundo e o título fica à esquerda.</p>
+
+<hr>
+
+<h2>3. Enfeitando a barra: <code>centerTitle</code>, <code>backgroundColor</code>, <code>actions</code> e <code>leading</code></h2>
+
+<pre class="file" data-file="lib/main.dart">        appBar: AppBar(
+          leading: const Icon(Icons.restaurant_menu),
+          title: const Text('Receitas da Ana'),
+          centerTitle: true,
+          backgroundColor: Colors.orange,
+          foregroundColor: Colors.white,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.search),
+              onPressed: () {},
+            ),
+            IconButton(
+              icon: const Icon(Icons.favorite),
+              onPressed: () {},
+            ),
+          ],
+        ),
+</pre>
+
+<dl class="anatomy">
+  <dt>leading:</dt><dd>"O que vai na frente": um widget no canto esquerdo, antes do título. Quando o app tem mais de uma tela, é aqui que o Flutter põe sozinho a seta de voltar (aula <a href="navegacao.html">Navigator</a>).</dd>
+  <dt>centerTitle: true</dt><dd>Centraliza o título. Sem ele, o título fica à esquerda no Android e centralizado no iPhone, seguindo o costume de cada sistema.</dd>
+  <dt>backgroundColor: Colors.orange</dt><dd>A cor de fundo da barra. Sem ele, a barra usa a cor do tema.</dd>
+  <dt>foregroundColor: Colors.white</dt><dd>A cor do que fica <strong>sobre</strong> a barra: o título e os ícones.</dd>
+  <dt>actions: [ ... ]</dt><dd>"Ações": uma <strong>lista</strong> de widgets no canto direito, normalmente botões de ícone. Repare nos colchetes: é uma <code>List</code> do Dart.</dd>
+  <dt>IconButton(icon: ..., onPressed: () {})</dt><dd>Um botão que é só um ícone. O <code>onPressed</code> é o que acontece no toque; aqui, nada ainda (aulas <a href="icon.html">Ícones</a> e <a href="botoes.html">Botões</a>).</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/scaffold-3.png" alt="Barra laranja no topo com um ícone branco de garfo e colher à esquerda, o título 'Receitas da Ana' em branco no meio e um ícone de lupa à direita; o coração fica escondido sob a faixa DEBUG do canto" width="390" height="844" loading="lazy"><figcaption>A barra enfeitada. O segundo botão (o coração) ficou embaixo da faixa DEBUG.</figcaption></figure>
+<p>A faixa DEBUG fica <strong>por cima</strong> de tudo, inclusive dos botões: o coração está ali, escondido. É mais um motivo para escondê-la quando for mostrar o app (aula <a href="material-app.html">MaterialApp</a>).</p>
+
+<div class="tryflutter" data-goal="src:centerTitle:\s*true;;src:backgroundColor:\s*Colors\.green">
+<p class="try-task"><strong>Missão:</strong> centralize o título da barra e pinte a barra de verde (<code>Colors.green</code>).</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(
+          title: const Text('Receitas da Ana'),
+        ),
+        body: const Text('Bolo de cenoura'),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(
+          title: const Text('Receitas da Ana'),
+          centerTitle: true,
+          backgroundColor: Colors.green,
+        ),
+        body: const Text('Bolo de cenoura'),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>4. O botão flutuante e a cor de fundo</h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        backgroundColor: Colors.amber.shade50,
+        appBar: AppBar(
+          title: const Text('Receitas da Ana'),
+          backgroundColor: Colors.orange,
+          foregroundColor: Colors.white,
+        ),
+        body: const Center(
+          child: Text('Nenhuma receita ainda'),
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {},
+          child: const Icon(Icons.add),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>backgroundColor: Colors.amber.shade50</dt><dd>A cor de fundo da tela inteira. O <code>.shade50</code> é um tom bem clarinho do âmbar (as cores do Material vão do <code>shade50</code>, quase branco, ao <code>shade900</code>, bem escuro).</dd>
+  <dt>floatingActionButton:</dt><dd>A vaga do "botão de ação flutuante", o botão redondo que fica sobre o conteúdo, no canto de baixo. É para a ação <strong>principal</strong> da tela: aqui, "nova receita".</dd>
+  <dt>FloatingActionButton(onPressed: ..., child: ...)</dt><dd>O botão em si, com um ícone de <code>+</code> dentro.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/scaffold-4.png" alt="Tela com barra laranja e título branco 'Receitas da Ana', fundo creme bem claro, o texto 'Nenhuma receita ainda' no meio e, no canto de baixo à direita, um botão quadrado de cantos arredondados lilás com um sinal de mais" width="390" height="844" loading="lazy"><figcaption>Fundo âmbar-claro, barra laranja e o botão flutuante.</figcaption></figure>
+<p>O botão flutuante saiu lilás, e não laranja: ele usa as cores do <strong>tema</strong> (o roxo padrão do Material 3), e a Ana só pintou a barra. Para o app inteiro combinar, o caminho é o tema, na seção seguinte.</p>
+
+<pre>MaterialApp
+└── Scaffold
+    ├── AppBar                (appBar)
+    │   └── Text('Receitas da Ana')
+    ├── Center                (body)
+    │   └── Text('Nenhuma receita ainda')
+    └── FloatingActionButton  (floatingActionButton)
+        └── Icon(Icons.add)
+</pre>
+
+<p>O <code>Scaffold</code> tem outras vagas, que têm aulas próprias: <code>drawer</code> (o menu lateral, aula <a href="drawer.html">Drawer</a>) e <code>bottomNavigationBar</code> (a barra de abas de baixo, aula <a href="bottom-navigation.html">Barra de Navegação Inferior</a>).</p>
+
+<hr>
+
+<h2>Formas diferentes: a cor da barra no <code>AppBar</code> ou no tema</h2>
+<p>Você pintou a barra com <code>backgroundColor</code>. Isso vale só para <strong>esta</strong> barra. Num app com várias telas, repetir a cor em cada <code>AppBar</code> é trabalhoso e fácil de esquecer. A alternativa é dizer a cor uma vez só, no tema do <code>MaterialApp</code>:</p>
+
+<pre class="file" data-file="lib/main.dart">    return MaterialApp(
+      theme: ThemeData(
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.orange,
+          foregroundColor: Colors.white,
+          centerTitle: true,
+        ),
+      ),
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Text('Bolo de cenoura'),
+      ),
+    );
+</pre>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Forma</th><th>Quando usar</th></tr>
+<tr><td><code>AppBar(backgroundColor: ...)</code></td><td>Uma tela que precisa ser diferente das outras, ou um app de uma tela só.</td></tr>
+<tr><td><code>ThemeData(appBarTheme: AppBarTheme(...))</code></td><td>Para todas as barras do app ficarem iguais. É o jeito recomendado em apps de várias telas (aula <a href="temas.html">Temas</a>).</td></tr>
+<tr><td>Nada (a cor do tema)</td><td>O padrão do Material 3 já combina com o <code>colorScheme</code> do app (aula <a href="material-app.html">MaterialApp</a>).</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Um <code>Text</code> na vaga do <code>appBar</code></strong>
+<p>A Ana quis economizar e pôs o título direto na vaga (o <code>appBar</code> está na linha 14 do arquivo):</p>
+<pre class="file" data-file="lib/main.dart">    return const MaterialApp(
+      home: Scaffold(
+        appBar: Text('Receitas da Ana'),
+        body: Text('Bolo de cenoura'),
+      ),
+    );
+</pre>
+<pre class="term">lib/main.dart:14:17: Error: The argument type 'Text' can't be assigned to the parameter type 'PreferredSizeWidget?'.
+ - 'Text' is from 'package:flutter/src/widgets/text.dart'.                        « caminhos cortados
+ - 'PreferredSizeWidget' is from 'package:flutter/src/widgets/preferred_size.dart'.
+        appBar: Text('Receitas da Ana'),
+                ^
+</pre>
+<dl class="anatomy">
+  <dt>The argument type 'Text' can't be assigned to the parameter type 'PreferredSizeWidget?'.</dt><dd>"Um <code>Text</code> não pode ir num parâmetro do tipo <code>PreferredSizeWidget?</code>". A vaga <code>appBar</code> não aceita qualquer widget: só os que sabem dizer a <strong>altura que preferem</strong> (<em>preferred size</em>), porque o <code>Scaffold</code> precisa reservar esse espaço antes de montar o <code>body</code>. O <code>AppBar</code> é um deles; o <code>Text</code>, não. O <code>?</code> no fim quer dizer que a vaga também aceita <code>null</code> (ficar vazia).</dd>
+  <dt>- 'Text' is from ...</dt><dd>De onde vem cada tipo: aqui, dos arquivos do próprio Flutter.</dd>
+</dl>
+<p><strong>Como consertar:</strong> <code>appBar: AppBar(title: Text('Receitas da Ana'))</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Um <code>Scaffold</code> sem <code>MaterialApp</code></strong>
+<pre class="file" data-file="lib/main.dart">  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(
+        child: Text('Receitas da Ana'),
+      ),
+    );
+  }
+</pre>
+<figure class="tela"><img src="assets/telas/scaffold-5.png" alt="Tela inteira vermelho-escura com texto amarelo começando por 'No Directionality widget found. Scaffold widgets require a Directionality widget ancestor.'" width="390" height="844" loading="lazy"><figcaption>A tela vermelha: o <code>Scaffold</code> não achou o que precisava acima dele.</figcaption></figure>
+<p>O console mostrou (aqui, o começo e o fim da mensagem; no meio vem a mesma explicação que você leu em <a href="primeiro-app.html">Seu Primeiro App</a>, e no fim, o <em>stack</em> com dezenas de linhas de dentro do Flutter):</p>
+<pre class="devtools">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following assertion was thrown building Scaffold(dirty, state: ScaffoldState#100de(tickers:
+tracking 3 tickers)):
+No Directionality widget found.
+Scaffold widgets require a Directionality widget ancestor.
+…
+The relevant error-causing widget was:
+  Scaffold Scaffold:file:///home/ana/app/lib/main.dart:12:18
+…
+</pre>
+<dl class="anatomy">
+  <dt>No Directionality widget found.</dt><dd>O mesmo erro do <code>Text</code> solto: ninguém acima informou a direção do texto.</dd>
+  <dt>Scaffold widgets require a Directionality widget ancestor.</dt><dd>Agora quem reclama é o <code>Scaffold</code>, o primeiro widget da árvore que precisa dessa informação.</dd>
+  <dt>The relevant error-causing widget was: ... main.dart:12:18</dt><dd>"O widget que causou o erro": o <code>Scaffold</code> da linha 12, coluna 18, do seu arquivo. Essa linha é a mais útil da mensagem: ela aponta direto para o seu código.</dd>
+</dl>
+<p><strong>Como consertar:</strong> ponha o <code>MaterialApp</code> por cima: <code>return const MaterialApp(home: Scaffold(...));</code>. O <code>Scaffold</code> depende de várias coisas que o <code>MaterialApp</code> fornece (direção, tema, textos do sistema); a direção é só a primeira que ele procura.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Parâmetro</th><th>De quem</th><th>O que faz</th></tr>
+<tr><td><code>body</code></td><td><code>Scaffold</code></td><td>O conteúdo da tela</td></tr>
+<tr><td><code>appBar</code></td><td><code>Scaffold</code></td><td>A barra do topo (um <code>AppBar</code>)</td></tr>
+<tr><td><code>floatingActionButton</code></td><td><code>Scaffold</code></td><td>O botão redondo flutuante</td></tr>
+<tr><td><code>backgroundColor</code></td><td><code>Scaffold</code></td><td>A cor de fundo da tela</td></tr>
+<tr><td><code>drawer</code> / <code>bottomNavigationBar</code></td><td><code>Scaffold</code></td><td>Menu lateral / barra de baixo (aulas próprias)</td></tr>
+<tr><td><code>title</code></td><td><code>AppBar</code></td><td>O título (um widget, quase sempre <code>Text</code>)</td></tr>
+<tr><td><code>centerTitle</code></td><td><code>AppBar</code></td><td><code>true</code> centraliza o título</td></tr>
+<tr><td><code>backgroundColor</code> / <code>foregroundColor</code></td><td><code>AppBar</code></td><td>Cor da barra / cor do título e dos ícones</td></tr>
+<tr><td><code>leading</code></td><td><code>AppBar</code></td><td>Widget à esquerda do título</td></tr>
+<tr><td><code>actions</code></td><td><code>AppBar</code></td><td>Lista de widgets à direita (botões)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. O conteúdo</h3>
+<p>Complete com a vaga do <code>Scaffold</code> onde vai o conteúdo da tela:</p>
+<div class="ex-code">Scaffold(<input data-answer="body" aria-label="parâmetro">: Text('Oi'))</div>
+</div>
+
+<div class="exercise">
+<h3>2. O título no meio</h3>
+<p>Complete para centralizar o título do <code>AppBar</code>:</p>
+<div class="ex-code">AppBar(title: Text('Receitas'), <input data-answer="centerTitle" aria-label="parâmetro">: true)</div>
+</div>
+
+<div class="exercise">
+<h3>3. Os botões da direita</h3>
+<p>Qual parâmetro do <code>AppBar</code> recebe a lista de botões do lado direito?</p>
+<div class="ex-code"><input data-answer="actions" aria-label="parâmetro">: [IconButton(...)]</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. Por que o <code>title</code> do <code>AppBar</code> é <code>Text('Receitas')</code> e não só <code>'Receitas'</code>?</p>
+<label><input type="radio" name="q4"> Porque o Dart não aceita strings em parâmetros</label>
+<label><input type="radio" name="q4"> Porque o <code>Text</code> deixa o título em negrito</label>
+<label><input type="radio" name="q4"> Porque o <code>title</code> recebe um widget, e um texto na tela é o widget <code>Text</code></label>
+<label><input type="radio" name="q4"> Tanto faz: os dois funcionam</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">5. Para que serve o <code>floatingActionButton</code>?</p>
+<label><input type="radio" name="q5"> Para pôr um botão de voltar no topo</label>
+<label><input type="radio" name="q5"> Para a ação principal da tela, num botão que flutua sobre o conteúdo</label>
+<label><input type="radio" name="q5"> Para abrir o menu lateral</label>
+<label><input type="radio" name="q5"> Para trocar a cor de fundo da tela</label>
+</div>
+
+<h3>Missão final: a tela da lojinha</h3>
+
+<div class="tryflutter" data-goal="src:title:\s*const\s+Text\('Lojinha da Ana'\);;src:Icons\.shopping_cart;;src:floatingActionButton:">
+<p class="try-task"><strong>Missão:</strong> monte a tela da lojinha: um <code>AppBar</code> com o título <code>Lojinha da Ana</code>, um <code>IconButton</code> com o ícone <code>Icons.shopping_cart</code> nas <code>actions</code>, e um botão flutuante com <code>Icons.add</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const LojinhaApp());
+}
+
+class LojinhaApp extends StatelessWidget {
+  const LojinhaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        body: const Center(child: Text('Produtos')),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const LojinhaApp());
+}
+
+class LojinhaApp extends StatelessWidget {
+  const LojinhaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(
+          title: const Text('Lojinha da Ana'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.shopping_cart),
+              onPressed: () {},
+            ),
+          ],
+        ),
+        body: const Center(child: Text('Produtos')),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {},
+          child: const Icon(Icons.add),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O <code>Scaffold</code> é a estrutura de uma tela, com vagas marcadas: <code>appBar</code> no topo, <code>body</code> no meio, <code>floatingActionButton</code> no canto de baixo.</li>
+  <li>O <code>AppBar</code> é a barra do topo: <code>title</code> (um widget), <code>centerTitle</code>, <code>backgroundColor</code>, <code>foregroundColor</code>, <code>leading</code> à esquerda e <code>actions</code> (uma lista) à direita.</li>
+  <li>O <code>backgroundColor</code> do <code>Scaffold</code> pinta o fundo da tela.</li>
+  <li>A vaga <code>appBar</code> só aceita widgets de barra: um <code>Text</code> ali é erro de compilação.</li>
+  <li>O <code>Scaffold</code> precisa de um <code>MaterialApp</code> acima dele.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
