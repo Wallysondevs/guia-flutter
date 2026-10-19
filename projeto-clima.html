@@ -1,0 +1,1363 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Projeto: Previsão do Tempo — dados de uma API, passo a passo | Guia Flutter</title>
+<meta name="description" content="Projeto do Guia Flutter: o app de previsão do tempo da Ana em 3 versões. Versão 1 com a tela montada com dados fixos; versão 2 com uma classe Clima, um serviço assíncrono (Future) e FutureBuilder com o indicador de carregando; versão 3 lendo o JSON real da API Open-Meteo com jsonDecode e fromJson, com botão de atualizar e tela de erro. Fotos reais e o erro real de uma chave errada no JSON.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Projeto: Previsão do Tempo</span></h1>
+
+<p class="intro">A Ana entrega bolos de bicicleta e quer saber, antes de sair, se vai chover. Neste projeto ela faz um app de <strong>previsão do tempo</strong> que mostra a cidade, a temperatura, o céu e o vento. É o primeiro projeto do guia em que os dados <strong>vêm de fora</strong>, de uma API (um serviço na internet que responde com dados), e por isso demoram um pouco para chegar. O app cresce em <strong>3 versões</strong>: primeiro a tela, depois a espera, depois os dados de verdade.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Versão 1: montar a tela com dados fixos, antes de pensar em internet.</li>
+  <li>Versão 2: separar os dados numa classe <code>Clima</code>, buscar com uma função <code>async</code> que devolve um <code>Future</code>, e mostrar "carregando…" com <code>FutureBuilder</code>.</li>
+  <li>Versão 3: ler o <strong>JSON real</strong> da API Open-Meteo com <code>jsonDecode</code> e um construtor <code>fromJson</code>, com botão de atualizar e uma tela de erro com "Tentar de novo".</li>
+  <li>Como trocar o JSON guardado pelo pacote <code>http</code>, para buscar a previsão ao vivo.</li>
+  <li>O erro real de ler uma chave que não existe no JSON.</li>
+</ul>
+</div>
+
+<p>Aulas que ajudam: <a href="futurebuilder.html">FutureBuilder</a>, <a href="http.html">Buscando Dados na Internet</a>, <a href="json-modelos.html">JSON e Classes de Modelo</a> e <a href="stateful.html">StatefulWidget</a>.</p>
+
+<hr>
+
+<h2>O plano: primeiro a tela, depois os dados</h2>
+<p>Um erro comum é começar pela parte difícil (a internet) e só depois descobrir como a tela vai ficar. A Ana faz ao contrário, como quem monta a vitrine da loja antes de os produtos chegarem:</p>
+<ol class="passo">
+  <li><strong>Versão 1:</strong> a vitrine. A tela pronta, com números escritos à mão.</li>
+  <li><strong>Versão 2:</strong> o "aguarde". Os dados passam a vir de uma função que demora (como a internet demora), e a tela mostra uma rodinha enquanto espera.</li>
+  <li><strong>Versão 3:</strong> o produto de verdade. A função lê a resposta real da API, no formato JSON, e transforma em um objeto <code>Clima</code>.</li>
+</ol>
+<p>A API usada é a <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>, gratuita e sem cadastro. No terminal, a Ana pediu o tempo atual de São Paulo (latitude -23,55, longitude -46,63) com o <code>curl</code>, um programa que faz pedidos à internet:</p>
+
+<pre class="term">$ curl -s "https://api.open-meteo.com/v1/forecast?latitude=-23.55&amp;longitude=-46.63&amp;current=temperature_2m,weather_code,wind_speed_10m&amp;timezone=America%2FSao_Paulo"
+{"latitude":-23.514938,"longitude":-46.610504,"generationtime_ms":0.1862049102783203,"utc_offset_seconds":-10800,"timezone":"America/Sao_Paulo","timezone_abbreviation":"GMT-3","elevation":737.0,"current_units":{"time":"iso8601","interval":"seconds","temperature_2m":"°C","weather_code":"wmo code","wind_speed_10m":"km/h"},"current":{"time":"2026-10-19T17:45","interval":900,"temperature_2m":16.3,"weather_code":2,"wind_speed_10m":9.7}}
+</pre>
+
+<p>Tudo numa linha só, mas a parte que interessa está no fim, no bloco <code>"current"</code> ("atual"): <code>"temperature_2m":16.3</code> (16,3 °C a 2 metros do chão), <code>"weather_code":2</code> (o código do céu: 2 é "parcialmente nublado") e <code>"wind_speed_10m":9.7</code> (vento de 9,7 km/h). São esses três números que o app vai mostrar.</p>
+
+<hr>
+
+<h2>Versão 1: a tela com dados fixos</h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ClimaApp());
+
+class ClimaApp extends StatelessWidget {
+  const ClimaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Previsão do Tempo',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.blue),
+      home: const ClimaPage(),
+    );
+  }
+}
+
+class ClimaPage extends StatelessWidget {
+  const ClimaPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Previsão do Tempo')),
+      body: const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('São Paulo', style: TextStyle(fontSize: 28)),
+            SizedBox(height: 8),
+            Icon(Icons.wb_cloudy, size: 96, color: Colors.blueGrey),
+            Text(
+              '16 °C',
+              style: TextStyle(fontSize: 64, fontWeight: FontWeight.w300),
+            ),
+            Text('Parcialmente nublado'),
+            SizedBox(height: 16),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.air),
+                SizedBox(width: 4),
+                Text('Vento: 10 km/h'),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>Text('São Paulo', style: TextStyle(fontSize: 28))</dt><dd>O nome da cidade, grande.</dd>
+  <dt>Icon(Icons.wb_cloudy, size: 96, color: Colors.blueGrey)</dt><dd>Um ícone de nuvem de 96 pixels, em cinza-azulado. A biblioteca de ícones do Material tem sol (<code>wb_sunny</code>), nuvem (<code>wb_cloudy</code>), chuva (<code>grain</code>) e muitos outros (veja <a href="icon.html">Ícones</a>).</dd>
+  <dt>TextStyle(fontSize: 64, fontWeight: FontWeight.w300)</dt><dd>A temperatura, enorme e em traço fino (<code>w300</code> é um peso mais leve que o normal, <code>w400</code>): o jeito dos apps de clima.</dd>
+  <dt>Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.air), …])</dt><dd>O ícone de vento e o texto lado a lado. O <code>MainAxisSize.min</code> deixa a linha só da largura do conteúdo, e ela fica centralizada na coluna.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/projeto-clima-1.png" alt="Tela com o título 'Previsão do Tempo' no alto; no meio, 'São Paulo', um ícone grande de nuvem cinza-azulada, '16 °C' em números enormes e finos, 'Parcialmente nublado' em letra pequena e, embaixo, um ícone de vento com 'Vento: 10 km/h'" width="390" height="844" loading="lazy"><figcaption>A versão 1: a "vitrine", com os números escritos à mão.</figcaption></figure>
+
+<p>Tudo centralizado, com a temperatura como estrela da tela. Os números estão escritos à mão (16 °C, 10 km/h, que são os da resposta da API arredondados), mas a tela já está pronta: daqui para a frente, só muda <strong>de onde</strong> eles vêm.</p>
+
+<div class="tryflutter" data-goal="src:'25 °C';;src:Icons\.wb_sunny">
+<p class="try-task"><strong>Missão:</strong> imagine um dia de sol: troque a temperatura para <code>'25 °C'</code>, o ícone para <code>Icons.wb_sunny</code> e o texto para <code>'Céu limpo'</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ClimaApp());
+
+class ClimaApp extends StatelessWidget {
+  const ClimaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Previsão do Tempo',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.blue),
+      home: const ClimaPage(),
+    );
+  }
+}
+
+class ClimaPage extends StatelessWidget {
+  const ClimaPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Previsão do Tempo')),
+      body: const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('São Paulo', style: TextStyle(fontSize: 28)),
+            SizedBox(height: 8),
+            Icon(Icons.wb_cloudy, size: 96, color: Colors.blueGrey),
+            Text(
+              '16 °C',
+              style: TextStyle(fontSize: 64, fontWeight: FontWeight.w300),
+            ),
+            Text('Parcialmente nublado'),
+            SizedBox(height: 16),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.air),
+                SizedBox(width: 4),
+                Text('Vento: 10 km/h'),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ClimaApp());
+
+class ClimaApp extends StatelessWidget {
+  const ClimaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Previsão do Tempo',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.blue),
+      home: const ClimaPage(),
+    );
+  }
+}
+
+class ClimaPage extends StatelessWidget {
+  const ClimaPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Previsão do Tempo')),
+      body: const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('São Paulo', style: TextStyle(fontSize: 28)),
+            SizedBox(height: 8),
+            Icon(Icons.wb_sunny, size: 96, color: Colors.blueGrey),
+            Text(
+              '25 °C',
+              style: TextStyle(fontSize: 64, fontWeight: FontWeight.w300),
+            ),
+            Text('Céu limpo'),
+            SizedBox(height: 16),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.air),
+                SizedBox(width: 4),
+                Text('Vento: 10 km/h'),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Versão 2: esperar pelos dados (<code>Future</code> e <code>FutureBuilder</code>)</h2>
+<p>Pedir dados à internet não é instantâneo: pode levar meio segundo, pode levar cinco. O Dart representa "um valor que vai chegar depois" com um <code>Future</code> (futuro). Nesta versão, a função <code>buscarClima</code> finge ser a internet: espera 2 segundos e devolve os dados. A tela, enquanto isso, mostra uma rodinha girando. Três novidades: a classe <code>Clima</code>, a função assíncrona e o <code>FutureBuilder</code>.</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ClimaApp());
+
+class Clima {
+  const Clima({
+    required this.cidade,
+    required this.temperatura,
+    required this.codigo,
+    required this.vento,
+  });
+
+  final String cidade;
+  final double temperatura;
+  final int codigo;
+  final double vento;
+
+  String get descricao =&gt; switch (codigo) {
+        0 =&gt; 'Céu limpo',
+        1 || 2 =&gt; 'Parcialmente nublado',
+        3 =&gt; 'Nublado',
+        &gt;= 51 &amp;&amp; &lt;= 67 =&gt; 'Chuva',
+        _ =&gt; 'Tempo variado',
+      };
+
+  IconData get icone =&gt; switch (codigo) {
+        0 =&gt; Icons.wb_sunny,
+        1 || 2 || 3 =&gt; Icons.wb_cloudy,
+        _ =&gt; Icons.grain,
+      };
+}
+
+Future&lt;Clima&gt; buscarClima() async {
+  await Future.delayed(const Duration(seconds: 2));
+  return const Clima(
+    cidade: 'São Paulo',
+    temperatura: 16.3,
+    codigo: 2,
+    vento: 9.7,
+  );
+}
+
+class ClimaApp extends StatelessWidget {
+  const ClimaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Previsão do Tempo',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.blue),
+      home: const ClimaPage(),
+    );
+  }
+}
+
+class ClimaPage extends StatefulWidget {
+  const ClimaPage({super.key});
+
+  @override
+  State&lt;ClimaPage&gt; createState() =&gt; _ClimaPageState();
+}
+
+class _ClimaPageState extends State&lt;ClimaPage&gt; {
+  late Future&lt;Clima&gt; _futuro;
+
+  @override
+  void initState() {
+    super.initState();
+    _futuro = buscarClima();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Previsão do Tempo')),
+      body: FutureBuilder&lt;Clima&gt;(
+        future: _futuro,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Erro: ${snapshot.error}'));
+          }
+          return PainelClima(clima: snapshot.data!);
+        },
+      ),
+    );
+  }
+}
+
+class PainelClima extends StatelessWidget {
+  const PainelClima({super.key, required this.clima});
+
+  final Clima clima;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(clima.cidade, style: const TextStyle(fontSize: 28)),
+          const SizedBox(height: 8),
+          Icon(clima.icone, size: 96, color: Colors.blueGrey),
+          Text(
+            '${clima.temperatura.round()} °C',
+            style: const TextStyle(fontSize: 64, fontWeight: FontWeight.w300),
+          ),
+          Text(clima.descricao),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.air),
+              const SizedBox(width: 4),
+              Text('Vento: ${clima.vento.round()} km/h'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>class Clima { … final double temperatura; final int codigo; … }</dt><dd>A classe de modelo com os dados de um momento: cidade, temperatura, código do céu e vento.</dd>
+  <dt>String get descricao =&gt; switch (codigo) { … }</dt><dd>Um <em>getter</em> que traduz o código do céu em texto, com a expressão <code>switch</code> do Dart 3. <code>1 || 2</code> quer dizer "1 ou 2"; <code>&gt;= 51 &amp;&amp; &lt;= 67</code> é "de 51 a 67" (os códigos de chuva da tabela WMO que a Open-Meteo usa); <code>_</code> é "qualquer outro".</dd>
+  <dt>IconData get icone =&gt; switch (codigo) { … }</dt><dd>A mesma ideia para o ícone. Assim a tela não precisa saber nada sobre códigos: ela só pede <code>clima.descricao</code> e <code>clima.icone</code>.</dd>
+  <dt>Future&lt;Clima&gt; buscarClima() async { await Future.delayed(…); return … }</dt><dd>A função que "busca" o tempo. O <code>async</code> permite usar <code>await</code>, que espera o atraso de 2 segundos sem travar o app. O tipo de retorno é <code>Future&lt;Clima&gt;</code>: "um Clima, mais tarde".</dd>
+  <dt>late Future&lt;Clima&gt; _futuro; … initState() { _futuro = buscarClima(); }</dt><dd>A busca começa <strong>uma vez</strong>, quando a tela nasce, e o <code>Future</code> fica guardado no estado. Se você chamasse <code>buscarClima()</code> dentro do <code>build</code>, uma busca nova começaria a cada redesenho (veja <a href="ciclo-de-vida.html">Ciclo de Vida do Widget</a>).</dd>
+  <dt>FutureBuilder&lt;Clima&gt;(future: _futuro, builder: (context, snapshot) { … })</dt><dd>Um widget que se redesenha quando o <code>Future</code> muda de situação. O <code>snapshot</code> ("retrato") diz em que pé está: esperando, com dados ou com erro.</dd>
+  <dt>if (snapshot.connectionState != ConnectionState.done)</dt><dd>Enquanto não terminou, mostra o <code>CircularProgressIndicator</code>, a rodinha de "carregando".</dd>
+  <dt>if (snapshot.hasError)</dt><dd>Se a busca falhou, mostra o erro (a versão 3 caprichou nesta parte).</dd>
+  <dt>return PainelClima(clima: snapshot.data!);</dt><dd>Chegou: <code>snapshot.data</code> é o <code>Clima</code>. O <code>!</code> diz ao Dart "aqui não é nulo", e é seguro porque os dois <code>if</code> de cima já trataram os outros casos.</dd>
+  <dt>class PainelClima</dt><dd>A tela da versão 1, agora num widget separado, que recebe um <code>Clima</code> e mostra os valores dele. <code>clima.temperatura.round()</code> arredonda 16,3 para 16.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/projeto-clima-2a.png" alt="Tela com o título 'Previsão do Tempo' e o resto vazio, a não ser por um pequeno traço azul-escuro no meio: o começo do arco da rodinha de carregando" width="390" height="844" loading="lazy"><figcaption>Logo que o app abre: carregando (foto da solução da missão abaixo, com 5 segundos de espera, tirada 1 segundo depois de abrir).</figcaption></figure>
+
+<p>Enquanto o <code>Future</code> não termina, o <code>FutureBuilder</code> mostra só o <code>CircularProgressIndicator</code> no meio da tela. A rodinha é animada: o arco cresce e encolhe enquanto gira, e a foto o pegou bem curtinho, quase um ponto. No celular, você a vê girando.</p>
+
+<figure class="tela"><img src="assets/telas/projeto-clima-2.png" alt="A tela do tempo completa, igual à da versão 1: São Paulo, a nuvem, 16 °C, Parcialmente nublado e Vento: 10 km/h" width="390" height="844" loading="lazy"><figcaption>Dois segundos depois: os dados chegaram.</figcaption></figure>
+
+<p>Depois dos 2 segundos, o <code>Future</code> terminou, o <code>FutureBuilder</code> redesenhou e o <code>PainelClima</code> apareceu. A tela é idêntica à da versão 1, e é esse o objetivo: os números agora vêm de um objeto <code>Clima</code> (16,3 arredondado para 16; 9,7 para 10), e a descrição e o ícone vêm dos <em>getters</em> (código 2 → "Parcialmente nublado" e nuvem).</p>
+
+<div class="tryflutter" data-goal="src:Duration\(seconds:\s*5\)">
+<p class="try-task"><strong>Missão:</strong> simule uma internet lenta: troque a espera de 2 para <strong>5 segundos</strong> e rode. Quanto tempo a rodinha fica na tela?</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ClimaApp());
+
+class Clima {
+  const Clima({
+    required this.cidade,
+    required this.temperatura,
+    required this.codigo,
+    required this.vento,
+  });
+
+  final String cidade;
+  final double temperatura;
+  final int codigo;
+  final double vento;
+
+  String get descricao =&gt; switch (codigo) {
+        0 =&gt; 'Céu limpo',
+        1 || 2 =&gt; 'Parcialmente nublado',
+        3 =&gt; 'Nublado',
+        &gt;= 51 &amp;&amp; &lt;= 67 =&gt; 'Chuva',
+        _ =&gt; 'Tempo variado',
+      };
+
+  IconData get icone =&gt; switch (codigo) {
+        0 =&gt; Icons.wb_sunny,
+        1 || 2 || 3 =&gt; Icons.wb_cloudy,
+        _ =&gt; Icons.grain,
+      };
+}
+
+Future&lt;Clima&gt; buscarClima() async {
+  await Future.delayed(const Duration(seconds: 2));
+  return const Clima(
+    cidade: 'São Paulo',
+    temperatura: 16.3,
+    codigo: 2,
+    vento: 9.7,
+  );
+}
+
+class ClimaApp extends StatelessWidget {
+  const ClimaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Previsão do Tempo',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.blue),
+      home: const ClimaPage(),
+    );
+  }
+}
+
+class ClimaPage extends StatefulWidget {
+  const ClimaPage({super.key});
+
+  @override
+  State&lt;ClimaPage&gt; createState() =&gt; _ClimaPageState();
+}
+
+class _ClimaPageState extends State&lt;ClimaPage&gt; {
+  late Future&lt;Clima&gt; _futuro;
+
+  @override
+  void initState() {
+    super.initState();
+    _futuro = buscarClima();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Previsão do Tempo')),
+      body: FutureBuilder&lt;Clima&gt;(
+        future: _futuro,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Erro: ${snapshot.error}'));
+          }
+          return PainelClima(clima: snapshot.data!);
+        },
+      ),
+    );
+  }
+}
+
+class PainelClima extends StatelessWidget {
+  const PainelClima({super.key, required this.clima});
+
+  final Clima clima;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(clima.cidade, style: const TextStyle(fontSize: 28)),
+          const SizedBox(height: 8),
+          Icon(clima.icone, size: 96, color: Colors.blueGrey),
+          Text(
+            '${clima.temperatura.round()} °C',
+            style: const TextStyle(fontSize: 64, fontWeight: FontWeight.w300),
+          ),
+          Text(clima.descricao),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.air),
+              const SizedBox(width: 4),
+              Text('Vento: ${clima.vento.round()} km/h'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ClimaApp());
+
+class Clima {
+  const Clima({
+    required this.cidade,
+    required this.temperatura,
+    required this.codigo,
+    required this.vento,
+  });
+
+  final String cidade;
+  final double temperatura;
+  final int codigo;
+  final double vento;
+
+  String get descricao =&gt; switch (codigo) {
+        0 =&gt; 'Céu limpo',
+        1 || 2 =&gt; 'Parcialmente nublado',
+        3 =&gt; 'Nublado',
+        &gt;= 51 &amp;&amp; &lt;= 67 =&gt; 'Chuva',
+        _ =&gt; 'Tempo variado',
+      };
+
+  IconData get icone =&gt; switch (codigo) {
+        0 =&gt; Icons.wb_sunny,
+        1 || 2 || 3 =&gt; Icons.wb_cloudy,
+        _ =&gt; Icons.grain,
+      };
+}
+
+Future&lt;Clima&gt; buscarClima() async {
+  await Future.delayed(const Duration(seconds: 5));
+  return const Clima(
+    cidade: 'São Paulo',
+    temperatura: 16.3,
+    codigo: 2,
+    vento: 9.7,
+  );
+}
+
+class ClimaApp extends StatelessWidget {
+  const ClimaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Previsão do Tempo',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.blue),
+      home: const ClimaPage(),
+    );
+  }
+}
+
+class ClimaPage extends StatefulWidget {
+  const ClimaPage({super.key});
+
+  @override
+  State&lt;ClimaPage&gt; createState() =&gt; _ClimaPageState();
+}
+
+class _ClimaPageState extends State&lt;ClimaPage&gt; {
+  late Future&lt;Clima&gt; _futuro;
+
+  @override
+  void initState() {
+    super.initState();
+    _futuro = buscarClima();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Previsão do Tempo')),
+      body: FutureBuilder&lt;Clima&gt;(
+        future: _futuro,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Erro: ${snapshot.error}'));
+          }
+          return PainelClima(clima: snapshot.data!);
+        },
+      ),
+    );
+  }
+}
+
+class PainelClima extends StatelessWidget {
+  const PainelClima({super.key, required this.clima});
+
+  final Clima clima;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(clima.cidade, style: const TextStyle(fontSize: 28)),
+          const SizedBox(height: 8),
+          Icon(clima.icone, size: 96, color: Colors.blueGrey),
+          Text(
+            '${clima.temperatura.round()} °C',
+            style: const TextStyle(fontSize: 64, fontWeight: FontWeight.w300),
+          ),
+          Text(clima.descricao),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.air),
+              const SizedBox(width: 4),
+              Text('Vento: ${clima.vento.round()} km/h'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Versão 3: o JSON de verdade</h2>
+<p>Agora a função lê a resposta real da Open-Meteo (a mesma do <code>curl</code> lá em cima, só com os campos que o app usa e organizada em várias linhas). A resposta chega como <strong>texto</strong>; o <code>jsonDecode</code> transforma esse texto em mapas e listas do Dart, e um construtor <code>Clima.fromJson</code> tira de lá os três números. Também entram um botão de <strong>atualizar</strong> na barra e uma tela de erro mais simpática.</p>
+
+<pre class="file" data-file="lib/main.dart">import 'dart:convert';
+
+import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ClimaApp());
+
+// A resposta que a Open-Meteo deu para São Paulo (copiada do terminal).
+const respostaDaApi = r'''
+{
+  "timezone": "America/Sao_Paulo",
+  "current_units": {
+    "temperature_2m": "°C",
+    "weather_code": "wmo code",
+    "wind_speed_10m": "km/h"
+  },
+  "current": {
+    "time": "2026-10-19T17:45",
+    "temperature_2m": 16.3,
+    "weather_code": 2,
+    "wind_speed_10m": 9.7
+  }
+}
+''';
+
+class Clima {
+  const Clima({
+    required this.cidade,
+    required this.temperatura,
+    required this.codigo,
+    required this.vento,
+  });
+
+  factory Clima.fromJson(String cidade, Map&lt;String, dynamic&gt; json) {
+    final atual = json['current'] as Map&lt;String, dynamic&gt;;
+    return Clima(
+      cidade: cidade,
+      temperatura: (atual['temperature_2m'] as num).toDouble(),
+      codigo: atual['weather_code'] as int,
+      vento: (atual['wind_speed_10m'] as num).toDouble(),
+    );
+  }
+
+  final String cidade;
+  final double temperatura;
+  final int codigo;
+  final double vento;
+
+  String get descricao =&gt; switch (codigo) {
+        0 =&gt; 'Céu limpo',
+        1 || 2 =&gt; 'Parcialmente nublado',
+        3 =&gt; 'Nublado',
+        &gt;= 51 &amp;&amp; &lt;= 67 =&gt; 'Chuva',
+        _ =&gt; 'Tempo variado',
+      };
+
+  IconData get icone =&gt; switch (codigo) {
+        0 =&gt; Icons.wb_sunny,
+        1 || 2 || 3 =&gt; Icons.wb_cloudy,
+        _ =&gt; Icons.grain,
+      };
+}
+
+Future&lt;Clima&gt; buscarClima() async {
+  await Future.delayed(const Duration(seconds: 1));
+  final json = jsonDecode(respostaDaApi) as Map&lt;String, dynamic&gt;;
+  return Clima.fromJson('São Paulo', json);
+}
+
+class ClimaApp extends StatelessWidget {
+  const ClimaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Previsão do Tempo',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.blue),
+      home: const ClimaPage(),
+    );
+  }
+}
+
+class ClimaPage extends StatefulWidget {
+  const ClimaPage({super.key});
+
+  @override
+  State&lt;ClimaPage&gt; createState() =&gt; _ClimaPageState();
+}
+
+class _ClimaPageState extends State&lt;ClimaPage&gt; {
+  late Future&lt;Clima&gt; _futuro;
+
+  @override
+  void initState() {
+    super.initState();
+    _futuro = buscarClima();
+  }
+
+  void _atualizar() {
+    setState(() {
+      _futuro = buscarClima();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Previsão do Tempo'),
+        actions: [
+          IconButton(
+            onPressed: _atualizar,
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Atualizar',
+          ),
+        ],
+      ),
+      body: FutureBuilder&lt;Clima&gt;(
+        future: _futuro,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.cloud_off, size: 64),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text('Não deu para buscar o tempo:\n${snapshot.error}'),
+                  ),
+                  FilledButton(
+                    onPressed: _atualizar,
+                    child: const Text('Tentar de novo'),
+                  ),
+                ],
+              ),
+            );
+          }
+          return PainelClima(clima: snapshot.data!);
+        },
+      ),
+    );
+  }
+}
+
+class PainelClima extends StatelessWidget {
+  const PainelClima({super.key, required this.clima});
+
+  final Clima clima;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(clima.cidade, style: const TextStyle(fontSize: 28)),
+          const SizedBox(height: 8),
+          Icon(clima.icone, size: 96, color: Colors.blueGrey),
+          Text(
+            '${clima.temperatura.round()} °C',
+            style: const TextStyle(fontSize: 64, fontWeight: FontWeight.w300),
+          ),
+          Text(clima.descricao),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.air),
+              const SizedBox(width: 4),
+              Text('Vento: ${clima.vento.round()} km/h'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>import 'dart:convert';</dt><dd>A biblioteca do Dart que tem o <code>jsonDecode</code>. Ela já vem com o Dart: não precisa instalar nada.</dd>
+  <dt>const respostaDaApi = r''' … ''';</dt><dd>A resposta da API guardada num texto de várias linhas (as três aspas). O <code>r</code> na frente faz um texto "cru": o Dart não tenta interpretar <code>$</code> nem <code>\</code> lá dentro.</dd>
+  <dt>factory Clima.fromJson(String cidade, Map&lt;String, dynamic&gt; json)</dt><dd>Um construtor que cria um <code>Clima</code> a partir do mapa do JSON. <code>factory</code> é o tipo de construtor que pode fazer contas antes de criar o objeto.</dd>
+  <dt>final atual = json['current'] as Map&lt;String, dynamic&gt;;</dt><dd>Pega o bloco <code>"current"</code>. O <code>as</code> diz ao Dart o tipo esperado (no JSON, tudo chega como <code>dynamic</code>, "qualquer coisa").</dd>
+  <dt>(atual['temperature_2m'] as num).toDouble()</dt><dd>A temperatura. No JSON ela pode vir como <code>16.3</code> ou como <code>16</code>; o <code>num</code> aceita os dois, e o <code>toDouble()</code> converte para <code>double</code>. É o jeito seguro de ler números com vírgula de um JSON.</dd>
+  <dt>jsonDecode(respostaDaApi) as Map&lt;String, dynamic&gt;</dt><dd>Transforma o texto no mapa. O bloco de fora do JSON (as chaves <code>{ }</code>) vira um <code>Map</code>.</dd>
+  <dt>void _atualizar() { setState(() { _futuro = buscarClima(); }); }</dt><dd>Para buscar de novo, crie um <code>Future</code> novo dentro de <code>setState</code>: o <code>FutureBuilder</code> percebe a troca, volta para "carregando" e espera o novo resultado.</dd>
+  <dt>actions: [IconButton(… Icons.refresh …)]</dt><dd>O botão de atualizar, à direita na <code>AppBar</code>.</dd>
+  <dt>if (snapshot.hasError) { … 'Tentar de novo' … }</dt><dd>A tela de erro: um ícone de nuvem riscada, a mensagem e um botão que chama o mesmo <code>_atualizar</code>.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/projeto-clima-3.png" alt="A tela do tempo com São Paulo, a nuvem, 16 °C, Parcialmente nublado e Vento: 10 km/h; agora com um ícone de seta circular (atualizar) no canto direito da barra do topo" width="390" height="844" loading="lazy"><figcaption>A versão 3, com os dados lidos do JSON da Open-Meteo.</figcaption></figure>
+
+<p>Os mesmos valores, agora tirados do JSON real (a foto foi tirada 1,5 segundo depois de abrir, quando a espera de 1 segundo já tinha passado). A única diferença visível é o ícone de atualizar no canto da barra. Tocar nele faz a rodinha voltar por um segundo e os dados aparecerem de novo.</p>
+
+<div class="tryflutter" data-goal="src:&quot;temperature_2m&quot;:\s*31\.8;;src:&quot;weather_code&quot;:\s*0">
+<p class="try-task"><strong>Missão:</strong> finja que a API respondeu com um dia quente: no JSON, troque <code>"temperature_2m": 16.3</code> por <code>31.8</code> e <code>"weather_code": 2</code> por <code>0</code>. O que muda na tela? (O ícone e o texto mudam sozinhos, por causa dos <em>getters</em>.)</p>
+<pre class="script" data-file="main.dart">import 'dart:convert';
+
+import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ClimaApp());
+
+// A resposta que a Open-Meteo deu para São Paulo (copiada do terminal).
+const respostaDaApi = r'''
+{
+  "timezone": "America/Sao_Paulo",
+  "current_units": {
+    "temperature_2m": "°C",
+    "weather_code": "wmo code",
+    "wind_speed_10m": "km/h"
+  },
+  "current": {
+    "time": "2026-10-19T17:45",
+    "temperature_2m": 16.3,
+    "weather_code": 2,
+    "wind_speed_10m": 9.7
+  }
+}
+''';
+
+class Clima {
+  const Clima({
+    required this.cidade,
+    required this.temperatura,
+    required this.codigo,
+    required this.vento,
+  });
+
+  factory Clima.fromJson(String cidade, Map&lt;String, dynamic&gt; json) {
+    final atual = json['current'] as Map&lt;String, dynamic&gt;;
+    return Clima(
+      cidade: cidade,
+      temperatura: (atual['temperature_2m'] as num).toDouble(),
+      codigo: atual['weather_code'] as int,
+      vento: (atual['wind_speed_10m'] as num).toDouble(),
+    );
+  }
+
+  final String cidade;
+  final double temperatura;
+  final int codigo;
+  final double vento;
+
+  String get descricao =&gt; switch (codigo) {
+        0 =&gt; 'Céu limpo',
+        1 || 2 =&gt; 'Parcialmente nublado',
+        3 =&gt; 'Nublado',
+        &gt;= 51 &amp;&amp; &lt;= 67 =&gt; 'Chuva',
+        _ =&gt; 'Tempo variado',
+      };
+
+  IconData get icone =&gt; switch (codigo) {
+        0 =&gt; Icons.wb_sunny,
+        1 || 2 || 3 =&gt; Icons.wb_cloudy,
+        _ =&gt; Icons.grain,
+      };
+}
+
+Future&lt;Clima&gt; buscarClima() async {
+  await Future.delayed(const Duration(seconds: 1));
+  final json = jsonDecode(respostaDaApi) as Map&lt;String, dynamic&gt;;
+  return Clima.fromJson('São Paulo', json);
+}
+
+class ClimaApp extends StatelessWidget {
+  const ClimaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Previsão do Tempo',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.blue),
+      home: const ClimaPage(),
+    );
+  }
+}
+
+class ClimaPage extends StatefulWidget {
+  const ClimaPage({super.key});
+
+  @override
+  State&lt;ClimaPage&gt; createState() =&gt; _ClimaPageState();
+}
+
+class _ClimaPageState extends State&lt;ClimaPage&gt; {
+  late Future&lt;Clima&gt; _futuro;
+
+  @override
+  void initState() {
+    super.initState();
+    _futuro = buscarClima();
+  }
+
+  void _atualizar() {
+    setState(() {
+      _futuro = buscarClima();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Previsão do Tempo'),
+        actions: [
+          IconButton(
+            onPressed: _atualizar,
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Atualizar',
+          ),
+        ],
+      ),
+      body: FutureBuilder&lt;Clima&gt;(
+        future: _futuro,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.cloud_off, size: 64),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text('Não deu para buscar o tempo:\n${snapshot.error}'),
+                  ),
+                  FilledButton(
+                    onPressed: _atualizar,
+                    child: const Text('Tentar de novo'),
+                  ),
+                ],
+              ),
+            );
+          }
+          return PainelClima(clima: snapshot.data!);
+        },
+      ),
+    );
+  }
+}
+
+class PainelClima extends StatelessWidget {
+  const PainelClima({super.key, required this.clima});
+
+  final Clima clima;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(clima.cidade, style: const TextStyle(fontSize: 28)),
+          const SizedBox(height: 8),
+          Icon(clima.icone, size: 96, color: Colors.blueGrey),
+          Text(
+            '${clima.temperatura.round()} °C',
+            style: const TextStyle(fontSize: 64, fontWeight: FontWeight.w300),
+          ),
+          Text(clima.descricao),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.air),
+              const SizedBox(width: 4),
+              Text('Vento: ${clima.vento.round()} km/h'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'dart:convert';
+
+import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ClimaApp());
+
+// A resposta que a Open-Meteo deu para São Paulo (copiada do terminal).
+const respostaDaApi = r'''
+{
+  "timezone": "America/Sao_Paulo",
+  "current_units": {
+    "temperature_2m": "°C",
+    "weather_code": "wmo code",
+    "wind_speed_10m": "km/h"
+  },
+  "current": {
+    "time": "2026-10-19T17:45",
+    "temperature_2m": 31.8,
+    "weather_code": 0,
+    "wind_speed_10m": 9.7
+  }
+}
+''';
+
+class Clima {
+  const Clima({
+    required this.cidade,
+    required this.temperatura,
+    required this.codigo,
+    required this.vento,
+  });
+
+  factory Clima.fromJson(String cidade, Map&lt;String, dynamic&gt; json) {
+    final atual = json['current'] as Map&lt;String, dynamic&gt;;
+    return Clima(
+      cidade: cidade,
+      temperatura: (atual['temperature_2m'] as num).toDouble(),
+      codigo: atual['weather_code'] as int,
+      vento: (atual['wind_speed_10m'] as num).toDouble(),
+    );
+  }
+
+  final String cidade;
+  final double temperatura;
+  final int codigo;
+  final double vento;
+
+  String get descricao =&gt; switch (codigo) {
+        0 =&gt; 'Céu limpo',
+        1 || 2 =&gt; 'Parcialmente nublado',
+        3 =&gt; 'Nublado',
+        &gt;= 51 &amp;&amp; &lt;= 67 =&gt; 'Chuva',
+        _ =&gt; 'Tempo variado',
+      };
+
+  IconData get icone =&gt; switch (codigo) {
+        0 =&gt; Icons.wb_sunny,
+        1 || 2 || 3 =&gt; Icons.wb_cloudy,
+        _ =&gt; Icons.grain,
+      };
+}
+
+Future&lt;Clima&gt; buscarClima() async {
+  await Future.delayed(const Duration(seconds: 1));
+  final json = jsonDecode(respostaDaApi) as Map&lt;String, dynamic&gt;;
+  return Clima.fromJson('São Paulo', json);
+}
+
+class ClimaApp extends StatelessWidget {
+  const ClimaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Previsão do Tempo',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.blue),
+      home: const ClimaPage(),
+    );
+  }
+}
+
+class ClimaPage extends StatefulWidget {
+  const ClimaPage({super.key});
+
+  @override
+  State&lt;ClimaPage&gt; createState() =&gt; _ClimaPageState();
+}
+
+class _ClimaPageState extends State&lt;ClimaPage&gt; {
+  late Future&lt;Clima&gt; _futuro;
+
+  @override
+  void initState() {
+    super.initState();
+    _futuro = buscarClima();
+  }
+
+  void _atualizar() {
+    setState(() {
+      _futuro = buscarClima();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Previsão do Tempo'),
+        actions: [
+          IconButton(
+            onPressed: _atualizar,
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Atualizar',
+          ),
+        ],
+      ),
+      body: FutureBuilder&lt;Clima&gt;(
+        future: _futuro,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.cloud_off, size: 64),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text('Não deu para buscar o tempo:\n${snapshot.error}'),
+                  ),
+                  FilledButton(
+                    onPressed: _atualizar,
+                    child: const Text('Tentar de novo'),
+                  ),
+                ],
+              ),
+            );
+          }
+          return PainelClima(clima: snapshot.data!);
+        },
+      ),
+    );
+  }
+}
+
+class PainelClima extends StatelessWidget {
+  const PainelClima({super.key, required this.clima});
+
+  final Clima clima;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(clima.cidade, style: const TextStyle(fontSize: 28)),
+          const SizedBox(height: 8),
+          Icon(clima.icone, size: 96, color: Colors.blueGrey),
+          Text(
+            '${clima.temperatura.round()} °C',
+            style: const TextStyle(fontSize: 64, fontWeight: FontWeight.w300),
+          ),
+          Text(clima.descricao),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.air),
+              const SizedBox(width: 4),
+              Text('Vento: ${clima.vento.round()} km/h'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<h3>Buscando ao vivo com o pacote <code>http</code></h3>
+<p>No seu projeto, para buscar a previsão de verdade a cada abertura, só a função <code>buscarClima</code> muda. Primeiro, acrescente o pacote <code>http</code> ao projeto (veja <a href="pacotes.html">Pacotes do pub.dev</a>):</p>
+<pre class="term">$ flutter pub add http
+Resolving dependencies...
+Downloading packages...
+  cupertino_icons 1.0.9 (2.0.0 available)
++ http 1.6.0
++ http_parser 4.1.2
+  material_color_utilities 0.13.0 (0.13.1 available)
+  meta 1.18.3 (1.19.0 available)
+  test_api 0.7.12 (0.7.15 available)
++ typed_data 1.4.0
++ web 1.1.1
+Changed 4 dependencies!
+4 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+</pre>
+<p>As linhas com <code>+</code> são os pacotes que entraram: o <code>http</code> (versão 1.6.0) e três pacotes de que ele precisa. As linhas com "available" só avisam que existem versões mais novas de outros pacotes; não são erro. No <code>pubspec.yaml</code>, apareceu a linha <code>http: ^1.6.0</code>.</p>
+<p>Depois, troque a função (o resto do app fica igual, e a constante <code>respostaDaApi</code> pode ser apagada):</p>
+<pre class="file" data-file="lib/main.dart (trecho, ilustrativo)">import 'package:http/http.dart' as http;
+
+Future&lt;Clima&gt; buscarClima() async {
+  final url = Uri.parse(
+    'https://api.open-meteo.com/v1/forecast'
+    '?latitude=-23.55&amp;longitude=-46.63'
+    '&amp;current=temperature_2m,weather_code,wind_speed_10m',
+  );
+  final resposta = await http.get(url);
+  if (resposta.statusCode != 200) {
+    throw Exception('a API respondeu ${resposta.statusCode}');
+  }
+  final json = jsonDecode(resposta.body) as Map&lt;String, dynamic&gt;;
+  return Clima.fromJson('São Paulo', json);
+}
+</pre>
+<div class="note">
+<strong>Ilustrativo</strong>
+<p>No lab, a versão 3 com esta função no lugar passou no <code>flutter analyze</code> sem nenhum problema, mas não foi fotografada: o laboratório de fotos compila os apps sem pacotes externos. A resposta da API, porém, é a real (a do <code>curl</code>), e é com ela que a versão 3 roda. A aula <a href="http.html">Buscando Dados na Internet</a> explica o <code>http.get</code>, o <code>statusCode</code> e a permissão de internet no Android.</p>
+</div>
+
+<hr>
+
+<h2>Formas diferentes de fazer</h2>
+<h3><code>FutureBuilder</code> ou guardar o resultado no estado?</h3>
+<p>Em vez do <code>FutureBuilder</code>, dá para guardar o próprio <code>Clima</code> no estado e cuidar da espera "na mão":</p>
+<pre class="file" data-file="lib/main.dart (trecho)">Clima? _clima;      // null enquanto não chegou
+Object? _erro;
+
+Future&lt;void&gt; _carregar() async {
+  try {
+    final clima = await buscarClima();
+    setState(() =&gt; _clima = clima);
+  } catch (e) {
+    setState(() =&gt; _erro = e);
+  }
+}
+
+// no build:
+// if (_erro != null) … else if (_clima == null) CircularProgressIndicator() else PainelClima(clima: _clima!)
+</pre>
+<p><strong>Qual usar:</strong> o <code>FutureBuilder</code> é ótimo para "buscar uma vez e mostrar". Quando a tela também precisa <strong>mudar</strong> os dados que chegaram (editar, combinar com outras buscas), guardar o resultado no estado costuma ficar mais claro. Em apps maiores, isso sai da tela e vai para uma camada de estado (veja <a href="gerencia-estado.html">Por que Gerenciar o Estado</a>).</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<h3>A chave que não existe no JSON</h3>
+<p>Um erro de digitação no nome de um campo é o erro mais comum com JSON. Aqui, a temperatura foi lida com o nome em português, que a API nunca mandou:</p>
+<pre class="file" data-file="lib/main.dart (trecho errado)">temperatura: atual['temperatura'] as double,
+</pre>
+<p>O app compila, porque para o Dart <code>atual['temperatura']</code> é uma consulta normal a um mapa. O problema só aparece com o app rodando:</p>
+<figure class="tela"><img src="assets/telas/projeto-clima-erro.png" alt="A tela de erro do app: no meio, o ícone de uma nuvem riscada; embaixo, o texto 'Não deu para buscar o tempo:' e, na linha seguinte, 'TypeError: null: type 'Null' is not a subtype of type 'double''; mais abaixo, o botão 'Tentar de novo'" width="390" height="844" loading="lazy"><figcaption>A tela de erro da versão 3, mostrando a exceção.</figcaption></figure>
+<p>A mensagem da exceção, como saiu no lab:</p>
+<pre class="term">TypeError: null: type 'Null' is not a subtype of type 'double'</pre>
+<dl class="anatomy">
+  <dt>TypeError</dt><dd>"Erro de tipo": um valor não era do tipo que o código prometeu.</dd>
+  <dt>null:</dt><dd>O valor que causou o problema. Como a chave <code>'temperatura'</code> não existe no mapa, <code>atual['temperatura']</code> devolveu <code>null</code>.</dd>
+  <dt>type 'Null' is not a subtype of type 'double'</dt><dd>"O tipo <code>Null</code> não é um subtipo de <code>double</code>": o <code>as double</code> exigiu um número, e chegou "nada".</dd>
+</dl>
+<p>Repare que o app <strong>não quebrou</strong>: a exceção aconteceu dentro do <code>buscarClima</code>, o <code>Future</code> terminou com erro, e o <code>FutureBuilder</code> caiu no <code>snapshot.hasError</code>, mostrando a tela de erro que a versão 3 preparou. Essa é a vantagem de tratar o erro: em vez de uma tela vermelha, a pessoa vê uma mensagem e um botão. (O texto exato da mensagem pode variar um pouco entre plataformas; esta foi a do navegador.)</p>
+<p><strong>Como resolver:</strong> confira o nome do campo na resposta real (o <code>curl</code> do começo da aula serve para isso) e copie de lá, em vez de digitar. Para JSONs grandes, existem geradores de <code>fromJson</code> (veja <a href="json-modelos.html">JSON e Classes de Modelo</a>).</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida do projeto</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Peça</th><th>Para que serviu aqui</th><th>Aula</th></tr>
+<tr><td><code>Future</code>, <code>async</code> e <code>await</code></td><td>Representar e esperar dados que chegam depois</td><td><a href="futurebuilder.html">FutureBuilder</a></td></tr>
+<tr><td><code>FutureBuilder</code> + <code>snapshot</code></td><td>Mostrar carregando, erro ou os dados</td><td><a href="futurebuilder.html">FutureBuilder</a></td></tr>
+<tr><td><code>CircularProgressIndicator</code></td><td>A rodinha de "carregando"</td><td><a href="futurebuilder.html">FutureBuilder</a></td></tr>
+<tr><td><code>jsonDecode</code> + <code>fromJson</code></td><td>Transformar o texto da API num objeto <code>Clima</code></td><td><a href="json-modelos.html">JSON e Classes de Modelo</a></td></tr>
+<tr><td>expressão <code>switch</code> num <em>getter</em></td><td>Traduzir o código do céu em texto e ícone</td><td><a href="dart-para-flutter.html">O Dart que Você Precisa</a></td></tr>
+<tr><td><code>http.get</code></td><td>Buscar ao vivo (ilustrativo)</td><td><a href="http.html">Buscando Dados na Internet</a></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete a função assíncrona</h3>
+<div class="ex-code"><input data-answer="Future" aria-label="tipo de retorno">&lt;Clima&gt; buscarClima() <input data-answer="async" aria-label="palavra que marca a função assíncrona"> {<br>&nbsp;&nbsp;<input data-answer="await" aria-label="palavra que espera">  Future.delayed(const Duration(seconds: 2));<br>&nbsp;&nbsp;return const Clima(…);<br>}</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. Por que o <code>buscarClima()</code> é chamado no <code>initState</code>, e não dentro do <code>build</code>?</p>
+<label><input type="radio" name="q2"> Porque o <code>build</code> não aceita funções <code>async</code>.</label>
+<label><input type="radio" name="q2"> Porque o <code>build</code> roda muitas vezes, e cada vez começaria uma busca nova.</label>
+<label><input type="radio" name="q2"> Porque o <code>FutureBuilder</code> só funciona no <code>initState</code>.</label>
+<label><input type="radio" name="q2"> Tanto faz: o resultado é o mesmo.</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. Para ler <code>"temperature_2m": 16.3</code> de um JSON com segurança, qual destas é a melhor?</p>
+<label><input type="radio" name="q3"> <code>atual['temperature_2m'] as int</code></label>
+<label><input type="radio" name="q3"> <code>atual['temperatura'] as double</code></label>
+<label><input type="radio" name="q3"> <code>(atual['temperature_2m'] as num).toDouble()</code></label>
+<label><input type="radio" name="q3"> <code>atual.temperature_2m</code></label>
+</div>
+
+<div class="exercise">
+<h3>4. Desafio: a sensação térmica</h3>
+<p>A Open-Meteo também tem o campo <code>apparent_temperature</code> (a sensação térmica). Acrescente um campo <code>sensacao</code> na classe <code>Clima</code>, leia-o no <code>fromJson</code> e mostre <code>Sensação: 15 °C</code> abaixo da descrição. No JSON guardado, acrescente <code>"apparent_temperature": 15.2</code> dentro de <code>"current"</code>.</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Monte a tela com dados fixos primeiro; depois troque a origem dos dados.</li>
+  <li>Dados que demoram são um <code>Future</code>; a função que busca é <code>async</code> e usa <code>await</code>.</li>
+  <li>Comece a busca no <code>initState</code>, guarde o <code>Future</code> no estado e use <code>FutureBuilder</code> para mostrar carregando, erro ou dados.</li>
+  <li>Para buscar de novo, crie um <code>Future</code> novo dentro de <code>setState</code>.</li>
+  <li><code>jsonDecode</code> transforma o texto da API em mapas; um <code>fromJson</code> transforma o mapa em objeto. Leia números com <code>(… as num).toDouble()</code> e copie os nomes dos campos da resposta real.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
