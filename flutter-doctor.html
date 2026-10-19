@@ -32,7 +32,7 @@
 </ul>
 </div>
 
-<p>Todas as saídas desta aula saíram da máquina da Ana: um Ubuntu recém-instalado, com o Flutter 3.47.7 em <code>/home/ana/flutter</code> (aula <a href="instalar.html">Instalar o Flutter</a>) e <strong>mais nada</strong>: sem Android Studio, sem Chrome. É a situação de quem acabou de instalar. Num trecho, a versão do kernel do Linux foi cortada e trocada por <code>…</code>.</p>
+<p>Todas as saídas desta aula saíram da máquina da Ana: um Ubuntu recém-instalado, com o Flutter 3.47.7 em <code>/home/ana/flutter</code> (aula <a href="instalar.html">Instalar o Flutter</a>) e <strong>mais nada</strong>: sem Android Studio, sem Chrome. É a situação de quem acabou de instalar.</p>
 
 <hr>
 
@@ -56,7 +56,7 @@
 
 <pre class="term">$ flutter doctor
 Doctor summary (to see all details, run flutter doctor -v):
-[✓] Flutter (Channel stable, 3.47.7, on Ubuntu 26.04.1 LTS …, locale pt_BR.UTF-8)
+[✓] Flutter (Channel stable, 3.47.7, on Ubuntu 26.04.1 LTS 7.0.0-15-generic, locale pt_BR.UTF-8)
 [✗] Android toolchain - develop for Android devices
     ✗ Unable to locate Android SDK.
       Install Android Studio from: https://developer.android.com/studio/index.html
@@ -96,7 +96,7 @@ Doctor summary (to see all details, run flutter doctor -v):
 <h2>2. Categoria por categoria</h2>
 
 <h3>Flutter</h3>
-<p><code>[✓] Flutter (Channel stable, 3.47.7, on Ubuntu 26.04.1 LTS …, locale pt_BR.UTF-8)</code>: o próprio SDK está ok. Mostra o canal (<code>stable</code>), a versão (<code>3.47.7</code>), o sistema (Ubuntu 26.04.1) e o idioma da máquina (<code>pt_BR.UTF-8</code>). Se esta categoria der <code>[✗]</code> ou <code>[!]</code>, o problema é na instalação do Flutter em si, e é o primeiro a resolver.</p>
+<p><code>[✓] Flutter (Channel stable, 3.47.7, on Ubuntu 26.04.1 LTS 7.0.0-15-generic, locale pt_BR.UTF-8)</code>: o próprio SDK está ok. Mostra o canal (<code>stable</code>), a versão (<code>3.47.7</code>), o sistema (Ubuntu 26.04.1, com a versão do núcleo do Linux, o <em>kernel</em>: <code>7.0.0-15-generic</code>) e o idioma da máquina (<code>pt_BR.UTF-8</code>). Se esta categoria der <code>[✗]</code> ou <code>[!]</code>, o problema é na instalação do Flutter em si, e é o primeiro a resolver.</p>
 
 <h3>Android toolchain</h3>
 <p>"Ferramentas do Android: para desenvolver para aparelhos Android". <code>Unable to locate Android SDK</code>: "não foi possível achar o Android SDK". O próprio doutor dá a receita, linha por linha:</p>
@@ -126,7 +126,7 @@ Doctor summary (to see all details, run flutter doctor -v):
 <p>O <code>-v</code> (de <em>verbose</em>, "detalhado") mostra o que cada exame encontrou, com o tempo que levou. O começo, na máquina da Ana:</p>
 
 <pre class="term">$ flutter doctor -v
-[✓] Flutter (Channel stable, 3.47.7, on Ubuntu 26.04.1 LTS …, locale pt_BR.UTF-8) [53ms]
+[✓] Flutter (Channel stable, 3.47.7, on Ubuntu 26.04.1 LTS 7.0.0-15-generic, locale pt_BR.UTF-8) [53ms]
     • Flutter version 3.47.7 on channel stable at /home/ana/flutter
     • Upstream repository https://github.com/flutter/flutter.git
     • Framework revision abaf9c5237 (11 days ago), 2026-10-08 09:51:21 -0700
@@ -136,7 +136,7 @@ Doctor summary (to see all details, run flutter doctor -v):
     • Feature flags: enable-web, enable-linux-desktop, enable-macos-desktop, enable-windows-desktop, enable-android, enable-ios, cli-animations, enable-native-assets, enable-record-use, enable-swift-package-manager, omit-legacy-version-file, enable-lldb-debugging, enable-uiscene-migration
 «  ... Android toolchain, Chrome e Linux toolchain iguais ao resumo, com o tempo de cada um
 [✓] Connected device (1 available) [28ms]
-    • Linux (desktop) • linux • linux-x64 • Ubuntu 26.04.1 LTS …
+    • Linux (desktop) • linux • linux-x64 • Ubuntu 26.04.1 LTS 7.0.0-15-generic
 
 [✓] Network resources [148ms]
     • All expected network resources are available.
@@ -164,7 +164,7 @@ Doctor summary (to see all details, run flutter doctor -v):
 <h3><code>flutter devices</code>: quais aparelhos estão disponíveis</h3>
 <pre class="term">$ flutter devices
 Found 1 connected device:
-  Linux (desktop) • linux • linux-x64 • Ubuntu 26.04.1 LTS …
+  Linux (desktop) • linux • linux-x64 • Ubuntu 26.04.1 LTS 7.0.0-15-generic
 
 Run "flutter emulators" to list and start any available device emulators.
 
