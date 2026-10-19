@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter GestureDetector — toques, toque duplo, toque longo e arrastar | Guia Flutter</title>
+<meta name="description" content="GestureDetector e InkWell no Flutter para quem nunca fez um app: deixar qualquer widget tocável, onTap, onDoubleTap, onLongPress, arrastar com onPanUpdate e o delta, pinça com onScaleUpdate, a área de toque (behavior), o efeito de onda do InkWell e os erros reais (No Material widget found, pan com scale).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">GestureDetector</span></h1>
+
+<p class="intro">Botões já respondem ao toque (aula <a href="botoes.html">Botões</a>). Mas e se você quiser que uma <strong>foto</strong>, um <strong>cartão</strong> ou um <strong>texto</strong> respondam? E se quiser reagir a dois toques rápidos (o "curtir" do Instagram), a um toque longo (o menu de opções) ou a um arrasto? Para isso existe o <code>GestureDetector</code> ("detector de gestos"): um embrulho invisível que transforma qualquer widget em algo tocável.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como embrulhar um widget num <code>GestureDetector</code> e reagir a <code>onTap</code>, <code>onDoubleTap</code> e <code>onLongPress</code>.</li>
+  <li>Como arrastar um widget pela tela com <code>onPanUpdate</code> e o <code>delta</code>.</li>
+  <li>O que é a área de toque e por que às vezes o toque "não pega" (<code>behavior</code>).</li>
+  <li>A diferença entre <code>GestureDetector</code> e <code>InkWell</code> (a onda do Material).</li>
+  <li>Os erros reais: <code>No Material widget found</code> e o pan junto com o scale.</li>
+</ul>
+</div>
+
+<hr>
+
+<h2>A ideia: o sensor de presença</h2>
+<p>Sabe a porta de shopping que abre sozinha? Ela não é uma porta especial: é uma porta comum com um <strong>sensor</strong> em cima. O sensor não muda a aparência da porta; só percebe quem chega e avisa o motor.</p>
+<p>O <code>GestureDetector</code> é esse sensor. Ele <strong>não desenha nada</strong>: o que aparece é o <code>child</code>. Ele só fica "olhando" os toques que caem em cima do filho e chama a função certa para cada tipo de gesto:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>O dedo faz…</th><th>O nome do gesto</th><th>Parâmetro</th></tr>
+<tr><td>Toca e solta</td><td>toque (<em>tap</em>)</td><td><code>onTap</code></td></tr>
+<tr><td>Toca duas vezes, rápido</td><td>toque duplo (<em>double tap</em>)</td><td><code>onDoubleTap</code></td></tr>
+<tr><td>Toca e segura</td><td>toque longo (<em>long press</em>)</td><td><code>onLongPress</code></td></tr>
+<tr><td>Encosta e arrasta</td><td>arrastar (<em>pan</em>, <em>drag</em>)</td><td><code>onPanStart</code>, <code>onPanUpdate</code>, <code>onPanEnd</code></td></tr>
+<tr><td>Dois dedos abrindo ou fechando</td><td>pinça (<em>scale</em>)</td><td><code>onScaleStart</code>, <code>onScaleUpdate</code>, <code>onScaleEnd</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>1. Toque, toque duplo e toque longo</h2>
+<p>Um cartão de receita: um toque abre, dois toques curtem, toque longo mostra mais opções.</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Receita()));
+
+class Receita extends StatefulWidget {
+  const Receita({super.key});
+
+  @override
+  State&lt;Receita&gt; createState() =&gt; _ReceitaState();
+}
+
+class _ReceitaState extends State&lt;Receita&gt; {
+  bool curtida = false;
+  String aviso = 'Toque no cartão';
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  aviso = 'Um toque: abrir a receita';
+                });
+              },
+              onDoubleTap: () {
+                setState(() {
+                  curtida = !curtida;
+                  aviso = 'Dois toques: curtir';
+                });
+              },
+              onLongPress: () {
+                setState(() {
+                  aviso = 'Toque longo: mais opções';
+                });
+              },
+              child: Container(
+                width: 260,
+                height: 160,
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade100,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text('Bolo de cenoura', style: TextStyle(fontSize: 22)),
+                    Icon(
+                      curtida ? Icons.favorite : Icons.favorite_border,
+                      color: Colors.red,
+                      size: 40,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(aviso, style: const TextStyle(fontSize: 18)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>GestureDetector(…, child: Container(…))</dt><dd>O sensor em volta do cartão. O toque vale em qualquer ponto do <code>Container</code> (260 × 160).</dd>
+  <dt>onTap: () { … }</dt><dd>Um toque simples. Uma função sem parâmetros, como o <code>onPressed</code> dos botões.</dd>
+  <dt>onDoubleTap: () { … }</dt><dd>Dois toques seguidos e rápidos. Troca o coração cheio/vazio.</dd>
+  <dt>onLongPress: () { … }</dt><dd>Encostar e segurar por um instante (cerca de meio segundo).</dd>
+  <dt>Icon(curtida ? Icons.favorite : Icons.favorite_border, …)</dt><dd>O coração cheio quando <code>curtida</code> é <code>true</code>, vazio quando é <code>false</code>.</dd>
+</dl>
+
+<p>Ao abrir, o cartão mostra o coração vazio. A Ana deu <strong>um toque</strong> no cartão, e o <code>onTap</code> trocou o aviso de baixo (o coração continua vazio: quem curte é o toque duplo):</p>
+<div class="table-wrap"><table class="ref"><tr><td><figure class="tela"><img src="assets/telas/gestos-1.png" alt="Tela &#39;Receitas da Ana&#39; com um cartão bege de cantos arredondados, escrito &#39;Bolo de cenoura&#39; com um coração vermelho vazio embaixo; abaixo do cartão, &#39;Toque no cartão&#39;" width="390" height="844" loading="lazy"><figcaption>Ao abrir.</figcaption></figure></td><td><figure class="tela"><img src="assets/telas/gestos-2.png" alt="O mesmo cartão, com o coração ainda vazio; abaixo dele, agora, &#39;Um toque: abrir a receita&#39;" width="390" height="844" loading="lazy"><figcaption>Depois de um toque.</figcaption></figure></td></tr></table></div>
+<p>O toque duplo e o toque longo não cabem numa foto parada: rode o app e experimente (com o mouse, são dois cliques rápidos e "clicar e segurar"). A caixa logo abaixo tem um toque longo para você testar.</p>
+
+<div class="note">
+<strong>Por que o toque simples demora um pouquinho?</strong>
+<p>Quando o <code>GestureDetector</code> tem <code>onTap</code> <strong>e</strong> <code>onDoubleTap</code>, ele não sabe, no primeiro toque, se vem um segundo. Então ele <strong>espera</strong> um instante: se o segundo toque não vier, aí sim chama o <code>onTap</code>. Por isso o toque simples fica com um pequeno atraso. Se o seu widget só precisa do toque simples, não ponha <code>onDoubleTap</code>.</p>
+</div>
+
+<div class="tryflutter" data-goal="src:onLongPress">
+<p class="try-task"><strong>Missão:</strong> a foto do perfil da Ana já responde ao toque. Acrescente um <code>onLongPress</code> que troque o texto para <code>'Trocar a foto?'</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Perfil()));
+
+class Perfil extends StatefulWidget {
+  const Perfil({super.key});
+
+  @override
+  State&lt;Perfil&gt; createState() =&gt; _PerfilState();
+}
+
+class _PerfilState extends State&lt;Perfil&gt; {
+  String texto = 'Toque na foto';
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Perfil')),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  texto = 'Ver a foto grande';
+                });
+              },
+              child: const CircleAvatar(
+                radius: 60,
+                child: Icon(Icons.person, size: 60),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(texto),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Perfil()));
+
+class Perfil extends StatefulWidget {
+  const Perfil({super.key});
+
+  @override
+  State&lt;Perfil&gt; createState() =&gt; _PerfilState();
+}
+
+class _PerfilState extends State&lt;Perfil&gt; {
+  String texto = 'Toque na foto';
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Perfil')),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  texto = 'Ver a foto grande';
+                });
+              },
+              onLongPress: () {
+                setState(() {
+                  texto = 'Trocar a foto?';
+                });
+              },
+              child: const CircleAvatar(
+                radius: 60,
+                child: Icon(Icons.person, size: 60),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(texto),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>2. Arrastar: <code>onPanUpdate</code></h2>
+<p>Agora uma bolinha que segue o dedo. A ideia: guardar a <strong>posição</strong> da bolinha no estado e, a cada pedacinho de arrasto, somar o quanto o dedo andou.</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Arrastar()));
+
+class Arrastar extends StatefulWidget {
+  const Arrastar({super.key});
+
+  @override
+  State&lt;Arrastar&gt; createState() =&gt; _ArrastarState();
+}
+
+class _ArrastarState extends State&lt;Arrastar&gt; {
+  Offset posicao = const Offset(100, 100);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Arraste a bolinha')),
+      body: Stack(
+        children: [
+          Positioned(
+            left: posicao.dx,
+            top: posicao.dy,
+            child: GestureDetector(
+              onPanUpdate: (detalhes) {
+                setState(() {
+                  posicao += detalhes.delta;
+                });
+              },
+              child: const CircleAvatar(radius: 40, child: Text('Ana')),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>Offset posicao = const Offset(100, 100);</dt><dd>Um <code>Offset</code> é um par de números, <code>dx</code> (horizontal) e <code>dy</code> (vertical): aqui, onde fica o canto da bolinha. Começa 100 pixels da esquerda e 100 do topo.</dd>
+  <dt>Stack + Positioned(left: …, top: …)</dt><dd>O <code>Positioned</code> põe o filho numa posição exata dentro do <code>Stack</code> (veja <a href="stack.html">Stack e Positioned</a>).</dd>
+  <dt>onPanUpdate: (detalhes) { … }</dt><dd>Chamado muitas vezes por segundo enquanto o dedo arrasta. Diferente do <code>onTap</code>, ele recebe um parâmetro com os <strong>detalhes</strong> do movimento (um <code>DragUpdateDetails</code>).</dd>
+  <dt>detalhes.delta</dt><dd>Quanto o dedo andou <strong>desde a última chamada</strong>, também um <code>Offset</code>. Por exemplo, <code>Offset(3, -1)</code>: 3 pixels para a direita e 1 para cima.</dd>
+  <dt>posicao += detalhes.delta</dt><dd>Soma o pedacinho à posição: a bolinha anda junto com o dedo.</dd>
+</dl>
+
+<p>Experimente na caixa abaixo: arraste a bolinha com o mouse (ou o dedo, no celular).</p>
+
+<div class="tryflutter">
+<p class="try-task"><strong>Experimente:</strong> arraste a bolinha. Depois, troque <code>posicao += detalhes.delta;</code> por <code>posicao += Offset(detalhes.delta.dx, 0);</code> e veja: agora ela só anda na horizontal.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Arrastar()));
+
+class Arrastar extends StatefulWidget {
+  const Arrastar({super.key});
+
+  @override
+  State&lt;Arrastar&gt; createState() =&gt; _ArrastarState();
+}
+
+class _ArrastarState extends State&lt;Arrastar&gt; {
+  Offset posicao = const Offset(100, 100);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Arraste a bolinha')),
+      body: Stack(
+        children: [
+          Positioned(
+            left: posicao.dx,
+            top: posicao.dy,
+            child: GestureDetector(
+              onPanUpdate: (detalhes) {
+                setState(() {
+                  posicao += detalhes.delta;
+                });
+              },
+              child: const CircleAvatar(radius: 40, child: Text('Ana')),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<p>Existem também versões só horizontais ou só verticais: <code>onHorizontalDragUpdate</code> e <code>onVerticalDragUpdate</code>. Elas são úteis dentro de uma lista que rola, para não brigar com a rolagem (a lista usa o arrasto vertical; você fica com o horizontal). E para a pinça de dois dedos (zoom numa foto), use <code>onScaleUpdate</code>, que traz <code>detalhes.scale</code> (1.0 = tamanho original, 2.0 = o dobro).</p>
+
+<hr>
+
+<h2>3. A área de toque: <code>behavior</code></h2>
+<p>Um susto comum: você põe um <code>GestureDetector</code> em volta de um <code>Padding</code> ou de uma <code>Row</code> com espaço vazio, e o toque só funciona <strong>em cima do texto</strong>; no espaço vazio entre as coisas, nada. Por quê? Por padrão, o <code>GestureDetector</code> só recebe os toques que caem em cima de algo <strong>desenhado</strong> pelo filho. Espaço vazio é "transparente" para o toque.</p>
+
+<pre class="file" data-file="lib/main.dart (trecho)">GestureDetector(
+  behavior: HitTestBehavior.opaque,
+  onTap: () { … },
+  child: const Padding(
+    padding: EdgeInsets.all(24),
+    child: Text('Toque em qualquer lugar desta área'),
+  ),
+)
+</pre>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th><code>HitTestBehavior.</code></th><th>O que recebe o toque</th></tr>
+<tr><td><code>deferToChild</code> (padrão quando há <code>child</code>)</td><td>Só os pontos em que o filho desenhou algo</td></tr>
+<tr><td><code>opaque</code></td><td>A área inteira do <code>GestureDetector</code>, inclusive o vazio; o que está atrás não recebe</td></tr>
+<tr><td><code>translucent</code></td><td>A área inteira, e deixa o toque passar também para o que está atrás</td></tr>
+</table>
+</div>
+
+<p>Um <code>Container</code> <strong>com cor</strong> já é "desenhado" em toda a área (por isso o cartão da seção 1 funciona em qualquer ponto). O problema aparece com <code>Padding</code>, <code>SizedBox</code>, <code>Row</code> e <code>Container</code> sem cor.</p>
+
+<hr>
+
+<h2>4. <code>InkWell</code>: o toque com a onda do Material</h2>
+<p>O <code>GestureDetector</code> é invisível: a pessoa toca e não vê resposta nenhuma até algo mudar. Nos apps Material, o toque costuma mostrar uma <strong>onda</strong> que se espalha a partir do dedo (em inglês, <em>ink splash</em>, "respingo de tinta"). Para ter essa onda, use o <code>InkWell</code> no lugar do <code>GestureDetector</code>. Ele tem <code>onTap</code>, <code>onDoubleTap</code> e <code>onLongPress</code>, mas não tem arrasto.</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Tarefas()));
+
+class Tarefas extends StatelessWidget {
+  const Tarefas({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Tarefas')),
+      body: Column(
+        children: [
+          InkWell(
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Abrindo: Regar as plantas')),
+              );
+            },
+            child: const Padding(
+              padding: EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Icon(Icons.local_florist),
+                  SizedBox(width: 16),
+                  Text('Regar as plantas'),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+
+<p>Repare: com o <code>InkWell</code>, a linha <strong>inteira</strong> responde, inclusive o espaço vazio à direita do texto (ele não tem o problema do <code>behavior</code>). A onda é desenhada no <code>Material</code> mais próximo acima dele, que aqui é o do <code>Scaffold</code>.</p>
+
+<p>A Ana tocou na linha. A onda é rápida demais para a foto, mas o <code>onTap</code> rodou e mostrou o aviso:</p>
+<figure class="tela"><img src="assets/telas/gestos-3.png" alt="Tela &#39;Tarefas&#39; com uma linha: um ícone de flor e o texto &#39;Regar as plantas&#39;; no pé da tela, a barra escura &#39;Abrindo: Regar as plantas&#39;" width="390" height="844" loading="lazy"><figcaption>Depois do toque no <code>InkWell</code>.</figcaption></figure>
+
+<hr>
+
+<h2 id="formas">Qual usar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>O que usar</th></tr>
+<tr><td>Uma ação com texto, que parece botão</td><td>Um botão de verdade: <code>FilledButton</code>, <code>TextButton</code>, <code>IconButton</code> (aula <a href="botoes.html">Botões</a>)</td></tr>
+<tr><td>Uma linha de lista tocável</td><td><code>ListTile(onTap: …)</code>, que já tem a onda</td></tr>
+<tr><td>Um cartão ou área tocável, com a onda do Material</td><td><code>InkWell</code></td></tr>
+<tr><td>Toque duplo, toque longo sem onda, arrastar, pinça</td><td><code>GestureDetector</code></td></tr>
+<tr><td>Arrastar um item para fora da lista</td><td><code>Dismissible</code> (aula <a href="dismissible.html">Arrastar para Apagar</a>)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>InkWell</code> sem um <code>Material</code> acima</strong>
+<p>Um <code>InkWell</code> usado fora de um <code>Scaffold</code>, <code>Card</code> ou <code>Material</code> (aqui, a Ana testou um cartão sozinho, sem <code>MaterialApp</code> nem <code>Scaffold</code> em volta):</p>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following assertion was thrown building _InkResponseStateWidget(gestures: [tap], mouseCursor:
+null, clipped to BoxShape.rectangle, dirty, state: _InkResponseState#dfc96):
+No Material widget found.
+_InkResponseStateWidget widgets require a Material widget ancestor within the closest
+LookupBoundary.
+In Material Design, most widgets are conceptually "printed" on a sheet of material. In Flutter's
+material library, that material is represented by the Material widget. It is the Material widget
+that renders ink splashes, for instance. Because of this, many material library widgets require that
+there be a Material widget in the tree above them.
+To introduce a Material widget, you can either directly include one, or use a widget that contains
+Material itself, such as a Card, Dialog, Drawer, or Scaffold.
+</pre>
+<dl class="anatomy">
+  <dt>No Material widget found.</dt><dd>"Nenhum widget <code>Material</code> encontrado."</dd>
+  <dt>… require a Material widget ancestor …</dt><dd>"… precisam de um <code>Material</code> como ancestral" (acima deles na árvore).</dd>
+  <dt>It is the Material widget that renders ink splashes</dt><dd>"É o <code>Material</code> que desenha os respingos de tinta": a onda precisa de uma "folha" onde ser pintada.</dd>
+  <dt>…such as a Card, Dialog, Drawer, or Scaffold.</dt><dd>A solução já vem na mensagem: ponha o <code>InkWell</code> dentro de um desses, ou embrulhe-o num <code>Material</code>.</dd>
+</dl>
+<p><strong>Como consertar:</strong> normalmente o <code>InkWell</code> já está dentro de um <code>Scaffold</code>. Se ele estiver em cima de um <code>Container</code> colorido, a onda fica escondida atrás da cor; nesse caso, use <code>Material(color: …, child: InkWell(…))</code> no lugar do <code>Container</code> com cor, ou um <code>Card</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Arrastar (<code>onPan…</code>) junto com pinça (<code>onScale…</code>)</strong>
+<pre class="file" data-file="lib/main.dart (trecho)">GestureDetector(
+  onPanUpdate: (detalhes) {},
+  onScaleUpdate: (detalhes) {},
+  child: Container(width: 200, height: 200, color: Colors.blue),
+)
+</pre>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following assertion was thrown building Foto(dirty):
+Incorrect GestureDetector arguments.
+Having both a pan gesture recognizer and a scale gesture recognizer is redundant; scale is a
+superset of pan.
+Just use the scale gesture recognizer.
+</pre>
+<p>"Argumentos incorretos no GestureDetector. Ter um reconhecedor de arrasto e um de pinça é redundante: a pinça <strong>inclui</strong> o arrasto. Use só o de pinça." Com um dedo só, o <code>onScaleUpdate</code> também é chamado, e <code>detalhes.focalPointDelta</code> diz quanto o dedo andou. <strong>Como consertar:</strong> fique só com o <code>onScale…</code> e use o <code>focalPointDelta</code> para mover e o <code>scale</code> para o zoom.</p>
+</div>
+
+<div class="cenario">
+<strong>O toque não pega no espaço vazio</strong>
+<p>Sem mensagem de erro: o toque funciona em cima do texto e não funciona ao lado dele. É o <code>behavior</code> da seção 3. <strong>Como consertar:</strong> <code>behavior: HitTestBehavior.opaque</code>, ou troque por um <code>InkWell</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Parâmetro</th><th>Quando é chamado</th><th>Recebe</th></tr>
+<tr><td><code>onTap</code></td><td>Toque simples</td><td>nada</td></tr>
+<tr><td><code>onDoubleTap</code></td><td>Dois toques rápidos</td><td>nada</td></tr>
+<tr><td><code>onLongPress</code></td><td>Toque e segura</td><td>nada</td></tr>
+<tr><td><code>onPanUpdate</code></td><td>Durante o arrasto</td><td><code>DragUpdateDetails</code> (<code>.delta</code>, <code>.localPosition</code>)</td></tr>
+<tr><td><code>onPanEnd</code></td><td>Quando o dedo solta</td><td><code>DragEndDetails</code> (<code>.velocity</code>)</td></tr>
+<tr><td><code>onHorizontalDragUpdate</code> / <code>onVerticalDragUpdate</code></td><td>Arrasto só num eixo</td><td><code>DragUpdateDetails</code></td></tr>
+<tr><td><code>onScaleUpdate</code></td><td>Pinça (e arrasto com um dedo)</td><td><code>ScaleUpdateDetails</code> (<code>.scale</code>, <code>.focalPointDelta</code>)</td></tr>
+<tr><td><code>behavior</code></td><td>—</td><td><code>HitTestBehavior.deferToChild</code> / <code>.opaque</code> / <code>.translucent</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o detector</h3>
+<p>Complete para o cartão reagir a dois toques:</p>
+<div class="ex-code"><input data-answer="GestureDetector" aria-label="widget detector de gestos">(<br>&nbsp;&nbsp;<input data-answer="onDoubleTap" aria-label="parâmetro do toque duplo">: () =&gt; setState(() =&gt; curtida = true),<br>&nbsp;&nbsp;child: const Text('Bolo de cenoura'),<br>)</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">2. No <code>onPanUpdate</code>, o que é <code>detalhes.delta</code>?</p>
+<label><input type="radio" name="q2"> A posição do dedo na tela</label>
+<label><input type="radio" name="q2"> A velocidade do dedo</label>
+<label><input type="radio" name="q2"> Quanto o dedo andou desde a última chamada</label>
+<label><input type="radio" name="q2"> Quanto tempo o dedo ficou na tela</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. O <code>GestureDetector</code> em volta de um <code>Padding</code> só responde em cima do texto. O que resolve?</p>
+<label><input type="radio" name="q3"> Trocar <code>onTap</code> por <code>onLongPress</code></label>
+<label><input type="radio" name="q3"> <code>behavior: HitTestBehavior.opaque</code></label>
+<label><input type="radio" name="q3"> Pôr um <code>const</code> no <code>Padding</code></label>
+<label><input type="radio" name="q3"> Nada: é assim mesmo</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. Você quer a onda do Material quando a pessoa toca num cartão. Qual widget?</p>
+<label><input type="radio" name="q4"> <code>InkWell</code></label>
+<label><input type="radio" name="q4"> <code>GestureDetector</code></label>
+<label><input type="radio" name="q4"> <code>Listener</code></label>
+<label><input type="radio" name="q4"> <code>Container</code></label>
+</div>
+
+<h3>Missão final: o contador de toques</h3>
+<div class="tryflutter" data-goal="src:onDoubleTap;;src:onLongPress">
+<p class="try-task"><strong>Missão:</strong> o quadrado azul soma 1 a cada toque. Faça o <strong>toque duplo</strong> somar 10 e o <strong>toque longo</strong> zerar o contador.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Contador()));
+
+class Contador extends StatefulWidget {
+  const Contador({super.key});
+
+  @override
+  State&lt;Contador&gt; createState() =&gt; _ContadorState();
+}
+
+class _ContadorState extends State&lt;Contador&gt; {
+  int pontos = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Toques')),
+      body: Center(
+        child: GestureDetector(
+          onTap: () =&gt; setState(() =&gt; pontos++),
+          child: Container(
+            width: 200,
+            height: 200,
+            color: Colors.blue,
+            alignment: Alignment.center,
+            child: Text(
+              '$pontos',
+              style: const TextStyle(fontSize: 48, color: Colors.white),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Contador()));
+
+class Contador extends StatefulWidget {
+  const Contador({super.key});
+
+  @override
+  State&lt;Contador&gt; createState() =&gt; _ContadorState();
+}
+
+class _ContadorState extends State&lt;Contador&gt; {
+  int pontos = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Toques')),
+      body: Center(
+        child: GestureDetector(
+          onTap: () =&gt; setState(() =&gt; pontos++),
+          onDoubleTap: () =&gt; setState(() =&gt; pontos += 10),
+          onLongPress: () =&gt; setState(() =&gt; pontos = 0),
+          child: Container(
+            width: 200,
+            height: 200,
+            color: Colors.blue,
+            alignment: Alignment.center,
+            child: Text(
+              '$pontos',
+              style: const TextStyle(fontSize: 48, color: Colors.white),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O <code>GestureDetector</code> é um sensor invisível: torna qualquer widget tocável, sem mudar a aparência.</li>
+  <li><code>onTap</code>, <code>onDoubleTap</code> e <code>onLongPress</code> para toques; <code>onPanUpdate</code> (com <code>detalhes.delta</code>) para arrastar; <code>onScaleUpdate</code> para pinça. Pan e scale juntos dão erro.</li>
+  <li>Com <code>onDoubleTap</code>, o <code>onTap</code> espera um instante para ter certeza de que não vem o segundo toque.</li>
+  <li>Toque que não pega no vazio: <code>behavior: HitTestBehavior.opaque</code>.</li>
+  <li>Para a onda do Material, use <code>InkWell</code>, que precisa de um <code>Material</code> acima (o <code>Scaffold</code>, um <code>Card</code>).</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
