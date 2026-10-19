@@ -1,0 +1,899 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Projeto: Cartão de Perfil — um app completo, passo a passo | Guia Flutter</title>
+<meta name="description" content="Projeto do Guia Flutter: o Cartão de Perfil da Ana, construído em 3 versões. Versão 1 com CircleAvatar, nome e profissão; versão 2 com um Card de contatos (ListTile e Icon); versão 3 com o botão Seguir e o contador de seguidores (StatefulWidget e setState). Código completo, foto real de cada tela e o erro real do const.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Projeto: Cartão de Perfil</span></h1>
+
+<p class="intro">Neste projeto você vai montar, do zero, um <strong>cartão de perfil</strong>: aquela tela com a foto redonda, o nome, a profissão, os contatos e um botão <strong>Seguir</strong>. É o primeiro app "de verdade" que junta várias aulas do Nível 1 numa tela só. A Ana vai fazer o cartão dela, que vende bolos e está aprendendo Flutter. O app cresce em <strong>3 versões</strong>: cada uma acrescenta uma novidade, traz o código completo (é só copiar e rodar), a foto real da tela e uma missão no editor.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como planejar uma tela antes de escrever código: desenhar as caixas e montar a <strong>árvore de widgets</strong>.</li>
+  <li>Versão 1: a base do app com <code>MaterialApp</code>, <code>Scaffold</code>, <code>Column</code>, <code>CircleAvatar</code> e <code>Text</code>.</li>
+  <li>Versão 2: um <code>Card</code> de contatos com <code>ListTile</code> e <code>Icon</code>.</li>
+  <li>Versão 3: o botão <strong>Seguir</strong>, que muda de aparência e conta os seguidores, com <code>StatefulWidget</code> e <code>setState</code>.</li>
+  <li>O erro real que aparece quando um valor que muda fica dentro de um <code>const</code>, e como resolver.</li>
+</ul>
+</div>
+
+<p>Antes de começar, convém ter visto <a href="primeiro-app.html">Seu Primeiro App</a>, <a href="scaffold.html">Scaffold e AppBar</a>, <a href="row-column.html">Row e Column</a> e <a href="card.html">Card e ListTile</a>. Para a versão 3, <a href="stateful.html">StatefulWidget</a> e <a href="setstate.html">setState</a>. Se ainda não viu alguma, tudo bem: cada peça é explicada aqui também, e o link leva à aula completa.</p>
+
+<hr>
+
+<h2>O plano: desenhar antes de programar</h2>
+<p>Um cartão de visita de papel tem poucas coisas, uma embaixo da outra: a foto, o nome, a profissão e os contatos. Antes de abrir o editor, a Ana fez um rascunho num papel e marcou as "caixas":</p>
+<ol class="passo">
+  <li>Uma barra no topo com o título <strong>Meu Perfil</strong> (a <code>AppBar</code>).</li>
+  <li>No meio da tela, uma <strong>coluna</strong> (<code>Column</code>) com tudo empilhado e centralizado.</li>
+  <li>Na coluna: um círculo com as iniciais (<code>CircleAvatar</code>), o nome em letras grandes e a profissão.</li>
+  <li>Depois: um cartão (<code>Card</code>) com três linhas de contato, cada uma com um ícone.</li>
+  <li>Por fim: um botão <strong>Seguir</strong> e quantas pessoas seguem a Ana.</li>
+</ol>
+<p>Transformado em <strong>árvore de widgets</strong> (cada peça dentro da outra), o plano completo fica assim:</p>
+
+<pre>CartaoApp (MaterialApp)
+└── PerfilPage (Scaffold)
+    ├── appBar: AppBar → Text('Meu Perfil')
+    └── body: Center
+        └── Column
+            ├── CircleAvatar → Text('AS')
+            ├── Text('Ana Souza')
+            ├── Text('Confeiteira e dev Flutter')
+            ├── Card → Column
+            │   ├── ListTile (telefone)
+            │   ├── ListTile (e-mail)
+            │   └── ListTile (cidade)
+            ├── Text('120 seguidores')
+            └── FilledButton ('Seguir')
+</pre>
+
+<p>Ninguém escreve tudo isso de uma vez. O jeito profissional é ir por partes: fazer a menor versão que roda, olhar a tela, e só então acrescentar a próxima peça. Se der erro, você sabe que ele está na peça nova.</p>
+
+<hr>
+
+<h2>Versão 1: foto, nome e profissão</h2>
+<p>A primeira versão tem só o topo do cartão. Crie o projeto (veja <a href="criar-projeto.html">Criando um Projeto</a>) e troque <strong>todo</strong> o conteúdo de <code>lib/main.dart</code> por este:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const CartaoApp());
+
+class CartaoApp extends StatelessWidget {
+  const CartaoApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Cartão de Perfil',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.teal),
+      home: const PerfilPage(),
+    );
+  }
+}
+
+class PerfilPage extends StatelessWidget {
+  const PerfilPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Meu Perfil')),
+      body: const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 50,
+              child: Text('AS', style: TextStyle(fontSize: 32)),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Ana Souza',
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+            ),
+            Text('Confeiteira e dev Flutter'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>void main() =&gt; runApp(const CartaoApp());</dt><dd>O ponto de partida: o <code>runApp</code> recebe o widget que é o app inteiro (veja <a href="primeiro-app.html">Seu Primeiro App</a>).</dd>
+  <dt>class CartaoApp extends StatelessWidget</dt><dd>O app em si, um widget <strong>sem estado</strong> (nada nele muda depois de desenhado). Ele só monta o <code>MaterialApp</code>.</dd>
+  <dt>debugShowCheckedModeBanner: false</dt><dd>Esconde a faixinha vermelha "DEBUG" no canto da tela. É só estética.</dd>
+  <dt>theme: ThemeData(colorSchemeSeed: Colors.teal)</dt><dd>A cor "semente" do tema: o Material 3 gera, a partir do verde-azulado (<em>teal</em>), todas as cores do app (barra, círculo, botão). Mais em <a href="material3.html">Material 3 e ColorScheme</a>.</dd>
+  <dt>home: const PerfilPage()</dt><dd>A tela que aparece primeiro. Separar a tela num widget próprio deixa o código organizado: o app cuida do tema; a página cuida do conteúdo.</dd>
+  <dt>appBar: AppBar(title: const Text('Meu Perfil'))</dt><dd>A barra do topo (veja <a href="scaffold.html">Scaffold e AppBar</a>).</dd>
+  <dt>body: const Center(</dt><dd>O corpo da tela, centralizado. O <code>const</code> aqui vale para tudo que está dentro: nada disso muda, então o Flutter cria esses widgets uma vez só e os reaproveita. Guarde esse <code>const</code>: na versão 3 ele vai dar trabalho.</dd>
+  <dt>mainAxisSize: MainAxisSize.min</dt><dd>A coluna ocupa só a altura do conteúdo, e não a tela inteira. Assim o <code>Center</code> consegue centralizar o bloco todo no meio da tela (veja <a href="alinhamento.html">Alinhamento</a>).</dd>
+  <dt>CircleAvatar(radius: 50, child: Text('AS', …))</dt><dd>Um círculo de 50 pixels de raio (100 de diâmetro), com as iniciais dentro. É o widget feito para fotos de perfil: com uma foto de verdade, você usaria <code>backgroundImage</code> (veja <a href="image.html">Imagens</a>).</dd>
+  <dt>SizedBox(height: 16)</dt><dd>Um espaço vazio de 16 pixels entre o círculo e o nome (veja <a href="sizedbox.html">SizedBox e Spacer</a>).</dd>
+  <dt>TextStyle(fontSize: 28, fontWeight: FontWeight.bold)</dt><dd>Nome grande e em negrito (veja <a href="text-style.html">Estilos de Texto</a>).</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/projeto-perfil-1.png" alt="Tela do app com o título 'Meu Perfil' no alto, à esquerda; no meio da tela, um círculo verde-água claro com as letras AS, o nome 'Ana Souza' em negrito e, embaixo, 'Confeiteira e dev Flutter' em letra pequena" width="390" height="844" loading="lazy"><figcaption>A versão 1 rodando (Flutter 3.47, tamanho de celular).</figcaption></figure>
+
+<p>O círculo saiu num verde-água claro com as letras escuras: são cores que o Material 3 tirou da semente <code>Colors.teal</code>, sem você escolher nenhuma delas. Repare também que a <code>AppBar</code> tem a mesma cor do fundo: no Material 3 ela é discreta, só com o título (a aula <a href="scaffold.html">Scaffold e AppBar</a> mostra como colori-la). E o bloco todo ficou no meio da tela, graças ao <code>Center</code> com a coluna "encolhida" (<code>MainAxisSize.min</code>).</p>
+
+<div class="tryflutter" data-goal="src:Text\('Confeiteira e dev Flutter'\);;src:CircleAvatar\(\s*radius:\s*70">
+<p class="try-task"><strong>Missão:</strong> o cartão é seu agora. Troque <code>'AS'</code> pelas suas iniciais e o nome pelo seu, e aumente o círculo para <code>radius: 70</code>. Mantenha a profissão <code>'Confeiteira e dev Flutter'</code> ou troque-a também e veja o resultado.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const CartaoApp());
+
+class CartaoApp extends StatelessWidget {
+  const CartaoApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Cartão de Perfil',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.teal),
+      home: const PerfilPage(),
+    );
+  }
+}
+
+class PerfilPage extends StatelessWidget {
+  const PerfilPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Meu Perfil')),
+      body: const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 50,
+              child: Text('AS', style: TextStyle(fontSize: 32)),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Ana Souza',
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+            ),
+            Text('Confeiteira e dev Flutter'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const CartaoApp());
+
+class CartaoApp extends StatelessWidget {
+  const CartaoApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Cartão de Perfil',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.teal),
+      home: const PerfilPage(),
+    );
+  }
+}
+
+class PerfilPage extends StatelessWidget {
+  const PerfilPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Meu Perfil')),
+      body: const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 70,
+              child: Text('AS', style: TextStyle(fontSize: 32)),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Ana Souza',
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+            ),
+            Text('Confeiteira e dev Flutter'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Versão 2: o cartão de contatos</h2>
+<p>Agora a parte de "cartão de visita": telefone, e-mail e cidade, cada um com o seu ícone, dentro de um <code>Card</code> (um retângulo com cantos arredondados e um leve fundo destacado). Para cada linha, o Material já tem um widget pronto: o <code>ListTile</code>, que põe um ícone à esquerda (<code>leading</code>) e um texto (<code>title</code>) ao lado, com o espaçamento certo. As linhas novas vão no fim da lista <code>children</code> da coluna, depois da profissão. Este é o arquivo inteiro:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const CartaoApp());
+
+class CartaoApp extends StatelessWidget {
+  const CartaoApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Cartão de Perfil',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.teal),
+      home: const PerfilPage(),
+    );
+  }
+}
+
+class PerfilPage extends StatelessWidget {
+  const PerfilPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Meu Perfil')),
+      body: const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 50,
+              child: Text('AS', style: TextStyle(fontSize: 32)),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Ana Souza',
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+            ),
+            Text('Confeiteira e dev Flutter'),
+            SizedBox(height: 24),
+            Card(
+              margin: EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    leading: Icon(Icons.phone),
+                    title: Text('(11) 5555-0123'),
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.email),
+                    title: Text('ana@exemplo.com'),
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.location_on),
+                    title: Text('São Paulo, SP'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>SizedBox(height: 24)</dt><dd>Separa o cartão do texto da profissão.</dd>
+  <dt>Card(margin: EdgeInsets.symmetric(horizontal: 24), …)</dt><dd>O cartão. A <code>margin</code> deixa 24 pixels livres à esquerda e à direita, para ele não encostar nas bordas da tela (veja <a href="padding-margin.html">Padding e Margem</a>).</dd>
+  <dt>child: Column(mainAxisSize: MainAxisSize.min, …)</dt><dd>Uma coluna <strong>dentro</strong> do cartão, com as três linhas. É uma coluna dentro de outra coluna: a de fora empilha o cartão inteiro; a de dentro empilha os contatos.</dd>
+  <dt>ListTile(leading: Icon(Icons.phone), title: Text(…))</dt><dd>Uma linha pronta de lista: <code>leading</code> é o que vem "na frente" (o ícone), <code>title</code> é o texto principal. Os nomes dos ícones vêm da classe <code>Icons</code> (veja <a href="icon.html">Ícones</a>).</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/projeto-perfil-2.png" alt="A mesma tela do perfil, agora com um cartão cinza-esverdeado claro, de cantos arredondados, abaixo da profissão; dentro dele, três linhas: um telefone com '(11) 5555-0123', um envelope com 'ana@exemplo.com' e um marcador de mapa com 'São Paulo, SP'" width="390" height="844" loading="lazy"><figcaption>A versão 2: o cartão de contatos abaixo do nome.</figcaption></figure>
+
+<p>O cartão ocupa quase toda a largura, com a folga de 24 pixels de cada lado, e tem uma sombra bem leve na borda de baixo. Cada <code>ListTile</code> alinhou o ícone e o texto do mesmo jeito, sem você escrever nenhum espaçamento. Como a coluna de fora continua centralizada, o bloco inteiro (círculo, nome e cartão) subiu um pouco para continuar no meio da tela.</p>
+
+<div class="tryflutter" data-goal="src:Icons\.cake;;src:Encomendas pelo WhatsApp">
+<p class="try-task"><strong>Missão:</strong> a Ana quer uma quarta linha no cartão: o ícone <code>Icons.cake</code> e o texto <code>'Encomendas pelo WhatsApp'</code>. Acrescente um <code>ListTile</code> no fim da lista do cartão.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const CartaoApp());
+
+class CartaoApp extends StatelessWidget {
+  const CartaoApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Cartão de Perfil',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.teal),
+      home: const PerfilPage(),
+    );
+  }
+}
+
+class PerfilPage extends StatelessWidget {
+  const PerfilPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Meu Perfil')),
+      body: const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 50,
+              child: Text('AS', style: TextStyle(fontSize: 32)),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Ana Souza',
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+            ),
+            Text('Confeiteira e dev Flutter'),
+            SizedBox(height: 24),
+            Card(
+              margin: EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    leading: Icon(Icons.phone),
+                    title: Text('(11) 5555-0123'),
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.email),
+                    title: Text('ana@exemplo.com'),
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.location_on),
+                    title: Text('São Paulo, SP'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const CartaoApp());
+
+class CartaoApp extends StatelessWidget {
+  const CartaoApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Cartão de Perfil',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.teal),
+      home: const PerfilPage(),
+    );
+  }
+}
+
+class PerfilPage extends StatelessWidget {
+  const PerfilPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Meu Perfil')),
+      body: const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 50,
+              child: Text('AS', style: TextStyle(fontSize: 32)),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Ana Souza',
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+            ),
+            Text('Confeiteira e dev Flutter'),
+            SizedBox(height: 24),
+            Card(
+              margin: EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    leading: Icon(Icons.phone),
+                    title: Text('(11) 5555-0123'),
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.email),
+                    title: Text('ana@exemplo.com'),
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.location_on),
+                    title: Text('São Paulo, SP'),
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.cake),
+                    title: Text('Encomendas pelo WhatsApp'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Versão 3: o botão Seguir</h2>
+<p>Até aqui, nada na tela muda: tudo é <code>StatelessWidget</code> e <code>const</code>. Agora a Ana quer um botão <strong>Seguir</strong>: ao tocar, ele vira <strong>Seguindo</strong> e o número de seguidores sobe 1; tocando de novo, volta ao que era. Uma tela que muda precisa de <strong>estado</strong> (<em>state</em>): valores que o widget guarda e que, quando mudam, fazem a tela ser desenhada de novo. Por isso a <code>PerfilPage</code> vira um <code>StatefulWidget</code> (veja <a href="stateful.html">StatefulWidget</a>).</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const CartaoApp());
+
+class CartaoApp extends StatelessWidget {
+  const CartaoApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Cartão de Perfil',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.teal),
+      home: const PerfilPage(),
+    );
+  }
+}
+
+class PerfilPage extends StatefulWidget {
+  const PerfilPage({super.key});
+
+  @override
+  State&lt;PerfilPage&gt; createState() =&gt; _PerfilPageState();
+}
+
+class _PerfilPageState extends State&lt;PerfilPage&gt; {
+  bool _seguindo = false;
+  int _seguidores = 120;
+
+  void _alternarSeguir() {
+    setState(() {
+      _seguindo = !_seguindo;
+      _seguidores += _seguindo ? 1 : -1;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Meu Perfil')),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircleAvatar(
+              radius: 50,
+              child: Text('AS', style: TextStyle(fontSize: 32)),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Ana Souza',
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+            ),
+            const Text('Confeiteira e dev Flutter'),
+            const SizedBox(height: 24),
+            const Card(
+              margin: EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    leading: Icon(Icons.phone),
+                    title: Text('(11) 5555-0123'),
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.email),
+                    title: Text('ana@exemplo.com'),
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.location_on),
+                    title: Text('São Paulo, SP'),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text('$_seguidores seguidores'),
+            const SizedBox(height: 8),
+            _seguindo
+                ? OutlinedButton.icon(
+                    onPressed: _alternarSeguir,
+                    icon: const Icon(Icons.check),
+                    label: const Text('Seguindo'),
+                  )
+                : FilledButton.icon(
+                    onPressed: _alternarSeguir,
+                    icon: const Icon(Icons.person_add),
+                    label: const Text('Seguir'),
+                  ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>class PerfilPage extends StatefulWidget</dt><dd>A página agora tem duas classes: o widget em si (que só cria o estado) e a classe do estado, <code>_PerfilPageState</code>, onde ficam os dados que mudam e o <code>build</code>. O <code>_</code> no começo do nome deixa a classe privada ao arquivo.</dd>
+  <dt>bool _seguindo = false; int _seguidores = 120;</dt><dd>O <strong>estado</strong>: se a Ana está sendo seguida por quem usa o app, e quantos seguidores ela tem. Não são <code>final</code>, porque vão mudar.</dd>
+  <dt>void _alternarSeguir() { setState(() { … }); }</dt><dd>O que acontece no toque. Dentro do <code>setState</code>, o <code>_seguindo</code> inverte (<code>!</code> é o "não": <code>false</code> vira <code>true</code> e vice-versa) e o contador sobe ou desce 1. O <code>setState</code> avisa o Flutter: "o estado mudou, desenhe de novo" (veja <a href="setstate.html">setState</a>).</dd>
+  <dt>body: Center( (sem const)</dt><dd>O <code>const</code> saiu do <code>Center</code>, porque agora há coisas lá dentro que mudam. Ele desceu para cada widget que continua fixo: <code>const CircleAvatar</code>, <code>const Text('Ana Souza')</code>, <code>const Card</code>… A seção <a href="#errado">Quando dá errado</a> mostra o que acontece se você esquecer.</dd>
+  <dt>Text('$_seguidores seguidores')</dt><dd>O número vem do estado, com interpolação do Dart (<code>$</code> antes do nome da variável). A cada <code>setState</code>, este texto é recriado com o valor novo.</dd>
+  <dt>_seguindo ? OutlinedButton.icon(…) : FilledButton.icon(…)</dt><dd>O operador ternário (<code>condição ? se sim : se não</code>) escolhe qual botão aparece: preenchido "Seguir" quando ainda não segue; só com contorno "Seguindo" quando já segue. Os dois chamam o mesmo <code>_alternarSeguir</code>. Os tipos de botão estão em <a href="botoes.html">Botões</a>.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/projeto-perfil-3.png" alt="O perfil completo: círculo com AS, 'Ana Souza', a profissão, o cartão com os três contatos e, embaixo, o texto '120 seguidores' e um botão verde-escuro preenchido com um ícone de pessoa e a palavra 'Seguir'" width="390" height="844" loading="lazy"><figcaption>A versão 3 quando abre: 120 seguidores e o botão Seguir.</figcaption></figure>
+
+<p>Quando o app abre, <code>_seguindo</code> é <code>false</code>: aparece o <code>FilledButton</code>, preenchido na cor principal do tema. No lab, a foto seguinte foi tirada logo depois de um clique no botão:</p>
+
+<figure class="tela"><img src="assets/telas/projeto-perfil-3b.png" alt="A mesma tela depois do toque: o texto mudou para '121 seguidores' e o botão agora só tem contorno, com um ícone de visto e a palavra 'Seguindo'" width="390" height="844" loading="lazy"><figcaption>Depois de tocar em "Seguir": 121 seguidores e o botão "Seguindo".</figcaption></figure>
+
+<p>Um toque só mudou duas coisas na tela: o número (120 virou 121) e o botão (o preenchido deu lugar ao de contorno, com o ícone de visto). Nenhuma linha do código "mexeu" no texto ou no botão diretamente: o <code>setState</code> mudou o estado, e o <code>build</code> rodou de novo, desenhando a tela a partir dos valores novos. Tocar outra vez faz o caminho de volta.</p>
+
+<div class="tryflutter" data-goal="src:_seguidores\s*=\s*500;;src:Icons\.favorite">
+<p class="try-task"><strong>Missão:</strong> a Ana ficou famosa na vizinhança. Faça o app começar com <strong>500</strong> seguidores e troque o ícone do botão "Seguir" de <code>Icons.person_add</code> para <code>Icons.favorite</code> (um coração). Toque no botão para ver o número mudar.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const CartaoApp());
+
+class CartaoApp extends StatelessWidget {
+  const CartaoApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Cartão de Perfil',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.teal),
+      home: const PerfilPage(),
+    );
+  }
+}
+
+class PerfilPage extends StatefulWidget {
+  const PerfilPage({super.key});
+
+  @override
+  State&lt;PerfilPage&gt; createState() =&gt; _PerfilPageState();
+}
+
+class _PerfilPageState extends State&lt;PerfilPage&gt; {
+  bool _seguindo = false;
+  int _seguidores = 120;
+
+  void _alternarSeguir() {
+    setState(() {
+      _seguindo = !_seguindo;
+      _seguidores += _seguindo ? 1 : -1;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Meu Perfil')),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircleAvatar(
+              radius: 50,
+              child: Text('AS', style: TextStyle(fontSize: 32)),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Ana Souza',
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+            ),
+            const Text('Confeiteira e dev Flutter'),
+            const SizedBox(height: 24),
+            Text('$_seguidores seguidores'),
+            const SizedBox(height: 8),
+            _seguindo
+                ? OutlinedButton.icon(
+                    onPressed: _alternarSeguir,
+                    icon: const Icon(Icons.check),
+                    label: const Text('Seguindo'),
+                  )
+                : FilledButton.icon(
+                    onPressed: _alternarSeguir,
+                    icon: const Icon(Icons.person_add),
+                    label: const Text('Seguir'),
+                  ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const CartaoApp());
+
+class CartaoApp extends StatelessWidget {
+  const CartaoApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Cartão de Perfil',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.teal),
+      home: const PerfilPage(),
+    );
+  }
+}
+
+class PerfilPage extends StatefulWidget {
+  const PerfilPage({super.key});
+
+  @override
+  State&lt;PerfilPage&gt; createState() =&gt; _PerfilPageState();
+}
+
+class _PerfilPageState extends State&lt;PerfilPage&gt; {
+  bool _seguindo = false;
+  int _seguidores = 500;
+
+  void _alternarSeguir() {
+    setState(() {
+      _seguindo = !_seguindo;
+      _seguidores += _seguindo ? 1 : -1;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Meu Perfil')),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircleAvatar(
+              radius: 50,
+              child: Text('AS', style: TextStyle(fontSize: 32)),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Ana Souza',
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+            ),
+            const Text('Confeiteira e dev Flutter'),
+            const SizedBox(height: 24),
+            Text('$_seguidores seguidores'),
+            const SizedBox(height: 8),
+            _seguindo
+                ? OutlinedButton.icon(
+                    onPressed: _alternarSeguir,
+                    icon: const Icon(Icons.check),
+                    label: const Text('Seguindo'),
+                  )
+                : FilledButton.icon(
+                    onPressed: _alternarSeguir,
+                    icon: const Icon(Icons.favorite),
+                    label: const Text('Seguir'),
+                  ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+<p>(Para a caixa ficar mais curta, o cartão de contatos saiu do código da missão. No seu projeto, ele continua lá.)</p>
+
+<hr>
+
+<h2>Formas diferentes de fazer</h2>
+<h3>A linha de contato: <code>ListTile</code> ou <code>Row</code>?</h3>
+<p>O <code>ListTile</code> é um atalho. Dá para montar a mesma linha "na mão", com um <code>Row</code>:</p>
+<pre class="file" data-file="lib/main.dart (trecho)">// com ListTile: o espaçamento e a altura já vêm prontos
+const ListTile(
+  leading: Icon(Icons.phone),
+  title: Text('(11) 5555-0123'),
+),
+
+// com Row: você controla cada espaço
+const Padding(
+  padding: EdgeInsets.all(16),
+  child: Row(
+    children: [
+      Icon(Icons.phone),
+      SizedBox(width: 16),
+      Text('(11) 5555-0123'),
+    ],
+  ),
+),
+</pre>
+<p><strong>Qual usar:</strong> para linhas de lista comuns (ícone + texto, às vezes um subtítulo e algo à direita), o <code>ListTile</code> economiza código e segue o padrão visual do Material 3. Use <code>Row</code> quando o desenho fugir desse padrão.</p>
+
+<h3>Repetir o <code>ListTile</code> ou criar um widget seu?</h3>
+<p>As três linhas de contato são quase iguais. Quando o código se repete, vale criar um widget pequeno com o que muda como parâmetro:</p>
+<pre class="file" data-file="lib/main.dart (trecho)">class LinhaContato extends StatelessWidget {
+  const LinhaContato({super.key, required this.icone, required this.texto});
+
+  final IconData icone;
+  final String texto;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(leading: Icon(icone), title: Text(texto));
+  }
+}
+
+// e no cartão:
+// LinhaContato(icone: Icons.phone, texto: '(11) 5555-0123'),
+</pre>
+<p><strong>Qual usar:</strong> com duas ou três linhas simples, repetir o <code>ListTile</code> é claro o bastante. Quando cada linha ganhar mais detalhes (um toque que liga, um subtítulo), o widget próprio evita copiar e colar. Mais em <a href="stateless.html">StatelessWidget</a>.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<h3>O <code>const</code> que ficou lá em cima</h3>
+<p>Na passagem da versão 2 para a 3, é muito comum acrescentar o <code>Text('$_seguidores seguidores')</code> e esquecer o <code>const</code> em <code>body: const Center(</code>. O <code>const</code> promete que <strong>tudo</strong> lá dentro é fixo, decidido na hora de compilar, mas <code>_seguidores</code> muda enquanto o app roda. O Dart recusa:</p>
+<p>No lab, o código da versão 3 com <code>body: const Center(</code> não compilou. Estas são as primeiras mensagens (o resto da saída é a pilha interna da ferramenta <code>flutter</code>, que não ajuda aqui):</p>
+<pre class="term">lib/main.dart:77:20:
+Error: Not a constant expression.
+            Text('$_seguidores seguidores'),
+                   ^^^^^^^^^^^
+lib/main.dart:79:13:
+Error: Not a constant expression.
+            _seguindo
+            ^^^^^^^^^
+lib/main.dart:81:32:
+Error: Not a constant expression.
+                    onPressed: _alternarSeguir,
+                               ^^^^^^^^^^^^^^^
+lib/main.dart:80:34:
+Error: Cannot invoke a non-'const' constructor where a const expression is expected.
+                ? OutlinedButton.icon(
+                                 ^^^^
+«  … e mais dois erros iguais para o FilledButton.icon (linhas 85 e 86)
+Error: Failed to compile application for the Web.
+</pre>
+<p>Linha por linha:</p>
+<dl class="anatomy">
+  <dt>lib/main.dart:77:20:</dt><dd>Onde está o problema: arquivo <code>lib/main.dart</code>, linha 77, coluna 20. É a linha do <code>Text('$_seguidores seguidores')</code>; a coluna 20 é onde começa o <code>_seguidores</code>, e os <code>^^^^</code> embaixo sublinham exatamente esse nome.</dd>
+  <dt>Error: Not a constant expression.</dt><dd>"Não é uma expressão constante." Dentro de um <code>const</code>, tudo precisa ser conhecido na hora de compilar. O valor de <code>_seguidores</code> só existe com o app rodando.</dd>
+  <dt>_seguindo e onPressed: _alternarSeguir</dt><dd>O mesmo problema em outros pontos: o valor de <code>_seguindo</code> e o método <code>_alternarSeguir</code> pertencem ao estado, que só existe em tempo de execução.</dd>
+  <dt>Cannot invoke a non-'const' constructor where a const expression is expected.</dt><dd>"Não dá para chamar um construtor que não é <code>const</code> onde se espera uma expressão constante." Com um <code>onPressed</code> que não é constante, o botão não pode ser criado como <code>const</code>.</dd>
+  <dt>Failed to compile application for the Web.</dt><dd>A compilação parou e o app não foi gerado. (O lab compila para o navegador, por isso a última linha fala em <em>Web</em>; os erros de cima vêm do compilador do Dart e apontam as mesmas linhas em qualquer plataforma.)</dd>
+</dl>
+<p>Repare que <strong>um</strong> <code>const</code> esquecido gerou seis erros. Quando aparecerem muitos erros de uma vez, olhe o primeiro: muitas vezes os outros são consequência dele.</p>
+<p><strong>Como resolver:</strong> tire o <code>const</code> do <code>Center</code> e ponha <code>const</code> só nos widgets que continuam fixos, como na versão 3. O próprio <code>flutter analyze</code> e o VS Code sugerem onde colocar (o aviso <code>prefer_const_constructors</code>).</p>
+</div>
+
+<div class="cenario">
+<h3>Mudou o número, mas a tela não mudou</h3>
+<p>Se o <code>_alternarSeguir</code> mudar as variáveis <strong>fora</strong> do <code>setState</code>:</p>
+<pre class="file" data-file="lib/main.dart (trecho errado)">void _alternarSeguir() {
+  _seguindo = !_seguindo;
+  _seguidores += _seguindo ? 1 : -1;
+}
+</pre>
+<p>não aparece erro nenhum, nem no console. As variáveis mudam na memória, mas o Flutter não fica sabendo, e a tela continua mostrando <code>120 seguidores</code> e o botão "Seguir", por mais que você toque. É um dos sustos mais comuns de quem está começando. <strong>Como resolver:</strong> toda mudança de estado que deve aparecer na tela vai dentro de <code>setState(() { … })</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida do projeto</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Widget</th><th>Para que serviu aqui</th><th>Aula</th></tr>
+<tr><td><code>MaterialApp</code></td><td>O app, o tema (cor semente) e a tela inicial</td><td><a href="material-app.html">MaterialApp</a></td></tr>
+<tr><td><code>Scaffold</code> / <code>AppBar</code></td><td>A estrutura da tela e a barra do topo</td><td><a href="scaffold.html">Scaffold e AppBar</a></td></tr>
+<tr><td><code>Center</code> + <code>Column</code></td><td>Empilhar tudo e centralizar o bloco</td><td><a href="row-column.html">Row e Column</a></td></tr>
+<tr><td><code>CircleAvatar</code></td><td>O círculo com as iniciais</td><td><a href="image.html">Imagens</a></td></tr>
+<tr><td><code>SizedBox</code></td><td>Os espaços entre as partes</td><td><a href="sizedbox.html">SizedBox e Spacer</a></td></tr>
+<tr><td><code>Card</code> / <code>ListTile</code></td><td>O cartão de contatos e cada linha</td><td><a href="card.html">Card e ListTile</a></td></tr>
+<tr><td><code>FilledButton.icon</code> / <code>OutlinedButton.icon</code></td><td>Os botões Seguir e Seguindo</td><td><a href="botoes.html">Botões</a></td></tr>
+<tr><td><code>StatefulWidget</code> + <code>setState</code></td><td>Guardar e mudar o estado do botão e o contador</td><td><a href="setstate.html">setState</a></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete a linha de contato</h3>
+<p>Complete para criar a linha do e-mail no cartão:</p>
+<div class="ex-code"><input data-answer="ListTile" aria-label="widget da linha">(<br>&nbsp;&nbsp;<input data-answer="leading" aria-label="parâmetro do ícone">: Icon(Icons.email),<br>&nbsp;&nbsp;<input data-answer="title" aria-label="parâmetro do texto">: Text('ana@exemplo.com'),<br>),</div>
+</div>
+
+<div class="exercise">
+<h3>2. Qual o raio?</h3>
+<p>A Ana quer o círculo do perfil com <strong>160 pixels de diâmetro</strong>. Que valor vai no <code>radius</code>?</p>
+<div class="ex-code">CircleAvatar(radius: <input data-answer="80" aria-label="raio">)</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. Na versão 3, por que o <code>const</code> saiu de <code>body: const Center(</code>?</p>
+<label><input type="radio" name="q3"> Porque o <code>Center</code> não aceita <code>const</code>.</label>
+<label><input type="radio" name="q3"> Porque o <code>const</code> deixa o app mais lento.</label>
+<label><input type="radio" name="q3"> Porque agora há um widget lá dentro que depende de um valor que muda (<code>_seguidores</code>).</label>
+<label><input type="radio" name="q3"> Porque o <code>StatefulWidget</code> proíbe <code>const</code> em qualquer lugar.</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. O <code>_alternarSeguir</code> muda <code>_seguidores</code>, mas a tela continua igual. O mais provável é que:</p>
+<label><input type="radio" name="q4"> o <code>Text</code> está sem <code>style</code>.</label>
+<label><input type="radio" name="q4"> a mudança foi feita fora do <code>setState</code>.</label>
+<label><input type="radio" name="q4"> faltou <code>mainAxisSize: MainAxisSize.min</code>.</label>
+<label><input type="radio" name="q4"> o botão precisa ser um <code>ElevatedButton</code>.</label>
+</div>
+
+<div class="exercise">
+<h3>5. Desafio: o botão de mensagem</h3>
+<p>Ao lado do botão Seguir, ponha um segundo botão <code>OutlinedButton.icon</code> com o ícone <code>Icons.message</code> e o texto <code>Mensagem</code>. Dica: os dois botões ficam dentro de um <code>Row</code> com <code>mainAxisSize: MainAxisSize.min</code> e um <code>SizedBox(width: 8)</code> entre eles. Por enquanto, o novo botão pode ter <code>onPressed: () {}</code> (um toque que não faz nada).</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Antes de programar, desenhe a tela e transforme o desenho numa <strong>árvore de widgets</strong>.</li>
+  <li>Cresça o app em versões pequenas que rodam: se der erro, ele está na parte nova.</li>
+  <li><code>CircleAvatar</code> faz o círculo do perfil; <code>Card</code> + <code>ListTile</code> fazem o cartão de contatos com pouco código.</li>
+  <li>Quando a tela precisa mudar, o widget vira <code>StatefulWidget</code>, os valores que mudam viram campos do estado, e toda mudança vai dentro de <code>setState</code>.</li>
+  <li><code>const</code> só vale para o que é fixo: quando um valor do estado entra numa parte da árvore, o <code>const</code> sai de cima dela e desce para os widgets que continuam fixos.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
