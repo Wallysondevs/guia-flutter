@@ -128,7 +128,7 @@ class _TelaBoloState extends State&lt;TelaBolo&gt;
 </pre>
 
 <dl class="anatomy">
-  <dt>with SingleTickerProviderStateMixin</dt><dd>Um <em>mixin</em> (um pacote de métodos que a classe "veste") que dá ao <code>State</code> um <strong>ticker</strong>: um relógio que bate uma vez por quadro da tela. O controle precisa desse relógio para andar. "Single" = um ticker, para <strong>um</strong> controle.</dd>
+  <dt>with SingleTickerProviderStateMixin</dt><dd>Um <em>mixin</em> (um pacote de métodos que a classe "veste"; veja <a href="https://wallysondevs.github.io/guia-dart/mixins.html">Mixins</a> no Guia Dart) que dá ao <code>State</code> um <strong>ticker</strong>: um relógio que bate uma vez por quadro da tela. O controle precisa desse relógio para andar. "Single" = um ticker, para <strong>um</strong> controle.</dd>
   <dt>late final AnimationController _controle</dt><dd>O controle. É <code>late</code> porque só pode ser criado no <code>initState</code> (ele precisa do <code>this</code>).</dd>
   <dt>vsync: this</dt><dd>"Use o meu relógio." O <code>this</code> é o próprio <code>State</code>, que ganhou o ticker pelo mixin. O nome vem de <em>vertical sync</em> (sincronia com a tela): o ticker também <strong>para</strong> quando a tela não está visível, para não gastar bateria.</dd>
   <dt>duration: const Duration(milliseconds: 800)</dt><dd>Quanto tempo o <code>value</code> leva de 0 a 1.</dd>
