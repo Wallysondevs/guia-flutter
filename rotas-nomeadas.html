@@ -119,7 +119,7 @@ class TelaSobre extends StatelessWidget {
 </pre>
 
 <dl class="anatomy">
-  <dt>routes: { '/': …, '/receita': …, '/sobre': … }</dt><dd>Um <code>Map</code> (veja o <a href="https://wallysondevs.github.io/guia-dart/">Guia Dart</a>): a chave é o <strong>nome</strong> da rota, um <code>String</code>; o valor é uma função que recebe o <code>context</code> e devolve a tela. É a "lista de ramais".</dd>
+  <dt>routes: { '/': …, '/receita': …, '/sobre': … }</dt><dd>Um <code>Map</code> (veja o <a href="https://wallysondevs.github.io/guia-dart/map.html">Guia Dart</a>): a chave é o <strong>nome</strong> da rota, um <code>String</code>; o valor é uma função que recebe o <code>context</code> e devolve a tela. É a "lista de ramais".</dd>
   <dt>'/': (context) =&gt; const TelaInicial()</dt><dd>A rota <code>'/'</code> é a tela de entrada. Com ela na tabela, <strong>não</strong> se usa o <code>home</code> (os dois juntos dão erro; veja <a href="#errado">Quando dá errado</a>).</dd>
   <dt>initialRoute: '/'</dt><dd>Com qual rota o app começa. <code>'/'</code> já é o padrão, então aqui ele só deixa explícito; serve para começar em outra (<code>initialRoute: '/sobre'</code>, por exemplo, enquanto você testa essa tela).</dd>
   <dt>Navigator.pushNamed(context, '/receita')</dt><dd>Procura <code>'/receita'</code> na tabela, constrói a tela e faz o <code>push</code>, exatamente como o <code>Navigator.push</code> com <code>MaterialPageRoute</code>. Voltar continua igual: a seta da <code>AppBar</code> ou <code>Navigator.pop(context)</code>.</dd>
@@ -263,7 +263,7 @@ routes: {
 // no botão:
 Navigator.pushNamed(context, Rotas.receita);
 </pre>
-<p>Agora, se você escrever <code>Rotas.receitas</code>, o Dart reclama <strong>antes</strong> de rodar, e o editor ainda completa o nome para você.</p>
+<p>Agora, se você escrever <code>Rotas.receitas</code>, o Dart reclama <strong>antes</strong> de rodar, e o editor de código (o VS Code, por exemplo) ainda completa o nome para você.</p>
 
 <hr>
 
