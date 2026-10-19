@@ -1,0 +1,666 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter StreamBuilder — mostrando dados que continuam chegando | Guia Flutter</title>
+<meta name="description" content="O StreamBuilder do Flutter para quem nunca fez um app: o que é um Stream (uma sequência de valores ao longo do tempo), uma contagem regressiva com async* e yield, os estados waiting, active e done, um StreamController que recebe pedidos ao toque de um botão, close no dispose, e o erro real Bad state: Stream has already been listened to.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">StreamBuilder</span></h1>
+
+<p class="intro">Na aula anterior, o <a href="futurebuilder.html">FutureBuilder</a> esperou <strong>um</strong> dado chegar. Mas muita coisa num app chega <strong>aos poucos, sem parar</strong>: os segundos de um cronômetro, as mensagens de um chat, a posição do motoboy no mapa, os pedidos que entram no balcão da padaria. Para isso o Dart tem o <code>Stream</code> ("fluxo", "correnteza"), e o Flutter tem o <code>StreamBuilder</code>: um widget que redesenha a tela <strong>a cada valor novo</strong> que passa pela correnteza.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A diferença entre <code>Future</code> (um valor, uma vez) e <code>Stream</code> (vários valores, ao longo do tempo).</li>
+  <li>Como criar um <code>Stream</code> com <code>async*</code> e <code>yield</code>, e mostrá-lo com <code>StreamBuilder</code>.</li>
+  <li>Os estados de um <code>Stream</code>: <code>waiting</code>, <code>active</code> e <code>done</code>.</li>
+  <li>Como mandar valores para um <code>Stream</code> quando você quiser, com <code>StreamController</code>, e por que fechá-lo no <code>dispose</code>.</li>
+  <li>O erro real <code>Bad state: Stream has already been listened to.</code> e como resolver com <code>.broadcast()</code>.</li>
+</ul>
+</div>
+
+<p>Os exemplos rodaram no laboratório do guia, com o <span class="versao">Flutter 3.47</span>. As fotos foram tiradas com o app aberto num navegador do tamanho de um celular.</p>
+
+<hr>
+
+<h2>A ideia: a esteira da padaria</h2>
+<p>O <code>Future</code> é a senha da padaria: você espera, e chega <strong>um</strong> bolo. O <code>Stream</code> é a <strong>esteira</strong> que sai do forno: os pães vão passando, um de cada vez, e não se sabe quando vem o próximo. Quem fica na ponta da esteira (o <code>StreamBuilder</code>) pega cada pão que chega e põe na vitrine (redesenha a tela). Um dia o forno desliga, e a esteira para: o <code>Stream</code> <strong>terminou</strong>.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th></th><th><code>Future&lt;T&gt;</code></th><th><code>Stream&lt;T&gt;</code></th></tr>
+<tr><td>Quantos valores</td><td>Um (ou um erro)</td><td>Zero, um ou muitos (e erros no meio)</td></tr>
+<tr><td>Função que cria</td><td><code>async</code> + <code>return</code></td><td><code>async*</code> + <code>yield</code></td></tr>
+<tr><td>Para esperar fora de widgets</td><td><code>await</code></td><td><code>await for</code> ou <code>.listen(…)</code></td></tr>
+<tr><td>Widget</td><td><code>FutureBuilder</code></td><td><code>StreamBuilder</code></td></tr>
+<tr><td>Exemplos num app</td><td>Buscar a lista de receitas</td><td>Cronômetro, chat, localização, mudanças no banco de dados</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>1. Uma contagem regressiva com <code>StreamBuilder</code></h2>
+<p>O bolo da Ana tem 5 segundos de forno (é um forno muito bom). A tela mostra quanto falta e, no fim, avisa que ficou pronto:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaForno(),
+    );
+  }
+}
+
+// Um Stream que manda 5, 4, 3, 2, 1, 0: um número por segundo.
+Stream&lt;int&gt; contagemDoForno() async* {
+  for (var segundos = 5; segundos &gt;= 0; segundos--) {
+    yield segundos;
+    await Future.delayed(const Duration(seconds: 1));
+  }
+}
+
+class TelaForno extends StatefulWidget {
+  const TelaForno({super.key});
+
+  @override
+  State&lt;TelaForno&gt; createState() =&gt; _TelaFornoState();
+}
+
+class _TelaFornoState extends State&lt;TelaForno&gt; {
+  late final Stream&lt;int&gt; _contagem;
+
+  @override
+  void initState() {
+    super.initState();
+    _contagem = contagemDoForno();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Forno da Ana')),
+      body: Center(
+        child: StreamBuilder&lt;int&gt;(
+          stream: _contagem,
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return Text('Erro: ${snapshot.error}');
+            }
+            switch (snapshot.connectionState) {
+              case ConnectionState.none:
+              case ConnectionState.waiting:
+                return const CircularProgressIndicator();
+              case ConnectionState.active:
+                return Text(
+                  'Faltam ${snapshot.data} s',
+                  style: const TextStyle(fontSize: 40),
+                );
+              case ConnectionState.done:
+                return const Text(
+                  'Bolo pronto!',
+                  style: TextStyle(fontSize: 40, color: Colors.brown),
+                );
+            }
+          },
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>Stream&lt;int&gt; contagemDoForno() async*</dt><dd>Uma função <strong>geradora</strong>. O <code>async*</code> (com estrela) diz que ela devolve um <code>Stream</code>, e não um <code>Future</code>.</dd>
+  <dt>yield segundos;</dt><dd>"Entrega" (em inglês, <em>yield</em>) um valor na esteira, e a função continua rodando. No <code>async</code> comum, o <code>return</code> entrega um valor e acaba; no <code>async*</code>, cada <code>yield</code> é mais um valor.</dd>
+  <dt>await Future.delayed(const Duration(seconds: 1))</dt><dd>Espera 1 segundo antes do próximo valor. Quando o <code>for</code> acaba, a função termina, e o <code>Stream</code> fica <strong>terminado</strong> (<em>done</em>).</dd>
+  <dt>late final Stream&lt;int&gt; _contagem e initState</dt><dd>Como no <code>FutureBuilder</code>: o <code>Stream</code> é criado <strong>uma vez</strong>, quando a tela nasce, e guardado num campo.</dd>
+  <dt>StreamBuilder&lt;int&gt;(stream: _contagem, builder: …)</dt><dd>Fica "ouvindo" o <code>Stream</code> (os programadores dizem <strong>escutar</strong>, <em>listen</em>) e chama o <code>builder</code> de novo a cada valor que chega.</dd>
+  <dt>switch (snapshot.connectionState)</dt><dd>Os estados de um <code>Stream</code>: <code>waiting</code> (ainda não chegou nada), <code>active</code> (já chegou pelo menos um valor e ainda podem vir mais) e <code>done</code> (o <code>Stream</code> terminou). O <code>none</code> aparece só quando <code>stream</code> é <code>null</code>.</dd>
+  <dt>snapshot.data</dt><dd>O <strong>último</strong> valor que chegou. O <code>StreamBuilder</code> não guarda a lista dos anteriores: só o mais recente.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/streambuilder-1.png" alt="App Forno da Ana com o texto Faltam 3 s, em letras grandes, no meio da tela" width="390" height="844" loading="lazy"><figcaption>Uns 2 segundos depois de abrir: já chegaram 5, 4 e 3 (<code>ConnectionState.active</code>); a tela mostra o último.</figcaption></figure>
+
+<figure class="tela"><img src="assets/telas/streambuilder-2.png" alt="App Forno da Ana com o texto Bolo pronto!, grande e marrom, no meio da tela" width="390" height="844" loading="lazy"><figcaption>Depois do 0, a função terminou: o <code>Stream</code> ficou <code>done</code>, e o <code>builder</code> mostrou o aviso.</figcaption></figure>
+
+<p>Repare que o Dart não reclamou de o <code>switch</code> não ter <code>return</code> no fim: o <code>ConnectionState</code> tem exatamente quatro valores, e os quatro estão nos <code>case</code>. O Dart 3 confere isso sozinho (o <code>switch</code> é <strong>exaustivo</strong>). No laboratório, apagamos o <code>case ConnectionState.done:</code> (e o <code>return</code> dele), e o app parou de compilar:</p>
+<pre class="term">lib/main.dart:52:30:
+Error: The type 'ConnectionState' is not exhaustively matched by the switch cases since it doesn't match 'ConnectionState.done'.
+            switch (snapshot.connectionState) {
+                             ^
+</pre>
+<p>"O tipo <code>ConnectionState</code> não é coberto por inteiro pelos <code>case</code> do <code>switch</code>, porque falta <code>ConnectionState.done</code>." O <code>^</code> aponta o <code>switch</code> da linha 52, coluna 30. É uma ajuda: o Dart não deixa você esquecer um estado.</p>
+
+<div class="tryflutter" data-goal="src:segundos = 10">
+<p class="try-task"><strong>Missão:</strong> o próximo bolo precisa de mais forno. Faça a contagem começar em <strong>10</strong>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaForno(),
+    );
+  }
+}
+
+// Um Stream que manda 5, 4, 3, 2, 1, 0: um número por segundo.
+Stream&lt;int&gt; contagemDoForno() async* {
+  for (var segundos = 5; segundos &gt;= 0; segundos--) {
+    yield segundos;
+    await Future.delayed(const Duration(seconds: 1));
+  }
+}
+
+class TelaForno extends StatefulWidget {
+  const TelaForno({super.key});
+
+  @override
+  State&lt;TelaForno&gt; createState() =&gt; _TelaFornoState();
+}
+
+class _TelaFornoState extends State&lt;TelaForno&gt; {
+  late final Stream&lt;int&gt; _contagem;
+
+  @override
+  void initState() {
+    super.initState();
+    _contagem = contagemDoForno();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Forno da Ana')),
+      body: Center(
+        child: StreamBuilder&lt;int&gt;(
+          stream: _contagem,
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return Text('Erro: ${snapshot.error}');
+            }
+            switch (snapshot.connectionState) {
+              case ConnectionState.none:
+              case ConnectionState.waiting:
+                return const CircularProgressIndicator();
+              case ConnectionState.active:
+                return Text(
+                  'Faltam ${snapshot.data} s',
+                  style: const TextStyle(fontSize: 40),
+                );
+              case ConnectionState.done:
+                return const Text(
+                  'Bolo pronto!',
+                  style: TextStyle(fontSize: 40, color: Colors.brown),
+                );
+            }
+          },
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaForno(),
+    );
+  }
+}
+
+// Um Stream que manda 5, 4, 3, 2, 1, 0: um número por segundo.
+Stream&lt;int&gt; contagemDoForno() async* {
+  for (var segundos = 10; segundos &gt;= 0; segundos--) {
+    yield segundos;
+    await Future.delayed(const Duration(seconds: 1));
+  }
+}
+
+class TelaForno extends StatefulWidget {
+  const TelaForno({super.key});
+
+  @override
+  State&lt;TelaForno&gt; createState() =&gt; _TelaFornoState();
+}
+
+class _TelaFornoState extends State&lt;TelaForno&gt; {
+  late final Stream&lt;int&gt; _contagem;
+
+  @override
+  void initState() {
+    super.initState();
+    _contagem = contagemDoForno();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Forno da Ana')),
+      body: Center(
+        child: StreamBuilder&lt;int&gt;(
+          stream: _contagem,
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return Text('Erro: ${snapshot.error}');
+            }
+            switch (snapshot.connectionState) {
+              case ConnectionState.none:
+              case ConnectionState.waiting:
+                return const CircularProgressIndicator();
+              case ConnectionState.active:
+                return Text(
+                  'Faltam ${snapshot.data} s',
+                  style: const TextStyle(fontSize: 40),
+                );
+              case ConnectionState.done:
+                return const Text(
+                  'Bolo pronto!',
+                  style: TextStyle(fontSize: 40, color: Colors.brown),
+                );
+            }
+          },
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>2. Mandando valores quando quiser: <code>StreamController</code></h2>
+<p>Na contagem, a própria função decidia quando mandar cada valor. Muitas vezes, quem decide é <strong>outra parte do app</strong>: um botão, uma mensagem que chegou da internet. Para isso existe o <code>StreamController</code> ("controlador do fluxo"): uma esteira com uma <strong>entrada</strong> (<code>add</code>) e uma <strong>saída</strong> (<code>stream</code>).</p>
+
+<pre class="file" data-file="lib/main.dart">import 'dart:async';
+
+import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaPedidos(),
+    );
+  }
+}
+
+class TelaPedidos extends StatefulWidget {
+  const TelaPedidos({super.key});
+
+  @override
+  State&lt;TelaPedidos&gt; createState() =&gt; _TelaPedidosState();
+}
+
+class _TelaPedidosState extends State&lt;TelaPedidos&gt; {
+  final _pedidos = StreamController&lt;String&gt;();
+  int _numero = 0;
+
+  void _novoPedido() {
+    _numero++;
+    _pedidos.add('Pedido nº $_numero: bolo de cenoura');
+  }
+
+  @override
+  void dispose() {
+    _pedidos.close();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Pedidos da Padaria')),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _novoPedido,
+        icon: const Icon(Icons.add),
+        label: const Text('Novo pedido'),
+      ),
+      body: Center(
+        child: StreamBuilder&lt;String&gt;(
+          stream: _pedidos.stream,
+          initialData: 'Nenhum pedido ainda',
+          builder: (context, snapshot) {
+            return Text(
+              snapshot.data!,
+              style: const TextStyle(fontSize: 22),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>import 'dart:async';</dt><dd>O <code>StreamController</code> mora na biblioteca <code>dart:async</code> do Dart.</dd>
+  <dt>final _pedidos = StreamController&lt;String&gt;();</dt><dd>A esteira de pedidos. Ela leva textos (<code>String</code>).</dd>
+  <dt>_pedidos.add('Pedido nº …')</dt><dd>A <strong>entrada</strong>: põe um valor na esteira. Quem estiver escutando recebe.</dd>
+  <dt>stream: _pedidos.stream</dt><dd>A <strong>saída</strong>: o <code>Stream</code> que o <code>StreamBuilder</code> escuta.</dd>
+  <dt>initialData: 'Nenhum pedido ainda'</dt><dd>O valor que o <code>snapshot.data</code> tem antes do primeiro pedido. Com ele, <code>snapshot.data!</code> nunca é nulo, e não precisamos da rodinha.</dd>
+  <dt>dispose() { _pedidos.close(); … }</dt><dd>Quando a tela sai de cena, <strong>feche</strong> a esteira. Um <code>StreamController</code> aberto continua guardando quem o escuta, e isso gasta memória à toa (um <em>vazamento de memória</em>). Quem cria o <code>StreamController</code> é responsável por fechá-lo.</dd>
+</dl>
+
+<p>No laboratório, a foto foi tirada depois de três toques no botão <strong>Novo pedido</strong>:</p>
+
+<figure class="tela"><img src="assets/telas/streambuilder-3.png" alt="App Pedidos da Padaria com o texto Pedido nº 3: bolo de cenoura no meio da tela e, embaixo à direita, o botão Novo pedido com um sinal de mais" width="390" height="844" loading="lazy"><figcaption>Depois de três toques: a tela mostra só o último pedido que passou pela esteira.</figcaption></figure>
+
+<div class="tip">
+<strong>Dá para fazer isso só com <code>setState</code>?</strong>
+<p>Dá: um campo <code>String _ultimo</code> e <code>setState(() =&gt; _ultimo = …)</code> no botão. Para um botão na mesma tela, o <code>setState</code> é mais simples e é o que você deve usar. O <code>StreamBuilder</code> vale a pena quando os valores vêm <strong>de fora</strong> do widget: de um serviço de chat, do banco de dados (o <code>sqflite</code> e o Firebase oferecem <code>Stream</code>s), do GPS. O widget só escuta; quem manda está em outro lugar.</p>
+</div>
+
+<hr>
+
+<h2>Formas diferentes de fazer, e qual usar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Para criar o <code>Stream</code></th><th>Quando usar</th></tr>
+<tr><td>Função <code>async*</code> com <code>yield</code></td><td>Você sabe calcular a sequência (contagem, leitura de um arquivo aos pedaços).</td></tr>
+<tr><td><code>Stream.periodic(Duration(seconds: 1), (i) =&gt; i)</code></td><td>Um valor a cada intervalo fixo, sem fim (relógio). Junte <code>.take(5)</code> para parar depois de 5.</td></tr>
+<tr><td><code>StreamController</code></td><td>Os valores chegam quando alguém chama <code>add</code> (botões, mensagens, respostas de servidor).</td></tr>
+<tr><td><code>StreamController.broadcast()</code></td><td>Mais de um ouvinte ao mesmo tempo (veja <a href="#errado">Quando dá errado</a>).</td></tr>
+<tr><td>Um pacote que já devolve <code>Stream</code></td><td>Firebase, sensores, conectividade: você só põe o <code>StreamBuilder</code>.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Dois <code>StreamBuilder</code> escutando o mesmo <code>Stream</code></strong>
+<p>A Ana quis mostrar o pedido no balcão <strong>e</strong> na cozinha, com dois <code>StreamBuilder</code> no mesmo <code>_pedidos.stream</code>:</p>
+<pre class="file" data-file="lib/main.dart (só o body muda)">      body: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          StreamBuilder&lt;String&gt;(
+            stream: _pedidos.stream,
+            builder: (context, snapshot) =&gt; Text('Balcão: ${snapshot.data}'),
+          ),
+          StreamBuilder&lt;String&gt;(
+            stream: _pedidos.stream,
+            builder: (context, snapshot) =&gt; Text('Cozinha: ${snapshot.data}'),
+          ),
+        ],
+      ),
+</pre>
+<figure class="tela"><img src="assets/telas/streambuilder-4.png" alt="Abaixo da barra Pedidos da Padaria, a tela vermelho-escura com, em amarelo, Bad state: Stream has already been listened to. e See also: https://docs.flutter.dev/testing/errors; o botão Novo pedido continua embaixo" width="390" height="844" loading="lazy"><figcaption>Logo ao abrir: a tela vermelha de erro, no lugar dos dois textos.</figcaption></figure>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following StateError was thrown building KeyedSubtree-[GlobalKey#89517]:
+Bad state: Stream has already been listened to.
+…
+════════════════════════════════════════════════════════════════════════════════════════════════════
+</pre>
+<p>Linha por linha: <code>The following StateError was thrown building …</code> diz que um erro do tipo <code>StateError</code> ("erro de estado") aconteceu enquanto a tela era montada; <code>Bad state: Stream has already been listened to.</code> quer dizer "estado inválido: este <code>Stream</code> já está sendo escutado". Um <code>StreamController</code> comum aceita <strong>um ouvinte só</strong> (como um telefone com um fone): o primeiro <code>StreamBuilder</code> pegou o fone, e o segundo quebrou. (Cortamos, no <code>…</code>, o parágrafo sobre "widget creation tracking", que no seu <code>flutter run</code> vira a linha do arquivo com o widget culpado.)</p>
+<p><strong>Como consertar:</strong> crie o controlador como <strong>broadcast</strong> ("transmissão", como uma rádio, que qualquer um pode sintonizar): <code>StreamController&lt;String&gt;.broadcast()</code>. Atenção a uma diferença: quem começa a escutar um <code>Stream</code> broadcast <strong>depois</strong> de um valor ter passado não recebe esse valor; ele só ouve dali em diante. É a missão final desta aula.</p>
+</div>
+
+<div class="cenario">
+<strong>Criou o <code>Stream</code> dentro do <code>build</code></strong>
+<p>Escrever <code>stream: contagemDoForno()</code> direto no <code>StreamBuilder</code> parece funcionar. Mas toda vez que a tela é reconstruída (um <code>setState</code> qualquer, a tela girando), o <code>build</code> roda de novo, cria <strong>outro</strong> <code>Stream</code>, e a contagem recomeça do 5. É o mesmo problema do <code>Future</code> criado no <code>build</code> (veja <a href="futurebuilder.html#errado">FutureBuilder</a>). <strong>Como consertar:</strong> crie no <code>initState</code> e guarde num campo.</p>
+</div>
+
+<div class="cenario">
+<strong>Esqueceu o <code>close()</code></strong>
+<p>Não aparece erro nenhum na tela. O <code>StreamController</code> fica aberto depois que a tela fecha, e o app vai gastando memória. <strong>Como evitar:</strong> crie o hábito: todo <code>StreamController</code> criado num <code>State</code> tem o seu <code>close()</code> no <code>dispose()</code>, logo abaixo do <code>initState</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>StreamBuilder&lt;T&gt;(stream: s, builder: (context, snapshot) =&gt; …)</code></td><td>Redesenha a cada valor novo do <code>Stream</code> <code>s</code></td></tr>
+<tr><td><code>initialData: valor</code></td><td>O <code>snapshot.data</code> antes do primeiro valor</td></tr>
+<tr><td><code>ConnectionState.waiting / active / done</code></td><td>Nada chegou ainda / chegou pelo menos um valor / o <code>Stream</code> terminou</td></tr>
+<tr><td><code>Stream&lt;T&gt; f() async* { yield x; }</code></td><td>Função que cria um <code>Stream</code></td></tr>
+<tr><td><code>StreamController&lt;T&gt;()</code></td><td>Esteira com entrada (<code>add</code>, <code>addError</code>) e saída (<code>stream</code>); um ouvinte só</td></tr>
+<tr><td><code>StreamController&lt;T&gt;.broadcast()</code></td><td>Aceita vários ouvintes</td></tr>
+<tr><td><code>controller.close()</code></td><td>Termina o <code>Stream</code> (os ouvintes recebem <code>done</code>); chame no <code>dispose</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete a função geradora</h3>
+<div class="ex-code">Stream&lt;int&gt; contar() async<input data-answer="*" aria-label="símbolo depois de async"> {<br>&nbsp;&nbsp;for (var i = 1; i &lt;= 3; i++) {<br>&nbsp;&nbsp;&nbsp;&nbsp;<input data-answer="yield" aria-label="palavra que entrega o valor"> i;<br>&nbsp;&nbsp;}<br>}</div>
+</div>
+
+<div class="exercise">
+<h3>2. Onde fechar</h3>
+<p>Em qual método do <code>State</code> você chama <code>_pedidos.close()</code>?</p>
+<div class="ex-code">No método <input data-answer="dispose" aria-label="nome do método"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. O <code>Stream</code> já mandou 5, 4 e 3, e ainda vai mandar mais. Qual é o <code>connectionState</code> e o <code>snapshot.data</code>?</p>
+<label><input type="radio" name="q3"> <code>waiting</code> e <code>[5, 4, 3]</code></label>
+<label><input type="radio" name="q3"> <code>active</code> e <code>3</code></label>
+<label><input type="radio" name="q3"> <code>done</code> e <code>3</code></label>
+<label><input type="radio" name="q3"> <code>active</code> e <code>5</code></label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. Qual destes é caso para <code>StreamBuilder</code>, e não para <code>FutureBuilder</code>?</p>
+<label><input type="radio" name="q4"> Carregar o perfil do usuário ao abrir a tela</label>
+<label><input type="radio" name="q4"> Buscar a previsão do tempo de hoje</label>
+<label><input type="radio" name="q4"> Ler um arquivo de configuração uma vez</label>
+<label><input type="radio" name="q4"> Mostrar as mensagens novas de um chat assim que chegam</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. Dois widgets precisam escutar o mesmo <code>StreamController</code>. O que fazer?</p>
+<label><input type="radio" name="q5"> Criar o controlador com <code>StreamController.broadcast()</code></label>
+<label><input type="radio" name="q5"> Chamar <code>_pedidos.stream</code> duas vezes</label>
+<label><input type="radio" name="q5"> Usar dois <code>FutureBuilder</code></label>
+<label><input type="radio" name="q5"> Não é possível no Flutter</label>
+</div>
+
+<h3>Missão final: o balcão e a cozinha</h3>
+
+<div class="tryflutter" data-goal="src:StreamController&lt;String&gt;\.broadcast\(\)">
+<p class="try-task"><strong>Missão:</strong> este app tem dois <code>StreamBuilder</code> no mesmo <code>Stream</code> e quebra com <code>Bad state</code>. Conserte trocando o controlador por um <code>StreamController&lt;String&gt;.broadcast()</code>, e toque em <strong>Novo pedido</strong> para ver o balcão e a cozinha receberem o mesmo pedido.</p>
+<pre class="script" data-file="main.dart">import 'dart:async';
+
+import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaPedidos(),
+    );
+  }
+}
+
+class TelaPedidos extends StatefulWidget {
+  const TelaPedidos({super.key});
+
+  @override
+  State&lt;TelaPedidos&gt; createState() =&gt; _TelaPedidosState();
+}
+
+class _TelaPedidosState extends State&lt;TelaPedidos&gt; {
+  final _pedidos = StreamController&lt;String&gt;();
+  int _numero = 0;
+
+  void _novoPedido() {
+    _numero++;
+    _pedidos.add('Pedido nº $_numero: bolo de cenoura');
+  }
+
+  @override
+  void dispose() {
+    _pedidos.close();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Pedidos da Padaria')),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _novoPedido,
+        icon: const Icon(Icons.add),
+        label: const Text('Novo pedido'),
+      ),
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // O balcão mostra o pedido...
+          StreamBuilder&lt;String&gt;(
+            stream: _pedidos.stream,
+            builder: (context, snapshot) =&gt; Text('Balcão: ${snapshot.data}'),
+          ),
+          // ...e a cozinha também quer ouvir o MESMO Stream.
+          StreamBuilder&lt;String&gt;(
+            stream: _pedidos.stream,
+            builder: (context, snapshot) =&gt; Text('Cozinha: ${snapshot.data}'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'dart:async';
+
+import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaPedidos(),
+    );
+  }
+}
+
+class TelaPedidos extends StatefulWidget {
+  const TelaPedidos({super.key});
+
+  @override
+  State&lt;TelaPedidos&gt; createState() =&gt; _TelaPedidosState();
+}
+
+class _TelaPedidosState extends State&lt;TelaPedidos&gt; {
+  final _pedidos = StreamController&lt;String&gt;.broadcast();
+  int _numero = 0;
+
+  void _novoPedido() {
+    _numero++;
+    _pedidos.add('Pedido nº $_numero: bolo de cenoura');
+  }
+
+  @override
+  void dispose() {
+    _pedidos.close();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Pedidos da Padaria')),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _novoPedido,
+        icon: const Icon(Icons.add),
+        label: const Text('Novo pedido'),
+      ),
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // O balcão mostra o pedido...
+          StreamBuilder&lt;String&gt;(
+            stream: _pedidos.stream,
+            builder: (context, snapshot) =&gt; Text('Balcão: ${snapshot.data}'),
+          ),
+          // ...e a cozinha também quer ouvir o MESMO Stream.
+          StreamBuilder&lt;String&gt;(
+            stream: _pedidos.stream,
+            builder: (context, snapshot) =&gt; Text('Cozinha: ${snapshot.data}'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<figure class="tela"><img src="assets/telas/streambuilder-5.png" alt="App Pedidos da Padaria, já consertado, depois de dois toques em Novo pedido: no meio da tela, duas linhas, Balcão: Pedido nº 2: bolo de cenoura e Cozinha: Pedido nº 2: bolo de cenoura" width="390" height="844" loading="lazy"><figcaption>A solução no laboratório, depois de dois toques: o balcão e a cozinha recebem o mesmo pedido.</figcaption></figure>
+<p>Antes do primeiro toque, os dois textos mostram <code>null</code> (<code>Balcão: null</code>): ainda não passou nenhum pedido, e este exemplo não tem <code>initialData</code>. Como você resolveria isso? (Dica: o <code>initialData</code> da seção 2.)</p>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Um <code>Stream</code> entrega <strong>vários</strong> valores ao longo do tempo; o <code>StreamBuilder</code> redesenha a tela a cada um.</li>
+  <li>Os estados: <code>waiting</code> (nada ainda), <code>active</code> (chegando valores), <code>done</code> (terminou). O <code>snapshot.data</code> é sempre o <strong>último</strong> valor.</li>
+  <li>Crie <code>Stream</code>s com <code>async*</code> + <code>yield</code>, com <code>Stream.periodic</code> ou com um <code>StreamController</code> (entrada <code>add</code>, saída <code>stream</code>).</li>
+  <li>Crie o <code>Stream</code> no <code>initState</code> (não no <code>build</code>) e feche o <code>StreamController</code> no <code>dispose</code>.</li>
+  <li>Um <code>Stream</code> comum aceita um ouvinte só; para vários, use <code>StreamController.broadcast()</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
