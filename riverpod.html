@@ -1,0 +1,871 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Riverpod — estado fora da árvore de widgets | Guia Flutter</title>
+<meta name="description" content="O Riverpod 3 para quem nunca fez um app: ProviderScope, providers globais, Notifier e NotifierProvider, ConsumerWidget e WidgetRef, ref.watch e ref.read, o carrinho da lojinha da Ana, as diferenças para o provider e os erros reais (ProviderScope esquecido, lista mudada sem trocar o state).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Riverpod</span></h1>
+
+<p class="intro">O <strong>Riverpod</strong> foi criado pelo mesmo autor do <a href="provider.html">provider</a>, para resolver os incômodos dele. O nome é um anagrama de "provider" (as mesmas letras, em outra ordem). A grande diferença: no provider, o estado mora <strong>dentro</strong> da árvore de widgets e é achado pelo tipo; no Riverpod, cada estado é uma <strong>variável global</strong>, que qualquer widget acha pelo nome, sem depender de onde está na árvore. Isso acaba com o <code>ProviderNotFoundException</code> e deixa o compilador conferir mais coisas por você.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A instalar o <code>flutter_riverpod</code> e ligar o Riverpod com <code>ProviderScope</code>.</li>
+  <li>A declarar um provider simples (<code>Provider</code>) e um com estado que muda (<code>Notifier</code> + <code>NotifierProvider</code>).</li>
+  <li>A ler o estado com <code>ConsumerWidget</code>, <code>WidgetRef</code>, <code>ref.watch</code> e <code>ref.read</code>.</li>
+  <li>Por que, no Riverpod, a lista do estado é <strong>trocada</strong>, e não modificada.</li>
+  <li>As diferenças para o provider, e qual escolher.</li>
+  <li>Os erros reais: o <code>ProviderScope</code> esquecido e a tela que não muda.</li>
+</ul>
+</div>
+
+<p>Versões desta aula: <span class="versao">flutter_riverpod 3.4.3</span>, a versão mais nova no <a href="https://pub.dev/packages/flutter_riverpod">pub.dev</a> em outubro de 2026, e o Flutter estável do laboratório da Ana. O Riverpod 3 mudou bastante em relação ao 2: tutoriais antigos usam <code>StateNotifier</code> e <code>StateProvider</code>, que no 3 ficaram num arquivo à parte, o <code>legacy.dart</code> ("legado"). Esta aula usa só o jeito atual.</p>
+
+<hr>
+
+<h2>A ideia: o armário com etiquetas</h2>
+<p>No provider, o estado era o quadro na porta da geladeira: só alcança quem passa por aquela porta (quem está <strong>abaixo</strong> do provider na árvore). No Riverpod, pense num <strong>armário com gavetas etiquetadas</strong> na entrada da casa:</p>
+<ol class="passo">
+  <li>Cada <strong>gaveta</strong> é um provider, declarado uma vez, com um nome: <code>carrinhoProvider</code>.</li>
+  <li>O <strong>armário</strong> é o <code>ProviderScope</code>: é ele que guarda o conteúdo de todas as gavetas. Ele fica em volta do app inteiro.</li>
+  <li>Qualquer widget abre a gaveta pelo <strong>nome</strong>: <code>ref.watch(carrinhoProvider)</code>. Não importa em que cômodo (tela) ele está.</li>
+  <li>A gaveta só é aberta (o estado só é criado) quando alguém a pede pela primeira vez.</li>
+</ol>
+
+<hr>
+
+<h2>1. Instalar e ligar: <code>ProviderScope</code></h2>
+
+<p>Para apps Flutter, o pacote é o <code>flutter_riverpod</code> (o <code>riverpod</code>, sem o "flutter_", é a parte em Dart puro, e vem junto):</p>
+
+<pre class="term">$ cd lojinha
+$ flutter pub add flutter_riverpod
+Resolving dependencies...
+Downloading packages...
++ crypto 3.0.7
+  cupertino_icons 1.0.9 (2.0.0 available)
++ fixnum 1.1.1
++ flutter_riverpod 3.4.3
++ listen 1.0.1
+  material_color_utilities 0.13.0 (0.13.1 available)
+  meta 1.18.3 (1.19.0 available)
++ riverpod 3.4.3
++ state_notifier 1.0.0
+  test_api 0.7.12 (0.7.15 available)
++ typed_data 1.4.0
++ uuid 4.6.0
+Changed 8 dependencies!
+4 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+</pre>
+
+<p>As linhas com <code>+</code> são os pacotes novos: o <code>flutter_riverpod</code>, o <code>riverpod</code> e mais seis que eles usam por dentro. No <code>pubspec.yaml</code> entrou a linha <code>flutter_riverpod: ^3.4.3</code>. (A leitura linha por linha desta saída está na aula <a href="provider.html">Provider</a>.)</p>
+
+<p>Depois, envolva o app num <code>ProviderScope</code>, uma vez só, no <code>main</code>:</p>
+
+<pre class="file" data-file="lib/main.dart">void main() {
+  runApp(const ProviderScope(child: LojinhaApp()));
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>ProviderScope</dt><dd>O "armário": guarda o estado de <strong>todos</strong> os providers do app. Sem ele, nenhum provider funciona (veja <a href="#errado">Quando dá errado</a>).</dd>
+  <dt>const</dt><dd>Ele pode ser <code>const</code>: ao contrário do <code>ChangeNotifierProvider</code>, ele não recebe nenhuma função de criar estado. Quem sabe criar o estado são os próprios providers.</dd>
+</dl>
+
+<hr>
+
+<h2>2. O provider mais simples: um valor que não muda</h2>
+<pre class="file" data-file="lib/main.dart">final nomeLojaProvider = Provider&lt;String&gt;((ref) =&gt; 'Lojinha da Ana');
+</pre>
+
+<dl class="anatomy">
+  <dt>final nomeLojaProvider</dt><dd>Uma variável <strong>global</strong> (fora de qualquer classe). Não se assuste: ela não guarda o valor, só a <strong>receita</strong> de como criá-lo. O valor fica no <code>ProviderScope</code>. Por convenção, o nome termina em <code>Provider</code>.</dd>
+  <dt>Provider&lt;String&gt;</dt><dd>Um provider de valor fixo, do tipo <code>String</code>.</dd>
+  <dt>(ref) =&gt; 'Lojinha da Ana'</dt><dd>A função que cria o valor. O <code>ref</code> serve para um provider ler outros providers (ex.: <code>ref.watch(outroProvider)</code>).</dd>
+</dl>
+
+<hr>
+
+<h2>3. Estado que muda: <code>Notifier</code> e <code>NotifierProvider</code></h2>
+<p>O carrinho da lojinha, agora em Riverpod. Compare com a classe <code>Carrinho</code> da aula <a href="provider.html">Provider</a>:</p>
+
+<pre class="file" data-file="lib/main.dart">class CarrinhoNotifier extends Notifier&lt;List&lt;String&gt;&gt; {
+  @override
+  List&lt;String&gt; build() =&gt; [];
+
+  void adicionar(String item) {
+    state = [...state, item];
+  }
+
+  void limpar() {
+    state = [];
+  }
+}
+
+final carrinhoProvider =
+    NotifierProvider&lt;CarrinhoNotifier, List&lt;String&gt;&gt;(CarrinhoNotifier.new);
+</pre>
+
+<dl class="anatomy">
+  <dt>extends Notifier&lt;List&lt;String&gt;&gt;</dt><dd>Uma classe que cuida de um estado do tipo <code>List&lt;String&gt;</code>. Ela ganha um campo <code>state</code> ("estado").</dd>
+  <dt>List&lt;String&gt; build() =&gt; []</dt><dd>O <strong>estado inicial</strong>: o carrinho começa vazio. O Riverpod chama o <code>build</code> na primeira vez que alguém pede o provider.</dd>
+  <dt>state = [...state, item]</dt><dd>Muda o estado: cria uma lista <strong>nova</strong>, com tudo o que tinha (<code>...state</code>, o operador de espalhar do Dart) mais o item. Ao receber um valor novo, o <code>state</code> avisa sozinho quem está olhando: <strong>não existe <code>notifyListeners()</code></strong>.</dd>
+  <dt>NotifierProvider&lt;CarrinhoNotifier, List&lt;String&gt;&gt;</dt><dd>A "gaveta": liga a classe ao estado. O primeiro tipo é a classe; o segundo, o tipo do estado.</dd>
+  <dt>CarrinhoNotifier.new</dt><dd>Uma referência ao construtor da classe (o mesmo que <code>() =&gt; CarrinhoNotifier()</code>). O Riverpod chama quando precisar.</dd>
+</dl>
+
+<div class="warning">
+<strong>Troque, não modifique</strong>
+<p>O Riverpod percebe a mudança quando <code>state</code> recebe um objeto <strong>diferente</strong>. Se você fizer <code>state.add(item)</code>, a lista é a mesma (só ganhou um item), o Riverpod não percebe, e a tela não muda. Por isso o jeito certo é <code>state = [...state, item]</code>. A seção <a href="#errado">Quando dá errado</a> mostra o caso.</p>
+</div>
+
+<hr>
+
+<h2>4. Ler o estado: <code>ConsumerWidget</code> e <code>ref</code></h2>
+<p>Para um widget ler providers, ele estende <code>ConsumerWidget</code> no lugar de <code>StatelessWidget</code>. O <code>build</code> ganha um segundo parâmetro, o <code>WidgetRef ref</code>:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+class CarrinhoNotifier extends Notifier&lt;List&lt;String&gt;&gt; {
+  @override
+  List&lt;String&gt; build() =&gt; [];
+
+  void adicionar(String item) {
+    state = [...state, item];
+  }
+
+  void limpar() {
+    state = [];
+  }
+}
+
+final carrinhoProvider =
+    NotifierProvider&lt;CarrinhoNotifier, List&lt;String&gt;&gt;(CarrinhoNotifier.new);
+
+final nomeLojaProvider = Provider&lt;String&gt;((ref) =&gt; 'Lojinha da Ana');
+
+void main() {
+  runApp(const ProviderScope(child: LojinhaApp()));
+}
+
+class LojinhaApp extends StatelessWidget {
+  const LojinhaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaProdutos(),
+    );
+  }
+}
+
+class TelaProdutos extends ConsumerWidget {
+  const TelaProdutos({super.key});
+
+  static const produtos = ['Café', 'Pão de queijo', 'Bolo de cenoura'];
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final nomeLoja = ref.watch(nomeLojaProvider);
+    final itens = ref.watch(carrinhoProvider);
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(nomeLoja),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Badge(
+              label: Text('${itens.length}'),
+              child: const Icon(Icons.shopping_cart),
+            ),
+          ),
+        ],
+      ),
+      body: ListView(
+        children: [
+          for (final produto in produtos)
+            ListTile(
+              title: Text(produto),
+              trailing: IconButton(
+                icon: const Icon(Icons.add_shopping_cart),
+                tooltip: 'Adicionar $produto',
+                onPressed: () =&gt;
+                    ref.read(carrinhoProvider.notifier).adicionar(produto),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>extends ConsumerWidget</dt><dd>Um <code>StatelessWidget</code> que sabe ler providers.</dd>
+  <dt>build(BuildContext context, WidgetRef ref)</dt><dd>O <code>ref</code> é a "chave do armário" deste widget.</dd>
+  <dt>ref.watch(carrinhoProvider)</dt><dd>Lê o estado (a lista) <strong>e fica de olho</strong>: quando o <code>state</code> mudar, este <code>build</code> roda de novo. Use no <code>build</code>.</dd>
+  <dt>ref.read(carrinhoProvider.notifier)</dt><dd>O <code>.notifier</code> dá acesso à <strong>classe</strong> (<code>CarrinhoNotifier</code>), e não à lista, para chamar <code>adicionar</code>. O <code>read</code> não fica de olho: é o certo em <code>onPressed</code>.</dd>
+</dl>
+
+<p>Repare no título: ele vem do <code>nomeLojaProvider</code> da seção 2, lido com <code>ref.watch(nomeLojaProvider)</code>. Um <code>build</code> pode ler quantos providers quiser.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Ao abrir</th><th>Depois de tocar em Café e em Pão de queijo</th></tr>
+<tr><td><figure class="tela"><img src="assets/telas/riverpod-1.png" alt="App 'Lojinha da Ana' com o carrinho no canto de cima mostrando o selo 0 e a lista Café, Pão de queijo e Bolo de cenoura, cada um com um botão de adicionar" width="390" height="844" loading="lazy"><figcaption>Carrinho vazio: selo 0.</figcaption></figure></td>
+<td><figure class="tela"><img src="assets/telas/riverpod-2.png" alt="A mesma tela, com o selo do carrinho mostrando 2" width="390" height="844" loading="lazy"><figcaption>Dois toques: selo 2.</figcaption></figure></td></tr>
+</table>
+</div>
+
+<p>A tela é igual à da aula <a href="provider.html">Provider</a>, de propósito: o que mudou foi só o jeito de guardar e ler o estado.</p>
+
+<div class="tryflutter" data-goal="src:ref\.read\(carrinhoProvider\.notifier\)\s*\.limpar\(\)">
+<p class="try-task"><strong>Missão:</strong> rode e toque nos botões para ver o selo subir. Depois, acrescente nas <code>actions</code> da <code>AppBar</code>, antes do <code>Padding</code> do selo, um <code>IconButton</code> com o ícone <code>Icons.delete_outline</code> que esvazia o carrinho: <code>ref.read(carrinhoProvider.notifier).limpar()</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+class CarrinhoNotifier extends Notifier&lt;List&lt;String&gt;&gt; {
+  @override
+  List&lt;String&gt; build() =&gt; [];
+
+  void adicionar(String item) {
+    state = [...state, item];
+  }
+
+  void limpar() {
+    state = [];
+  }
+}
+
+final carrinhoProvider =
+    NotifierProvider&lt;CarrinhoNotifier, List&lt;String&gt;&gt;(CarrinhoNotifier.new);
+
+final nomeLojaProvider = Provider&lt;String&gt;((ref) =&gt; 'Lojinha da Ana');
+
+void main() {
+  runApp(const ProviderScope(child: LojinhaApp()));
+}
+
+class LojinhaApp extends StatelessWidget {
+  const LojinhaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaProdutos(),
+    );
+  }
+}
+
+class TelaProdutos extends ConsumerWidget {
+  const TelaProdutos({super.key});
+
+  static const produtos = ['Café', 'Pão de queijo', 'Bolo de cenoura'];
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final nomeLoja = ref.watch(nomeLojaProvider);
+    final itens = ref.watch(carrinhoProvider);
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(nomeLoja),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Badge(
+              label: Text('${itens.length}'),
+              child: const Icon(Icons.shopping_cart),
+            ),
+          ),
+        ],
+      ),
+      body: ListView(
+        children: [
+          for (final produto in produtos)
+            ListTile(
+              title: Text(produto),
+              trailing: IconButton(
+                icon: const Icon(Icons.add_shopping_cart),
+                tooltip: 'Adicionar $produto',
+                onPressed: () =&gt;
+                    ref.read(carrinhoProvider.notifier).adicionar(produto),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+class CarrinhoNotifier extends Notifier&lt;List&lt;String&gt;&gt; {
+  @override
+  List&lt;String&gt; build() =&gt; [];
+
+  void adicionar(String item) {
+    state = [...state, item];
+  }
+
+  void limpar() {
+    state = [];
+  }
+}
+
+final carrinhoProvider =
+    NotifierProvider&lt;CarrinhoNotifier, List&lt;String&gt;&gt;(CarrinhoNotifier.new);
+
+final nomeLojaProvider = Provider&lt;String&gt;((ref) =&gt; 'Lojinha da Ana');
+
+void main() {
+  runApp(const ProviderScope(child: LojinhaApp()));
+}
+
+class LojinhaApp extends StatelessWidget {
+  const LojinhaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaProdutos(),
+    );
+  }
+}
+
+class TelaProdutos extends ConsumerWidget {
+  const TelaProdutos({super.key});
+
+  static const produtos = ['Café', 'Pão de queijo', 'Bolo de cenoura'];
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final nomeLoja = ref.watch(nomeLojaProvider);
+    final itens = ref.watch(carrinhoProvider);
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(nomeLoja),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_outline),
+            tooltip: 'Limpar carrinho',
+            onPressed: () =&gt; ref.read(carrinhoProvider.notifier).limpar(),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Badge(
+              label: Text('${itens.length}'),
+              child: const Icon(Icons.shopping_cart),
+            ),
+          ),
+        ],
+      ),
+      body: ListView(
+        children: [
+          for (final produto in produtos)
+            ListTile(
+              title: Text(produto),
+              trailing: IconButton(
+                icon: const Icon(Icons.add_shopping_cart),
+                tooltip: 'Adicionar $produto',
+                onPressed: () =&gt;
+                    ref.read(carrinhoProvider.notifier).adicionar(produto),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>5. Outras formas de ler: <code>Consumer</code> e <code>ConsumerStatefulWidget</code></h2>
+<p>Se você não quer transformar a classe inteira em <code>ConsumerWidget</code>, use o widget <code>Consumer</code>, que dá um <code>ref</code> só para um pedaço:</p>
+
+<pre class="file" data-file="trecho.dart">Consumer(
+  builder: (context, ref, child) {
+    final itens = ref.watch(carrinhoProvider);
+    return Text('Itens: ${itens.length}');
+  },
+)
+</pre>
+
+<p>E se o widget precisa de <code>initState</code> ou de um <code>TextEditingController</code>, há a versão com estado: <code>ConsumerStatefulWidget</code> com <code>ConsumerState</code>. Nela, o <code>ref</code> é um campo da classe (você escreve <code>ref.watch(…)</code> em qualquer método, sem recebê-lo como parâmetro).</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Você escrevia…</th><th>No Riverpod, escreva…</th></tr>
+<tr><td><code>StatelessWidget</code></td><td><code>ConsumerWidget</code> (o <code>build</code> recebe <code>WidgetRef ref</code>)</td></tr>
+<tr><td><code>StatefulWidget</code> + <code>State</code></td><td><code>ConsumerStatefulWidget</code> + <code>ConsumerState</code></td></tr>
+<tr><td>só um pedaço de um <code>build</code></td><td><code>Consumer(builder: (context, ref, child) =&gt; …)</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="formas">Provider ou Riverpod?</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th></th><th>provider</th><th>Riverpod</th></tr>
+<tr><td>Onde mora o estado</td><td>Na árvore de widgets, acima de quem usa</td><td>No <code>ProviderScope</code>; achado por uma variável global</td></tr>
+<tr><td>Como se acha</td><td>Pelo tipo: <code>context.watch&lt;Carrinho&gt;()</code></td><td>Pelo nome: <code>ref.watch(carrinhoProvider)</code></td></tr>
+<tr><td>Esqueceu de pôr o estado no lugar certo</td><td>Erro na hora de rodar (<code>ProviderNotFoundException</code>)</td><td>Não acontece: a gaveta existe sempre</td></tr>
+<tr><td>Avisar mudança</td><td><code>notifyListeners()</code></td><td>Atribuir um <code>state</code> novo</td></tr>
+<tr><td>Dois estados do mesmo tipo</td><td>Difícil (o tipo é a "chave")</td><td>Fácil: são duas variáveis</td></tr>
+<tr><td>Quantidade de conceitos</td><td>Menor</td><td>Maior (e mudou bastante entre as versões 2 e 3)</td></tr>
+</table>
+</div>
+<p><strong>Qual usar?</strong> Para aprender e para apps pequenos e médios, o provider é mais simples e é o que a documentação oficial do Flutter usa no exemplo de estado compartilhado. O Riverpod compensa em apps maiores, com muitos estados que dependem uns dos outros. O importante é escolher um e usá-lo no app inteiro.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Esqueceu o <code>ProviderScope</code></strong>
+<p>A Ana deixou o <code>main</code> só com <code>runApp(const LojinhaApp());</code>. Desta vez não é um pedacinho: a tela <strong>inteira</strong> fica vermelha, porque é a <code>TelaProdutos</code> (a tela toda) que lê os providers:</p>
+<figure class="tela"><img src="assets/telas/riverpod-3.png" alt="Tela inteira vermelha com o texto amarelo 'Bad state: No ProviderScope found' e, embaixo, 'See also: https://docs.flutter.dev/testing/errors'" width="390" height="844" loading="lazy"><figcaption>Sem <code>ProviderScope</code>: a tela vermelha de erro.</figcaption></figure>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following StateError was thrown building TelaProdutos(dirty, state: _ConsumerState#ad602):
+Bad state: No ProviderScope found
+…
+</pre>
+<dl class="anatomy">
+  <dt>EXCEPTION CAUGHT BY WIDGETS LIBRARY</dt><dd>"Exceção capturada pela biblioteca de widgets": o erro aconteceu enquanto o Flutter montava a tela.</dd>
+  <dt>StateError was thrown building TelaProdutos</dt><dd>Um <code>StateError</code> ("erro de estado") ao construir a <code>TelaProdutos</code>. O <code>_ConsumerState#ad602</code> é o estado interno do <code>ConsumerWidget</code> (o número muda a cada execução).</dd>
+  <dt>Bad state: No ProviderScope found</dt><dd>"Estado ruim: nenhum <code>ProviderScope</code> encontrado." O <code>ref.watch</code> procurou o "armário" e não achou.</dd>
+</dl>
+<p><strong>Como consertar:</strong> <code>runApp(const ProviderScope(child: LojinhaApp()));</code> e reinicie o app (o <code>main</code> não roda de novo num hot reload).</p>
+</div>
+
+<div class="cenario">
+<strong><code>state.add</code>: a lista muda, a tela não</strong>
+<p>Quem vem do provider escreve, por hábito, <code>state.add(item)</code>:</p>
+<pre class="file" data-file="lib/main.dart">  void adicionar(String item) {
+    state.add(item);
+    print('Carrinho: $state');
+  }
+</pre>
+<p>Depois de dois toques, o console mostra a lista crescendo…</p>
+<pre class="term">Carrinho: [Café]
+Carrinho: [Café, Pão de queijo]
+</pre>
+<p>…mas o selo continua em <strong>0</strong>, como na foto de "Ao abrir". O <code>add</code> mexeu <strong>dentro</strong> da mesma lista; o <code>state</code> continua apontando para o mesmo objeto, e o Riverpod só avisa os widgets quando <code>state</code> recebe <strong>outro</strong> objeto. Não há erro nem aviso. <strong>Como consertar:</strong> <code>state = [...state, item];</code>. Para tirar um item: <code>state = state.where((i) =&gt; i != item).toList();</code>.</p>
+</div>
+
+<div class="tryflutter" data-goal="src:state\s*=\s*\[\s*\.\.\.state;;nsrc:state\.add\(">
+<p class="try-task"><strong>Missão:</strong> este é o carrinho com <code>state.add</code>. Rode, toque nos botões, veja o selo parado em 0 e a lista crescendo no console do DartPad. Conserte o <code>adicionar</code> para trocar o estado em vez de modificá-lo.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+class CarrinhoNotifier extends Notifier&lt;List&lt;String&gt;&gt; {
+  @override
+  List&lt;String&gt; build() =&gt; [];
+
+  void adicionar(String item) {
+    state.add(item);
+    print('Carrinho: $state');
+  }
+
+  void limpar() {
+    state = [];
+  }
+}
+
+final carrinhoProvider =
+    NotifierProvider&lt;CarrinhoNotifier, List&lt;String&gt;&gt;(CarrinhoNotifier.new);
+
+final nomeLojaProvider = Provider&lt;String&gt;((ref) =&gt; 'Lojinha da Ana');
+
+void main() {
+  runApp(const ProviderScope(child: LojinhaApp()));
+}
+
+class LojinhaApp extends StatelessWidget {
+  const LojinhaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaProdutos(),
+    );
+  }
+}
+
+class TelaProdutos extends ConsumerWidget {
+  const TelaProdutos({super.key});
+
+  static const produtos = ['Café', 'Pão de queijo', 'Bolo de cenoura'];
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final nomeLoja = ref.watch(nomeLojaProvider);
+    final itens = ref.watch(carrinhoProvider);
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(nomeLoja),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Badge(
+              label: Text('${itens.length}'),
+              child: const Icon(Icons.shopping_cart),
+            ),
+          ),
+        ],
+      ),
+      body: ListView(
+        children: [
+          for (final produto in produtos)
+            ListTile(
+              title: Text(produto),
+              trailing: IconButton(
+                icon: const Icon(Icons.add_shopping_cart),
+                tooltip: 'Adicionar $produto',
+                onPressed: () =&gt;
+                    ref.read(carrinhoProvider.notifier).adicionar(produto),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+class CarrinhoNotifier extends Notifier&lt;List&lt;String&gt;&gt; {
+  @override
+  List&lt;String&gt; build() =&gt; [];
+
+  void adicionar(String item) {
+    state = [...state, item];
+    print('Carrinho: $state');
+  }
+
+  void limpar() {
+    state = [];
+  }
+}
+
+final carrinhoProvider =
+    NotifierProvider&lt;CarrinhoNotifier, List&lt;String&gt;&gt;(CarrinhoNotifier.new);
+
+final nomeLojaProvider = Provider&lt;String&gt;((ref) =&gt; 'Lojinha da Ana');
+
+void main() {
+  runApp(const ProviderScope(child: LojinhaApp()));
+}
+
+class LojinhaApp extends StatelessWidget {
+  const LojinhaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaProdutos(),
+    );
+  }
+}
+
+class TelaProdutos extends ConsumerWidget {
+  const TelaProdutos({super.key});
+
+  static const produtos = ['Café', 'Pão de queijo', 'Bolo de cenoura'];
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final nomeLoja = ref.watch(nomeLojaProvider);
+    final itens = ref.watch(carrinhoProvider);
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(nomeLoja),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Badge(
+              label: Text('${itens.length}'),
+              child: const Icon(Icons.shopping_cart),
+            ),
+          ),
+        ],
+      ),
+      body: ListView(
+        children: [
+          for (final produto in produtos)
+            ListTile(
+              title: Text(produto),
+              trailing: IconButton(
+                icon: const Icon(Icons.add_shopping_cart),
+                tooltip: 'Adicionar $produto',
+                onPressed: () =&gt;
+                    ref.read(carrinhoProvider.notifier).adicionar(produto),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>flutter pub add flutter_riverpod</code></td><td>Instala o pacote</td></tr>
+<tr><td><code>runApp(const ProviderScope(child: App()))</code></td><td>Liga o Riverpod no app inteiro</td></tr>
+<tr><td><code>final xProvider = Provider((ref) =&gt; valor);</code></td><td>Provider de valor fixo</td></tr>
+<tr><td><code>class XNotifier extends Notifier&lt;T&gt;</code> com <code>T build()</code></td><td>Estado que muda; <code>build</code> dá o valor inicial</td></tr>
+<tr><td><code>NotifierProvider&lt;XNotifier, T&gt;(XNotifier.new)</code></td><td>Liga a classe ao provider</td></tr>
+<tr><td><code>state = novoValor</code></td><td>Muda o estado e avisa quem olha</td></tr>
+<tr><td><code>ref.watch(xProvider)</code></td><td>Lê e fica de olho (no <code>build</code>)</td></tr>
+<tr><td><code>ref.read(xProvider.notifier).metodo()</code></td><td>Chama um método do notifier (em <code>onPressed</code>)</td></tr>
+<tr><td><code>ConsumerWidget</code> / <code>Consumer</code> / <code>ConsumerStatefulWidget</code></td><td>Widgets que recebem um <code>ref</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o notifier</h3>
+<p>Complete o contador de pães em Riverpod:</p>
+<div class="ex-code">class PaesNotifier extends <input data-answer="Notifier" aria-label="classe base">&lt;int&gt; {<br>&nbsp;&nbsp;@override<br>&nbsp;&nbsp;int <input data-answer="build" aria-label="método do estado inicial">() =&gt; 0;<br>&nbsp;&nbsp;void mais() =&gt; <input data-answer="state" aria-label="campo do estado">++;<br>}</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">2. Dentro de um <code>onPressed</code>, como chamar o método <code>limpar()</code> do carrinho?</p>
+<label><input type="radio" name="q2"> <code>ref.watch(carrinhoProvider).limpar()</code></label>
+<label><input type="radio" name="q2"> <code>carrinhoProvider.limpar()</code></label>
+<label><input type="radio" name="q2"> <code>ref.read(carrinhoProvider.notifier).limpar()</code></label>
+<label><input type="radio" name="q2"> <code>context.read&lt;CarrinhoNotifier&gt;().limpar()</code></label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. O método <code>adicionar</code> faz <code>state.add(item)</code> e a tela não muda. Por quê?</p>
+<label><input type="radio" name="q3"> Faltou o <code>notifyListeners()</code></label>
+<label><input type="radio" name="q3"> A lista continua sendo o mesmo objeto; o Riverpod só percebe quando <code>state</code> recebe um objeto novo</label>
+<label><input type="radio" name="q3"> Faltou o <code>ProviderScope</code></label>
+<label><input type="radio" name="q3"> O <code>add</code> não funciona em listas do Riverpod</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. Um widget precisa ler um provider no <code>build</code>. De que classe ele deve estender?</p>
+<label><input type="radio" name="q4"> <code>ConsumerWidget</code></label>
+<label><input type="radio" name="q4"> <code>StatelessWidget</code>, com <code>context.watch</code></label>
+<label><input type="radio" name="q4"> <code>ProviderScope</code></label>
+<label><input type="radio" name="q4"> <code>Notifier</code></label>
+</div>
+
+<h3>Missão final: os itens no rodapé</h3>
+
+<div class="tryflutter" data-goal="src:bottomNavigationBar;;src:itens\.join\(" data-foto="assets/telas/riverpod-5.png" data-foto-alt="A Lojinha da Ana com o selo do carrinho em 2 e, no rodapé, o texto Itens: Pão de queijo, Bolo de cenoura">
+<p class="try-task"><strong>Missão:</strong> a <code>TelaProdutos</code> já lê a lista com <code>ref.watch(carrinhoProvider)</code>, na variável <code>itens</code>. Acrescente no <code>Scaffold</code> um <code>bottomNavigationBar</code> com um <code>Padding</code> (16 de cada lado) e um <code>Text('Itens: ${itens.join(', ')}')</code>. A foto mostra o app depois de um toque em Pão de queijo e outro em Bolo de cenoura.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+class CarrinhoNotifier extends Notifier&lt;List&lt;String&gt;&gt; {
+  @override
+  List&lt;String&gt; build() =&gt; [];
+
+  void adicionar(String item) {
+    state = [...state, item];
+  }
+
+  void limpar() {
+    state = [];
+  }
+}
+
+final carrinhoProvider =
+    NotifierProvider&lt;CarrinhoNotifier, List&lt;String&gt;&gt;(CarrinhoNotifier.new);
+
+final nomeLojaProvider = Provider&lt;String&gt;((ref) =&gt; 'Lojinha da Ana');
+
+void main() {
+  runApp(const ProviderScope(child: LojinhaApp()));
+}
+
+class LojinhaApp extends StatelessWidget {
+  const LojinhaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaProdutos(),
+    );
+  }
+}
+
+class TelaProdutos extends ConsumerWidget {
+  const TelaProdutos({super.key});
+
+  static const produtos = ['Café', 'Pão de queijo', 'Bolo de cenoura'];
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final nomeLoja = ref.watch(nomeLojaProvider);
+    final itens = ref.watch(carrinhoProvider);
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(nomeLoja),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Badge(
+              label: Text('${itens.length}'),
+              child: const Icon(Icons.shopping_cart),
+            ),
+          ),
+        ],
+      ),
+      body: ListView(
+        children: [
+          for (final produto in produtos)
+            ListTile(
+              title: Text(produto),
+              trailing: IconButton(
+                icon: const Icon(Icons.add_shopping_cart),
+                tooltip: 'Adicionar $produto',
+                onPressed: () =&gt;
+                    ref.read(carrinhoProvider.notifier).adicionar(produto),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+class CarrinhoNotifier extends Notifier&lt;List&lt;String&gt;&gt; {
+  @override
+  List&lt;String&gt; build() =&gt; [];
+
+  void adicionar(String item) {
+    state = [...state, item];
+  }
+
+  void limpar() {
+    state = [];
+  }
+}
+
+final carrinhoProvider =
+    NotifierProvider&lt;CarrinhoNotifier, List&lt;String&gt;&gt;(CarrinhoNotifier.new);
+
+final nomeLojaProvider = Provider&lt;String&gt;((ref) =&gt; 'Lojinha da Ana');
+
+void main() {
+  runApp(const ProviderScope(child: LojinhaApp()));
+}
+
+class LojinhaApp extends StatelessWidget {
+  const LojinhaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaProdutos(),
+    );
+  }
+}
+
+class TelaProdutos extends ConsumerWidget {
+  const TelaProdutos({super.key});
+
+  static const produtos = ['Café', 'Pão de queijo', 'Bolo de cenoura'];
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final nomeLoja = ref.watch(nomeLojaProvider);
+    final itens = ref.watch(carrinhoProvider);
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(nomeLoja),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Badge(
+              label: Text('${itens.length}'),
+              child: const Icon(Icons.shopping_cart),
+            ),
+          ),
+        ],
+      ),
+      body: ListView(
+        children: [
+          for (final produto in produtos)
+            ListTile(
+              title: Text(produto),
+              trailing: IconButton(
+                icon: const Icon(Icons.add_shopping_cart),
+                tooltip: 'Adicionar $produto',
+                onPressed: () =&gt;
+                    ref.read(carrinhoProvider.notifier).adicionar(produto),
+              ),
+            ),
+        ],
+      ),
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Text('Itens: ${itens.join(', ')}'),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O Riverpod guarda todo o estado num <code>ProviderScope</code>, em volta do app; cada provider é uma variável global com a <strong>receita</strong> do estado.</li>
+  <li>Estado que muda: uma classe <code>Notifier&lt;T&gt;</code>, com <code>build()</code> para o valor inicial e métodos que atribuem um <code>state</code> novo, mais um <code>NotifierProvider</code>.</li>
+  <li>Widgets que leem providers estendem <code>ConsumerWidget</code>; no <code>build</code>, <code>ref.watch(xProvider)</code>; em botões, <code>ref.read(xProvider.notifier).metodo()</code>.</li>
+  <li>Troque o estado (<code>state = [...state, item]</code>), não o modifique (<code>state.add</code>).</li>
+  <li>Sem <code>ProviderScope</code>, o primeiro <code>ref.watch</code> dá <code>Bad state: No ProviderScope found</code> e a tela fica vermelha.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
