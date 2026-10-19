@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter ListView — uma lista que rola | Guia Flutter</title>
+<meta name="description" content="ListView do Flutter para iniciantes: uma lista de compras que rola, ListTile com ícone e subtítulo, padding, lista horizontal com scrollDirection, a diferença para a Column e o erro real 'Vertical viewport was given unbounded height' de quem põe uma ListView dentro de uma Column, com a solução (Expanded).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">ListView</span></h1>
+
+<p class="intro">Quase todo app tem uma lista: as conversas do WhatsApp, os produtos da loja, as músicas de um álbum. No Flutter, a peça para isso é a <code>ListView</code> ("visão de lista"): ela põe os filhos um embaixo do outro, como a <code>Column</code>, mas com uma diferença essencial: <strong>ela rola</strong>. Se os itens não cabem na tela, o usuário arrasta o dedo e vê o resto, sem as listras de overflow.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como montar uma lista que rola com <code>ListView(children: [...])</code>.</li>
+  <li>A diferença entre <code>ListView</code> e <code>Column</code>.</li>
+  <li>Os parâmetros mais usados: <code>padding</code> e <code>scrollDirection</code> (lista horizontal).</li>
+  <li>O erro real <code>Vertical viewport was given unbounded height</code>, de quem põe uma <code>ListView</code> dentro de uma <code>Column</code>, e como resolver.</li>
+</ul>
+</div>
+
+<p>As telas e o console desta aula vieram de um Flutter de verdade, no laboratório da Ana, em tamanho de celular.</p>
+
+<hr>
+
+<h2>A ideia: o rolo de papel da lista de compras</h2>
+<p>A <code>Column</code> é uma folha de papel do tamanho da tela: o que não cabe fica para fora (o <a href="overflow.html">erro de overflow</a>). A <code>ListView</code> é um <strong>rolo de papel</strong> atrás de uma janela: a janela tem o tamanho da tela, o papel é tão comprido quanto a lista, e você puxa o papel para ver o resto.</p>
+
+<hr>
+
+<h2>1. A primeira lista: as compras da Ana</h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lista de compras')),
+        body: ListView(
+          children: const [
+            ListTile(leading: Icon(Icons.egg), title: Text('Ovos'), subtitle: Text('1 dúzia')),
+            ListTile(leading: Icon(Icons.local_drink), title: Text('Leite'), subtitle: Text('2 litros')),
+            ListTile(leading: Icon(Icons.bakery_dining), title: Text('Pão de forma')),
+            ListTile(leading: Icon(Icons.coffee), title: Text('Café'), subtitle: Text('500 g')),
+            ListTile(leading: Icon(Icons.icecream), title: Text('Sorvete'), subtitle: Text('Pote de 2 litros')),
+            ListTile(leading: Icon(Icons.apple), title: Text('Maçã'), subtitle: Text('6 unidades')),
+            ListTile(leading: Icon(Icons.set_meal), title: Text('Peixe'), subtitle: Text('1 kg')),
+            ListTile(leading: Icon(Icons.rice_bowl), title: Text('Arroz'), subtitle: Text('5 kg')),
+            ListTile(leading: Icon(Icons.local_pizza), title: Text('Massa de pizza')),
+            ListTile(leading: Icon(Icons.cookie), title: Text('Biscoito'), subtitle: Text('3 pacotes')),
+            ListTile(leading: Icon(Icons.water_drop), title: Text('Água'), subtitle: Text('6 garrafas')),
+            ListTile(leading: Icon(Icons.cleaning_services), title: Text('Detergente')),
+            ListTile(leading: Icon(Icons.soap), title: Text('Sabonete'), subtitle: Text('4 unidades')),
+            ListTile(leading: Icon(Icons.eco), title: Text('Alface')),
+          ],
+        ),
+      ),
+    );
+  }
+}</pre>
+
+<dl class="anatomy">
+  <dt>body: ListView(children: const [...])</dt><dd>A lista. Os filhos ficam um embaixo do outro, na ordem do código. Como todos são <code>const</code>, o <code>const</code> vai na frente da lista (<code>const [...]</code>), e vale para todos.</dd>
+  <dt>ListTile(leading: …, title: …, subtitle: …)</dt><dd>A "linha de lista" pronta do Material (veja <a href="card.html">Card e ListTile</a>): <code>leading</code> é o que vai na frente (o ícone), <code>title</code> o texto principal e <code>subtitle</code> o texto menor, embaixo. O <code>subtitle</code> é opcional: "Pão de forma" não tem.</dd>
+  <dt>Icon(Icons.egg)</dt><dd>Um ícone do Material para cada item (veja <a href="icon.html">Ícones</a>).</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/listview-1.png" alt="Tela 'Lista de compras' com itens um embaixo do outro, cada um com ícone, nome e às vezes um subtítulo: Ovos 1 dúzia, Leite 2 litros, Pão de forma, Café 500 g, Sorvete, Maçã, Peixe, Arroz, Massa de pizza, Biscoito, Água, Detergente e Sabonete 4 unidades no pé da tela" width="390" height="844" loading="lazy"><figcaption>A lista ao abrir: cabem 13 dos 14 itens.</figcaption></figure>
+<figure class="tela"><img src="assets/telas/listview-2.png" alt="A mesma lista rolada para baixo: o título 'Lista de compras' numa barra acinzentada, os itens de Leite até Alface, e o Ovos saindo pelo topo" width="390" height="844" loading="lazy"><figcaption>Depois de rolar: o último item, Alface, apareceu.</figcaption></figure>
+
+<p>Na primeira foto, o último item visível é o Sabonete; o 14º, Alface, está fora da tela, e <strong>não há listras</strong>: a <code>ListView</code> sabe que tem mais conteúdo e espera o usuário rolar. Na segunda, depois de arrastar a lista para cima, a Alface aparece e o Ovos sai pelo topo. A barra do título ganhou um tom acinzentado: é o Material 3 avisando que tem conteúdo rolado por baixo dela.</p>
+
+<div class="tryflutter" data-goal="src:title:\s*Text\(\s*'Queijo'\s*\)">
+<p class="try-task"><strong>Missão:</strong> a Ana esqueceu o queijo. Acrescente no fim da lista um <code>ListTile</code> com o ícone <code>Icons.lunch_dining</code>, o título <code>'Queijo'</code> e o subtítulo <code>'300 g'</code>. Depois role a lista até o fim para ver o item novo.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lista de compras')),
+        body: ListView(
+          children: const [
+            ListTile(leading: Icon(Icons.egg), title: Text('Ovos'), subtitle: Text('1 dúzia')),
+            ListTile(leading: Icon(Icons.local_drink), title: Text('Leite'), subtitle: Text('2 litros')),
+            ListTile(leading: Icon(Icons.bakery_dining), title: Text('Pão de forma')),
+            ListTile(leading: Icon(Icons.coffee), title: Text('Café'), subtitle: Text('500 g')),
+            ListTile(leading: Icon(Icons.icecream), title: Text('Sorvete'), subtitle: Text('Pote de 2 litros')),
+            ListTile(leading: Icon(Icons.apple), title: Text('Maçã'), subtitle: Text('6 unidades')),
+            ListTile(leading: Icon(Icons.set_meal), title: Text('Peixe'), subtitle: Text('1 kg')),
+            ListTile(leading: Icon(Icons.rice_bowl), title: Text('Arroz'), subtitle: Text('5 kg')),
+            ListTile(leading: Icon(Icons.local_pizza), title: Text('Massa de pizza')),
+            ListTile(leading: Icon(Icons.cookie), title: Text('Biscoito'), subtitle: Text('3 pacotes')),
+            ListTile(leading: Icon(Icons.water_drop), title: Text('Água'), subtitle: Text('6 garrafas')),
+            ListTile(leading: Icon(Icons.cleaning_services), title: Text('Detergente')),
+            ListTile(leading: Icon(Icons.soap), title: Text('Sabonete'), subtitle: Text('4 unidades')),
+            ListTile(leading: Icon(Icons.eco), title: Text('Alface')),
+          ],
+        ),
+      ),
+    );
+  }
+}</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lista de compras')),
+        body: ListView(
+          children: const [
+            ListTile(leading: Icon(Icons.egg), title: Text('Ovos'), subtitle: Text('1 dúzia')),
+            ListTile(leading: Icon(Icons.local_drink), title: Text('Leite'), subtitle: Text('2 litros')),
+            ListTile(leading: Icon(Icons.bakery_dining), title: Text('Pão de forma')),
+            ListTile(leading: Icon(Icons.coffee), title: Text('Café'), subtitle: Text('500 g')),
+            ListTile(leading: Icon(Icons.icecream), title: Text('Sorvete'), subtitle: Text('Pote de 2 litros')),
+            ListTile(leading: Icon(Icons.apple), title: Text('Maçã'), subtitle: Text('6 unidades')),
+            ListTile(leading: Icon(Icons.set_meal), title: Text('Peixe'), subtitle: Text('1 kg')),
+            ListTile(leading: Icon(Icons.rice_bowl), title: Text('Arroz'), subtitle: Text('5 kg')),
+            ListTile(leading: Icon(Icons.local_pizza), title: Text('Massa de pizza')),
+            ListTile(leading: Icon(Icons.cookie), title: Text('Biscoito'), subtitle: Text('3 pacotes')),
+            ListTile(leading: Icon(Icons.water_drop), title: Text('Água'), subtitle: Text('6 garrafas')),
+            ListTile(leading: Icon(Icons.cleaning_services), title: Text('Detergente')),
+            ListTile(leading: Icon(Icons.soap), title: Text('Sabonete'), subtitle: Text('4 unidades')),
+            ListTile(leading: Icon(Icons.eco), title: Text('Alface')),
+            ListTile(leading: Icon(Icons.lunch_dining), title: Text('Queijo'), subtitle: Text('300 g')),
+          ],
+        ),
+      ),
+    );
+  }
+}</pre>
+</div>
+
+<hr>
+
+<h2>2. <code>ListView</code> ou <code>Column</code>?</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th></th><th><code>Column</code></th><th><code>ListView</code></th></tr>
+<tr><td>Rola?</td><td>Não (só dentro de um <a href="scroll.html">SingleChildScrollView</a>)</td><td>Sim</td></tr>
+<tr><td>Altura</td><td>Do tamanho dos filhos (ou da tela)</td><td>Ocupa todo o espaço que recebe na direção da rolagem</td></tr>
+<tr><td>Muitos itens</td><td>Overflow</td><td>Rola</td></tr>
+<tr><td>Centralizar e distribuir (<code>mainAxisAlignment</code>)</td><td>Sim</td><td>Não</td></tr>
+<tr><td>Use para</td><td>Poucos itens que cabem na tela: um formulário curto, um cartão</td><td>Listas: compras, produtos, mensagens</td></tr>
+</table>
+</div>
+
+<div class="note">
+<strong>E se a lista tiver mil itens?</strong>
+<p>A <code>ListView(children: [...])</code> monta <strong>todos</strong> os filhos de uma vez, mesmo os que estão fora da tela. Para 14 itens, tudo bem. Para centenas, ou para uma lista que vem de um banco de dados ou da internet, use a <a href="listview-builder.html">ListView.builder</a>, que só monta os itens que aparecem.</p>
+</div>
+
+<hr>
+
+<h2>3. Lista horizontal: <code>scrollDirection</code></h2>
+<p>A tela de receitas da Ana tem uma faixa de categorias que rola para o lado, como as "prateleiras" dos apps de streaming:</p>
+
+<pre class="file" data-file="lib/main.dart">        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Categorias', style: TextStyle(fontSize: 22)),
+            ),
+            SizedBox(
+              height: 100,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                children: [
+                  for (final c in ['Bolos', 'Pães', 'Doces', 'Massas', 'Sopas', 'Saladas'])
+                    Card(
+                      child: SizedBox(
+                        width: 110,
+                        child: Center(child: Text(c, style: const TextStyle(fontSize: 18))),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),</pre>
+
+<dl class="anatomy">
+  <dt>SizedBox(height: 100, child: ListView(…))</dt><dd>Uma lista horizontal precisa de uma <strong>altura</strong> definida: ela ocupa a largura toda e rola de lado, mas não sabe quão alta ser. O <code>SizedBox</code> (veja <a href="sizedbox.html">SizedBox</a>) dá 100 pixels.</dd>
+  <dt>scrollDirection: Axis.horizontal</dt><dd>"Direção da rolagem: horizontal." O padrão é <code>Axis.vertical</code>.</dd>
+  <dt>padding: const EdgeInsets.symmetric(horizontal: 8)</dt><dd>Um respiro nas pontas da lista, <strong>dentro</strong> da área que rola: some quando você rola, ao contrário de um <code>Padding</code> por fora.</dd>
+  <dt>for (final c in [...]) Card(…)</dt><dd>Um cartão para cada categoria, com o <em>collection for</em> do Dart.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/listview-3.png" alt="Tela 'Receitas da Ana' com o título 'Categorias' e, embaixo, uma fileira de cartões: Bolos, Pães, Doces e a beirada de um quarto cartão cortada na borda direita" width="390" height="844" loading="lazy"><figcaption>A lista horizontal: o quarto cartão aparece cortado na borda.</figcaption></figure>
+
+<p>Três cartões inteiros (Bolos, Pães, Doces) e a <strong>beirada</strong> do quarto na borda direita, sem listras. Esse pedaço cortado é de propósito no design: é o convite para o usuário arrastar para o lado e ver Massas, Sopas e Saladas.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>ListView</code> dentro de uma <code>Column</code></strong>
+<p>A Ana quis um título fixo em cima e a lista embaixo:</p>
+<pre class="file" data-file="lib/main.dart">        body: Column(
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Faltam 3 itens', style: TextStyle(fontSize: 22)),
+            ),
+            ListView(
+              children: const [
+                ListTile(title: Text('Ovos')),
+                ListTile(title: Text('Leite')),
+                ListTile(title: Text('Café')),
+              ],
+            ),
+          ],
+        ),</pre>
+<figure class="tela"><img src="assets/telas/listview-4.png" alt="Tela 'Lista de compras' com o corpo inteiro em branco: nem o texto 'Faltam 3 itens' nem os itens aparecem" width="390" height="844" loading="lazy"><figcaption>O corpo da tela em branco.</figcaption></figure>
+<pre class="term">══╡ EXCEPTION CAUGHT BY RENDERING LIBRARY ╞═════════════════════════════════════════════════════════
+The following assertion was thrown during performResize():
+Vertical viewport was given unbounded height.
+Viewports expand in the scrolling direction to fill their container. In this case, a vertical
+viewport was given an unlimited amount of vertical space in which to expand. This situation
+typically happens when a scrollable widget is nested inside another scrollable widget.
+If this widget is always nested in a scrollable widget there is no need to use a viewport because
+there will always be enough vertical space for the children. In this case, consider using a Column
+or Wrap instead. Otherwise, consider using a CustomScrollView to concatenate arbitrary slivers into
+a single scrollable.
+
+The relevant error-causing widget was:
+  ListView ListView:file:///home/ana/app/lib/main.dart:19:13
+« … a pilha de chamadas e mais detalhes …
+════════════════════════════════════════════════════════════════════════════════════════════════════
+Another exception was thrown: Assertion failed: file:///home/ana/flutter/packages/flutter/lib/src/rendering/box.dart:2251:12
+« … e mais 16 linhas "Another exception was thrown" (17 ao todo)</pre>
+<p>A tela ficou em branco embaixo do título, sem nem o "Faltam 3 itens". No console, linha por linha:</p>
+<dl class="anatomy">
+  <dt>Vertical viewport was given unbounded height.</dt><dd>"Uma janela de rolagem vertical recebeu uma altura ilimitada." A <em>viewport</em> é a "janela" da <code>ListView</code>.</dd>
+  <dt>Viewports expand in the scrolling direction to fill their container.</dt><dd>"Janelas de rolagem crescem na direção da rolagem até encher o espaço." A <code>ListView</code> quer ocupar toda a altura que recebe. Mas a <code>Column</code> deixa cada filho ser tão alto quanto quiser, e "toda a altura do infinito" não é um tamanho.</dd>
+  <dt>This situation typically happens when a scrollable widget is nested inside another scrollable widget.</dt><dd>"Costuma acontecer quando um widget que rola está dentro de outro que rola." Ou dentro de uma <code>Column</code>, como aqui.</dd>
+  <dt>The relevant error-causing widget was: ListView … main.dart:19:13</dt><dd>O culpado: a <code>ListView</code> da linha 19.</dd>
+  <dt>Another exception was thrown: …</dt><dd>Os outros erros são consequência do primeiro: os widgets de cima ficaram sem tamanho e não puderam ser desenhados (por isso a tela inteira sumiu). Leia sempre o <strong>primeiro</strong> erro.</dd>
+</dl>
+<p><strong>Como consertar:</strong> diga à <code>ListView</code> quanto espaço ela tem. O jeito mais comum é o <code>Expanded</code> (veja <a href="expanded.html">Expanded e Flexible</a>): "ocupe o que sobrou da coluna":</p>
+<pre class="file" data-file="lib/main.dart">        body: Column(
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Faltam 3 itens', style: TextStyle(fontSize: 22)),
+            ),
+            Expanded(
+              child: ListView(
+                children: const [
+                  ListTile(title: Text('Ovos')),
+                  ListTile(title: Text('Leite')),
+                  ListTile(title: Text('Café')),
+                ],
+              ),
+            ),
+          ],
+        ),</pre>
+<figure class="tela"><img src="assets/telas/listview-5.png" alt="Tela 'Lista de compras' com o texto 'Faltam 3 itens' centralizado em cima e, embaixo, a lista com Ovos, Leite e Café" width="390" height="844" loading="lazy"><figcaption>Com o <code>Expanded</code>: o título fixo e a lista embaixo.</figcaption></figure>
+<p>Outra saída é uma altura fixa (<code>SizedBox(height: 300, child: ListView(…))</code>), como na lista horizontal da seção 3.</p>
+</div>
+
+<div class="tryflutter" data-goal="src:Expanded\(\s*child:\s*ListView">
+<p class="try-task"><strong>Missão:</strong> este é o app com a tela em branco. Envolva a <code>ListView</code> num <code>Expanded</code> para ela ocupar o espaço que sobra embaixo do título.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lista de compras')),
+        body: Column(
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Faltam 3 itens', style: TextStyle(fontSize: 22)),
+            ),
+            ListView(
+              children: const [
+                ListTile(title: Text('Ovos')),
+                ListTile(title: Text('Leite')),
+                ListTile(title: Text('Café')),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lista de compras')),
+        body: Column(
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Faltam 3 itens', style: TextStyle(fontSize: 22)),
+            ),
+            Expanded(
+              child: ListView(
+                children: const [
+                  ListTile(title: Text('Ovos')),
+                  ListTile(title: Text('Leite')),
+                  ListTile(title: Text('Café')),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}</pre>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>ListView(children: [...])</code></td><td>Lista que rola, com todos os filhos montados de uma vez</td></tr>
+<tr><td><code>padding: EdgeInsets.all(8)</code></td><td>Respiro dentro da área que rola</td></tr>
+<tr><td><code>scrollDirection: Axis.horizontal</code></td><td>Rola para o lado (dê uma altura com <code>SizedBox</code>)</td></tr>
+<tr><td><code>Expanded(child: ListView(…))</code></td><td>Lista dentro de uma <code>Column</code>, ocupando o que sobra</td></tr>
+<tr><td><code>ListTile(leading:, title:, subtitle:, trailing:)</code></td><td>A linha pronta do Material</td></tr>
+<tr><td><code>Vertical viewport was given unbounded height.</code></td><td>Lista sem altura definida (dentro de <code>Column</code>)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete a lista horizontal</h3>
+<div class="ex-code">SizedBox(<br>&nbsp;&nbsp;<input data-answer="height" aria-label="parâmetro de altura">: 120,<br>&nbsp;&nbsp;child: ListView(<br>&nbsp;&nbsp;&nbsp;&nbsp;scrollDirection: Axis.<input data-answer="horizontal" aria-label="direção">,<br>&nbsp;&nbsp;&nbsp;&nbsp;children: [...],<br>&nbsp;&nbsp;),<br>)</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. Uma <code>Column</code> com 30 itens dá overflow. Qual troca resolve?</p>
+<label><input type="radio" name="q2"> Trocar por uma <code>Row</code></label>
+<label><input type="radio" name="q2"> Trocar a <code>Column</code> por uma <code>ListView</code></label>
+<label><input type="radio" name="q2"> Diminuir a fonte</label>
+<label><input type="radio" name="q2"> Pôr <code>mainAxisAlignment: center</code></label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. O console mostra <code>Vertical viewport was given unbounded height.</code> O que fazer?</p>
+<label><input type="radio" name="q3"> Apagar a <code>Column</code> e o título</label>
+<label><input type="radio" name="q3"> Trocar a <code>ListView</code> por <code>Text</code></label>
+<label><input type="radio" name="q3"> Envolver a <code>ListView</code> num <code>Expanded</code> (ou dar uma altura com <code>SizedBox</code>)</label>
+<label><input type="radio" name="q3"> Pôr <code>scrollDirection: Axis.horizontal</code></label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>ListView(children: [...])</code> põe os filhos um embaixo do outro e <strong>rola</strong> quando eles não cabem: sem overflow.</li>
+  <li>O <code>ListTile</code> é a linha pronta: <code>leading</code>, <code>title</code>, <code>subtitle</code>, <code>trailing</code>.</li>
+  <li><code>scrollDirection: Axis.horizontal</code> faz a lista rolar de lado; dê a ela uma altura com <code>SizedBox</code>.</li>
+  <li>Dentro de uma <code>Column</code>, a <code>ListView</code> precisa de um <code>Expanded</code> (ou de uma altura fixa); senão, <code>Vertical viewport was given unbounded height</code> e a tela em branco.</li>
+  <li>Para listas grandes ou que vêm de dados, use a <a href="listview-builder.html">ListView.builder</a>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
