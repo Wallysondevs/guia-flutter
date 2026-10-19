@@ -1,0 +1,909 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter NavigationBar — a barra de navegação inferior | Guia Flutter</title>
+<meta name="description" content="A barra de navegação inferior do Flutter para quem nunca fez um app: o NavigationBar do Material 3 no bottomNavigationBar do Scaffold, NavigationDestination, selectedIndex e onDestinationSelected com setState, ícones cheios e vazados, rótulos, selos (Badge), o IndexedStack para não perder o estado das abas, o BottomNavigationBar clássico e os erros reais explicados em português.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Barra de Navegação Inferior</span></h1>
+
+<p class="intro">Abra o app do banco, o de música ou o de mensagens do seu celular: quase todos têm, lá embaixo, uma fileira de 3 a 5 ícones que levam às partes principais do app. É a <strong>barra de navegação inferior</strong>. Ela fica sempre à vista e ao alcance do polegar, ao contrário da <a href="drawer.html">gaveta</a>, que fica escondida. No app da Ana, ela vai levar às três partes que ela usa toda hora: <strong>Receitas</strong>, <strong>Favoritas</strong> e <strong>Compras</strong>. No Flutter com Material 3, essa barra é o <strong><code>NavigationBar</code></strong>.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A pôr um <code>NavigationBar</code> no parâmetro <code>bottomNavigationBar</code> do <code>Scaffold</code>.</li>
+  <li>O que são os destinos (<code>NavigationDestination</code>): ícone, ícone escolhido e rótulo.</li>
+  <li>A fazer a barra funcionar com <code>selectedIndex</code>, <code>onDestinationSelected</code> e <code>setState</code>.</li>
+  <li>A trocar o conteúdo da tela conforme o destino.</li>
+  <li>A pôr um selo com número no ícone (<code>Badge</code>) e a esconder os rótulos (<code>labelBehavior</code>).</li>
+  <li>Por que o estado de uma aba some quando você troca de aba, e como o <code>IndexedStack</code> resolve.</li>
+  <li>O <code>BottomNavigationBar</code>, a barra do Material 2, que você vai encontrar em código mais antigo.</li>
+  <li>Os erros reais: a barra que não muda, a barra com um item só e o índice fora da lista.</li>
+</ul>
+</div>
+
+<p>Tudo nesta aula foi compilado com o <strong>Flutter <span class="versao">3.47</span></strong> no laboratório do guia. Você precisa conhecer o <a href="scaffold.html"><code>Scaffold</code></a>, os <a href="icon.html">ícones</a> e o <a href="setstate.html"><code>setState</code></a>.</p>
+
+<hr>
+
+<h2>A ideia: o controle remoto da TV</h2>
+<p>O controle remoto tem um botão para cada canal favorito. Você aperta "3", a TV mostra o canal 3, e o controle não muda de lugar: continua na sua mão, pronto para o próximo canal. A TV só mostra <strong>um</strong> canal por vez, e você sempre sabe qual é porque o número aparece no canto.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Na TV</th><th>No Flutter</th></tr>
+<tr><td>O controle remoto</td><td>O <code>NavigationBar</code>, no <code>bottomNavigationBar</code> do <code>Scaffold</code></td></tr>
+<tr><td>Um botão de canal</td><td>Um <code>NavigationDestination</code> (ícone + rótulo)</td></tr>
+<tr><td>O número do canal atual no canto</td><td>O <code>selectedIndex</code>: a barra destaca o destino atual</td></tr>
+<tr><td>Apertar um botão</td><td>O <code>onDestinationSelected</code>, que recebe o índice tocado</td></tr>
+<tr><td>A imagem na tela</td><td>O <code>body</code>, escolhido a partir do índice</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>1. A barra parada</h2>
+<p>Primeiro, só a barra, sem funcionar. Ela vai no parâmetro <code>bottomNavigationBar</code> do <code>Scaffold</code> ("barra de navegação de baixo"):</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const InicioPage(),
+    );
+  }
+}
+
+class InicioPage extends StatelessWidget {
+  const InicioPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: const Center(child: Text('Bolo de cenoura')),
+      bottomNavigationBar: NavigationBar(
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.menu_book), label: 'Receitas'),
+          NavigationDestination(icon: Icon(Icons.favorite), label: 'Favoritas'),
+          NavigationDestination(icon: Icon(Icons.shopping_cart), label: 'Compras'),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+
+<figure class="tela"><img src="assets/telas/bottom-navigation-1.png" alt="Tela 'Receitas da Ana' com 'Bolo de cenoura' no meio e, no rodapé, uma barra levemente bege com três destinos: Receitas (com o ícone dentro de uma pílula laranja-clara), Favoritas e Compras" width="390" height="844" loading="lazy"><figcaption>A barra com três destinos; o primeiro está destacado.</figcaption></figure>
+
+<dl class="anatomy">
+  <dt>bottomNavigationBar:</dt><dd>O lugar da barra no <code>Scaffold</code>: colada no rodapé da tela, abaixo do <code>body</code>. O <code>Scaffold</code> encolhe o <code>body</code> para a barra não cobrir nada.</dd>
+  <dt>NavigationBar(destinations: [...])</dt><dd>A barra do Material 3. O único parâmetro obrigatório é a lista de <strong>destinos</strong>, com <strong>pelo menos dois</strong> (com um só, dá erro; veja <a href="#errado">Quando dá errado</a>).</dd>
+  <dt>NavigationDestination(icon:, label:)</dt><dd>Um destino: o ícone e o rótulo que aparece embaixo dele. Repare que o <code>label</code> aqui é uma <code>String</code>, não um <code>Text</code>.</dd>
+  <dt>const [...]</dt><dd>Os destinos não mudam nunca, então a lista inteira é <code>const</code>. O <code>NavigationBar</code> em si <strong>não</strong> pode ser <code>const</code> (o construtor dele não é <code>const</code>).</dd>
+</dl>
+
+<p>Toque em "Favoritas": nada acontece. A barra não sabe qual destino está escolhido; ela só <strong>mostra</strong> o valor do <code>selectedIndex</code>, que, sem você dizer nada, vale <code>0</code>. Quem guarda e muda esse número é você.</p>
+
+<hr>
+
+<h2>2. A barra funcionando</h2>
+<p>O número do destino atual é <strong>estado</strong> da página: muda com o toque e precisa redesenhar a tela. Então a página vira um <a href="stateful.html"><code>StatefulWidget</code></a>, e o trio de sempre entra em cena: uma variável, o <code>setState</code> e a barra lendo a variável:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const InicioPage(),
+    );
+  }
+}
+
+class InicioPage extends StatefulWidget {
+  const InicioPage({super.key});
+
+  @override
+  State&lt;InicioPage&gt; createState() =&gt; _InicioPageState();
+}
+
+class _InicioPageState extends State&lt;InicioPage&gt; {
+  int _atual = 0;
+
+  static const _telas = [
+    Center(child: Text('Todas as receitas', style: TextStyle(fontSize: 22))),
+    Center(child: Text('Suas favoritas', style: TextStyle(fontSize: 22))),
+    Center(child: Text('Lista de compras', style: TextStyle(fontSize: 22))),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: _telas[_atual],
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _atual,
+        onDestinationSelected: (indice) {
+          setState(() =&gt; _atual = indice);
+        },
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.menu_book_outlined),
+            selectedIcon: Icon(Icons.menu_book),
+            label: 'Receitas',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.favorite_border),
+            selectedIcon: Icon(Icons.favorite),
+            label: 'Favoritas',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.shopping_cart_outlined),
+            selectedIcon: Icon(Icons.shopping_cart),
+            label: 'Compras',
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>int _atual = 0;</dt><dd>O índice do destino atual. Começa em <code>0</code>: o app abre em "Receitas".</dd>
+  <dt>_telas</dt><dd>Uma lista com o conteúdo de cada destino, <strong>na mesma ordem</strong> dos destinos da barra. Aqui são só textos; num app de verdade, cada item seria um widget seu (<code>ReceitasTela()</code>, <code>FavoritasTela()</code>…).</dd>
+  <dt>body: _telas[_atual]</dt><dd>O corpo é escolhido pelo índice. Mudou o <code>_atual</code>, mudou a tela.</dd>
+  <dt>selectedIndex: _atual</dt><dd>Diz à barra qual destino destacar.</dd>
+  <dt>onDestinationSelected: (indice) { ... }</dt><dd>Chamado no toque, com o índice do destino tocado (0, 1 ou 2). O <code>setState</code> guarda o novo índice e pede ao Flutter para chamar o <code>build</code> de novo: a barra destaca o novo destino e o <code>body</code> troca.</dd>
+  <dt>icon / selectedIcon</dt><dd>O ícone normal e o ícone quando o destino está escolhido. O costume do Material 3: <strong>vazado</strong> (<code>_outlined</code>, <code>_border</code>) no normal, <strong>cheio</strong> no escolhido. Sem <code>selectedIcon</code>, a barra usa o mesmo ícone nos dois casos.</dd>
+</dl>
+
+<p>Tocando em "Favoritas":</p>
+
+<figure class="tela"><img src="assets/telas/bottom-navigation-2.png" alt="A mesma tela agora mostrando 'Suas favoritas' no meio; na barra de baixo, a pílula laranja-clara está atrás do coração cheio de Favoritas; sobre o destino Receitas aparece uma etiqueta cinza escrita 'Receitas'" width="390" height="844" loading="lazy"><figcaption>Depois do toque em "Favoritas": o indicador mudou de lugar e o ícone ficou cheio.</figcaption></figure>
+
+<p>A etiqueta cinza "Receitas" sobre a barra é a <strong>dica</strong> (<em>tooltip</em>) do destino: o <code>NavigationBar</code> mostra o rótulo numa etiqueta quando o ponteiro do mouse para em cima de um destino. Ela aparece nas fotos porque o laboratório roda o app num navegador, com mouse; num celular, só aparece ao segurar o dedo no destino.</p>
+
+<p>A "pílula" colorida atrás do ícone escolhido é o <strong>indicador</strong> do Material 3; a cor dele vem do tema do app (aula <a href="material3.html">Material 3 e ColorScheme</a>).</p>
+
+<div class="tryflutter" data-goal="src:label:\s*'Perfil';;src:Icons\.person">
+<p class="try-task"><strong>Missão:</strong> acrescente um quarto destino, <code>Perfil</code>, com o ícone <code>Icons.person</code>, e uma quarta tela na lista <code>_telas</code> (por exemplo, <code>Center(child: Text('Olá, Ana'))</code>). Toque nele e confira que a tela troca.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const InicioPage(),
+    );
+  }
+}
+
+class InicioPage extends StatefulWidget {
+  const InicioPage({super.key});
+
+  @override
+  State&lt;InicioPage&gt; createState() =&gt; _InicioPageState();
+}
+
+class _InicioPageState extends State&lt;InicioPage&gt; {
+  int _atual = 0;
+
+  static const _telas = [
+    Center(child: Text('Todas as receitas')),
+    Center(child: Text('Suas favoritas')),
+    Center(child: Text('Lista de compras')),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: _telas[_atual],
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _atual,
+        onDestinationSelected: (indice) {
+          setState(() =&gt; _atual = indice);
+        },
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.menu_book), label: 'Receitas'),
+          NavigationDestination(icon: Icon(Icons.favorite), label: 'Favoritas'),
+          NavigationDestination(icon: Icon(Icons.shopping_cart), label: 'Compras'),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const InicioPage(),
+    );
+  }
+}
+
+class InicioPage extends StatefulWidget {
+  const InicioPage({super.key});
+
+  @override
+  State&lt;InicioPage&gt; createState() =&gt; _InicioPageState();
+}
+
+class _InicioPageState extends State&lt;InicioPage&gt; {
+  int _atual = 0;
+
+  static const _telas = [
+    Center(child: Text('Todas as receitas')),
+    Center(child: Text('Suas favoritas')),
+    Center(child: Text('Lista de compras')),
+    Center(child: Text('Olá, Ana')),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: _telas[_atual],
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _atual,
+        onDestinationSelected: (indice) {
+          setState(() =&gt; _atual = indice);
+        },
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.menu_book), label: 'Receitas'),
+          NavigationDestination(icon: Icon(Icons.favorite), label: 'Favoritas'),
+          NavigationDestination(icon: Icon(Icons.shopping_cart), label: 'Compras'),
+          NavigationDestination(icon: Icon(Icons.person), label: 'Perfil'),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>3. Selos e rótulos</h2>
+<p>Dois ajustes que aparecem em muitos apps. O <strong>selo</strong> (<code>Badge</code>, "crachá") é a bolinha com um número sobre o ícone: "3 itens na lista de compras". E o <code>labelBehavior</code> ("comportamento do rótulo") decide quando os textos aparecem:</p>
+
+<pre class="file" data-file="lib/main.dart">bottomNavigationBar: NavigationBar(
+  selectedIndex: _atual,
+  onDestinationSelected: (indice) =&gt; setState(() =&gt; _atual = indice),
+  labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
+  destinations: const [
+    NavigationDestination(icon: Icon(Icons.menu_book), label: 'Receitas'),
+    NavigationDestination(icon: Icon(Icons.favorite), label: 'Favoritas'),
+    NavigationDestination(
+      icon: Badge(label: Text('3'), child: Icon(Icons.shopping_cart)),
+      label: 'Compras',
+    ),
+  ],
+),
+</pre>
+
+<figure class="tela"><img src="assets/telas/bottom-navigation-3.png" alt="Barra de baixo com três ícones: o livro de Receitas na pílula, com o rótulo 'Receitas' embaixo; o coração e o carrinho sem rótulo, e o carrinho com uma bolinha vermelha com o número 3" width="390" height="844" loading="lazy"><figcaption>O selo "3" sobre o carrinho e o rótulo só no destino escolhido.</figcaption></figure>
+
+<dl class="anatomy">
+  <dt>Badge(label: Text('3'), child: Icon(...))</dt><dd>Envolve o ícone e desenha o selo no canto. Sem <code>label</code>, vira só uma bolinha (bom para "tem novidade"). O <code>Badge</code> funciona em qualquer ícone, não só na barra.</dd>
+  <dt>labelBehavior:</dt><dd>Três valores de <code>NavigationDestinationLabelBehavior</code>: <code>alwaysShow</code> (sempre mostra; é o padrão), <code>onlyShowSelected</code> (só o do destino escolhido) e <code>alwaysHide</code> (nunca mostra). Esconder os rótulos economiza espaço, mas a Ana precisa adivinhar o que cada ícone faz; na dúvida, deixe o padrão.</dd>
+</dl>
+
+<hr>
+
+<h2>4. A aba que esquece: o <code>IndexedStack</code></h2>
+<p>A Ana montou uma tela de compras com um contador de itens. Ela soma 3 itens, vai às "Receitas" e volta: o contador está em <strong>zero</strong> de novo. Por quê?</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const InicioPage(),
+    );
+  }
+}
+
+class ComprasTela extends StatefulWidget {
+  const ComprasTela({super.key});
+
+  @override
+  State&lt;ComprasTela&gt; createState() =&gt; _ComprasTelaState();
+}
+
+class _ComprasTelaState extends State&lt;ComprasTela&gt; {
+  int _itens = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('$_itens itens na lista', style: const TextStyle(fontSize: 22)),
+          const SizedBox(height: 12),
+          FilledButton(
+            onPressed: () =&gt; setState(() =&gt; _itens++),
+            child: const Text('Adicionar item'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class InicioPage extends StatefulWidget {
+  const InicioPage({super.key});
+
+  @override
+  State&lt;InicioPage&gt; createState() =&gt; _InicioPageState();
+}
+
+class _InicioPageState extends State&lt;InicioPage&gt; {
+  int _atual = 0;
+
+  static const _telas = [
+    Center(child: Text('Todas as receitas', style: TextStyle(fontSize: 22))),
+    ComprasTela(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: _telas[_atual],
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _atual,
+        onDestinationSelected: (indice) =&gt; setState(() =&gt; _atual = indice),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.menu_book), label: 'Receitas'),
+          NavigationDestination(icon: Icon(Icons.shopping_cart), label: 'Compras'),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+
+<p>Com <code>body: _telas[_atual]</code>, o <code>body</code> tem <strong>uma</strong> tela por vez. Quando a Ana vai para "Receitas", a <code>ComprasTela</code> sai da árvore de widgets, e o estado dela (o <code>_itens</code>) vai junto para o lixo. Ao voltar, o Flutter cria uma <code>ComprasTela</code> nova, com <code>_itens = 0</code>. O <a href="ciclo-de-vida.html">ciclo de vida do widget</a> explica esse "nasce e morre" em detalhe.</p>
+
+<p>No laboratório, a Ana tocou em "Compras", três vezes em "Adicionar item" (a tela mostrou "3 itens na lista"), depois em "Receitas" e de novo em "Compras":</p>
+
+<figure class="tela"><img src="assets/telas/bottom-navigation-4a.png" alt="Aba Compras escolhida na barra, mostrando '0 itens na lista' e o botão 'Adicionar item'; sobre o destino Receitas, a etiqueta cinza 'Receitas'" width="390" height="844" loading="lazy"><figcaption>Sem <code>IndexedStack</code>: de volta à aba "Compras", o contador voltou a 0.</figcaption></figure>
+
+<p>A troca é uma linha só: o <strong><code>IndexedStack</code></strong> ("pilha com índice") mantém <strong>todas</strong> as telas na árvore, uma em cima da outra, e mostra só a do índice:</p>
+
+<pre class="file" data-file="lib/main.dart">      body: IndexedStack(index: _atual, children: _telas),
+</pre>
+
+<dl class="anatomy">
+  <dt>IndexedStack</dt><dd>Parecido com o <a href="stack.html"><code>Stack</code></a>, que empilha os filhos, mas desenha só um: o da posição <code>index</code>. Os outros continuam vivos, escondidos, com o estado intacto.</dd>
+  <dt>index: _atual</dt><dd>Qual filho mostrar.</dd>
+  <dt>children: _telas</dt><dd>Todas as telas, criadas uma vez só.</dd>
+</dl>
+
+<p>Agora a Ana soma 3 itens, vai às receitas, volta, e o contador ainda mostra 3:</p>
+
+<figure class="tela"><img src="assets/telas/bottom-navigation-4.png" alt="Aba Compras escolhida na barra, com o texto '3 itens na lista' e o botão 'Adicionar item' no meio da tela; sobre o destino Receitas, a etiqueta cinza 'Receitas'" width="390" height="844" loading="lazy"><figcaption>Com o <code>IndexedStack</code>, a aba "Compras" lembra os 3 itens depois de ir e voltar.</figcaption></figure>
+
+<div class="note">
+<strong>O preço do <code>IndexedStack</code></strong>
+<p>Todas as telas ficam na memória e são montadas logo no começo, mesmo as que a Ana nunca abre. Com 3 a 5 abas simples, isso não pesa. Se uma aba carrega coisas pesadas (uma lista enorme, imagens da internet), considere guardar o estado <strong>fora</strong> da tela, na página de cima (aula <a href="elevar-estado.html">Elevando o Estado</a>), e continuar com o <code>_telas[_atual]</code>.</p>
+</div>
+
+<div class="tryflutter" data-goal="src:IndexedStack\(;;src:index:\s*_atual">
+<p class="try-task"><strong>Missão:</strong> a aba "Compras" esquece o contador quando você troca de aba. Troque o <code>body</code> por um <code>IndexedStack</code> para ela lembrar. Teste: some itens, vá às receitas e volte.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const InicioPage(),
+    );
+  }
+}
+
+class ComprasTela extends StatefulWidget {
+  const ComprasTela({super.key});
+
+  @override
+  State&lt;ComprasTela&gt; createState() =&gt; _ComprasTelaState();
+}
+
+class _ComprasTelaState extends State&lt;ComprasTela&gt; {
+  int _itens = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('$_itens itens na lista', style: const TextStyle(fontSize: 22)),
+          const SizedBox(height: 12),
+          FilledButton(
+            onPressed: () =&gt; setState(() =&gt; _itens++),
+            child: const Text('Adicionar item'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class InicioPage extends StatefulWidget {
+  const InicioPage({super.key});
+
+  @override
+  State&lt;InicioPage&gt; createState() =&gt; _InicioPageState();
+}
+
+class _InicioPageState extends State&lt;InicioPage&gt; {
+  int _atual = 0;
+
+  static const _telas = [
+    Center(child: Text('Todas as receitas', style: TextStyle(fontSize: 22))),
+    ComprasTela(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: _telas[_atual],
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _atual,
+        onDestinationSelected: (indice) =&gt; setState(() =&gt; _atual = indice),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.menu_book), label: 'Receitas'),
+          NavigationDestination(icon: Icon(Icons.shopping_cart), label: 'Compras'),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const InicioPage(),
+    );
+  }
+}
+
+class ComprasTela extends StatefulWidget {
+  const ComprasTela({super.key});
+
+  @override
+  State&lt;ComprasTela&gt; createState() =&gt; _ComprasTelaState();
+}
+
+class _ComprasTelaState extends State&lt;ComprasTela&gt; {
+  int _itens = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('$_itens itens na lista', style: const TextStyle(fontSize: 22)),
+          const SizedBox(height: 12),
+          FilledButton(
+            onPressed: () =&gt; setState(() =&gt; _itens++),
+            child: const Text('Adicionar item'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class InicioPage extends StatefulWidget {
+  const InicioPage({super.key});
+
+  @override
+  State&lt;InicioPage&gt; createState() =&gt; _InicioPageState();
+}
+
+class _InicioPageState extends State&lt;InicioPage&gt; {
+  int _atual = 0;
+
+  static const _telas = [
+    Center(child: Text('Todas as receitas', style: TextStyle(fontSize: 22))),
+    ComprasTela(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: IndexedStack(index: _atual, children: _telas),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _atual,
+        onDestinationSelected: (indice) =&gt; setState(() =&gt; _atual = indice),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.menu_book), label: 'Receitas'),
+          NavigationDestination(icon: Icon(Icons.shopping_cart), label: 'Compras'),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Formas diferentes de fazer</h2>
+
+<h3>O <code>BottomNavigationBar</code> do Material 2</h3>
+<p>Antes do Material 3, a barra de baixo era o <code>BottomNavigationBar</code>. Ele ainda existe e você vai encontrá-lo em muitos tutoriais e projetos antigos. A lógica é a mesma; mudam os nomes:</p>
+
+<pre class="file" data-file="lib/main.dart">bottomNavigationBar: BottomNavigationBar(
+  currentIndex: _atual,
+  onTap: (indice) =&gt; setState(() =&gt; _atual = indice),
+  items: const [
+    BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: 'Receitas'),
+    BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Favoritas'),
+    BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'Compras'),
+  ],
+),
+</pre>
+
+<figure class="tela"><img src="assets/telas/bottom-navigation-5.png" alt="Barra de baixo no estilo Material 2, sem pílula: o item Receitas com ícone e texto em marrom alaranjado, um pouco maior; Favoritas e Compras em cinza" width="390" height="844" loading="lazy"><figcaption>O <code>BottomNavigationBar</code>: sem a pílula do indicador; o item escolhido muda de cor.</figcaption></figure>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th><code>NavigationBar</code> (Material 3)</th><th><code>BottomNavigationBar</code> (Material 2)</th></tr>
+<tr><td><code>destinations:</code></td><td><code>items:</code></td></tr>
+<tr><td><code>NavigationDestination</code></td><td><code>BottomNavigationBarItem</code></td></tr>
+<tr><td><code>selectedIndex:</code></td><td><code>currentIndex:</code></td></tr>
+<tr><td><code>onDestinationSelected:</code></td><td><code>onTap:</code></td></tr>
+<tr><td><code>selectedIcon:</code></td><td><code>activeIcon:</code></td></tr>
+<tr><td>Indicador em forma de pílula; mais alto</td><td>Só a cor muda; mais baixo</td></tr>
+</table>
+</div>
+
+<h3>Qual usar</h3>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Caso</th><th>Escolha</th></tr>
+<tr><td>App novo, de 3 a 5 partes principais</td><td><code>NavigationBar</code></td></tr>
+<tr><td>Projeto antigo que já usa o Material 2</td><td><code>BottomNavigationBar</code>, para manter o visual</td></tr>
+<tr><td>Mais de 5 partes, ou partes que a Ana visita pouco</td><td>A <a href="drawer.html">gaveta</a> (ou as duas juntas: barra para as principais, gaveta para o resto)</td></tr>
+<tr><td>Partes "irmãs" dentro de uma mesma tela (Doces / Salgados)</td><td>As <a href="tabs.html">abas</a> no topo</td></tr>
+<tr><td>Tela larga (tablet, computador)</td><td>O <code>NavigationRail</code>, a mesma ideia na lateral (aula <a href="responsivo.html">Telas de Vários Tamanhos</a>)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>A barra não muda quando eu toco</strong>
+<pre class="file" data-file="lib/main.dart">NavigationBar(
+  selectedIndex: _atual,
+  onDestinationSelected: (indice) {
+    _atual = indice;
+  },
+  destinations: const [ ... ],
+),
+</pre>
+<p>Nenhuma mensagem de erro, e nada muda na tela. A variável <code>_atual</code> até recebe o número novo, mas ninguém avisou o Flutter de que a tela precisa ser redesenhada. <strong>Como consertar:</strong> mude a variável <strong>dentro</strong> do <code>setState</code>: <code>setState(() =&gt; _atual = indice);</code>. Se ainda assim não mudar, confira se o <code>selectedIndex</code> lê a variável (<code>selectedIndex: _atual</code>) e não um número fixo (<code>selectedIndex: 0</code>).</p>
+</div>
+
+<div class="cenario">
+<strong>Uma barra com um destino só</strong>
+<pre class="file" data-file="lib/main.dart">bottomNavigationBar: NavigationBar(
+  destinations: const [
+    NavigationDestination(icon: Icon(Icons.menu_book), label: 'Receitas'),
+  ],
+),
+</pre>
+<p>O app compila, mas, ao abrir, a tela inteira fica vermelha, com letras amarelas (a "tela vermelha de erro" do modo debug), e o console mostra:</p>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following assertion was thrown building InicioPage(dirty):
+Assertion failed:
+file:///home/ana/flutter/packages/flutter/lib/src/material/navigation_bar.dart:122:15
+destinations.length &gt;= 2
+is not true
+
+The relevant error-causing widget was:
+  InicioPage InicioPage:file:///home/ana/app/lib/main.dart:13:19
+
+When the exception was thrown, this was the stack:
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 274:3  throw_
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 44:3   assertFailed
+package:flutter/src/material/navigation_bar.dart 122:38                      new
+package:app/main.dart 26:28                                                  build
+package:flutter/src/widgets/framework.dart 5902:22                           build
+«  … mais linhas da pilha, todas dentro do Flutter
+════════════════════════════════════════════════════════════════════════════════════════════════════
+</pre>
+<p>É o primeiro <strong>assert</strong> desta aula, então vamos por partes:</p>
+<dl class="anatomy">
+  <dt>EXCEPTION CAUGHT BY WIDGETS LIBRARY</dt><dd>"Exceção capturada pela biblioteca de widgets": o erro aconteceu enquanto o Flutter montava os widgets.</dd>
+  <dt>The following assertion was thrown building InicioPage(dirty)</dt><dd>"Esta verificação falhou ao construir a <code>InicioPage</code>". Uma <strong>assertion</strong> (verificação) é uma regra que o próprio Flutter confere em modo debug: "isto tem de ser verdade".</dd>
+  <dt>navigation_bar.dart:122:15 / destinations.length &gt;= 2 / is not true</dt><dd>A regra que falhou, com o arquivo e a linha do Flutter onde ela mora: "a quantidade de destinos tem de ser maior ou igual a 2" não é verdade. É a linha do construtor do <code>NavigationBar</code>.</dd>
+  <dt>The relevant error-causing widget was: InicioPage … main.dart:13:19</dt><dd>O widget do <strong>seu</strong> código mais ligado ao erro: a <code>InicioPage</code>, criada na linha 13 do <code>main.dart</code>.</dd>
+  <dt>package:app/main.dart 26:28 build</dt><dd>Na pilha, procure a primeira linha com <code>package:app/</code> (o seu app): a linha 26 do <code>main.dart</code>, dentro do <code>build</code>, é onde o <code>NavigationBar</code> foi criado. As outras linhas são do Flutter e podem ser ignoradas.</dd>
+</dl>
+<p><strong>Como consertar:</strong> uma barra de navegação com um destino só não leva a lugar nenhum: use pelo menos dois. Se o app tem uma tela só, ele não precisa de barra.</p>
+</div>
+
+<div class="cenario">
+<strong>O índice fora da lista</strong>
+<p>A Ana tirou o destino "Compras" da barra, mas o app guardava <code>_atual = 2</code>:</p>
+<pre class="file" data-file="lib/main.dart">int _atual = 2;
+...
+NavigationBar(
+  selectedIndex: _atual,
+  destinations: const [
+    NavigationDestination(icon: Icon(Icons.menu_book), label: 'Receitas'),
+    NavigationDestination(icon: Icon(Icons.favorite), label: 'Favoritas'),
+  ],
+),
+</pre>
+<p>De novo a tela vermelha, e no console:</p>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following assertion was thrown building InicioPage(dirty, state: _InicioPageState#199eb):
+Assertion failed:
+file:///home/ana/flutter/packages/flutter/lib/src/material/navigation_bar.dart:123:15
+0 &lt;= selectedIndex &amp;&amp; selectedIndex &lt; destinations.length
+is not true
+«  … o resto igual ao do cenário anterior
+</pre>
+<p>A regra agora é a da linha 123: "o <code>selectedIndex</code> tem de ser pelo menos 0 e menor que a quantidade de destinos". Com dois destinos, os índices válidos são <code>0</code> e <code>1</code>; o <code>2</code> aponta para um destino que não existe. O <code>_InicioPageState#199eb</code> é só um "número de série" do estado, para diferenciar um objeto do outro; pode ignorar.</p>
+<p><strong>Como consertar:</strong> o <code>selectedIndex</code> precisa estar entre <code>0</code> e o número de destinos menos 1. Quando tirar um destino, confira o valor inicial do índice e a lista <code>_telas</code>: as duas listas (destinos e telas) andam juntas, com o mesmo tamanho e a mesma ordem.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>Scaffold(bottomNavigationBar: ...)</code></td><td>Lugar da barra, no rodapé</td></tr>
+<tr><td><code>NavigationBar(destinations: [...])</code></td><td>A barra do Material 3 (pelo menos 2 destinos)</td></tr>
+<tr><td><code>NavigationDestination(icon:, selectedIcon:, label:)</code></td><td>Um destino; o <code>label</code> é uma <code>String</code></td></tr>
+<tr><td><code>selectedIndex: _atual</code></td><td>O destino destacado (de <code>0</code> a quantidade − 1)</td></tr>
+<tr><td><code>onDestinationSelected: (i) =&gt; setState(() =&gt; _atual = i)</code></td><td>O toque muda o índice e redesenha</td></tr>
+<tr><td><code>body: _telas[_atual]</code></td><td>Uma tela por vez; a que sai perde o estado</td></tr>
+<tr><td><code>body: IndexedStack(index: _atual, children: _telas)</code></td><td>Todas as telas vivas; cada aba lembra o seu estado</td></tr>
+<tr><td><code>Badge(label: Text('3'), child: Icon(...))</code></td><td>Selo com número sobre o ícone</td></tr>
+<tr><td><code>labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected</code></td><td>Rótulo só no escolhido (<code>alwaysShow</code>, <code>alwaysHide</code>)</td></tr>
+<tr><td><code>BottomNavigationBar(items:, currentIndex:, onTap:)</code></td><td>A barra do Material 2</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. O lugar da barra</h3>
+<p>Complete o parâmetro do <code>Scaffold</code> onde vai a barra:</p>
+<div class="ex-code">Scaffold(<input data-answer="bottomNavigationBar" aria-label="parâmetro">: NavigationBar(...))</div>
+</div>
+
+<div class="exercise">
+<h3>2. O destino atual</h3>
+<p>Complete o parâmetro do <code>NavigationBar</code> que diz qual destino destacar:</p>
+<div class="ex-code">NavigationBar(<input data-answer="selectedIndex" aria-label="parâmetro">: _atual, ...)</div>
+</div>
+
+<div class="exercise">
+<h3>3. Lembrando as abas</h3>
+<p>Qual widget mantém todas as telas vivas e mostra só a do índice?</p>
+<div class="ex-code">body: <input data-answer="IndexedStack" aria-label="widget">(index: _atual, children: _telas),</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. A Ana escreveu <code>onDestinationSelected: (i) { _atual = i; }</code>. O que acontece no toque?</p>
+<label><input type="radio" name="q4"> A barra muda normalmente</label>
+<label><input type="radio" name="q4"> Erro de compilação</label>
+<label><input type="radio" name="q4"> Nada muda na tela, porque faltou o <code>setState</code></label>
+<label><input type="radio" name="q4"> O app fecha</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">5. No Material 3, qual é o costume para os ícones de um destino?</p>
+<label><input type="radio" name="q5"> Cheio no normal, vazado no escolhido</label>
+<label><input type="radio" name="q5"> Vazado no normal (<code>icon</code>), cheio no escolhido (<code>selectedIcon</code>)</label>
+<label><input type="radio" name="q5"> O mesmo ícone, sempre</label>
+<label><input type="radio" name="q5"> Só texto, sem ícone</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">6. Com <code>body: _telas[_atual]</code>, por que o contador da aba "Compras" volta a zero depois de trocar de aba?</p>
+<label><input type="radio" name="q6"> Porque o <code>NavigationBar</code> apaga as variáveis</label>
+<label><input type="radio" name="q6"> Porque faltou o <code>const</code></label>
+<label><input type="radio" name="q6"> Porque o <code>setState</code> zera todos os números</label>
+<label><input type="radio" name="q6"> Porque a tela sai da árvore e o estado dela vai junto; ao voltar, nasce uma tela nova</label>
+</div>
+
+<h3>Missão final: a barra completa</h3>
+
+<div class="tryflutter" data-goal="src:NavigationBar\(;;src:onDestinationSelected;;src:setState;;src:selectedIndex:\s*_atual">
+<p class="try-task"><strong>Missão:</strong> o app tem as telas prontas, mas nenhuma barra. Acrescente um <code>NavigationBar</code> com os destinos <code>Receitas</code> e <code>Favoritas</code>, que destaque o destino atual (<code>selectedIndex: _atual</code>) e troque de tela no toque.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const InicioPage(),
+    );
+  }
+}
+
+class InicioPage extends StatefulWidget {
+  const InicioPage({super.key});
+
+  @override
+  State&lt;InicioPage&gt; createState() =&gt; _InicioPageState();
+}
+
+class _InicioPageState extends State&lt;InicioPage&gt; {
+  int _atual = 0;
+
+  static const _telas = [
+    Center(child: Text('Todas as receitas')),
+    Center(child: Text('Suas favoritas')),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: _telas[_atual],
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const InicioPage(),
+    );
+  }
+}
+
+class InicioPage extends StatefulWidget {
+  const InicioPage({super.key});
+
+  @override
+  State&lt;InicioPage&gt; createState() =&gt; _InicioPageState();
+}
+
+class _InicioPageState extends State&lt;InicioPage&gt; {
+  int _atual = 0;
+
+  static const _telas = [
+    Center(child: Text('Todas as receitas')),
+    Center(child: Text('Suas favoritas')),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: _telas[_atual],
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _atual,
+        onDestinationSelected: (indice) =&gt; setState(() =&gt; _atual = indice),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.menu_book), label: 'Receitas'),
+          NavigationDestination(icon: Icon(Icons.favorite), label: 'Favoritas'),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>A barra de navegação inferior vai no <code>bottomNavigationBar</code> do <code>Scaffold</code>. No Material 3, é o <code>NavigationBar</code>, com 2 ou mais <code>NavigationDestination</code> (o ideal: de 3 a 5).</li>
+  <li>A barra só mostra o <code>selectedIndex</code>; quem guarda e muda o índice é você, com <code>onDestinationSelected</code> + <code>setState</code>.</li>
+  <li>O <code>body</code> escolhe a tela pelo índice: <code>_telas[_atual]</code>. Destinos e telas na mesma ordem.</li>
+  <li><code>icon</code> vazado e <code>selectedIcon</code> cheio; <code>Badge</code> para selos; <code>labelBehavior</code> para os rótulos.</li>
+  <li>Com <code>_telas[_atual]</code>, a aba que sai perde o estado. Com <code>IndexedStack(index: _atual, children: _telas)</code>, todas ficam vivas.</li>
+  <li>O <code>BottomNavigationBar</code> é a versão Material 2: <code>items</code>, <code>currentIndex</code>, <code>onTap</code>.</li>
+  <li>Barra que não muda: faltou <code>setState</code>. Um destino só ou índice fora da lista: o Flutter reclama (seção <a href="#errado">Quando dá errado</a>).</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
