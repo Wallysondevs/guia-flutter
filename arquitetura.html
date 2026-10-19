@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Organizando um App Maior — pastas, camadas e MVVM | Guia Flutter</title>
+<meta name="description" content="Como organizar um app Flutter que cresceu: separar em arquivos e pastas, a arquitetura recomendada pela documentação oficial (camada de UI com Views e ViewModels, camada de dados com Repositories e Services), ChangeNotifier e ListenableBuilder, o modelo imutável com copyWith, testes do ViewModel sem tela e os imports relativos e de pacote.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Organizando um App Maior</span></h1>
+
+<p class="intro">Enquanto o app de compras da Ana tinha uma tela, tudo cabia num <code>main.dart</code>. Agora ela quer marcar itens como comprados, guardar a lista no celular, ter uma tela de receitas… Se tudo continuar num arquivo só, ele vira um "macarrão" de 2000 linhas em que mexer num lugar quebra outro. Esta aula mostra como <strong>dividir</strong> o app em peças com uma função cada, seguindo o guia de arquitetura oficial do Flutter.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Por que separar: o princípio da <strong>separação de responsabilidades</strong>.</li>
+  <li>As camadas que a documentação recomenda: <strong>UI</strong> (View e ViewModel) e <strong>dados</strong> (Repository e Service).</li>
+  <li>Uma organização de pastas para o <code>lib/</code>.</li>
+  <li>O ViewModel com <code>ChangeNotifier</code> e a tela que o escuta com <code>ListenableBuilder</code>.</li>
+  <li>Como testar a lógica <strong>sem tela</strong>.</li>
+  <li><code>import</code> relativo e <code>import 'package:…'</code>.</li>
+</ul>
+</div>
+
+<p>O projeto desta aula foi montado e testado no <strong>Flutter 3.47.7</strong> (Dart 3.13.5) da máquina da Ana; as saídas de terminal e a foto vieram de lá. As ideias de arquitetura resumem o guia oficial <a href="https://docs.flutter.dev/app-architecture/guide" target="_blank" rel="noopener">docs.flutter.dev/app-architecture</a>, que se baseia no padrão <strong>MVVM</strong> e avisa: são "diretrizes, não regras fixas".</p>
+
+<hr>
+
+<h2>A ideia: o restaurante</h2>
+<p>Num restaurante, o <strong>garçom</strong> anota o pedido e leva o prato, mas não cozinha. O <strong>cozinheiro</strong> prepara a comida, mas não vai à mesa. A <strong>despensa</strong> guarda os ingredientes; o <strong>fornecedor</strong> os entrega. Cada um tem um trabalho, e dá para trocar o fornecedor sem que o cliente perceba. Num app:</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>No restaurante</th><th>No app</th><th>Faz</th><th>Não faz</th></tr>
+<tr><td>Salão e garçom</td><td><strong>View</strong> (os widgets da tela)</td><td>Mostra os dados e repassa os toques</td><td>Regras de negócio, acesso a dados</td></tr>
+<tr><td>Cozinheiro</td><td><strong>ViewModel</strong></td><td>Transforma os dados no que a tela mostra; tem os comandos (<code>adicionar</code>, <code>alternar</code>)</td><td>Desenhar widgets</td></tr>
+<tr><td>Despensa</td><td><strong>Repository</strong> (repositório)</td><td>É a "fonte da verdade" dos dados: guarda, busca, trata erros</td><td>Saber como a tela é</td></tr>
+<tr><td>Fornecedor</td><td><strong>Service</strong> (serviço)</td><td>Conversa com o mundo de fora: internet, arquivo, banco</td><td>Guardar estado</td></tr>
+</table>
+</div>
+
+<p>Duas regras da documentação, que valem decorar:</p>
+<ul>
+  <li><strong>As dependências apontam para baixo</strong>: a View conhece o ViewModel, o ViewModel conhece o Repository, o Repository conhece o Service. Nunca o contrário.</li>
+  <li><strong>Os dados sobem, os eventos descem</strong>: os dados vão do Repository até a tela; os toques do usuário vão da tela para o ViewModel.</li>
+</ul>
+
+<pre>  ┌───────────── camada de UI ─────────────┐
+  │  View (TelaCompras)  ⇄  ViewModel       │   toque → comando; dados → redesenho
+  └────────────────────────────┬────────────┘
+  ┌───────────── camada de dados ┴──────────┐
+  │  Repository (ComprasRepository)          │   a fonte da verdade
+  │      ↓                                   │
+  │  Service (internet, arquivo, banco)      │   o mundo de fora
+  └──────────────────────────────────────────┘
+</pre>
+
+<hr>
+
+<h2>1. As pastas</h2>
+<p>A documentação não impõe uma estrutura, mas o estudo de caso dela separa a UI <strong>por funcionalidade</strong> e os dados <strong>por tipo</strong>. A versão da Ana, enxuta (ela ainda não tem <em>services</em>: os dados ficam na memória):</p>
+
+<pre class="term">$ find lib test -name "*.dart" | sort
+lib/data/repositories/compras_repository.dart
+lib/domain/models/item.dart
+lib/main.dart
+lib/ui/compras/view_models/compras_view_model.dart
+lib/ui/compras/widgets/tela_compras.dart
+test/compras_view_model_test.dart
+</pre>
+
+<pre>lib/
+├── main.dart                         « só monta as peças e chama runApp
+├── domain/models/item.dart           « o "formato" de um item
+├── data/repositories/
+│   └── compras_repository.dart       « onde a lista mora
+└── ui/compras/                       « tudo da funcionalidade "compras"
+    ├── view_models/compras_view_model.dart
+    └── widgets/tela_compras.dart
+test/
+└── compras_view_model_test.dart
+</pre>
+<p>Quando a tela de receitas chegar, ela ganha a sua pasta <code>ui/receitas/</code> e o seu <code>data/repositories/receitas_repository.dart</code>, sem tocar nos arquivos das compras.</p>
+
+<hr>
+
+<h2>2. As peças, uma por arquivo</h2>
+
+<h3>O modelo</h3>
+<pre class="file" data-file="lib/domain/models/item.dart">class Item {
+  const Item({required this.nome, this.comprado = false});
+
+  final String nome;
+  final bool comprado;
+
+  Item copyWith({bool? comprado}) =&gt;
+      Item(nome: nome, comprado: comprado ?? this.comprado);
+}
+</pre>
+<dl class="anatomy">
+  <dt>final String nome; final bool comprado;</dt><dd>Campos <code>final</code>: um <code>Item</code> não muda depois de criado (é <strong>imutável</strong>).</dd>
+  <dt>copyWith({bool? comprado})</dt><dd>Para "mudar", cria-se uma <strong>cópia</strong> com o campo trocado. Imutabilidade evita que uma parte do app altere um item escondido de outra.</dd>
+</dl>
+
+<h3>O repositório</h3>
+<pre class="file" data-file="lib/data/repositories/compras_repository.dart">import '../../domain/models/item.dart';
+
+/// Guarda a lista de compras. Hoje, na memória;
+/// amanhã, num banco de dados, sem a tela perceber.
+class ComprasRepository {
+  final List&lt;Item&gt; _itens = [];
+
+  List&lt;Item&gt; buscarTodos() =&gt; List.unmodifiable(_itens);
+
+  void adicionar(Item item) =&gt; _itens.add(item);
+
+  void substituir(int posicao, Item item) =&gt; _itens[posicao] = item;
+}
+</pre>
+<dl class="anatomy">
+  <dt>final List&lt;Item&gt; _itens</dt><dd>A lista mora aqui, privada. Hoje na memória; quando a Ana quiser salvar no celular (veja <a href="shared-preferences.html">SharedPreferences</a> e <a href="sqlite.html">SQLite</a>), só este arquivo muda.</dd>
+  <dt>List.unmodifiable(_itens)</dt><dd>Entrega uma cópia que não pode ser alterada: ninguém de fora adiciona itens "por trás" do repositório.</dd>
+  <dt>import '../../domain/models/item.dart';</dt><dd>Um <strong>import relativo</strong>: o caminho a partir deste arquivo (<code>..</code> = a pasta de cima).</dd>
+</dl>
+
+<h3>O ViewModel</h3>
+<pre class="file" data-file="lib/ui/compras/view_models/compras_view_model.dart">import 'package:flutter/foundation.dart';
+
+import '../../../data/repositories/compras_repository.dart';
+import '../../../domain/models/item.dart';
+
+class ComprasViewModel extends ChangeNotifier {
+  ComprasViewModel({required this._repositorio});
+
+  final ComprasRepository _repositorio;
+
+  List&lt;Item&gt; get itens =&gt; _repositorio.buscarTodos();
+
+  int get faltam =&gt; itens.where((item) =&gt; !item.comprado).length;
+
+  void adicionar(String nome) {
+    final limpo = nome.trim();
+    if (limpo.isEmpty) return;
+    _repositorio.adicionar(Item(nome: limpo));
+    notifyListeners();
+  }
+
+  void alternar(int posicao) {
+    final item = itens[posicao];
+    _repositorio.substituir(posicao, item.copyWith(comprado: !item.comprado));
+    notifyListeners();
+  }
+}
+</pre>
+<dl class="anatomy">
+  <dt>extends ChangeNotifier</dt><dd>Uma classe do Flutter que sabe avisar "mudei!" a quem estiver ouvindo.</dd>
+  <dt>ComprasViewModel({required this._repositorio});</dt><dd>Recebe o repositório pronto, de fora (isso se chama <strong>injeção de dependência</strong>): no teste, dá para passar outro. No Dart 3.13 do lab, um parâmetro nomeado pode iniciar um campo privado direto (<code>this._repositorio</code>), e quem chama escreve sem o sublinhado: <code>ComprasViewModel(repositorio: …)</code>. Em versões mais antigas do Dart isso não compila; a forma clássica, que funciona em todas, é <code>ComprasViewModel({required ComprasRepository repositorio}) : _repositorio = repositorio;</code> (é a que o "Experimente" abaixo usa).</dd>
+  <dt>get itens / get faltam</dt><dd>O que a tela precisa, já calculado: a lista e quantos itens faltam comprar.</dd>
+  <dt>adicionar / alternar</dt><dd>Os <strong>comandos</strong>: a tela chama, o ViewModel aplica a regra (ignorar nome em branco), fala com o repositório e…</dd>
+  <dt>notifyListeners()</dt><dd>… avisa quem está ouvindo para redesenhar. É o <code>setState</code> do ViewModel.</dd>
+</dl>
+
+<h3>A View (a tela)</h3>
+<pre class="file" data-file="lib/ui/compras/widgets/tela_compras.dart">import 'package:flutter/material.dart';
+
+import '../view_models/compras_view_model.dart';
+
+class TelaCompras extends StatefulWidget {
+  const TelaCompras({super.key, required this.viewModel});
+
+  final ComprasViewModel viewModel;
+
+  @override
+  State&lt;TelaCompras&gt; createState() =&gt; _TelaComprasState();
+}
+
+class _TelaComprasState extends State&lt;TelaCompras&gt; {
+  final _campo = TextEditingController();
+
+  @override
+  void dispose() {
+    _campo.dispose();
+    super.dispose();
+  }
+
+  void _enviar(String texto) {
+    widget.viewModel.adicionar(texto);
+    _campo.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = widget.viewModel;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Compras da Ana')),
+      body: ListenableBuilder(
+        listenable: viewModel,
+        builder: (context, _) {
+          final itens = viewModel.itens;
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: TextField(
+                  controller: _campo,
+                  decoration: const InputDecoration(labelText: 'Novo item'),
+                  onSubmitted: _enviar,
+                ),
+              ),
+              Text('Faltam ${viewModel.faltam} de ${itens.length}'),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: itens.length,
+                  itemBuilder: (context, i) =&gt; CheckboxListTile(
+                    title: Text(itens[i].nome),
+                    value: itens[i].comprado,
+                    onChanged: (_) =&gt; viewModel.alternar(i),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+</pre>
+<dl class="anatomy">
+  <dt>final ComprasViewModel viewModel</dt><dd>A tela recebe o seu ViewModel (um para um: cada tela tem o seu).</dd>
+  <dt>_campo (TextEditingController)</dt><dd>A tela ainda é <code>StatefulWidget</code>, mas só por causa do controlador do campo de texto: estado <strong>de tela</strong>, que não interessa a mais ninguém. Os dados da lista não moram aqui.</dd>
+  <dt>ListenableBuilder(listenable: viewModel, builder: …)</dt><dd>Escuta o ViewModel e roda o <code>builder</code> de novo a cada <code>notifyListeners()</code>. Só o que está dentro dele é redesenhado.</dd>
+  <dt>onChanged: (_) =&gt; viewModel.alternar(i)</dt><dd>O toque vira um comando. A tela não decide nada: só repassa.</dd>
+</dl>
+
+<h3>O <code>main.dart</code>: montando as peças</h3>
+<pre class="file" data-file="lib/main.dart (do projeto em pastas)">import 'package:flutter/material.dart';
+
+import 'data/repositories/compras_repository.dart';
+import 'ui/compras/view_models/compras_view_model.dart';
+import 'ui/compras/widgets/tela_compras.dart';
+
+void main() {
+  final repositorio = ComprasRepository();
+  runApp(
+    MaterialApp(
+      title: 'Compras da Ana',
+      home: TelaCompras(
+        viewModel: ComprasViewModel(repositorio: repositorio),
+      ),
+    ),
+  );
+}
+</pre>
+<p>O <code>main</code> cria o repositório, entrega ao ViewModel, entrega o ViewModel à tela. Em apps maiores, essa "montagem" costuma ser feita por um pacote como o <a href="provider.html">Provider</a>.</p>
+
+<hr>
+
+<h2>3. Testando a lógica sem tela</h2>
+<p>A grande vantagem de tirar a lógica da tela: dá para testá-la com um <code>test</code> comum, sem montar widget nenhum (compare com <a href="testes-widget.html">Testes de Widget</a>):</p>
+<pre class="file" data-file="test/compras_view_model_test.dart">import 'package:flutter_test/flutter_test.dart';
+
+import 'package:compras/data/repositories/compras_repository.dart';
+import 'package:compras/ui/compras/view_models/compras_view_model.dart';
+
+void main() {
+  test('adicionar e marcar como comprado', () {
+    final vm = ComprasViewModel(repositorio: ComprasRepository());
+
+    vm.adicionar('Arroz');
+    vm.adicionar('Feijão');
+    expect(vm.faltam, 2);
+
+    vm.alternar(0);
+    expect(vm.itens[0].comprado, isTrue);
+    expect(vm.faltam, 1);
+  });
+
+  test('nome em branco é ignorado', () {
+    final vm = ComprasViewModel(repositorio: ComprasRepository());
+
+    vm.adicionar('   ');
+    expect(vm.itens, isEmpty);
+  });
+}
+</pre>
+<p>Repare no <code>import 'package:compras/…'</code>: nos testes (que ficam fora de <code>lib/</code>) usa-se o <strong>import de pacote</strong>, com o nome do projeto (<code>name: compras</code> no <code>pubspec.yaml</code>) no lugar de <code>lib/</code>.</p>
+
+<pre class="term">$ flutter test
+00:00 +0: loading /home/ana/compras/test/compras_view_model_test.dart
+00:00 +0: adicionar e marcar como comprado
+00:00 +1: nome em branco é ignorado
+00:00 +2: All tests passed!
+$ flutter analyze
+Analyzing compras...
+No issues found! (ran in 4.8s)
+</pre>
+
+<hr>
+
+<h2>4. Experimente: tudo num arquivo, separado por blocos</h2>
+<p>O editor do guia (que roda o código no DartPad) trabalha com um arquivo só. Então a Ana juntou as cinco peças num <code>main.dart</code>, na mesma ordem das pastas, com um comentário marcando cada bloco. É também um bom jeito de <strong>começar</strong> um app: escreva separado por classes num arquivo e, quando crescer, mova cada bloco para o seu arquivo.</p>
+
+<div class="tryflutter" data-goal="src:itens\.any\(">
+<p class="try-task"><strong>Missão:</strong> a Ana não quer "Arroz" duas vezes na lista. Faça o <strong>ViewModel</strong> (não a tela!) ignorar um nome que já existe: no <code>adicionar</code>, logo depois do <code>if (limpo.isEmpty) return;</code>, acrescente <code>if (itens.any((item) =&gt; item.nome == limpo)) return;</code>. Rode, adicione Arroz, Feijão e Arroz de novo, e marque o Feijão.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+// ---------- modelo ----------
+class Item {
+  const Item({required this.nome, this.comprado = false});
+
+  final String nome;
+  final bool comprado;
+
+  Item copyWith({bool? comprado}) =&gt;
+      Item(nome: nome, comprado: comprado ?? this.comprado);
+}
+
+// ---------- repositório ----------
+/// Guarda a lista de compras. Hoje, na memória;
+/// amanhã, num banco de dados, sem a tela perceber.
+class ComprasRepository {
+  final List&lt;Item&gt; _itens = [];
+
+  List&lt;Item&gt; buscarTodos() =&gt; List.unmodifiable(_itens);
+
+  void adicionar(Item item) =&gt; _itens.add(item);
+
+  void substituir(int posicao, Item item) =&gt; _itens[posicao] = item;
+}
+
+// ---------- view model ----------
+class ComprasViewModel extends ChangeNotifier {
+  ComprasViewModel({required ComprasRepository repositorio})
+      : _repositorio = repositorio;
+
+  final ComprasRepository _repositorio;
+
+  List&lt;Item&gt; get itens =&gt; _repositorio.buscarTodos();
+
+  int get faltam =&gt; itens.where((item) =&gt; !item.comprado).length;
+
+  void adicionar(String nome) {
+    final limpo = nome.trim();
+    if (limpo.isEmpty) return;
+    _repositorio.adicionar(Item(nome: limpo));
+    notifyListeners();
+  }
+
+  void alternar(int posicao) {
+    final item = itens[posicao];
+    _repositorio.substituir(posicao, item.copyWith(comprado: !item.comprado));
+    notifyListeners();
+  }
+}
+
+// ---------- view (a tela) ----------
+class TelaCompras extends StatefulWidget {
+  const TelaCompras({super.key, required this.viewModel});
+
+  final ComprasViewModel viewModel;
+
+  @override
+  State&lt;TelaCompras&gt; createState() =&gt; _TelaComprasState();
+}
+
+class _TelaComprasState extends State&lt;TelaCompras&gt; {
+  final _campo = TextEditingController();
+
+  @override
+  void dispose() {
+    _campo.dispose();
+    super.dispose();
+  }
+
+  void _enviar(String texto) {
+    widget.viewModel.adicionar(texto);
+    _campo.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = widget.viewModel;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Compras da Ana')),
+      body: ListenableBuilder(
+        listenable: viewModel,
+        builder: (context, _) {
+          final itens = viewModel.itens;
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: TextField(
+                  controller: _campo,
+                  decoration: const InputDecoration(labelText: 'Novo item'),
+                  onSubmitted: _enviar,
+                ),
+              ),
+              Text('Faltam ${viewModel.faltam} de ${itens.length}'),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: itens.length,
+                  itemBuilder: (context, i) =&gt; CheckboxListTile(
+                    title: Text(itens[i].nome),
+                    value: itens[i].comprado,
+                    onChanged: (_) =&gt; viewModel.alternar(i),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ---------- main ----------
+void main() {
+  final repositorio = ComprasRepository();
+  runApp(
+    MaterialApp(
+      title: 'Compras da Ana',
+      home: TelaCompras(
+        viewModel: ComprasViewModel(repositorio: repositorio),
+      ),
+    ),
+  );
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+// ---------- modelo ----------
+class Item {
+  const Item({required this.nome, this.comprado = false});
+
+  final String nome;
+  final bool comprado;
+
+  Item copyWith({bool? comprado}) =&gt;
+      Item(nome: nome, comprado: comprado ?? this.comprado);
+}
+
+// ---------- repositório ----------
+/// Guarda a lista de compras. Hoje, na memória;
+/// amanhã, num banco de dados, sem a tela perceber.
+class ComprasRepository {
+  final List&lt;Item&gt; _itens = [];
+
+  List&lt;Item&gt; buscarTodos() =&gt; List.unmodifiable(_itens);
+
+  void adicionar(Item item) =&gt; _itens.add(item);
+
+  void substituir(int posicao, Item item) =&gt; _itens[posicao] = item;
+}
+
+// ---------- view model ----------
+class ComprasViewModel extends ChangeNotifier {
+  ComprasViewModel({required ComprasRepository repositorio})
+      : _repositorio = repositorio;
+
+  final ComprasRepository _repositorio;
+
+  List&lt;Item&gt; get itens =&gt; _repositorio.buscarTodos();
+
+  int get faltam =&gt; itens.where((item) =&gt; !item.comprado).length;
+
+  void adicionar(String nome) {
+    final limpo = nome.trim();
+    if (limpo.isEmpty) return;
+    if (itens.any((item) =&gt; item.nome == limpo)) return;
+    _repositorio.adicionar(Item(nome: limpo));
+    notifyListeners();
+  }
+
+  void alternar(int posicao) {
+    final item = itens[posicao];
+    _repositorio.substituir(posicao, item.copyWith(comprado: !item.comprado));
+    notifyListeners();
+  }
+}
+
+// ---------- view (a tela) ----------
+class TelaCompras extends StatefulWidget {
+  const TelaCompras({super.key, required this.viewModel});
+
+  final ComprasViewModel viewModel;
+
+  @override
+  State&lt;TelaCompras&gt; createState() =&gt; _TelaComprasState();
+}
+
+class _TelaComprasState extends State&lt;TelaCompras&gt; {
+  final _campo = TextEditingController();
+
+  @override
+  void dispose() {
+    _campo.dispose();
+    super.dispose();
+  }
+
+  void _enviar(String texto) {
+    widget.viewModel.adicionar(texto);
+    _campo.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = widget.viewModel;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Compras da Ana')),
+      body: ListenableBuilder(
+        listenable: viewModel,
+        builder: (context, _) {
+          final itens = viewModel.itens;
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: TextField(
+                  controller: _campo,
+                  decoration: const InputDecoration(labelText: 'Novo item'),
+                  onSubmitted: _enviar,
+                ),
+              ),
+              Text('Faltam ${viewModel.faltam} de ${itens.length}'),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: itens.length,
+                  itemBuilder: (context, i) =&gt; CheckboxListTile(
+                    title: Text(itens[i].nome),
+                    value: itens[i].comprado,
+                    onChanged: (_) =&gt; viewModel.alternar(i),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ---------- main ----------
+void main() {
+  final repositorio = ComprasRepository();
+  runApp(
+    MaterialApp(
+      title: 'Compras da Ana',
+      home: TelaCompras(
+        viewModel: ComprasViewModel(repositorio: repositorio),
+      ),
+    ),
+  );
+}
+</pre>
+</div>
+<figure class="tela"><img src="assets/telas/arquitetura-1.png" alt="Tela 'Compras da Ana' com o campo 'Novo item' vazio, a frase 'Faltam 1 de 2' e a lista com Arroz (caixa vazia) e Feijão (caixa marcada); o segundo Arroz não entrou" width="390" height="844" loading="lazy"><figcaption>O resultado esperado, com a solução: Arroz, Feijão e Arroz de novo digitados, mas só dois itens na lista; o Feijão marcado, e "Faltam 1 de 2" (Flutter 3.47.7, modo debug).</figcaption></figure>
+<p>Repare: a regra "sem repetidos" ficou num lugar só, no ViewModel. Se amanhã surgir um segundo jeito de adicionar itens (um botão de "adicionar da receita"), ele passa pelo mesmo comando e ganha a regra de graça.</p>
+
+<hr>
+
+<h2>5. Quando usar tudo isso</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Tamanho do app</th><th>Sugestão</th></tr>
+<tr><td>Uma tela, um exercício</td><td>Um <code>main.dart</code> com widgets pequenos e <code>setState</code>. Arquitetura demais atrapalha.</td></tr>
+<tr><td>Algumas telas, dados simples</td><td>Separe em arquivos por tela; tire a lógica para um ViewModel quando a tela começar a ter regras.</td></tr>
+<tr><td>App de verdade (internet, banco, várias telas)</td><td>As camadas completas: Views, ViewModels, Repositories, Services, e um pacote para montar as peças (<a href="provider.html">Provider</a>, <a href="riverpod.html">Riverpod</a>) ou outro padrão de estado (<a href="bloc.html">BLoC</a>).</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>A tela não atualiza depois do comando</strong>
+<p>Faltou o <code>notifyListeners()</code> no fim do comando, ou a parte da tela que mostra o dado está <strong>fora</strong> do <code>ListenableBuilder</code>. <strong>Como resolver:</strong> todo comando que muda dados termina com <code>notifyListeners()</code>, e tudo o que mostra dados do ViewModel fica dentro do <code>builder</code>.</p>
+</div>
+
+<div class="cenario">
+<strong><code>Target of URI doesn't exist</code> no import</strong>
+<p>O caminho do <code>import</code> está errado (um <code>../</code> a mais ou a menos, ou o arquivo mudou de pasta). O <code>flutter analyze</code> e o editor apontam a linha. <strong>Como resolver:</strong> confira o caminho a partir do arquivo atual, ou use o import de pacote (<code>package:compras/…</code>), que não depende de onde o arquivo está. Os editores (VS Code, Android Studio) atualizam os imports sozinhos quando você move um arquivo por eles.</p>
+</div>
+
+<div class="cenario">
+<strong>Lógica escondida na tela</strong>
+<p>Não dá erro, mas é o problema mais comum: um <code>if</code> de regra de negócio dentro do <code>onPressed</code>. Um dia você cria um segundo botão e esquece de copiar a regra. <strong>Como resolver:</strong> se a decisão é sobre os <strong>dados</strong>, ela vai para o ViewModel; na tela, só decisões de <strong>aparência</strong> (mostrar ou esconder, cor, animação).</p>
+</div>
+
+<hr>
+
+<h2>Referência</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Peça</th><th>Pasta sugerida</th><th>Responsabilidade</th></tr>
+<tr><td>Model</td><td><code>lib/domain/models/</code></td><td>O formato dos dados (imutável)</td></tr>
+<tr><td>Service</td><td><code>lib/data/services/</code></td><td>Falar com internet, arquivos, banco; sem estado</td></tr>
+<tr><td>Repository</td><td><code>lib/data/repositories/</code></td><td>Fonte da verdade dos dados</td></tr>
+<tr><td>ViewModel</td><td><code>lib/ui/FUNCIONALIDADE/view_models/</code></td><td>Estado da tela e comandos (<code>ChangeNotifier</code>)</td></tr>
+<tr><td>View</td><td><code>lib/ui/FUNCIONALIDADE/widgets/</code></td><td>Widgets; mostra e repassa eventos</td></tr>
+<tr><td><code>ListenableBuilder</code></td><td>—</td><td>Redesenha quando o ViewModel avisa</td></tr>
+<tr><td><code>notifyListeners()</code></td><td>—</td><td>O ViewModel avisa que mudou</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. O aviso</h3>
+<p>Complete o comando do ViewModel para avisar a tela:</p>
+<div class="ex-code">_repositorio.adicionar(Item(nome: limpo));<br><input data-answer="notifyListeners" aria-label="método">();</div>
+</div>
+
+<div class="exercise">
+<h3>2. Quem escuta</h3>
+<p>Que widget redesenha a tela quando o ViewModel avisa?</p>
+<div class="ex-code"><input data-answer="ListenableBuilder" aria-label="widget">(listenable: viewModel, builder: …)</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. A regra "não aceitar item repetido" deve ficar onde?</p>
+<label><input type="radio" name="q3"> No <code>onSubmitted</code> do <code>TextField</code></label>
+<label><input type="radio" name="q3"> No <code>main</code></label>
+<label><input type="radio" name="q3"> No ViewModel (ou no domínio)</label>
+<label><input type="radio" name="q3"> No <code>pubspec.yaml</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. A Ana vai trocar a lista na memória por um banco de dados. Que arquivo muda?</p>
+<label><input type="radio" name="q4"> O repositório (e, se precisar, um service novo)</label>
+<label><input type="radio" name="q4"> A tela</label>
+<label><input type="radio" name="q4"> O modelo <code>Item</code></label>
+<label><input type="radio" name="q4"> Todos</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">5. Para onde apontam as dependências?</p>
+<label><input type="radio" name="q5"> Do Service para a View</label>
+<label><input type="radio" name="q5"> Do Repository para o ViewModel</label>
+<label><input type="radio" name="q5"> Para todos os lados</label>
+<label><input type="radio" name="q5"> Para baixo: View → ViewModel → Repository → Service</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Separação de responsabilidades: cada peça com um trabalho. A View mostra; o ViewModel decide; o Repository guarda; o Service busca fora.</li>
+  <li>Dependências para baixo; dados sobem, eventos descem.</li>
+  <li>ViewModel = <code>ChangeNotifier</code> + comandos + <code>notifyListeners()</code>; a tela escuta com <code>ListenableBuilder</code>.</li>
+  <li>UI por funcionalidade (<code>lib/ui/compras/</code>), dados por tipo (<code>lib/data/repositories/</code>).</li>
+  <li>Lógica fora da tela = testes simples, sem widget.</li>
+  <li>Comece simples; adote as camadas quando o app pedir.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>

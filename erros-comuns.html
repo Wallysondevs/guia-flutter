@@ -360,7 +360,7 @@ The relevant error-causing widget was:
 <p>Estes nem deixam o app abrir. O formato é sempre <code>arquivo:linha:coluna: Error: mensagem</code>, seguido da linha do código e de <code>^^^^</code> embaixo do lugar exato.</p>
 
 <h3><code>setState</code> num <code>StatelessWidget</code></h3>
-<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+<pre class="file" data-file="lib/main.dart (com o erro)">import 'package:flutter/material.dart';
 
 void main() =&gt; runApp(const MaterialApp(home: Telinha()));
 
@@ -390,7 +390,7 @@ Try correcting the name to the name of an existing method, or defining a method 
 <p>"O método <code>setState</code> não está definido para o tipo <code>Telinha</code>." O <code>setState</code> só existe dentro do <code>State</code> de um <code>StatefulWidget</code>. A sugestão do compilador ("corrija o nome ou crie um método <code>setState</code>") aqui não ajuda: o conserto certo é transformar a <code>Telinha</code> num <code>StatefulWidget</code> e levar o <code>cliques</code> para um campo do <code>State</code> (veja <a href="stateful.html">StatefulWidget</a> e <a href="setstate.html">setState</a>). Um <code>int cliques = 0</code> dentro do <code>build</code> voltaria a zero a cada redesenho.</p>
 
 <h3>A vírgula esquecida</h3>
-<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+<pre class="file" data-file="lib/main.dart (com o erro)">import 'package:flutter/material.dart';
 
 void main() =&gt; runApp(const MaterialApp(home: Telinha()));
 
