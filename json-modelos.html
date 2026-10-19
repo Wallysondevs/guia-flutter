@@ -148,7 +148,7 @@ class MeuApp extends StatelessWidget {
   <dt>cidade: json['address']['city'] as String</dt><dd>Objeto dentro de objeto: o <code>address</code> é outro mapa, e a <code>city</code> está dentro dele. A ficha da Ana não precisa do endereço inteiro: só guarda a cidade.</dd>
   <dt>Map&lt;String, dynamic&gt; toJson()</dt><dd>O caminho de volta: monta um mapa com as chaves que o servidor entende. O <code>jsonEncode</code> transforma esse mapa em texto JSON.</dd>
   <dt>List&lt;Cliente&gt; lerClientes(String texto)</dt><dd>Decodifica o texto (uma lista), e passa cada item pelo <code>Cliente.fromJson</code>. O <code>item as Map&lt;String, dynamic&gt;</code> diz ao Dart que cada item da lista é um objeto JSON.</dd>
-  <dt>c.nome, c.email, c.cidade</dt><dd>Na tela, nada de mapas: campos com nome e tipo. O editor sugere <code>c.</code>+<kbd>Tab</kbd>, e um erro de digitação (<code>c.nmoe</code>) nem compila.</dd>
+  <dt>c.nome, c.email, c.cidade</dt><dd>Na tela, nada de mapas: campos com nome e tipo. No seu editor de código (o VS Code, por exemplo), digitar <code>c.</code> já sugere os campos, e um erro de digitação (<code>c.nmoe</code>) nem compila.</dd>
   <dt>print(jsonEncode(clientes.first.toJson()))</dt><dd>Só para conferir o <code>toJson</code>: mostra o primeiro cliente de volta em JSON, no console.</dd>
 </dl>
 
