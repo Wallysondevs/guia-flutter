@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Padding e Margem — o espaço por dentro e por fora | Guia Flutter</title>
+<meta name="description" content="Padding e margem no Flutter para quem nunca fez um app: o widget Padding, EdgeInsets.all, symmetric, only e fromLTRB, padding e margin do Container, qual usar, e os erros reais (padding: 16 e EdgeInsets negativo), com as telas fotografadas no Flutter de verdade.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Padding e Margem</span></h1>
+
+<p class="intro">Coloque um <code>Text</code> direto no <code>body</code> de um <code>Scaffold</code> e ele aparece <strong>grudado</strong> na borda da tela. Funciona, mas fica feio e difícil de ler. Todo app bonito tem <strong>respiro</strong>: espaço entre o texto e a borda, espaço entre um cartão e outro. No Flutter, esse espaço tem dois nomes: <strong>padding</strong> (o espaço <em>por dentro</em>) e <strong>margem</strong> (em inglês, <em>margin</em>: o espaço <em>por fora</em>).</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é padding e o que é margem, e a diferença entre os dois.</li>
+  <li>Como usar o widget <code>Padding</code> para afastar um filho das bordas.</li>
+  <li>As quatro formas de dizer "quanto espaço" com <code>EdgeInsets</code>: <code>all</code>, <code>symmetric</code>, <code>only</code> e <code>fromLTRB</code>.</li>
+  <li>Como o <code>Container</code> faz as duas coisas de uma vez, com <code>padding:</code> e <code>margin:</code>.</li>
+  <li>Os erros reais: escrever <code>padding: 16</code> e usar um número negativo.</li>
+</ul>
+</div>
+
+<p>Todos os apps desta aula são um <code>lib/main.dart</code> completo, compilados pelo Flutter <span class="versao">Flutter 3.47</span> do laboratório para a web e fotografados no navegador, em tamanho de celular (390 × 844).</p>
+
+<hr>
+
+<h2>A ideia: o quadro na parede</h2>
+<p>Pense num quadro pendurado na parede da sala da Ana. Entre a foto e a moldura existe aquela borda de papel branco (o <em>passe-partout</em>): é o espaço <strong>por dentro</strong> da moldura. E entre um quadro e o quadro vizinho existe a parede vazia: é o espaço <strong>por fora</strong>.</p>
+<ul>
+  <li><strong>Padding</strong> = o papel branco: empurra o conteúdo para longe da borda da própria caixa. Se a caixa tiver cor de fundo, o padding <strong>fica pintado</strong> com essa cor.</li>
+  <li><strong>Margem</strong> = a parede entre os quadros: empurra a caixa inteira para longe dos vizinhos. A margem <strong>não</strong> tem a cor da caixa; ela é transparente.</li>
+</ul>
+<pre>Margem (transparente, por fora)
+└── a caixa (com cor, borda…)
+    └── Padding (com a cor da caixa, por dentro)
+        └── o conteúdo (o Text)</pre>
+
+<hr>
+
+<h2>1. O widget <code>Padding</code></h2>
+<p>Primeiro, o problema. O app da Ana, com o texto direto no <code>body</code>:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Text(
+          'Bolo de cenoura: bata no liquidificador 3 cenouras, 3 ovos e 1 xícara de óleo.',
+          style: TextStyle(fontSize: 20),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<figure class="tela"><img src="assets/telas/padding-margin-1.png" alt="Tela do app com a barra 'Receitas da Ana' no topo e, logo abaixo, o texto do bolo de cenoura em duas linhas, encostado na borda esquerda da tela e colado na barra" width="390" height="844" loading="lazy"><figcaption>Sem padding: o texto encosta na borda esquerda e fica colado na barra do título.</figcaption></figure>
+
+<p>Agora o mesmo texto <strong>embrulhado</strong> num <code>Padding</code>. Só o <code>body</code> muda:</p>
+
+<pre class="file" data-file="lib/main.dart (só o body)">        body: const Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'Bolo de cenoura: bata no liquidificador 3 cenouras, 3 ovos e 1 xícara de óleo.',
+            style: TextStyle(fontSize: 20),
+          ),
+        ),
+</pre>
+
+<dl class="anatomy">
+  <dt>Padding(…)</dt><dd>Um widget que não desenha nada: ele só reserva espaço em volta do filho. É o "papel branco" sem cor.</dd>
+  <dt>padding: EdgeInsets.all(24)</dt><dd><strong>Quanto</strong> espaço, e de que lados. <code>EdgeInsets</code> quer dizer "recuos das bordas"; <code>.all(24)</code> quer dizer "24 em <strong>todos</strong> os lados" (esquerda, cima, direita e baixo). O número está em <strong>pixels lógicos</strong>, a unidade de medida do Flutter: 24 pixels lógicos têm o mesmo tamanho visual num celular simples e num celular com tela de alta resolução.</dd>
+  <dt>child: Text(…)</dt><dd>O filho, quem recebe o espaço em volta. <code>Padding</code> tem <strong>um</strong> filho só (<code>child</code>, no singular).</dd>
+  <dt>const</dt><dd>O <code>const</code> foi para o <code>Padding</code>, o widget de fora: tudo dentro dele também é constante, então não precisa repetir <code>const</code> no <code>EdgeInsets</code> nem no <code>Text</code>.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/padding-margin-2.png" alt="A mesma tela, agora com o texto do bolo de cenoura afastado da borda esquerda, da direita e da barra do título, quebrado em três linhas" width="390" height="844" loading="lazy"><figcaption>Com <code>EdgeInsets.all(24)</code>: o texto ganhou respiro dos dois lados e embaixo da barra.</figcaption></figure>
+
+<div class="tryflutter" data-goal="src:EdgeInsets\.all\(40\)">
+<p class="try-task"><strong>Missão:</strong> aumente o respiro para <strong>40</strong> em todos os lados e veja o texto ficar mais estreito (ele tem menos largura para ocupar, então quebra em mais linhas).</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'Bolo de cenoura: bata no liquidificador 3 cenouras, 3 ovos e 1 xícara de óleo.',
+            style: TextStyle(fontSize: 20),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Padding(
+          padding: EdgeInsets.all(40),
+          child: Text(
+            'Bolo de cenoura: bata no liquidificador 3 cenouras, 3 ovos e 1 xícara de óleo.',
+            style: TextStyle(fontSize: 20),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>2. As quatro formas de <code>EdgeInsets</code></h2>
+<p>Nem sempre você quer o mesmo espaço dos quatro lados. O <code>EdgeInsets</code> tem quatro construtores, e é bom conhecer todos, porque você vai encontrar os quatro no código dos outros:</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>Esquerda</th><th>Cima</th><th>Direita</th><th>Baixo</th><th>Quando usar</th></tr>
+<tr><td><code>EdgeInsets.all(16)</code></td><td>16</td><td>16</td><td>16</td><td>16</td><td>O mesmo espaço em volta toda (o mais comum)</td></tr>
+<tr><td><code>EdgeInsets.symmetric(horizontal: 24, vertical: 8)</code></td><td>24</td><td>8</td><td>24</td><td>8</td><td>Lados iguais entre si, cima e baixo iguais entre si (botões, etiquetas)</td></tr>
+<tr><td><code>EdgeInsets.only(left: 32)</code></td><td>32</td><td>0</td><td>0</td><td>0</td><td>Só um ou dois lados; os que você não citar ficam 0</td></tr>
+<tr><td><code>EdgeInsets.fromLTRB(8, 16, 24, 32)</code></td><td>8</td><td>16</td><td>24</td><td>32</td><td>Os quatro diferentes, na ordem <strong>L</strong>eft, <strong>T</strong>op, <strong>R</strong>ight, <strong>B</strong>ottom (esquerda, cima, direita, baixo)</td></tr>
+</table>
+</div>
+
+<p>Para <strong>ver</strong> o espaço, este app pinta o fundo de cada <code>Padding</code> com um <code>ColoredBox</code> (uma caixa que só tem cor) e o texto com outra cor. A faixa laranja que sobra em volta do texto é exatamente o padding:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class Amostra extends StatelessWidget {
+  const Amostra({super.key, required this.espaco, required this.rotulo});
+
+  final EdgeInsets espaco;
+  final String rotulo;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: Colors.orange.shade200,
+      child: Padding(
+        padding: espaco,
+        child: ColoredBox(
+          color: Colors.white,
+          child: Text(rotulo, style: const TextStyle(fontSize: 16)),
+        ),
+      ),
+    );
+  }
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('EdgeInsets')),
+        body: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Amostra(espaco: EdgeInsets.all(16), rotulo: 'all(16)'),
+            Amostra(
+              espaco: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              rotulo: 'symmetric(h: 24, v: 8)',
+            ),
+            Amostra(espaco: EdgeInsets.only(left: 32), rotulo: 'only(left: 32)'),
+            Amostra(
+              espaco: EdgeInsets.fromLTRB(8, 16, 24, 32),
+              rotulo: 'fromLTRB(8, 16, 24, 32)',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<figure class="tela"><img src="assets/telas/padding-margin-3.png" alt="Quatro textos em caixas brancas, um embaixo do outro, cada um cercado por uma faixa laranja de grossura diferente: igual dos quatro lados em all(16); larga dos lados e fina em cima e embaixo em symmetric; só à esquerda em only(left: 32); e crescendo da esquerda para baixo em fromLTRB" width="390" height="844" loading="lazy"><figcaption>As quatro formas lado a lado: a faixa laranja em volta de cada texto branco é o padding.</figcaption></figure>
+
+<p>Os quatro blocos estão um embaixo do outro numa <code>Column</code> (a próxima aula, <a href="row-column.html">Row e Column</a>, explica). Repare em cada um:</p>
+<ul>
+  <li><code>all(16)</code>: a faixa laranja tem a mesma grossura nos quatro lados.</li>
+  <li><code>symmetric(horizontal: 24, vertical: 8)</code>: faixa larga dos lados, fina em cima e embaixo. É o formato típico de um botão.</li>
+  <li><code>only(left: 32)</code>: laranja só à esquerda; em cima, à direita e embaixo o texto encosta na borda.</li>
+  <li><code>fromLTRB(8, 16, 24, 32)</code>: cada lado de um tamanho, crescendo de 8 (esquerda) até 32 (embaixo).</li>
+</ul>
+
+<div class="tip">
+<strong>Dica: múltiplos de 4 e de 8</strong>
+<p>O Material Design (o padrão visual do Google que o Flutter segue) usa espaços em múltiplos de 4: 4, 8, 12, 16, 24, 32. Usar sempre esses valores deixa o app com cara de "arrumado", porque os espaços combinam entre si. <strong>16</strong> é o respiro mais comum em volta do conteúdo de uma tela.</p>
+</div>
+
+<hr>
+
+<h2>3. Padding e margem no <code>Container</code></h2>
+<p>O <a href="container.html">Container</a> já sabe fazer as duas coisas. Ele tem um parâmetro <code>padding:</code> (por dentro) e um <code>margin:</code> (por fora), os dois com <code>EdgeInsets</code>. Com cor de fundo dá para ver a diferença:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: Column(
+          children: [
+            Container(
+              color: Colors.amber,
+              child: const Text('Sem padding e sem margem', style: TextStyle(fontSize: 18)),
+            ),
+            Container(
+              color: Colors.lightGreen,
+              padding: const EdgeInsets.all(20),
+              child: const Text('padding: all(20)', style: TextStyle(fontSize: 18)),
+            ),
+            Container(
+              color: Colors.lightBlue,
+              margin: const EdgeInsets.all(20),
+              child: const Text('margin: all(20)', style: TextStyle(fontSize: 18)),
+            ),
+            Container(
+              color: Colors.pink.shade200,
+              margin: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(20),
+              child: const Text('margin e padding', style: TextStyle(fontSize: 18)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>color: Colors.amber</dt><dd>A cor de fundo do <code>Container</code>. É ela que deixa ver onde a caixa começa e termina.</dd>
+  <dt>padding: const EdgeInsets.all(20)</dt><dd>20 de espaço <strong>dentro</strong> da caixa, entre a borda e o texto. Esse espaço fica <strong>pintado</strong> de verde.</dd>
+  <dt>margin: const EdgeInsets.all(20)</dt><dd>20 de espaço <strong>fora</strong> da caixa, entre ela e os vizinhos. Esse espaço é transparente: aparece o fundo da tela.</dd>
+  <dt>const só no EdgeInsets e no Text</dt><dd>Aqui o <code>Container</code> não pode ser <code>const</code> (ele não tem construtor <code>const</code>), então o <code>const</code> vai em cada peça de dentro que pode ser constante.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/padding-margin-4.png" alt="Quatro caixas coloridas empilhadas: a amarela colada no texto; a verde maior que o texto, com cor em volta dele; a azul só do tamanho do texto, mas afastada das vizinhas; e a rosa afastada das vizinhas e com cor em volta do texto" width="390" height="844" loading="lazy"><figcaption>Amarelo: nada. Verde: padding (a cor cresce). Azul: margem (a caixa se afasta, a cor não cresce). Rosa: os dois.</figcaption></figure>
+
+<p>Compare o verde com o azul: os dois têm "20 de espaço", mas no verde a <strong>cor cresceu</strong> em volta do texto (padding) e no azul a <strong>caixa se afastou</strong> das bordas da tela e dos vizinhos, com a cor só atrás do texto (margem). Essa é a diferença inteira entre os dois.</p>
+<p>(Repare também que as caixas ficaram centralizadas umas em relação às outras, e não na tela: a <code>Column</code> ficou com a largura da caixa mais larga, a amarela. Isso é assunto da aula <a href="alinhamento.html#nada-muda">Alinhamento</a>.)</p>
+
+<div class="tryflutter" data-goal="src:margin:\s*const\s+EdgeInsets\.symmetric\(\s*horizontal:\s*16">
+<p class="try-task"><strong>Missão:</strong> o cartão da receita está colado nas laterais da tela. Dê a ele uma <strong>margem</strong> de 16 só nas laterais, com <code>EdgeInsets.symmetric(horizontal: 16)</code>, sem mexer no padding.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: Container(
+          color: Colors.orange.shade100,
+          padding: const EdgeInsets.all(16),
+          child: const Text(
+            'Pudim de leite: 1 lata de leite condensado, 2 medidas de leite e 3 ovos.',
+            style: TextStyle(fontSize: 18),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: Container(
+          color: Colors.orange.shade100,
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.all(16),
+          child: const Text(
+            'Pudim de leite: 1 lata de leite condensado, 2 medidas de leite e 3 ovos.',
+            style: TextStyle(fontSize: 18),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer a mesma coisa</h2>
+<p>O Flutter não tem um widget "Margin". Margem é só <strong>padding do lado de fora</strong>. Por isso, estas três escritas dão a mesma tela:</p>
+
+<pre class="file" data-file="tres-formas.dart">// 1) Padding em volta de um ColoredBox: o espaço fica de fora (margem)
+const Padding(
+  padding: EdgeInsets.all(20),
+  child: ColoredBox(color: Colors.lightBlue, child: Text('Oi')),
+)
+
+// 2) O mesmo com o Container
+Container(
+  margin: const EdgeInsets.all(20),
+  color: Colors.lightBlue,
+  child: const Text('Oi'),
+)
+
+// 3) E o padding (por dentro): ColoredBox em volta de um Padding
+const ColoredBox(
+  color: Colors.lightGreen,
+  child: Padding(padding: EdgeInsets.all(20), child: Text('Oi')),
+)
+</pre>
+
+<p>A <strong>ordem</strong> dos embrulhos decide tudo: <code>Padding</code> por fora da cor vira margem; <code>Padding</code> por dentro da cor vira padding. Por dentro, o <code>Container</code> faz exatamente isso: monta um <code>Padding</code> para o <code>margin</code>, a caixa colorida e outro <code>Padding</code> para o <code>padding</code>.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Qual usar</th></tr>
+<tr><td>Só quero espaço em volta de um widget, sem cor nem borda</td><td><code>Padding</code> (mais leve, e aceita <code>const</code>)</td></tr>
+<tr><td>Quero cor, borda ou tamanho <strong>e</strong> espaço</td><td><code>Container</code> com <code>padding:</code> e/ou <code>margin:</code></td></tr>
+<tr><td>Espaço entre itens de uma lista ou coluna</td><td><code>margin</code> em cada item, ou um <code>SizedBox</code> entre eles (aula <a href="sizedbox.html">SizedBox e Spacer</a>)</td></tr>
+<tr><td>Espaço em volta da tela inteira</td><td>Um <code>Padding</code> logo no <code>body</code>, com <code>EdgeInsets.all(16)</code></td></tr>
+</table>
+</div>
+
+<div class="note">
+<strong>Outros widgets também têm <code>padding:</code></strong>
+<p>Vários widgets do Material aceitam um <code>padding:</code> próprio, sem precisar embrulhar: o <code>ListView</code>, o <code>ListTile</code> (com o nome <code>contentPadding:</code>), o estilo dos botões. Quando o widget já tem o parâmetro, prefira usá-lo.</p>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<p>Os três erros abaixo foram colhidos no lab, compilando o app completo (o trecho mostrado fica nas linhas 14 a 17 do <code>lib/main.dart</code>). Erros de <strong>compilação</strong> aparecem no terminal, antes de o app abrir (no lab o app é compilado para a web com <code>flutter build web</code>; as linhas que importam, com o arquivo, a linha, o <code>Error:</code> e o <code>^</code>, vêm do compilador do Dart). Erros que só acontecem com o app <strong>rodando</strong> aparecem na tela (a tela vermelha) e no console.</p>
+
+<div class="cenario">
+<strong>Escreveu <code>padding: 16</code> (só o número)</strong>
+<pre class="file" data-file="lib/main.dart (trecho)">        body: const Padding(
+          padding: 16,
+          child: Text('Bolo de cenoura'),
+        ),
+</pre>
+<pre class="term">$ flutter build web --debug
+Target dart2js failed: ProcessException: Process exited abnormally with exit code 1:
+lib/main.dart:15:20:
+Error: The argument type 'int' can't be assigned to the parameter type 'EdgeInsetsGeometry'.
+ - 'EdgeInsetsGeometry' is from 'package:flutter/src/painting/edge_insets.dart' (…).
+          padding: 16,
+                   ^
+Error: Compilation failed.
+«  (aqui o Flutter mostra o comando interno do compilador e uma pilha de linhas #0, #1…: pode ignorar)
+Error: Failed to compile application for the Web.
+</pre>
+<dl class="anatomy">
+  <dt>lib/main.dart:15:20</dt><dd>Onde está o erro: arquivo <code>lib/main.dart</code>, linha 15, coluna 20. A linha e o <code>^</code> embaixo dela mostram o ponto exato: o <code>16</code>.</dd>
+  <dt>The argument type 'int' can't be assigned to the parameter type 'EdgeInsetsGeometry'.</dt><dd>"O argumento do tipo <code>int</code> não pode ser passado para o parâmetro do tipo <code>EdgeInsetsGeometry</code>." O <code>padding:</code> não aceita um número solto; ele quer um objeto que diga os quatro lados. <code>EdgeInsetsGeometry</code> é o "tipo pai" do <code>EdgeInsets</code>.</dd>
+  <dt>is from 'package:flutter/…/edge_insets.dart'</dt><dd>Só diz em que arquivo do Flutter esse tipo foi definido. Não é ali o erro.</dd>
+  <dt>Failed to compile</dt><dd>Com erro de compilação, o app nem chega a abrir.</dd>
+</dl>
+<p><strong>Como consertar:</strong> <code>padding: EdgeInsets.all(16)</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Usou um número negativo</strong>
+<pre class="file" data-file="lib/main.dart (trecho)">        body: const Padding(
+          padding: EdgeInsets.all(-8),
+          child: Text('Bolo de cenoura'),
+        ),
+</pre>
+<p>Este compila: para o Dart, <code>-8</code> é um número como outro qualquer. O problema só aparece com o app rodando, no modo de depuração (o do <code>flutter run</code>): no lugar do texto, a famosa <strong>tela vermelha</strong> do Flutter.</p>
+<figure class="tela"><img src="assets/telas/padding-margin-6.png" alt="A barra 'Receitas da Ana' no topo e, embaixo, a tela inteira vermelho-escura com o texto amarelo 'Assertion failed' e 'See also: https://docs.flutter.dev/testing/errors'" width="390" height="844" loading="lazy"><figcaption>A tela vermelha de erro: o <code>Padding</code> recusou o valor negativo.</figcaption></figure>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following assertion was thrown building KeyedSubtree-[GlobalKey#0ad59]:
+Assertion failed
+«  (mais duas linhas sobre "widget creation tracking" e a pilha)
+════════════════════════════════════════════════════════════════════════════════════════════════════
+</pre>
+<p>"Exceção capturada pela biblioteca de widgets: uma <strong>asserção</strong> falhou ao montar a tela." Uma asserção (<code>assert</code>) é uma conferência que o próprio Flutter faz no modo de depuração. No código do Flutter, o desenho do <code>Padding</code> começa com <code>assert(padding.isNonNegative)</code>: "o padding não é negativo". Este é o console do app <strong>na web</strong>, que mostra só <code>Assertion failed</code>; rodando no celular, a mensagem costuma trazer também a condição que falhou (ilustrativo, não conferido no lab). No modo <em>release</em> (o do app publicado) as asserções são desligadas, e o erro passaria despercebido: por isso teste sempre no modo de depuração.</p>
+<p><strong>Como consertar:</strong> padding e margem nunca são negativos. Para "puxar" um widget para fora do lugar dele, use <code>Transform.translate</code> ou um <a href="stack.html">Stack</a>.</p>
+</div>
+
+<div class="cenario">
+<strong>Usou <code>children</code> no <code>Padding</code></strong>
+<pre class="file" data-file="lib/main.dart (trecho)">        body: const Padding(
+          padding: EdgeInsets.all(16),
+          children: [Text('Bolo'), Text('Pudim')],
+        ),
+</pre>
+<pre class="term">$ flutter build web --debug
+Target dart2js failed: ProcessException: Process exited abnormally with exit code 1:
+lib/main.dart:16:11:
+Error: No named parameter with the name 'children'.
+          children: [Text('Bolo'), Text('Pudim')],
+          ^^^^^^^^
+…/packages/flutter/lib/src/widgets/basic.dart:2319:9:
+Info: Found this candidate, but the arguments don't match.
+  const Padding({super.key, required this.padding, super.child});
+        ^^^^^^^
+Error: Compilation failed.
+Error: Failed to compile application for the Web.
+</pre>
+<p>"Não existe parâmetro com o nome <code>children</code>." E o compilador ainda ajuda: "achei este candidato, mas os argumentos não batem", mostrando o construtor do <code>Padding</code> direto do código do Flutter. Lá se vê tudo o que ele aceita: <code>key</code>, <code>padding</code> (obrigatório, <code>required</code>) e <code>child</code>, no singular.</p>
+<p><strong>Como consertar:</strong> o <code>Padding</code> tem um filho só. Para vários, ponha uma <a href="row-column.html">Column</a> como filho: <code>child: Column(children: [ … ])</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>Padding(padding: …, child: …)</code></td><td>Espaço em volta do filho, sem cor</td></tr>
+<tr><td><code>EdgeInsets.all(n)</code></td><td><code>n</code> nos quatro lados</td></tr>
+<tr><td><code>EdgeInsets.symmetric(horizontal: h, vertical: v)</code></td><td><code>h</code> à esquerda e à direita, <code>v</code> em cima e embaixo</td></tr>
+<tr><td><code>EdgeInsets.only(left:, top:, right:, bottom:)</code></td><td>Só os lados citados; o resto fica 0</td></tr>
+<tr><td><code>EdgeInsets.fromLTRB(l, t, r, b)</code></td><td>Os quatro lados, na ordem esquerda, cima, direita, baixo</td></tr>
+<tr><td><code>EdgeInsets.zero</code></td><td>Nenhum espaço (útil para tirar o padding padrão de um widget)</td></tr>
+<tr><td><code>Container(padding: …)</code></td><td>Espaço por dentro, pintado com a cor do Container</td></tr>
+<tr><td><code>Container(margin: …)</code></td><td>Espaço por fora, transparente</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o respiro</h3>
+<p>Complete para o texto ter 16 de espaço em todos os lados:</p>
+<div class="ex-code">const <input data-answer="Padding" aria-label="nome do widget">(<br>&nbsp;&nbsp;padding: EdgeInsets.<input data-answer="all" aria-label="construtor do EdgeInsets">(16),<br>&nbsp;&nbsp;<input data-answer="child" aria-label="nome do parâmetro do filho">: Text('Oi'),<br>)</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. Num <code>Container</code> azul, qual espaço aparece <strong>pintado de azul</strong>?</p>
+<label><input type="radio" name="q2"> A margem (<code>margin</code>)</label>
+<label><input type="radio" name="q2"> O padding (<code>padding</code>)</label>
+<label><input type="radio" name="q2"> Os dois</label>
+<label><input type="radio" name="q2"> Nenhum</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. Quanto de espaço fica <strong>embaixo</strong> com <code>EdgeInsets.fromLTRB(4, 8, 12, 16)</code>?</p>
+<label><input type="radio" name="q3"> 4</label>
+<label><input type="radio" name="q3"> 8</label>
+<label><input type="radio" name="q3"> 16</label>
+<label><input type="radio" name="q3"> 12</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. Com <code>EdgeInsets.only(top: 10)</code>, quanto fica à esquerda?</p>
+<label><input type="radio" name="q4"> 0</label>
+<label><input type="radio" name="q4"> 10</label>
+<label><input type="radio" name="q4"> O padrão do Flutter, 8</label>
+<label><input type="radio" name="q4"> Dá erro: faltam os outros lados</label>
+</div>
+
+<h3>Missão final: o cartão da receita</h3>
+
+<div class="tryflutter" data-goal="src:margin:\s*const\s+EdgeInsets\.all\(16\);;src:padding:\s*const\s+EdgeInsets\.symmetric\(\s*horizontal:\s*20,\s*vertical:\s*12\s*\)">
+<p class="try-task"><strong>Missão:</strong> deixe o cartão com <strong>margem de 16</strong> em todos os lados (<code>EdgeInsets.all(16)</code>) e <strong>padding</strong> de 20 nas laterais e 12 em cima e embaixo (<code>EdgeInsets.symmetric(horizontal: 20, vertical: 12)</code>).</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: Container(
+          color: Colors.teal.shade100,
+          child: const Text('Brigadeiro: 1 lata de leite condensado, 1 colher de manteiga e 3 colheres de chocolate em pó.', style: TextStyle(fontSize: 18)),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: Container(
+          color: Colors.teal.shade100,
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          child: const Text('Brigadeiro: 1 lata de leite condensado, 1 colher de manteiga e 3 colheres de chocolate em pó.', style: TextStyle(fontSize: 18)),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<figure class="tela"><img src="assets/telas/padding-margin-5.png" alt="Um cartão verde-água com a receita do brigadeiro em três linhas, afastado das bordas da tela e com espaço colorido entre a borda do cartão e o texto" width="390" height="844" loading="lazy"><figcaption>O resultado esperado da missão final.</figcaption></figure>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><strong>Padding</strong> é o espaço <strong>por dentro</strong> (pintado com a cor da caixa); <strong>margem</strong> é o espaço <strong>por fora</strong> (transparente).</li>
+  <li>O widget <code>Padding</code> afasta o filho das bordas; ele recebe um <code>EdgeInsets</code> e um <code>child</code>.</li>
+  <li><code>EdgeInsets.all</code>, <code>.symmetric</code>, <code>.only</code> e <code>.fromLTRB</code> dizem quanto espaço vai em cada lado, em pixels lógicos.</li>
+  <li>O <code>Container</code> tem <code>padding:</code> e <code>margin:</code>; margem nada mais é que um <code>Padding</code> do lado de fora.</li>
+  <li><code>padding:</code> pede um <code>EdgeInsets</code>, nunca um número solto; e o espaço nunca é negativo.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
