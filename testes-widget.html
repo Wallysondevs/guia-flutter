@@ -42,7 +42,7 @@
 <div class="table-wrap">
 <table class="ref">
 <tr><th>Tipo de teste</th><th>O que confere</th><th>Precisa de aparelho?</th></tr>
-<tr><td><strong>Unitário</strong> (<code>test</code>)</td><td>Uma função ou classe Dart, sem tela</td><td>Não</td></tr>
+<tr><td><strong>Unitário</strong> (<code>test</code>)</td><td>Uma função ou classe Dart, sem tela (veja <a href="https://wallysondevs.github.io/guia-dart/testes.html">Testes</a> no Guia Dart)</td><td>Não</td></tr>
 <tr><td><strong>De widget</strong> (<code>testWidgets</code>)</td><td>Um widget ou uma tela: o que aparece e o que acontece ao tocar</td><td>Não</td></tr>
 <tr><td><strong>De integração</strong></td><td>O app inteiro, rodando de verdade</td><td>Sim (celular, emulador ou navegador)</td></tr>
 </table>
@@ -261,9 +261,8 @@ void main() {
 $ flutter test test/compras_test.dart     « só este arquivo
 </pre>
 
-<div class="tryflutter" data-goal="src:key:\s*const\s+Key\(\s*'campo-item'\s*\)">
+<div class="tryflutter" data-goal="src:key:\s*const\s+Key\(\s*'campo-item'\s*\)" data-foto="assets/telas/testes-widget-1.png" data-foto-alt="O app Compras da Ana depois de digitar Arroz e tocar no +: o campo Novo item vazio, a frase 1 itens na lista e o item Arroz na lista. Com ou sem chave, a tela é a mesma">
 <p class="try-task"><strong>Missão:</strong> o teste da Ana procura o campo com <code>find.byKey(const Key('campo-item'))</code>, mas neste app o <code>TextField</code> está sem chave, e o teste falharia. Dê a ele a chave <code>key: const Key('campo-item')</code>. Rode e confira que o app continua igual: a chave não aparece na tela, ela só serve para achar o widget.</p>
-<figure class="tela"><img src="assets/telas/testes-widget-1.png" alt="O app de compras com 'Arroz' na lista e a frase '1 itens na lista'" width="390" height="844" loading="lazy"><figcaption>Com ou sem chave, a tela é a mesma: digite um item e toque no +.</figcaption></figure>
 <pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
 
 void main() =&gt; runApp(const AppCompras());
