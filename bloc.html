@@ -373,7 +373,7 @@ class PaesBloc extends Bloc&lt;PaesEvento, int&gt; {
 </pre>
 
 <dl class="anatomy">
-  <dt>sealed class PaesEvento</dt><dd>A "família" de eventos deste bloc. O <code>sealed</code> (do Dart 3) avisa o compilador de que não existem outros eventos além dos declarados neste arquivo.</dd>
+  <dt>sealed class PaesEvento</dt><dd>A "família" de eventos deste bloc. O <code>sealed</code> (do Dart 3; veja <a href="https://wallysondevs.github.io/guia-dart/modificadores-classe.html">Modificadores de classe</a> no Guia Dart) avisa o compilador de que não existem outros eventos além dos declarados neste arquivo.</dd>
   <dt>class MaisPao / MenosPao</dt><dd>Os pedidos possíveis. Um evento pode carregar dados (ex.: <code>class AdicionarPaes { final int quantidade; … }</code>).</dd>
   <dt>Bloc&lt;PaesEvento, int&gt;</dt><dd>Dois tipos: o que <strong>entra</strong> (eventos) e o que <strong>sai</strong> (estado).</dd>
   <dt>on&lt;MaisPao&gt;((evento, emit) =&gt; …)</dt><dd>"Quando chegar um <code>MaisPao</code>, faça isto." O <code>emit</code> chega como parâmetro.</dd>
@@ -461,7 +461,7 @@ of your choice. There are a few common scenarios:
 <p><code>PaesCubit()</code> cria um cubit <strong>novo</strong>, que nasce com 0, vira 1 e é jogado fora. O <code>BlocBuilder</code> está olhando <strong>outro</strong> cubit, o que o <code>BlocProvider</code> criou, e esse ninguém mudou. <strong>Como consertar:</strong> peça o cubit que já existe: <code>context.read&lt;PaesCubit&gt;().mais()</code>.</p>
 </div>
 
-<div class="tryflutter" data-goal="src:context\.read&lt;PaesCubit&gt;\(\)\.mais\(\);;nsrc:=&gt;\s*PaesCubit\(\)\.mais">
+<div class="tryflutter" data-goal="src:context\.read&lt;PaesCubit&gt;\(\)\.mais\(\);;nsrc:=&gt;\s*PaesCubit\(\)\.mais" data-foto="assets/telas/bloc-2.png" data-foto-alt="A Padaria da Ana depois de três toques no botão de mais: o texto grande 3 pães no meio da tela">
 <p class="try-task"><strong>Missão:</strong> rode e toque no +: o número não muda (o − funciona, mas não há o que tirar). Conserte o botão de mais.</p>
 <pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
