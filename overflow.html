@@ -404,7 +404,7 @@ class MeuApp extends StatelessWidget {
 <hr>
 
 <h2>5. Overflow para baixo: a <code>Column</code> mais alta que a tela</h2>
-<p>O mesmo acontece na vertical. A Ana escreveu os 12 passos da receita numa <code>Column</code>:</p>
+<p>O mesmo acontece na vertical. A Ana escreveu os 15 passos da receita numa <code>Column</code>:</p>
 
 <pre class="file" data-file="lib/main.dart">        body: Column(
           children: [
@@ -417,7 +417,7 @@ class MeuApp extends StatelessWidget {
         ),</pre>
 
 <dl class="anatomy">
-  <dt>for (var i = 1; i &lt;= 12; i++)</dt><dd>Um <code>for</code> <strong>dentro da lista</strong> de filhos (o <em>collection for</em> do Dart): cria 12 filhos, um para cada passo, sem precisar copiar e colar.</dd>
+  <dt>for (var i = 1; i &lt;= 15; i++)</dt><dd>Um <code>for</code> <strong>dentro da lista</strong> de filhos (o <em>collection for</em> do Dart): cria 15 filhos, um para cada passo, sem precisar copiar e colar.</dd>
   <dt>'Passo $i da receita'</dt><dd>O texto de cada passo, com o número no lugar do <code>$i</code>.</dd>
 </dl>
 
@@ -477,7 +477,7 @@ The specific RenderFlex in question is: RenderFlex#2f895 relayoutBoundary=up1 OV
 <p>Antes de rolar (a primeira foto), a tela parece a da seção anterior, só que sem as listras: o passo 12 aparece inteiro e o 13 aparece cortado na borda de baixo, um convite para arrastar o dedo. Depois de rolar (a segunda foto), os passos 13 a 15 aparecem. Repare também que a barra do título ganhou um tom acinzentado quando o conteúdo passou por baixo dela: é o jeito do Material 3 mostrar que a tela está rolada.</p>
 
 <div class="tryflutter" data-goal="src:SingleChildScrollView\(">
-<p class="try-task"><strong>Missão:</strong> os passos da receita transbordam pela parte de baixo. Envolva a <code>Column</code> num <code>SingleChildScrollView</code> e depois role a tela para ver o passo 12.</p>
+<p class="try-task"><strong>Missão:</strong> os passos da receita transbordam pela parte de baixo. Envolva a <code>Column</code> num <code>SingleChildScrollView</code> e depois role a tela para ver o passo 15.</p>
 <pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
 
 void main() =&gt; runApp(const MeuApp());
@@ -534,7 +534,7 @@ class MeuApp extends StatelessWidget {
 
 <div class="note">
 <strong>Muitos itens iguais? Use uma lista</strong>
-<p>Para 12 passos, o <code>SingleChildScrollView</code> resolve. Para uma lista comprida de coisas parecidas (todas as receitas, todos os produtos da loja), o Flutter tem um widget próprio, que rola e economiza memória: o <a href="listview.html">ListView</a> e o <a href="listview-builder.html">ListView.builder</a>.</p>
+<p>Para 15 passos, o <code>SingleChildScrollView</code> resolve. Para uma lista comprida de coisas parecidas (todas as receitas, todos os produtos da loja), o Flutter tem um widget próprio, que rola e economiza memória: o <a href="listview.html">ListView</a> e o <a href="listview-builder.html">ListView.builder</a>.</p>
 </div>
 
 <hr>
