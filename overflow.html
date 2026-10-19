@@ -1,0 +1,775 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Overflow — as listras amarelas e pretas e como resolver | Guia Flutter</title>
+<meta name="description" content="O erro de overflow do Flutter para quem está começando: as listras amarelas e pretas, a mensagem real do console (A RenderFlex overflowed by N pixels on the right/bottom) explicada linha por linha, e as soluções: Expanded, Flexible, TextOverflow.ellipsis, Wrap e SingleChildScrollView.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Overflow</span></h1>
+
+<p class="intro">Todo mundo que começa no Flutter vê, mais cedo ou mais tarde, uma faixa de <strong>listras amarelas e pretas</strong> na beira da tela, como uma fita de obra. É o <strong>erro de overflow</strong> (em inglês, "transbordar"): você pediu para o Flutter pôr numa linha ou numa coluna mais coisa do que cabe nela. Nesta aula você vai provocar esse erro de propósito, ler a mensagem que aparece no console e aprender as cinco formas de resolver.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é overflow e por que ele acontece em <code>Row</code> e <code>Column</code>.</li>
+  <li>Como ler a mensagem real do console: <code>A RenderFlex overflowed by N pixels on the right.</code></li>
+  <li>Como resolver um texto comprido numa <code>Row</code>: <code>Expanded</code>, <code>Flexible</code> e <code>TextOverflow.ellipsis</code>.</li>
+  <li>Como resolver uma fila de etiquetas que não cabe: <code>Wrap</code>.</li>
+  <li>Como resolver uma coluna mais alta que a tela: <code>SingleChildScrollView</code>.</li>
+  <li>O erro que aparece quando a solução é aplicada do jeito errado (<code>Expanded</code> dentro de algo que rola).</li>
+</ul>
+</div>
+
+<p>Todas as telas desta aula foram tiradas de um Flutter de verdade, no laboratório da Ana (usuária <code>ana</code>, computador <code>notebook</code>), num tamanho de celular. As mensagens do console foram copiadas exatamente como saíram.</p>
+
+<hr>
+
+<h2>A ideia: a mala que não fecha</h2>
+<p>A Ana vai viajar e tem uma mala de 60 cm. Ela põe dentro, lado a lado, um casaco dobrado de 20 cm, um par de tênis de 15 cm e um travesseiro de 40 cm. A conta não fecha: 75 cm numa mala de 60. O travesseiro fica para fora, e o zíper não fecha.</p>
+<p>A <code>Row</code> (linha) e a <code>Column</code> (coluna) do Flutter funcionam como essa mala (veja <a href="row-column.html">Row e Column</a>):</p>
+<ol class="passo">
+  <li>A tela diz para a <code>Row</code>: "você tem <strong>no máximo</strong> tantos pixels de largura" (é a regra da aula <a href="constraints.html">Como o Flutter Calcula Tamanhos</a>).</li>
+  <li>A <code>Row</code> pergunta a cada filho quanto ele quer ocupar. Um <code>Text</code> responde com a largura <strong>natural</strong> dele: o texto todo numa linha só.</li>
+  <li>A <code>Row</code> soma as larguras. Se a soma passar do máximo, sobra um pedaço do lado de fora: é o <strong>overflow</strong>.</li>
+</ol>
+<p>O Flutter não esconde o problema: no modo de desenvolvimento (o modo <em>debug</em>, o do <code>flutter run</code>), ele pinta as listras amarelas e pretas exatamente na borda que transbordou e escreve um aviso no console. O app não fecha; ele só avisa que tem conteúdo que ninguém vai conseguir ver.</p>
+
+<hr>
+
+<h2>1. Provocando o overflow numa <code>Row</code></h2>
+<p>A Ana quer, no app de receitas, uma linha com o ícone de bolo e o nome da receita. O nome é comprido e a letra é grande:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(Icons.cake, size: 40),
+              SizedBox(width: 12),
+              Text(
+                'Bolo de cenoura com cobertura de chocolate',
+                style: TextStyle(fontSize: 24),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}</pre>
+
+<dl class="anatomy">
+  <dt>Row(children: [...])</dt><dd>A linha: põe os filhos um ao lado do outro, da esquerda para a direita.</dd>
+  <dt>Icon(Icons.cake, size: 40)</dt><dd>O ícone de bolo, com 40 pixels de largura.</dd>
+  <dt>SizedBox(width: 12)</dt><dd>Um espaço vazio de 12 pixels entre o ícone e o texto (veja <a href="sizedbox.html">SizedBox e Spacer</a>).</dd>
+  <dt>Text('Bolo de cenoura com cobertura de chocolate', …)</dt><dd>O nome da receita, com letra de tamanho 24. Dentro de uma <code>Row</code>, o <code>Text</code> pede a largura do texto <strong>inteiro, numa linha só</strong>, e a <code>Row</code> dá a ele essa largura sem perguntar se cabe.</dd>
+</dl>
+
+<p>O resultado no celular:</p>
+
+<figure class="tela"><img src="assets/telas/overflow-1.png" alt="Tela do app 'Receitas da Ana': na linha de cima, o ícone de bolo e o texto 'Bolo de cenoura com cob' cortado na borda direita, onde há um quadrado de listras amarelas e pretas com a frase 'RIGHT OVERFLOWED BY 182' escrita em pé, em vermelho" width="390" height="844" loading="lazy"><figcaption>O overflow: o nome não cabe, e o Flutter marca a borda direita com as listras (Flutter 3.47, modo debug, 390 × 844).</figcaption></figure>
+
+<p>Três coisas para reparar na foto. O texto foi <strong>cortado</strong> no meio da palavra "cobertura". Na borda direita da linha apareceu o quadradinho de <strong>listras amarelas e pretas</strong>: é ali que a <code>Row</code> transbordou. E, escrita em pé, em letras vermelhas bem pequenas, vem a frase <code>RIGHT OVERFLOWED BY 182 PIXELS</code> ("transbordou à direita por 182 pixels"; na foto, a palavra <code>PIXELS</code> nem coube). O canto de cima tem ainda a faixa vermelha <strong>DEBUG</strong>, que lembra que o app está no modo de desenvolvimento.</p>
+
+<h3>A mensagem do console, linha por linha</h3>
+<p>Ao mesmo tempo, o console do app mostrou esta mensagem. Com o <code>flutter run</code>, ela aparece no terminal (e, no VS Code, na aba <em>Debug Console</em>):</p>
+
+<pre class="term">══╡ EXCEPTION CAUGHT BY RENDERING LIBRARY ╞═════════════════════════════════════════════════════════
+The following assertion was thrown during layout:
+A RenderFlex overflowed by 182 pixels on the right.
+
+The relevant error-causing widget was:
+  Row Row:file:///home/ana/app/lib/main.dart:15:18
+
+The overflowing RenderFlex has an orientation of Axis.horizontal.
+The edge of the RenderFlex that is overflowing has been marked in the rendering with a yellow and
+black striped pattern. This is usually caused by the contents being too big for the RenderFlex.
+Consider applying a flex factor (e.g. using an Expanded widget) to force the children of the
+RenderFlex to fit within the available space instead of being sized to their natural size.
+This is considered an error condition because it indicates that there is content that cannot be
+seen. If the content is legitimately bigger than the available space, consider clipping it with a
+ClipRect widget before putting it in the flex, or using a scrollable container rather than a Flex,
+like a ListView.
+The specific RenderFlex in question is: RenderFlex#d3c92 relayoutBoundary=up2 OVERFLOWING:
+  creator: Row ← Padding ← KeyedSubtree-[GlobalKey#4ff5e] ← _BodyBuilder ← MediaQuery ←
+    LayoutId-[&lt;_ScaffoldSlot.body&gt;] ← CustomMultiChildLayout ← _ActionsScope ← Actions ← Builder ←
+    DefaultTextStyle ← AnimatedDefaultTextStyle ← ⋯
+  parentData: offset=Offset(16.0, 16.0) (can use size)
+  constraints: BoxConstraints(0.0&lt;=w&lt;=358.0, 0.0&lt;=h&lt;=756.0)
+  size: Size(358.0, 40.0)
+  direction: horizontal
+  mainAxisAlignment: start
+  mainAxisSize: max
+  crossAxisAlignment: center
+  textDirection: ltr
+  verticalDirection: down
+  spacing: 0.0
+◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤
+════════════════════════════════════════════════════════════════════════════════════════════════════</pre>
+
+<dl class="anatomy">
+  <dt>══╡ EXCEPTION CAUGHT BY RENDERING LIBRARY ╞══</dt><dd>"Exceção capturada pela biblioteca de desenho." A moldura de <code>═</code> marca o começo de um erro do Flutter; a de baixo, só com <code>═</code>, marca o fim. O app continua rodando.</dd>
+  <dt>The following assertion was thrown during layout:</dt><dd>"A verificação a seguir falhou durante o <em>layout</em>" (a etapa em que o Flutter calcula o tamanho e a posição de cada widget).</dd>
+  <dt>A RenderFlex overflowed by 182 pixels on the right.</dt><dd><strong>A linha mais importante.</strong> "Uma caixa flexível transbordou 182 pixels à direita." O número diz <strong>quanto</strong> falta: o conteúdo precisava de 182 pixels a mais do que tinha.</dd>
+  <dt>The relevant error-causing widget was: Row … lib/main.dart:15:18</dt><dd>"O widget que causou o erro foi: <code>Row</code>", no arquivo <code>lib/main.dart</code>, <strong>linha 15, coluna 18</strong>. Conte no código: a linha 15 é a do <code>child: Row(</code>. No VS Code, esse caminho é um link: clique e o editor abre na linha certa.</dd>
+  <dt>The overflowing RenderFlex has an orientation of Axis.horizontal.</dt><dd>"A caixa que transbordou é horizontal": uma <code>Row</code>.</dd>
+  <dt>The edge … has been marked … with a yellow and black striped pattern.</dt><dd>"A borda que transbordou foi marcada com listras amarelas e pretas." É a explicação das listras da foto.</dd>
+  <dt>Consider applying a flex factor (e.g. using an Expanded widget)…</dt><dd>A primeira dica do próprio Flutter: "use um <code>Expanded</code> para obrigar os filhos a caber no espaço". É a solução da seção 2.</dd>
+  <dt>…consider clipping it with a ClipRect… or using a scrollable container… like a ListView.</dt><dd>As outras dicas: se o conteúdo é mesmo maior que o espaço, corte-o (<code>ClipRect</code>) ou deixe rolar (<code>ListView</code>, seção 5).</dd>
+  <dt>The specific RenderFlex in question is: … constraints: BoxConstraints(0.0&lt;=w&lt;=358.0 …)</dt><dd>Detalhes para quem quer investigar. O mais útil é o <code>constraints</code>: a <code>Row</code> podia ter <strong>no máximo 358 pixels</strong> de largura (os 390 da tela menos os 16 + 16 do <code>Padding</code>). O <code>RenderFlex#d3c92</code> é um número de identificação que muda a cada execução.</dd>
+  <dt>◢◤◢◤◢◤…</dt><dd>As listras desenhadas com texto, só para chamar a atenção no meio do console.</dd>
+</dl>
+
+<div class="tip">
+<strong>Por que "RenderFlex" e não "Row"?</strong>
+<p>Você escreve <em>widgets</em> (<code>Row</code>, <code>Column</code>), mas quem mede e desenha a tela de verdade são objetos internos chamados <em>render objects</em>. A <code>Row</code> e a <code>Column</code> criam o mesmo tipo de objeto, o <code>RenderFlex</code> ("caixa flexível"), um na horizontal e o outro na vertical. Por isso a mensagem fala em <code>RenderFlex</code> e diz a direção: <code>on the right</code> (à direita) é coisa de <code>Row</code>; <code>on the bottom</code> (embaixo), de <code>Column</code>.</p>
+</div>
+
+<div class="warning">
+<strong>As listras só existem no modo debug</strong>
+<p>No app final (o modo <em>release</em>, que vai para a loja; veja <a href="build-android.html">Gerando o APK</a>), o Flutter não pinta as listras nem escreve o aviso: o conteúdo que sobrou simplesmente fica cortado, e o seu usuário nunca vai saber que ali tinha mais texto. Por isso, trate cada faixa amarela e preta como um erro de verdade, e resolva antes de publicar.</p>
+</div>
+
+<hr>
+
+<h2>2. Solução: <code>Expanded</code> (o texto quebra a linha)</h2>
+<p>O problema é que o <code>Text</code> pede a largura que quiser. O <code>Expanded</code> (veja <a href="expanded.html">Expanded e Flexible</a>) muda a conversa: a <code>Row</code> primeiro mede os filhos <strong>sem</strong> <code>Expanded</code> (o ícone e o espaço) e depois entrega ao filho com <code>Expanded</code> <strong>exatamente o que sobrou</strong>. Com uma largura máxima, o <code>Text</code> faz o que um texto faz numa folha de caderno: quebra a linha. Daqui em diante, os quadros de código mostram só o <code>body</code>, que é o que muda; o resto do app é igual ao da seção 1.</p>
+
+<pre class="file" data-file="lib/main.dart">        body: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(Icons.cake, size: 40),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Bolo de cenoura com cobertura de chocolate',
+                  style: TextStyle(fontSize: 24),
+                ),
+              ),
+            ],
+          ),
+        ),</pre>
+
+<dl class="anatomy">
+  <dt>Expanded(child: Text(…))</dt><dd>"Ocupe o espaço que sobrou na linha, nem mais, nem menos." O <code>Text</code> agora tem um limite de largura e passa a quebrar em quantas linhas precisar.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/overflow-2.png" alt="Tela do app 'Receitas da Ana' com o ícone de bolo e, ao lado, o texto 'Bolo de cenoura com cobertura de chocolate' quebrado em duas linhas, sem listras" width="390" height="844" loading="lazy"><figcaption>Com o <code>Expanded</code>, o nome quebra em duas linhas e as listras somem.</figcaption></figure>
+
+<p>O nome agora ocupa duas linhas: "Bolo de cenoura com" e "cobertura de chocolate". O ícone ficou centralizado na altura das duas linhas (a <code>Row</code> centraliza os filhos na vertical, veja <a href="alinhamento.html">Alinhamento</a>). E o console ficou em silêncio: nenhuma mensagem de overflow.</p>
+
+<div class="tryflutter" data-goal="src:Expanded\(">
+<p class="try-task"><strong>Missão:</strong> este é o app da seção 1, com o overflow. Envolva o <code>Text</code> num <code>Expanded</code> para as listras sumirem e o nome da receita quebrar em duas linhas, como na foto acima.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(Icons.cake, size: 40),
+              SizedBox(width: 12),
+              Text(
+                'Bolo de cenoura com cobertura de chocolate',
+                style: TextStyle(fontSize: 24),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(Icons.cake, size: 40),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Bolo de cenoura com cobertura de chocolate',
+                  style: TextStyle(fontSize: 24),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}</pre>
+</div>
+
+<hr>
+
+<h2>3. Solução: reticências (<code>TextOverflow.ellipsis</code>)</h2>
+<p>Às vezes quebrar a linha não fica bonito: numa lista de receitas, a Ana quer que todos os nomes ocupem <strong>uma linha só</strong>, e que o que não couber termine em "…". Para isso, o <code>Text</code> tem dois parâmetros:</p>
+
+<pre class="file" data-file="lib/main.dart">        body: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(Icons.cake, size: 40),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Bolo de cenoura com cobertura de chocolate',
+                  style: TextStyle(fontSize: 24),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),</pre>
+
+<dl class="anatomy">
+  <dt>maxLines: 1</dt><dd>"No máximo uma linha." O texto não quebra mais.</dd>
+  <dt>overflow: TextOverflow.ellipsis</dt><dd>O que fazer com o que sobra: cortar e pôr reticências (<em>ellipsis</em>, em inglês). Outras opções: <code>TextOverflow.clip</code> (corta seco), <code>TextOverflow.fade</code> (o fim do texto vai sumindo) e <code>TextOverflow.visible</code> (deixa vazar, o que quase nunca é o que você quer).</dd>
+  <dt>Expanded(…)</dt><dd>Continua necessário! Sem ele, o <code>Text</code> ainda não sabe <strong>onde</strong> cortar, porque a <code>Row</code> continua sem dar um limite de largura a ele. Veja o cenário em <a href="#errado">Quando dá errado</a>.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/overflow-3.png" alt="Tela do app 'Receitas da Ana' com o ícone de bolo e o texto 'Bolo de cenoura com cob…' numa linha só, terminando em reticências" width="390" height="844" loading="lazy"><figcaption>Uma linha só, terminando em reticências.</figcaption></figure>
+
+<p>O texto parou em "Bolo de cenoura com cob…", exatamente na borda, sem listras e sem mensagem no console. O nome completo continua no código; só a tela mostra a versão curta.</p>
+
+<h3><code>Flexible</code>: o primo mais educado do <code>Expanded</code></h3>
+<p>Com <code>Expanded</code>, o filho ocupa <strong>todo</strong> o espaço que sobrou, mesmo que o texto seja curto. Com <code>Flexible</code>, ele pode usar <strong>até</strong> o espaço que sobrou, mas, se o texto for curto, fica do tamanho do texto. A diferença só aparece quando tem mais alguma coisa depois do texto na linha (um ícone de coração, por exemplo): com <code>Flexible</code>, o coração fica colado no nome curto; com <code>Expanded</code>, ele é empurrado para a ponta direita. Para evitar o overflow, os dois funcionam do mesmo jeito.</p>
+
+<hr>
+
+<h2>4. Solução: <code>Wrap</code> (vai para a linha de baixo)</h2>
+<p>Agora a Ana quer etiquetas embaixo da receita: "Doce", "Sem glúten", "Forno", "40 minutos". Cada etiqueta é um <code>Chip</code>, uma pílula com texto. Numa <code>Row</code>:</p>
+
+<pre class="file" data-file="lib/main.dart">        body: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Chip(label: Text('Doce')),
+              SizedBox(width: 8),
+              Chip(label: Text('Sem glúten')),
+              SizedBox(width: 8),
+              Chip(label: Text('Forno')),
+              SizedBox(width: 8),
+              Chip(label: Text('40 minutos')),
+              SizedBox(width: 8),
+              Chip(label: Text('Fácil')),
+            ],
+          ),
+        ),</pre>
+
+<figure class="tela"><img src="assets/telas/overflow-4.png" alt="Tela com cinco etiquetas lado a lado: 'Doce', 'Sem glúten', 'Forno' e '40 mi' cortada, com as listras amarelas e pretas e 'RIGHT OVERFLOWED BY 85' na borda direita; a etiqueta 'Fácil' não aparece" width="390" height="844" loading="lazy"><figcaption>Cinco etiquetas numa <code>Row</code>: transbordou por 85 pixels.</figcaption></figure>
+
+<p>A quarta etiqueta ficou cortada embaixo das listras e a quinta, "Fácil", nem aparece. No console, a mensagem já conhecida: <code>A RenderFlex overflowed by 85 pixels on the right.</code></p>
+
+<p>Aqui o <code>Expanded</code> não ajuda: uma etiqueta não deve encolher nem quebrar no meio. O certo é a etiqueta inteira que não coube <strong>ir para a linha de baixo</strong>, como as palavras num parágrafo. É o que faz o <code>Wrap</code> ("embrulhar"):</p>
+
+<pre class="file" data-file="lib/main.dart">        body: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              Chip(label: Text('Doce')),
+              Chip(label: Text('Sem glúten')),
+              Chip(label: Text('Forno')),
+              Chip(label: Text('40 minutos')),
+              Chip(label: Text('Fácil')),
+            ],
+          ),
+        ),</pre>
+
+<dl class="anatomy">
+  <dt>Wrap(children: [...])</dt><dd>Põe os filhos lado a lado, como a <code>Row</code>; quando o próximo não cabe, começa uma nova linha.</dd>
+  <dt>spacing: 8</dt><dd>O espaço entre um filho e o próximo na mesma linha. Por isso os <code>SizedBox</code> saíram.</dd>
+  <dt>runSpacing: 8</dt><dd>O espaço entre uma linha e a de baixo (cada linha do <code>Wrap</code> se chama <em>run</em>).</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/overflow-5.png" alt="Tela com as etiquetas 'Doce', 'Sem glúten' e 'Forno' na primeira linha, e '40 minutos' e 'Fácil' na segunda linha, sem listras" width="390" height="844" loading="lazy"><figcaption>Com o <code>Wrap</code>, o que não coube foi para a linha de baixo.</figcaption></figure>
+
+<p>"Doce", "Sem glúten" e "Forno" ficaram na primeira linha; "40 minutos" não cabia mais e desceu, levando "Fácil" junto. Nada foi cortado, nenhuma etiqueta encolheu e o console ficou limpo. Num celular mais largo, caberiam mais etiquetas na primeira linha: o <code>Wrap</code> se ajusta sozinho.</p>
+
+<div class="tryflutter" data-goal="src:Wrap\(;;src:spacing:">
+<p class="try-task"><strong>Missão:</strong> as etiquetas estão transbordando. Troque a <code>Row</code> por um <code>Wrap</code> com <code>spacing: 8</code> e <code>runSpacing: 8</code> (e apague os <code>SizedBox</code>, que viram desnecessários).</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Chip(label: Text('Doce')),
+              SizedBox(width: 8),
+              Chip(label: Text('Sem glúten')),
+              SizedBox(width: 8),
+              Chip(label: Text('Forno')),
+              SizedBox(width: 8),
+              Chip(label: Text('40 minutos')),
+              SizedBox(width: 8),
+              Chip(label: Text('Fácil')),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              Chip(label: Text('Doce')),
+              Chip(label: Text('Sem glúten')),
+              Chip(label: Text('Forno')),
+              Chip(label: Text('40 minutos')),
+              Chip(label: Text('Fácil')),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}</pre>
+</div>
+
+<hr>
+
+<h2>5. Overflow para baixo: a <code>Column</code> mais alta que a tela</h2>
+<p>O mesmo acontece na vertical. A Ana escreveu os 12 passos da receita numa <code>Column</code>:</p>
+
+<pre class="file" data-file="lib/main.dart">        body: Column(
+          children: [
+            for (var i = 1; i &lt;= 15; i++)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text('Passo $i da receita', style: const TextStyle(fontSize: 22)),
+              ),
+          ],
+        ),</pre>
+
+<dl class="anatomy">
+  <dt>for (var i = 1; i &lt;= 12; i++)</dt><dd>Um <code>for</code> <strong>dentro da lista</strong> de filhos (o <em>collection for</em> do Dart): cria 12 filhos, um para cada passo, sem precisar copiar e colar.</dd>
+  <dt>'Passo $i da receita'</dt><dd>O texto de cada passo, com o número no lugar do <code>$i</code>.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/overflow-6.png" alt="Tela com 'Passo 1 da receita' até 'Passo 11 da receita' um embaixo do outro, centralizados; no pé da tela, o 'Passo 12' aparece cortado embaixo de uma faixa de listras amarelas e pretas com 'BOTTOM OVERFLOWED BY 157 PIXELS'" width="390" height="844" loading="lazy"><figcaption>15 passos numa <code>Column</code>: transbordou por 157 pixels embaixo.</figcaption></figure>
+
+<pre class="term">══╡ EXCEPTION CAUGHT BY RENDERING LIBRARY ╞═════════════════════════════════════════════════════════
+The following assertion was thrown during layout:
+A RenderFlex overflowed by 157 pixels on the bottom.
+
+The relevant error-causing widget was:
+  Column Column:file:///home/ana/app/lib/main.dart:13:15
+
+The overflowing RenderFlex has an orientation of Axis.vertical.
+The edge of the RenderFlex that is overflowing has been marked in the rendering with a yellow and
+black striped pattern. This is usually caused by the contents being too big for the RenderFlex.
+Consider applying a flex factor (e.g. using an Expanded widget) to force the children of the
+RenderFlex to fit within the available space instead of being sized to their natural size.
+This is considered an error condition because it indicates that there is content that cannot be
+seen. If the content is legitimately bigger than the available space, consider clipping it with a
+ClipRect widget before putting it in the flex, or using a scrollable container rather than a Flex,
+like a ListView.
+The specific RenderFlex in question is: RenderFlex#2f895 relayoutBoundary=up1 OVERFLOWING:
+  creator: Column ← KeyedSubtree-[GlobalKey#3da3b] ← _BodyBuilder ← MediaQuery ←
+    LayoutId-[&lt;_ScaffoldSlot.body&gt;] ← CustomMultiChildLayout ← _ActionsScope ← Actions ← Builder ←
+    DefaultTextStyle ← AnimatedDefaultTextStyle ← _InkFeatures-[GlobalKey#0f119 ink renderer] ← ⋯
+  parentData: offset=Offset(0.0, 56.0); id=_ScaffoldSlot.body (can use size)
+  constraints: BoxConstraints(0.0&lt;=w&lt;=390.0, 0.0&lt;=h&lt;=788.0)
+  size: Size(229.7, 788.0)
+  direction: vertical
+  mainAxisAlignment: start
+  mainAxisSize: max
+  crossAxisAlignment: center
+  verticalDirection: down
+  spacing: 0.0
+◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤
+════════════════════════════════════════════════════════════════════════════════════════════════════</pre>
+
+<p>Na tela, os passos 1 a 11 aparecem inteiros; o 12 está cortado embaixo da faixa de listras, com <code>BOTTOM OVERFLOWED BY 157 PIXELS</code> ("transbordou embaixo por 157 pixels") escrito <strong>deitado</strong>, já que a borda que transbordou é a de baixo. Os passos 13 a 15 ficaram para fora. No console, a mensagem agora diz <code>on the bottom</code>, <code>Axis.vertical</code> e aponta a <code>Column</code> da linha 13 do <code>main.dart</code>. (Os textos aparecem centralizados porque a <code>Column</code> centraliza os filhos na horizontal; por isso o "Passo 10", mais largo, começa um pouco mais à esquerda.)</p>
+
+<p>A solução, quando o conteúdo é mesmo maior que a tela, é <strong>deixar rolar</strong>. O <code>SingleChildScrollView</code> ("visão de rolagem de um filho só") dá à <code>Column</code> uma altura infinita para crescer e deixa o usuário arrastar o dedo para ver o resto (ele tem aula própria: <a href="scroll.html">Rolagem</a>):</p>
+
+<pre class="file" data-file="lib/main.dart">        body: SingleChildScrollView(
+          child: Column(
+            children: [
+              for (var i = 1; i &lt;= 15; i++)
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text('Passo $i da receita', style: const TextStyle(fontSize: 22)),
+                ),
+            ],
+          ),
+        ),</pre>
+
+<figure class="tela"><img src="assets/telas/overflow-7.png" alt="Tela com os passos 1 a 12 da receita inteiros, um embaixo do outro, e o passo 13 cortado na borda de baixo, sem listras" width="390" height="844" loading="lazy"><figcaption>Com o <code>SingleChildScrollView</code>, antes de rolar: sem listras.</figcaption></figure>
+<figure class="tela"><img src="assets/telas/overflow-7b.png" alt="Tela do app rolada para baixo: o título 'Receitas da Ana' numa barra levemente acinzentada no topo e, abaixo, os passos de 4 a 15 da receita, sem listras" width="390" height="844" loading="lazy"><figcaption>Com o <code>SingleChildScrollView</code>, depois de rolar a tela 400 pixels para baixo: lá está o passo 15.</figcaption></figure>
+
+<p>Antes de rolar (a primeira foto), a tela parece a da seção anterior, só que sem as listras: o passo 12 aparece inteiro e o 13 aparece cortado na borda de baixo, um convite para arrastar o dedo. Depois de rolar (a segunda foto), os passos 13 a 15 aparecem. Repare também que a barra do título ganhou um tom acinzentado quando o conteúdo passou por baixo dela: é o jeito do Material 3 mostrar que a tela está rolada.</p>
+
+<div class="tryflutter" data-goal="src:SingleChildScrollView\(">
+<p class="try-task"><strong>Missão:</strong> os passos da receita transbordam pela parte de baixo. Envolva a <code>Column</code> num <code>SingleChildScrollView</code> e depois role a tela para ver o passo 12.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: Column(
+          children: [
+            for (var i = 1; i &lt;= 15; i++)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text('Passo $i da receita', style: const TextStyle(fontSize: 22)),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: SingleChildScrollView(
+          child: Column(
+            children: [
+              for (var i = 1; i &lt;= 15; i++)
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text('Passo $i da receita', style: const TextStyle(fontSize: 22)),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}</pre>
+</div>
+
+<div class="note">
+<strong>Muitos itens iguais? Use uma lista</strong>
+<p>Para 12 passos, o <code>SingleChildScrollView</code> resolve. Para uma lista comprida de coisas parecidas (todas as receitas, todos os produtos da loja), o Flutter tem um widget próprio, que rola e economiza memória: o <a href="listview.html">ListView</a> e o <a href="listview-builder.html">ListView.builder</a>.</p>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de resolver: qual usar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Solução</th><th>O que acontece</th></tr>
+<tr><td>Texto comprido numa <code>Row</code>, pode ocupar várias linhas</td><td><code>Expanded(child: Text(…))</code></td><td>O texto quebra a linha</td></tr>
+<tr><td>Texto comprido numa <code>Row</code>, tem de ficar numa linha</td><td><code>Expanded</code> + <code>maxLines: 1</code> + <code>overflow: TextOverflow.ellipsis</code></td><td>O texto termina em "…"</td></tr>
+<tr><td>Texto que pode ser curto, com algo colado depois dele</td><td><code>Flexible(child: Text(…))</code></td><td>Usa só o que precisa, até o espaço que sobrou</td></tr>
+<tr><td>Vários itens que não podem encolher (etiquetas, botões)</td><td><code>Wrap</code></td><td>O que não cabe vai para a linha de baixo</td></tr>
+<tr><td><code>Column</code> mais alta que a tela</td><td><code>SingleChildScrollView</code></td><td>A tela rola</td></tr>
+<tr><td>Muitos itens parecidos, um embaixo do outro</td><td><a href="listview.html">ListView</a></td><td>A lista rola e só desenha o que aparece</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Pôs o <code>overflow: TextOverflow.ellipsis</code>, mas esqueceu o <code>Expanded</code></strong>
+<pre class="file" data-file="lib/main.dart">        body: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(Icons.cake, size: 40),
+              SizedBox(width: 12),
+              Text(
+                'Bolo de cenoura com cobertura de chocolate',
+                style: TextStyle(fontSize: 24),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),</pre>
+<figure class="tela"><img src="assets/telas/overflow-9.png" alt="Tela idêntica à do primeiro exemplo: o texto 'Bolo de cenoura com cob' cortado e as listras amarelas e pretas com 'RIGHT OVERFLOWED BY 182' na borda direita" width="390" height="844" loading="lazy"><figcaption>Nada mudou: o mesmo overflow de 182 pixels, sem reticências.</figcaption></figure>
+<p>A tela é igual à do primeiro exemplo, e o console mostra a mesma <code>A RenderFlex overflowed by 182 pixels on the right.</code> As reticências não apareceram porque, sem o <code>Expanded</code>, a <code>Row</code> deixou o <code>Text</code> tão largo quanto ele quis: para ele, o texto inteiro <strong>cabia</strong>, então não havia nada para cortar. <strong>Como consertar:</strong> o <code>overflow</code> do <code>Text</code> diz <strong>como</strong> cortar, mas quem dá o limite de <strong>onde</strong> cortar é o <code>Expanded</code> (ou o <code>Flexible</code>). Use os dois juntos.</p>
+</div>
+
+<div class="cenario">
+<strong><code>Expanded</code> dentro de uma coluna que rola</strong>
+<p>A Ana quis que a área laranja ocupasse "o resto da tela", embaixo do título, e já pôs tudo num <code>SingleChildScrollView</code> para não ter overflow:</p>
+<pre class="file" data-file="lib/main.dart">        body: SingleChildScrollView(
+          child: Column(
+            children: [
+              const Text('Ingredientes', style: TextStyle(fontSize: 22)),
+              Expanded(
+                child: Container(color: Colors.orange.shade100),
+              ),
+            ],
+          ),
+        ),</pre>
+<pre class="term">══╡ EXCEPTION CAUGHT BY RENDERING LIBRARY ╞═════════════════════════════════════════════════════════
+The following assertion was thrown during performLayout():
+RenderFlex children have non-zero flex but incoming height constraints are unbounded.
+When a column is in a parent that does not provide a finite height constraint, for example if it is
+in a vertical scrollable, it will try to shrink-wrap its children along the vertical axis. Setting a
+flex on a child (e.g. using Expanded) indicates that the child is to expand to fill the remaining
+space in the vertical direction.
+These two directives are mutually exclusive. If a parent is to shrink-wrap its child, the child
+cannot simultaneously expand to fit its parent.
+Consider setting mainAxisSize to MainAxisSize.min and using FlexFit.loose fits for the flexible
+children (using Flexible rather than Expanded). This will allow the flexible children to size
+themselves to less than the infinite remaining space they would otherwise be forced to take, and
+then will cause the RenderFlex to shrink-wrap the children rather than expanding to fit the maximum
+constraints provided by the parent.
+« … umas 25 linhas sobre a Column e o pai dela …
+The relevant error-causing widget was:
+  Column Column:file:///home/ana/app/lib/main.dart:14:18
+« … a pilha de chamadas e mais detalhes …
+════════════════════════════════════════════════════════════════════════════════════════════════════
+Another exception was thrown: Assertion failed: file:///home/ana/flutter/packages/flutter/lib/src/rendering/box.dart:2251:12
+Another exception was thrown: Assertion failed: file:///home/ana/flutter/packages/flutter/lib/src/rendering/box.dart:2251:12
+« … e a mesma linha mais 14 vezes (16 ao todo)
+</pre>
+<figure class="tela"><img src="assets/telas/overflow-8.png" alt="Tela totalmente vazia, só com a faixa DEBUG no canto: nem o título 'Receitas da Ana' aparece" width="390" height="844" loading="lazy"><figcaption>A tela inteira em branco: nem a barra do título foi desenhada.</figcaption></figure>
+<p>Desta vez não há listras: a tela ficou <strong>em branco</strong>, sem nem o <code>AppBar</code>. O Flutter não conseguiu medir a <code>Column</code> e, sem esse tamanho, não conseguiu desenhar nada acima dela; cada um dos 16 <code>Another exception was thrown</code> é um widget pai reclamando que o filho ficou sem tamanho (<code>RenderBox was not laid out</code>). A primeira mensagem é a que importa: <code>RenderFlex children have non-zero flex but incoming height constraints are unbounded</code>, "os filhos da <code>Column</code> têm <em>flex</em> (o <code>Expanded</code>), mas a altura que chegou de cima é ilimitada". E a linha <code>The relevant error-causing widget was: Column … main.dart:14:18</code> aponta a <code>Column</code> culpada.</p>
+<p><strong>Por quê:</strong> dentro do <code>SingleChildScrollView</code>, a <code>Column</code> pode ser tão alta quanto quiser (altura "ilimitada", <em>unbounded</em>). O <code>Expanded</code> pede "o espaço que sobrou", mas do infinito não sobra uma quantidade que dê para medir. <strong>Como consertar:</strong> escolha um dos dois. Se a área deve encher o resto da tela, tire o <code>SingleChildScrollView</code>. Se a tela deve rolar, troque o <code>Expanded</code> por uma altura fixa, como <code>SizedBox(height: 300, child: …)</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Escondeu o problema em vez de resolver</strong>
+<p>Um atalho que aparece em fóruns é envolver tudo num <code>ClipRect</code> ou num <code>SizedBox</code> de tamanho fixo, só para as listras sumirem. As listras somem, mas o texto continua cortado, agora sem aviso nenhum. A pergunta certa é sempre: <strong>o que o usuário deve ver</strong> quando não cabe? A frase em duas linhas (<code>Expanded</code>), as reticências (<code>ellipsis</code>), a próxima linha (<code>Wrap</code>) ou a rolagem (<code>SingleChildScrollView</code>)?</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Mensagem no console</th><th>Quem transbordou</th><th>Primeira coisa a tentar</th></tr>
+<tr><td><code>A RenderFlex overflowed by N pixels on the right.</code></td><td>Uma <code>Row</code></td><td><code>Expanded</code>/<code>Flexible</code> no filho comprido, ou <code>Wrap</code></td></tr>
+<tr><td><code>A RenderFlex overflowed by N pixels on the bottom.</code></td><td>Uma <code>Column</code></td><td><code>SingleChildScrollView</code> ou <code>ListView</code></td></tr>
+<tr><td><code>RenderFlex children have non-zero flex but incoming height constraints are unbounded.</code></td><td>Um <code>Expanded</code>/<code>Flexible</code> dentro de algo que rola</td><td>Tirar o <code>Expanded</code> ou a rolagem</td></tr>
+</table>
+</div>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>Expanded(child: …)</code></td><td>O filho ocupa todo o espaço que sobrou na <code>Row</code>/<code>Column</code></td></tr>
+<tr><td><code>Flexible(child: …)</code></td><td>O filho ocupa até o espaço que sobrou</td></tr>
+<tr><td><code>Text(…, maxLines: 1, overflow: TextOverflow.ellipsis)</code></td><td>Uma linha só, terminando em "…"</td></tr>
+<tr><td><code>Wrap(spacing: 8, runSpacing: 8, children: […])</code></td><td>Lado a lado, quebrando para a linha de baixo</td></tr>
+<tr><td><code>SingleChildScrollView(child: Column(…))</code></td><td>Deixa a coluna rolar</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete a correção</h3>
+<p>Complete para o nome da receita terminar em reticências, sem overflow:</p>
+<div class="ex-code">Row(children: [<br>&nbsp;&nbsp;Icon(Icons.cake),<br>&nbsp;&nbsp;<input data-answer="Expanded" aria-label="widget que dá o espaço que sobrou">(<br>&nbsp;&nbsp;&nbsp;&nbsp;child: Text('Bolo de cenoura com chocolate',<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;maxLines: <input data-answer="1" aria-label="número de linhas">,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;overflow: TextOverflow.<input data-answer="ellipsis" aria-label="tipo de corte">),<br>&nbsp;&nbsp;),<br>])</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. O console mostrou <code>A RenderFlex overflowed by 37 pixels on the bottom.</code> Qual widget transbordou?</p>
+<label><input type="radio" name="q2"> Uma <code>Row</code></label>
+<label><input type="radio" name="q2"> Uma <code>Column</code></label>
+<label><input type="radio" name="q2"> Um <code>Text</code></label>
+<label><input type="radio" name="q2"> O <code>AppBar</code></label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. Uma fila de 6 botões não cabe na largura do celular. Os botões não podem encolher. Qual é a melhor solução?</p>
+<label><input type="radio" name="q3"> <code>Expanded</code> em cada botão</label>
+<label><input type="radio" name="q3"> <code>TextOverflow.ellipsis</code></label>
+<label><input type="radio" name="q3"> Trocar a <code>Row</code> por um <code>Wrap</code></label>
+<label><input type="radio" name="q3"> Envolver a <code>Row</code> num <code>ClipRect</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. O que acontece com as listras amarelas e pretas no app publicado na loja (modo release)?</p>
+<label><input type="radio" name="q4"> Não aparecem: o conteúdo que sobrou fica cortado, sem aviso</label>
+<label><input type="radio" name="q4"> Aparecem do mesmo jeito</label>
+<label><input type="radio" name="q4"> O app fecha com erro</label>
+<label><input type="radio" name="q4"> O Flutter conserta sozinho</label>
+</div>
+
+<h3>Missão final: o cabeçalho da receita</h3>
+
+<div class="tryflutter" data-goal="src:Expanded\(;;src:TextOverflow\.ellipsis">
+<p class="try-task"><strong>Missão:</strong> o cabeçalho tem o ícone, o nome comprido e um coração no fim, e transborda. Faça o nome ocupar o espaço do meio, numa linha só, terminando em "…", com o coração sempre visível na ponta direita.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(Icons.cake, size: 40),
+              SizedBox(width: 12),
+              Text(
+                'Bolo de cenoura com cobertura de chocolate',
+                style: TextStyle(fontSize: 24),
+              ),
+              Icon(Icons.favorite_border),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(Icons.cake, size: 40),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Bolo de cenoura com cobertura de chocolate',
+                  style: TextStyle(fontSize: 24),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Icon(Icons.favorite_border),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}</pre>
+</div>
+
+<figure class="tela"><img src="assets/telas/overflow-11.png" alt="Tela com o ícone de bolo, o texto Bolo de cenoura com co… terminando em reticências e um ícone de coração vazado na ponta direita" width="390" height="844" loading="lazy"><figcaption>O resultado esperado da missão.</figcaption></figure>
+
+<p>No lab, o app original transbordou por 206 pixels (o coração nem apareceu na tela). Com a solução, o nome terminou em "Bolo de cenoura com co…" e o coração apareceu inteiro na ponta direita.</p>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Overflow é quando os filhos de uma <code>Row</code> ou <code>Column</code> pedem mais espaço do que ela tem. No modo debug, o Flutter pinta listras amarelas e pretas na borda que transbordou e escreve <code>A RenderFlex overflowed by N pixels on the right</code> (ou <code>on the bottom</code>) no console.</li>
+  <li>O app não fecha; mas no app publicado o conteúdo fica cortado sem aviso. Resolva sempre.</li>
+  <li>Texto comprido numa <code>Row</code>: <code>Expanded</code> (quebra a linha) ou <code>Expanded</code> + <code>maxLines: 1</code> + <code>TextOverflow.ellipsis</code> (reticências). O <code>Flexible</code> é parecido, mas só usa o que precisa.</li>
+  <li>Itens que não podem encolher: <code>Wrap</code>, que leva o que não cabe para a linha de baixo.</li>
+  <li>Coluna mais alta que a tela: <code>SingleChildScrollView</code> (ou <code>ListView</code>). Não ponha <code>Expanded</code> dentro de algo que rola.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
