@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Center e Align — centralizar e alinhar um widget | Guia Flutter</title>
+<meta name="description" content="Center e Align no Flutter para quem nunca fez um app: centralizar um widget na tela, os nove Alignment (topLeft, center, bottomRight…) com a foto real, Alignment(x, y) com números de -1 a 1, o alignment do Container, por que o Center às vezes não centraliza na altura, e os erros reais, com as telas fotografadas no Flutter de verdade.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Center e Align</span></h1>
+
+<p class="intro">Você já viu que, sem ninguém dizer nada, um widget no <code>body</code> vai para o canto de cima, à esquerda. Para mandá-lo para outro lugar, existem dois widgets: o <code>Center</code> ("centro"), que põe o filho <strong>no meio</strong>, e o <code>Align</code> ("alinhar"), que põe o filho <strong>onde você quiser</strong>: num canto, no meio de um lado, ou num ponto qualquer. Os dois têm <strong>um</strong> filho só (<code>child</code>).</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como o <code>Center</code> centraliza um widget no espaço que ele recebe.</li>
+  <li>Como o <code>Align</code> põe o filho em qualquer um dos nove pontos do <code>Alignment</code>, cada um com a foto.</li>
+  <li>Como escolher um ponto qualquer com <code>Alignment(x, y)</code>, de -1 a 1.</li>
+  <li>O atalho <code>alignment:</code> do <code>Container</code>.</li>
+  <li>Por que o <code>Center</code> dentro de uma <code>Column</code> não centraliza na altura, e os erros comuns.</li>
+</ul>
+</div>
+
+<p>Todos os apps desta aula são um <code>lib/main.dart</code> completo, compilados pelo Flutter <span class="versao">Flutter 3.47</span> do laboratório para a web e fotografados no navegador, em tamanho de celular (390 × 844).</p>
+
+<hr>
+
+<h2>A ideia: o quadro na parede, de novo</h2>
+<p>A Ana vai pendurar um quadro numa parede vazia. Primeiro ela olha o tamanho da parede; depois decide <strong>onde</strong> o quadro vai: bem no meio, no canto de cima à direita, um pouco acima do sofá. O <code>Center</code> e o <code>Align</code> fazem isso: eles ocupam a "parede" inteira (todo o espaço que o pai der) e penduram o filho no ponto escolhido.</p>
+
+<hr>
+
+<h2>1. <code>Center</code>: no meio</h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Center(
+          child: Text('Nenhuma receita ainda', style: TextStyle(fontSize: 22)),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>Center(child: …)</dt><dd>Ocupa todo o espaço do <code>body</code> (da barra até o fim da tela) e põe o filho no meio dele, na horizontal <strong>e</strong> na vertical.</dd>
+  <dt>Text('Nenhuma receita ainda')</dt><dd>O filho. Ele continua com o tamanho dele; quem muda é só a posição.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/center-align-1.png" alt="Barra Receitas da Ana e, no meio da área branca abaixo dela, o texto Nenhuma receita ainda" width="390" height="844" loading="lazy"><figcaption>O texto no meio do espaço abaixo da barra.</figcaption></figure>
+
+<p>É a tela típica de "lista vazia". Repare que o meio é o meio do <strong><code>body</code></strong>, não da tela inteira: a barra do título não conta.</p>
+
+<hr>
+
+<h2>2. <code>Align</code>: os nove pontos</h2>
+<p>O <code>Align</code> recebe um <code>alignment</code> com o ponto onde o filho vai. Os valores prontos são nove, com nomes em inglês que combinam <strong>top/center/bottom</strong> (cima/meio/baixo) com <strong>Left/Center/Right</strong> (esquerda/meio/direita). Para ver os nove de uma vez, este app usa um <code>Stack</code> (aula <a href="stack.html">Stack e Positioned</a>) com nove <code>Align</code> dentro de um quadro cinza:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class Etiqueta extends StatelessWidget {
+  const Etiqueta(this.alinhamento, this.nome, {super.key});
+
+  final Alignment alinhamento;
+  final String nome;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: alinhamento,
+      child: Container(
+        color: Colors.indigo,
+        padding: const EdgeInsets.all(4),
+        child: Text(nome, style: const TextStyle(color: Colors.white, fontSize: 13)),
+      ),
+    );
+  }
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Alignment')),
+        body: Container(
+          height: 360,
+          margin: const EdgeInsets.all(12),
+          color: Colors.grey.shade300,
+          child: const Stack(
+            children: [
+              Etiqueta(Alignment.topLeft, 'topLeft'),
+              Etiqueta(Alignment.topCenter, 'topCenter'),
+              Etiqueta(Alignment.topRight, 'topRight'),
+              Etiqueta(Alignment.centerLeft, 'centerLeft'),
+              Etiqueta(Alignment.center, 'center'),
+              Etiqueta(Alignment.centerRight, 'centerRight'),
+              Etiqueta(Alignment.bottomLeft, 'bottomLeft'),
+              Etiqueta(Alignment.bottomCenter, 'bottomCenter'),
+              Etiqueta(Alignment.bottomRight, 'bottomRight'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<figure class="tela"><img src="assets/telas/center-align-2.png" alt="Um quadro cinza com nove etiquetas azuis: topLeft, topCenter e topRight na borda de cima; centerLeft, center e centerRight no meio; bottomLeft, bottomCenter e bottomRight na borda de baixo, cada uma no seu canto ou meio de lado" width="390" height="844" loading="lazy"><figcaption>Os nove valores prontos do <code>Alignment</code>, cada etiqueta no seu ponto do quadro cinza.</figcaption></figure>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th></th><th>Left (esquerda)</th><th>Center (meio)</th><th>Right (direita)</th></tr>
+<tr><th>top (cima)</th><td><code>topLeft</code></td><td><code>topCenter</code></td><td><code>topRight</code></td></tr>
+<tr><th>center (meio)</th><td><code>centerLeft</code></td><td><code>center</code></td><td><code>centerRight</code></td></tr>
+<tr><th>bottom (baixo)</th><td><code>bottomLeft</code></td><td><code>bottomCenter</code></td><td><code>bottomRight</code></td></tr>
+</table>
+</div>
+
+<div class="tryflutter" data-goal="src:alignment:\s*Alignment\.bottomRight">
+<p class="try-task"><strong>Missão:</strong> o botão de "nova receita" deve ficar no <strong>canto de baixo, à direita</strong> da tela. Troque o <code>alignment</code> do <code>Align</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: Icon(Icons.add_circle, size: 64, color: Colors.deepPurple),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Align(
+            alignment: Alignment.bottomRight,
+            child: Icon(Icons.add_circle, size: 64, color: Colors.deepPurple),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>3. Um ponto qualquer: <code>Alignment(x, y)</code></h2>
+<p>Os nove nomes são atalhos para <strong>números</strong>. Por dentro, um <code>Alignment</code> é um par <code>(x, y)</code>, em que:</p>
+<ul>
+  <li><code>x</code> vai de <strong>-1</strong> (borda esquerda) a <strong>1</strong> (borda direita), com <strong>0</strong> no meio;</li>
+  <li><code>y</code> vai de <strong>-1</strong> (borda de cima) a <strong>1</strong> (borda de baixo), com <strong>0</strong> no meio.</li>
+</ul>
+<pre>(-1,-1) ────── (0,-1) ────── (1,-1)
+   │              │              │
+(-1, 0) ────── (0, 0) ────── (1, 0)
+   │              │              │
+(-1, 1) ────── (0, 1) ────── (1, 1)</pre>
+<p>Então <code>Alignment.topLeft</code> é <code>Alignment(-1, -1)</code>, <code>Alignment.center</code> é <code>Alignment(0, 0)</code> e <code>Alignment.bottomRight</code> é <code>Alignment(1, 1)</code>. Com números, você escolhe qualquer ponto intermediário:</p>
+
+<pre class="file" data-file="lib/main.dart (só o body)">        body: Container(
+          height: 360,
+          margin: const EdgeInsets.all(12),
+          color: Colors.grey.shade300,
+          child: const Stack(
+            children: [
+              Align(alignment: Alignment(0, 0), child: Icon(Icons.circle, size: 32)),
+              Align(alignment: Alignment(0.5, -0.5), child: Icon(Icons.star, size: 32, color: Colors.amber)),
+              Align(alignment: Alignment(-0.8, 0.8), child: Icon(Icons.favorite, size: 32, color: Colors.red)),
+            ],
+          ),
+        ),
+</pre>
+
+<figure class="tela"><img src="assets/telas/center-align-3.png" alt="Um quadro cinza com um círculo preto no centro, uma estrela amarela entre o centro e o canto de cima à direita, e um coração vermelho perto do canto de baixo à esquerda" width="390" height="844" loading="lazy"><figcaption>O círculo em (0, 0), a estrela em (0.5, -0.5) e o coração em (-0.8, 0.8).</figcaption></figure>
+
+<p>O círculo, em (0, 0), está no meio do quadro. A estrela, em (0.5, -0.5), está a meio caminho entre o meio e o canto de cima à direita. O coração, em (-0.8, 0.8), está quase no canto de baixo à esquerda, mas não encostado (encostado seria -1, 1). Repare que é o <strong>ícone inteiro</strong> que se alinha: em (1, 1), a borda de baixo à direita do ícone encostaria na borda do quadro, sem sair dele.</p>
+
+<hr>
+
+<h2>4. O atalho do <code>Container</code></h2>
+<p>O <a href="container.html">Container</a> tem um parâmetro <code>alignment:</code>, que faz o mesmo que embrulhar o filho num <code>Align</code>. É útil quando a caixa já tem cor ou tamanho:</p>
+
+<pre class="file" data-file="lib/main.dart (só o body)">        body: Container(
+          height: 200,
+          color: Colors.orange.shade100,
+          alignment: Alignment.bottomCenter,
+          child: const Text('Bolo de cenoura', style: TextStyle(fontSize: 24)),
+        ),
+</pre>
+
+<figure class="tela"><img src="assets/telas/center-align-4.png" alt="Abaixo da barra, uma faixa laranja-clara da largura da tela, com o texto Bolo de cenoura no meio da borda de baixo" width="390" height="844" loading="lazy"><figcaption>Uma faixa laranja-clara de 200 de altura com o texto no meio de baixo.</figcaption></figure>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer</h2>
+<p>O <code>Center</code> é só um <code>Align</code> com o <code>alignment</code> já escolhido. Estas três escritas dão a mesma tela:</p>
+<pre class="file" data-file="tres-formas.dart">const Center(child: Text('Oi'))
+
+const Align(alignment: Alignment.center, child: Text('Oi'))
+
+Container(alignment: Alignment.center, child: const Text('Oi'))
+</pre>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Quero…</th><th>Use</th></tr>
+<tr><td>Um widget no meio</td><td><code>Center</code> (o mais claro de ler)</td></tr>
+<tr><td>Um widget num canto ou num ponto qualquer</td><td><code>Align(alignment: …)</code></td></tr>
+<tr><td>Alinhar o filho de uma caixa que já tem cor/tamanho</td><td><code>Container(alignment: …)</code></td></tr>
+<tr><td><strong>Vários</strong> widgets no meio</td><td><code>Column</code>/<code>Row</code> com <code>mainAxisAlignment: MainAxisAlignment.center</code> (aula <a href="alinhamento.html">Alinhamento</a>), ou um <code>Center</code> em volta da <code>Column</code> com <code>mainAxisSize: MainAxisSize.min</code></td></tr>
+<tr><td>Um widget preso às bordas, a uma distância exata</td><td><code>Positioned</code> dentro de um <code>Stack</code> (aula <a href="stack.html">Stack e Positioned</a>)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>"O <code>Center</code> não centralizou na altura!"</strong>
+<pre class="file" data-file="lib/main.dart (só o body)">        body: const Column(
+          children: [
+            Text('Minhas receitas', style: TextStyle(fontSize: 24)),
+            Center(child: Text('Nenhuma receita ainda', style: TextStyle(fontSize: 18))),
+          ],
+        ),
+</pre>
+<figure class="tela"><img src="assets/telas/center-align-5.png" alt="Barra Receitas da Ana; logo abaixo, Minhas receitas e Nenhuma receita ainda, centralizados na largura, mas lá no alto da tela" width="390" height="844" loading="lazy"><figcaption>O <code>Center</code> centralizou na largura, mas o texto ficou lá em cima, colado no título.</figcaption></figure>
+<p>Dentro de uma <code>Column</code>, cada filho recebe altura <strong>sem limite</strong> (a coluna não sabe quantos filhos ainda vêm). O <code>Center</code> não pode ocupar uma altura infinita, então fica da altura do filho, e "centralizar na altura" dentro de um espaço do tamanho do próprio texto não move nada. Na largura, ele tinha os 390 da tela, e centralizou (e, de quebra, deixou a coluna da largura toda, por isso o "Minhas receitas" também ficou no meio). A explicação completa está em <a href="constraints.html">Como o Flutter Calcula Tamanhos</a>. <strong>Como consertar:</strong> para centralizar o resto da tela, embrulhe o <code>Center</code> num <code>Expanded</code> (ele passa a ter a altura que sobra): <code>Expanded(child: Center(child: Text(…)))</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Deu <code>children</code> ao <code>Center</code></strong>
+<pre class="file" data-file="lib/main.dart (só o body)">        body: const Center(
+          children: [Text('Bolo'), Text('Pudim')],
+        ),
+</pre>
+<pre class="term">$ flutter build web
+«  (…)
+lib/main.dart:15:11:
+Error: No named parameter with the name 'children'.
+          children: [Text('Bolo'), Text('Pudim')],
+          ^^^^^^^^
+…/packages/flutter/lib/src/widgets/basic.dart:2569:9:
+Info: Found this candidate, but the arguments don't match.
+  const Center({super.key, super.widthFactor, super.heightFactor, super.child});
+        ^^^^^^
+Error: Compilation failed.
+Error: Failed to compile application for the Web.
+</pre>
+<p>"Não existe parâmetro com o nome <code>children</code>." O construtor do <code>Center</code>, que o compilador mostra, aceita só <code>key</code>, <code>widthFactor</code>, <code>heightFactor</code> e <code>child</code> (um filho). <strong>Como consertar:</strong> para centralizar vários widgets, ponha-os numa <code>Column</code> e a <code>Column</code> dentro do <code>Center</code>: <code>Center(child: Column(mainAxisSize: MainAxisSize.min, children: [ … ]))</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>Center(child: w)</code></td><td>Ocupa o espaço que tiver e põe <code>w</code> no meio</td></tr>
+<tr><td><code>Align(alignment: Alignment.topRight, child: w)</code></td><td>Põe <code>w</code> no ponto escolhido</td></tr>
+<tr><td><code>Alignment(x, y)</code></td><td>Um ponto qualquer; <code>x</code> e <code>y</code> de -1 a 1, (0, 0) é o meio</td></tr>
+<tr><td><code>Container(alignment: …, child: w)</code></td><td>O mesmo que um <code>Align</code> dentro da caixa</td></tr>
+<tr><td><code>Center(widthFactor: 2, child: w)</code></td><td>Em vez de ocupar tudo, fica com o dobro da largura de <code>w</code> (o mesmo para <code>heightFactor</code>)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">1. Qual <code>Alignment</code> é o mesmo que <code>Alignment(1, -1)</code>?</p>
+<label><input type="radio" name="q1"> <code>bottomLeft</code></label>
+<label><input type="radio" name="q1"> <code>topRight</code></label>
+<label><input type="radio" name="q1"> <code>bottomRight</code></label>
+<label><input type="radio" name="q1"> <code>topLeft</code></label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">2. Quantos filhos o <code>Center</code> aceita?</p>
+<label><input type="radio" name="q2"> Nenhum</label>
+<label><input type="radio" name="q2"> Dois</label>
+<label><input type="radio" name="q2"> Quantos quiser, no <code>children</code></label>
+<label><input type="radio" name="q2"> Um, no <code>child</code></label>
+</div>
+
+<div class="exercise">
+<h3>3. Complete</h3>
+<p>Complete para o ícone ficar no meio da borda de baixo:</p>
+<div class="ex-code">const <input data-answer="Align" aria-label="widget">(<br>&nbsp;&nbsp;alignment: Alignment.<input data-answer="bottomCenter" aria-label="valor do Alignment">,<br>&nbsp;&nbsp;child: Icon(Icons.home),<br>)</div>
+</div>
+
+<h3>Missão final: a tela de lista vazia</h3>
+
+<div class="tryflutter" data-goal="src:Center\(">
+<p class="try-task"><strong>Missão:</strong> a mensagem de "lista vazia" ficou no canto. Embrulhe o <code>Text</code> num <code>Center</code> para ela ficar no meio da tela.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lista de compras')),
+        body: const Text('A lista está vazia', style: TextStyle(fontSize: 22)),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lista de compras')),
+        body: const Center(
+          child: Text('A lista está vazia', style: TextStyle(fontSize: 22)),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>Center</code> ocupa o espaço que o pai der e põe o filho no meio.</li>
+  <li><code>Align</code> põe o filho em qualquer ponto: os nove nomes (<code>topLeft</code> … <code>bottomRight</code>) ou <code>Alignment(x, y)</code> com números de -1 a 1.</li>
+  <li><code>Center</code> é um <code>Align</code> com <code>Alignment.center</code>; o <code>Container</code> tem o atalho <code>alignment:</code>.</li>
+  <li>O <code>Center</code> só centraliza numa direção se tiver espaço nela: dentro de uma <code>Column</code>, ele não tem altura para ocupar.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
