@@ -43,7 +43,7 @@
 <h2>A ideia: o intérprete</h2>
 <p>A Ana fala português; o celular "fala" Kotlin (Android) ou Swift (iOS). O plugin é o <strong>intérprete</strong> no meio: ela pede "tire uma foto" em Dart, ele traduz para a língua do aparelho, o aparelho abre a câmera, e o intérprete devolve a foto em Dart. Dois detalhes vêm dessa ideia:</p>
 <ol class="passo">
-  <li>O pedido <strong>demora</strong>: a pessoa ainda vai apontar a câmera e apertar o botão. Por isso as funções devolvem <code>Future</code> e se usa <code>await</code> (veja <a href="futurebuilder.html">FutureBuilder</a>).</li>
+  <li>O pedido <strong>demora</strong>: a pessoa ainda vai apontar a câmera e apertar o botão. Por isso as funções devolvem <code>Future</code> e se usa <code>await</code> (veja <a href="futurebuilder.html">FutureBuilder</a> e, no Guia Dart, <a href="https://wallysondevs.github.io/guia-dart/async-await.html">async e await</a>).</li>
   <li>O sistema do aparelho protege a privacidade: câmera e localização exigem <strong>permissão</strong>. O app tem de <strong>declarar</strong>, nos arquivos de cada plataforma, que vai usar o recurso (e por quê), e a pessoa tem de <strong>aceitar</strong> na hora.</li>
 </ol>
 
