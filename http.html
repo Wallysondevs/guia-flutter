@@ -484,13 +484,11 @@ class _TelaClientesState extends State&lt;TelaClientes&gt; {
 <div class="cenario">
 <strong>Esqueceu o <code>import</code> do pacote</strong>
 <p>Sem a linha <code>import 'package:http/http.dart' as http;</code>, o Dart não sabe quem é <code>http</code>, e o app nem compila:</p>
-<pre class="term">lib/main.dart:21:26:
-Error: Undefined name 'http'.
+<pre class="term">lib/main.dart:21:26: Error: Undefined name 'http'.
   final resposta = await http.get(url);
                          ^^^^
-Error: Compilation failed.
 </pre>
-<p>"Nome não definido: <code>http</code>". O <code>lib/main.dart:21:26</code> é o arquivo, a linha 21 e a coluna 26, onde o <code>^^^^</code> aponta: o Dart chegou no <code>http.get</code> e não sabe quem é <code>http</code>, porque o apelido só existe graças ao <code>as http</code> do <code>import</code>. (Saída do laboratório, que compila para a web; o compilador do Dart é o mesmo no <code>flutter run</code> do celular.) <strong>Como consertar:</strong> ponha de volta <code>import 'package:http/http.dart' as http;</code> no topo do arquivo.</p>
+<p>"Nome não definido: <code>http</code>". O <code>lib/main.dart:21:26</code> é o arquivo, a linha 21 e a coluna 26, onde o <code>^^^^</code> aponta: o Dart chegou no <code>http.get</code> e não sabe quem é <code>http</code>, porque o apelido só existe graças ao <code>as http</code> do <code>import</code>. (Saída do laboratório, que compila para a web; o compilador do Dart é o mesmo no <code>flutter run</code> do celular, que ainda acrescenta, no fim, <code>Error: Failed to compile application.</code>.) <strong>Como consertar:</strong> ponha de volta <code>import 'package:http/http.dart' as http;</code> no topo do arquivo.</p>
 </div>
 
 <div class="cenario">
