@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter CustomPaint — desenhando com Canvas e Paint | Guia Flutter</title>
+<meta name="description" content="Desenhar no Flutter com CustomPaint para quem nunca fez um app: CustomPainter, paint e shouldRepaint, Canvas, Paint, Offset e Size, drawRect, drawCircle, drawLine e drawArc, o sol da Ana e o gráfico de pizza das vendas da lojinha, e o que acontece de verdade com o CustomPaint sem tamanho.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">CustomPaint</span></h1>
+
+<p class="intro">Até aqui, toda tela foi montada com peças prontas: <code>Text</code>, <code>Icon</code>, <code>Container</code>. Mas e um gráfico de pizza das vendas, uma assinatura feita com o dedo, um velocímetro? Para isso, o Flutter dá um <strong>papel em branco e um pincel</strong>: o <code>CustomPaint</code>. Você escreve, em código, "um círculo amarelo aqui, uma linha laranja ali", e ele desenha. É o mesmo mecanismo que os próprios widgets do Flutter usam por dentro.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>As três peças: o widget <code>CustomPaint</code>, a sua classe <code>CustomPainter</code> e o método <code>paint(Canvas canvas, Size size)</code>.</li>
+  <li>A usar o <code>Paint</code> (o pincel: cor, espessura, preenchido ou só contorno).</li>
+  <li>As coordenadas: <code>Offset</code> (um ponto) e <code>Size</code> (o tamanho do papel), com o (0, 0) no canto de cima, à esquerda.</li>
+  <li>Os desenhos básicos: <code>drawRect</code>, <code>drawCircle</code>, <code>drawLine</code> e <code>drawArc</code>.</li>
+  <li>Para que serve o <code>shouldRepaint</code>.</li>
+  <li>O erro mais comum: o <code>CustomPaint</code> sem tamanho, e o que ele faz com o desenho.</li>
+</ul>
+</div>
+
+<hr>
+
+<h2>A ideia: o papel quadriculado</h2>
+<p>Imagine uma folha de papel quadriculado. Para dizer onde desenhar, você conta quadradinhos a partir do <strong>canto de cima, à esquerda</strong>: "3 para a direita, 5 para baixo". No Flutter é igual, só que em pixels:</p>
+<pre>
+(0,0) ───────── x cresce para a direita ─────────▶ (300,0)
+  │
+  │        • (150,150) = o centro de um papel 300 × 300
+  │
+  ▼ y cresce para BAIXO
+(0,300)                                           (300,300)
+</pre>
+<p>Repare: o <strong>y cresce para baixo</strong>, ao contrário do gráfico da escola. Um ponto é um <code>Offset(x, y)</code>; o tamanho do papel é um <code>Size(largura, altura)</code>.</p>
+
+<hr>
+
+<h2>1. O sol da Ana: o primeiro desenho</h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaDesenho(),
+    ));
+
+class TelaDesenho extends StatelessWidget {
+  const TelaDesenho({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('O sol da Ana')),
+      body: Center(
+        child: CustomPaint(
+          size: const Size(300, 300),
+          painter: SolPainter(),
+        ),
+      ),
+    );
+  }
+}
+
+class SolPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final fundo = Paint()..color = Colors.lightBlue.shade100;
+    canvas.drawRect(Offset.zero &amp; size, fundo);
+
+    final centro = Offset(size.width / 2, size.height / 2);
+    final amarelo = Paint()..color = Colors.amber;
+    canvas.drawCircle(centro, 60, amarelo);
+
+    final raio = Paint()
+      ..color = Colors.orange
+      ..strokeWidth = 6
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(centro + const Offset(0, -80), centro + const Offset(0, -120), raio);
+    canvas.drawLine(centro + const Offset(0, 80), centro + const Offset(0, 120), raio);
+    canvas.drawLine(centro + const Offset(-80, 0), centro + const Offset(-120, 0), raio);
+    canvas.drawLine(centro + const Offset(80, 0), centro + const Offset(120, 0), raio);
+  }
+
+  @override
+  bool shouldRepaint(SolPainter oldDelegate) =&gt; false;
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>CustomPaint(size: …, painter: …)</dt><dd>O widget que reserva um pedaço da tela para desenhar. O <code>size</code> é o tamanho do papel (300 × 300); o <code>painter</code>, quem desenha.</dd>
+  <dt>class SolPainter extends CustomPainter</dt><dd>A sua classe de desenho. Ela tem dois métodos obrigatórios: <code>paint</code> e <code>shouldRepaint</code>.</dd>
+  <dt>void paint(Canvas canvas, Size size)</dt><dd>Onde o desenho acontece. O <code>canvas</code> ("tela de pintura") tem os métodos <code>draw…</code>; o <code>size</code> é o tamanho do papel, para você desenhar proporcional a ele.</dd>
+  <dt>Paint()..color = Colors.lightBlue.shade100</dt><dd>O <strong>pincel</strong>. O <code>..</code> (cascata) configura o objeto recém-criado. Sem mais nada, o pincel <strong>preenche</strong> a forma.</dd>
+  <dt>canvas.drawRect(Offset.zero &amp; size, fundo)</dt><dd>Um retângulo. <code>Offset.zero &amp; size</code> é um atalho para "o retângulo que começa em (0, 0) e tem o tamanho do papel": o fundo inteiro.</dd>
+  <dt>Offset(size.width / 2, size.height / 2)</dt><dd>O centro do papel (150, 150), calculado a partir do tamanho.</dd>
+  <dt>canvas.drawCircle(centro, 60, amarelo)</dt><dd>Um círculo: o centro, o raio (60 pixels) e o pincel.</dd>
+  <dt>..strokeWidth = 6 / ..strokeCap = StrokeCap.round</dt><dd>Para linhas: a espessura do traço e a ponta arredondada.</dd>
+  <dt>canvas.drawLine(p1, p2, raio)</dt><dd>Uma linha do ponto <code>p1</code> ao <code>p2</code>. <code>centro + const Offset(0, -80)</code> é "80 pixels <strong>acima</strong> do centro" (y negativo = para cima).</dd>
+  <dt>bool shouldRepaint(…) =&gt; false</dt><dd>"Precisa redesenhar quando o widget for reconstruído?" Este desenho nunca muda, então <code>false</code>. (Mais na seção 3.)</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/custom-paint-1.png" alt="Tela O sol da Ana com um quadrado azul-claro no meio e, dentro dele, um círculo amarelo com quatro traços laranja de pontas arredondadas, em cima, embaixo, à esquerda e à direita" width="390" height="844" loading="lazy"><figcaption>O sol: fundo, círculo e quatro raios.</figcaption></figure>
+
+<div class="tryflutter" data-goal="src:(drawCircle[\s\S]*){3}" data-foto="assets/telas/custom-paint-4.png" data-foto-alt="O sol da Ana com dois olhos pretos redondos na parte de cima do círculo amarelo">
+<p class="try-task"><strong>Missão:</strong> dê olhos ao sol. Crie um pincel preto (<code>final preto = Paint()..color = Colors.black;</code>) e desenhe dois círculos de raio 8: um em <code>centro + const Offset(-20, -15)</code> e outro em <code>centro + const Offset(20, -15)</code> (lembre: y negativo é para cima).</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaDesenho(),
+    ));
+
+class TelaDesenho extends StatelessWidget {
+  const TelaDesenho({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('O sol da Ana')),
+      body: Center(
+        child: CustomPaint(
+          size: const Size(300, 300),
+          painter: SolPainter(),
+        ),
+      ),
+    );
+  }
+}
+
+class SolPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final fundo = Paint()..color = Colors.lightBlue.shade100;
+    canvas.drawRect(Offset.zero &amp; size, fundo);
+
+    final centro = Offset(size.width / 2, size.height / 2);
+    final amarelo = Paint()..color = Colors.amber;
+    canvas.drawCircle(centro, 60, amarelo);
+
+    final raio = Paint()
+      ..color = Colors.orange
+      ..strokeWidth = 6
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(centro + const Offset(0, -80), centro + const Offset(0, -120), raio);
+    canvas.drawLine(centro + const Offset(0, 80), centro + const Offset(0, 120), raio);
+    canvas.drawLine(centro + const Offset(-80, 0), centro + const Offset(-120, 0), raio);
+    canvas.drawLine(centro + const Offset(80, 0), centro + const Offset(120, 0), raio);
+  }
+
+  @override
+  bool shouldRepaint(SolPainter oldDelegate) =&gt; false;
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaDesenho(),
+    ));
+
+class TelaDesenho extends StatelessWidget {
+  const TelaDesenho({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('O sol da Ana')),
+      body: Center(
+        child: CustomPaint(
+          size: const Size(300, 300),
+          painter: SolPainter(),
+        ),
+      ),
+    );
+  }
+}
+
+class SolPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final fundo = Paint()..color = Colors.lightBlue.shade100;
+    canvas.drawRect(Offset.zero &amp; size, fundo);
+
+    final centro = Offset(size.width / 2, size.height / 2);
+    final amarelo = Paint()..color = Colors.amber;
+    canvas.drawCircle(centro, 60, amarelo);
+
+    final preto = Paint()..color = Colors.black;
+    canvas.drawCircle(centro + const Offset(-20, -15), 8, preto);
+    canvas.drawCircle(centro + const Offset(20, -15), 8, preto);
+
+    final raio = Paint()
+      ..color = Colors.orange
+      ..strokeWidth = 6
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(centro + const Offset(0, -80), centro + const Offset(0, -120), raio);
+    canvas.drawLine(centro + const Offset(0, 80), centro + const Offset(0, 120), raio);
+    canvas.drawLine(centro + const Offset(-80, 0), centro + const Offset(-120, 0), raio);
+    canvas.drawLine(centro + const Offset(80, 0), centro + const Offset(120, 0), raio);
+  }
+
+  @override
+  bool shouldRepaint(SolPainter oldDelegate) =&gt; false;
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>2. O pincel e os desenhos básicos</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Do <code>Paint</code></th><th>O que faz</th></tr>
+<tr><td><code>..color = Colors.red</code></td><td>A cor</td></tr>
+<tr><td><code>..style = PaintingStyle.fill</code></td><td>Preenche a forma (o padrão)</td></tr>
+<tr><td><code>..style = PaintingStyle.stroke</code></td><td>Só o contorno</td></tr>
+<tr><td><code>..strokeWidth = 4</code></td><td>Espessura do contorno e das linhas</td></tr>
+<tr><td><code>..strokeCap = StrokeCap.round</code></td><td>Ponta das linhas arredondada</td></tr>
+</table>
+</div>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Do <code>Canvas</code></th><th>Desenha</th></tr>
+<tr><td><code>drawRect(Rect, paint)</code></td><td>Retângulo (<code>Rect.fromLTWH(x, y, largura, altura)</code>)</td></tr>
+<tr><td><code>drawRRect(RRect, paint)</code></td><td>Retângulo de cantos redondos</td></tr>
+<tr><td><code>drawCircle(centro, raio, paint)</code></td><td>Círculo</td></tr>
+<tr><td><code>drawOval(Rect, paint)</code></td><td>Elipse dentro do retângulo</td></tr>
+<tr><td><code>drawLine(p1, p2, paint)</code></td><td>Linha</td></tr>
+<tr><td><code>drawArc(Rect, inicio, angulo, useCenter, paint)</code></td><td>Arco ou fatia (ângulos em radianos)</td></tr>
+<tr><td><code>drawPath(Path, paint)</code></td><td>Qualquer forma, ponto a ponto (<code>moveTo</code>, <code>lineTo</code>, <code>quadraticBezierTo</code>…)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>3. O gráfico de pizza das vendas</h2>
+<p>A lojinha da Ana vendeu, na semana, 50 cafés, 30 bolos e 20 pães de queijo. Um gráfico de pizza com <code>drawArc</code>:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'dart:math';
+
+import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaVendas(),
+    ));
+
+class TelaVendas extends StatelessWidget {
+  const TelaVendas({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Vendas da semana')),
+      body: Center(
+        child: CustomPaint(
+          size: const Size(260, 260),
+          painter: PizzaPainter(const [50, 30, 20]),
+        ),
+      ),
+    );
+  }
+}
+
+class PizzaPainter extends CustomPainter {
+  PizzaPainter(this.valores);
+
+  final List&lt;double&gt; valores;
+  static const cores = [Colors.orange, Colors.brown, Colors.teal];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final total = valores.reduce((a, b) =&gt; a + b);
+    final area = Offset.zero &amp; size;
+    var inicio = -pi / 2;
+    for (var i = 0; i &lt; valores.length; i++) {
+      final angulo = valores[i] / total * 2 * pi;
+      canvas.drawArc(area, inicio, angulo, true, Paint()..color = cores[i]);
+      inicio += angulo;
+    }
+    final borda = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4;
+    canvas.drawCircle(area.center, size.width / 2, borda);
+  }
+
+  @override
+  bool shouldRepaint(PizzaPainter oldDelegate) =&gt; oldDelegate.valores != valores;
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>import 'dart:math'</dt><dd>Traz o <code>pi</code> (3,14159…). Os ângulos do <code>Canvas</code> são em <strong>radianos</strong>: uma volta inteira é <code>2 * pi</code>.</dd>
+  <dt>PizzaPainter(this.valores)</dt><dd>O painter pode receber dados, como qualquer classe. Aqui, a lista de vendas.</dd>
+  <dt>var inicio = -pi / 2</dt><dd>O ângulo 0 aponta para a <strong>direita</strong> (3 horas no relógio). <code>-pi / 2</code> é um quarto de volta para trás: começa no <strong>topo</strong> (12 horas).</dd>
+  <dt>valores[i] / total * 2 * pi</dt><dd>O tamanho da fatia: a fração do total (50/100 = metade) vezes a volta inteira.</dd>
+  <dt>drawArc(area, inicio, angulo, true, …)</dt><dd>A fatia. O <code>true</code> (<code>useCenter</code>) liga as pontas do arco ao centro: vira fatia de pizza. Com <code>false</code>, seria só a "casca".</dd>
+  <dt>PaintingStyle.stroke</dt><dd>O círculo branco por cima é só contorno, para dar acabamento.</dd>
+  <dt>shouldRepaint: oldDelegate.valores != valores</dt><dd>Redesenha só se os dados mudaram. Quando a tela é reconstruída com os <strong>mesmos</strong> valores, o Flutter reaproveita o desenho anterior.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/custom-paint-2.png" alt="Tela Vendas da semana com um gráfico de pizza: metade direita laranja, uma fatia marrom embaixo à esquerda e uma fatia verde-azulada menor em cima à esquerda, com uma borda branca fina em volta" width="390" height="844" loading="lazy"><figcaption>Laranja: 50 cafés (metade). Marrom: 30 bolos. Verde-azulado: 20 pães de queijo.</figcaption></figure>
+
+<hr>
+
+<h2 id="formas">CustomPaint ou widgets prontos?</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Você quer…</th><th>Use</th></tr>
+<tr><td>Caixas, cantos redondos, sombras, gradientes</td><td><code>Container</code> + <a href="decoration.html">BoxDecoration</a></td></tr>
+<tr><td>Um círculo ou uma foto redonda</td><td><code>CircleAvatar</code> ou <code>ClipOval</code></td></tr>
+<tr><td>Um gráfico de pizza, um velocímetro, um desenho livre</td><td><code>CustomPaint</code></td></tr>
+<tr><td>Gráficos completos (eixos, legendas, toque)</td><td>Um pacote do <a href="pacotes.html">pub.dev</a> (ex.: <code>fl_chart</code>), que usa <code>CustomPaint</code> por dentro</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>O <code>CustomPaint</code> sem tamanho</strong>
+<p>A Ana apagou a linha <code>size: const Size(300, 300),</code> do sol. Não dá erro nenhum, nem no console. O resultado:</p>
+<figure class="tela"><img src="assets/telas/custom-paint-3.png" alt="Tela O sol da Ana com o sol amarelo e os quatro raios laranja no meio da tela, mas sem o quadrado azul-claro do fundo" width="390" height="844" loading="lazy"><figcaption>Sem <code>size</code>: o fundo sumiu, mas o sol continua lá.</figcaption></figure>
+<p>O que aconteceu, peça por peça:</p>
+<ul>
+  <li>Sem <code>size</code> e sem <code>child</code>, o <code>CustomPaint</code> tem <strong>0 × 0</strong>. O <code>Center</code> o coloca no meio da tela, e o <code>paint</code> recebe <code>size</code> = 0 × 0.</li>
+  <li>O fundo era <code>Offset.zero &amp; size</code>: um retângulo de 0 × 0. <strong>Sumiu.</strong></li>
+  <li>O centro, <code>size.width / 2</code>, virou (0, 0): o ponto onde está o papel de tamanho zero, que é o meio da tela.</li>
+  <li>O círculo (raio 60) e os raios (até 120 pixels) <strong>não dependem</strong> do tamanho: foram desenhados em volta desse ponto, por fora do papel. O <code>Canvas</code> não corta o que passa da borda.</li>
+</ul>
+<p>Aqui deu a impressão de que "quase funcionou". Num desenho todo proporcional ao <code>size</code> (como o gráfico de pizza, que usa <code>Offset.zero &amp; size</code> para as fatias), <strong>nada</strong> aparece. <strong>Como consertar:</strong> dê um <code>size</code> ao <code>CustomPaint</code>, ou um <code>child</code> que tenha tamanho (o papel fica do tamanho do filho), ou ponha o <code>CustomPaint</code> num lugar que o estique (ex.: <code>SizedBox.expand</code>).</p>
+</div>
+
+<div class="cenario">
+<strong>Desenhou fora do papel de propósito? Corte com <code>ClipRect</code></strong>
+<p>Como o <code>Canvas</code> não corta nada, um desenho que passa da borda invade os widgets vizinhos. Se quiser que o que passar da borda suma, embrulhe o <code>CustomPaint</code> num <code>ClipRect</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>CustomPaint(size: Size(l, a), painter: X())</code></td><td>Reserva um papel de l × a e desenha com <code>X</code></td></tr>
+<tr><td><code>class X extends CustomPainter</code></td><td>A classe que desenha</td></tr>
+<tr><td><code>void paint(Canvas canvas, Size size)</code></td><td>Onde se desenha</td></tr>
+<tr><td><code>bool shouldRepaint(X old)</code></td><td>Redesenhar quando reconstruir?</td></tr>
+<tr><td><code>Offset(x, y)</code> / <code>Size(l, a)</code></td><td>Um ponto / um tamanho; (0, 0) no canto de cima à esquerda, y para baixo</td></tr>
+<tr><td><code>Offset.zero &amp; size</code></td><td>O retângulo do papel inteiro</td></tr>
+<tr><td><code>Paint()..color = …..style = …..strokeWidth = …</code></td><td>O pincel</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">1. Num papel de 200 × 200, onde fica o ponto <code>Offset(0, 200)</code>?</p>
+<label><input type="radio" name="q1"> No canto de cima, à esquerda</label>
+<label><input type="radio" name="q1"> No canto de baixo, à esquerda</label>
+<label><input type="radio" name="q1"> No canto de cima, à direita</label>
+<label><input type="radio" name="q1"> No centro</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">2. Como desenhar só o contorno de um círculo, sem preencher?</p>
+<label><input type="radio" name="q2"> <code>canvas.drawLine</code> em volta</label>
+<label><input type="radio" name="q2"> <code>Paint()..color = Colors.transparent</code></label>
+<label><input type="radio" name="q2"> <code>Paint()..style = PaintingStyle.stroke</code></label>
+<label><input type="radio" name="q2"> <code>canvas.drawOval</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">3. Um <code>CustomPaint</code> com <code>painter</code>, mas sem <code>size</code> e sem <code>child</code>, dentro de um <code>Center</code>. Qual é o tamanho do <code>size</code> que o <code>paint</code> recebe?</p>
+<label><input type="radio" name="q3"> 0 × 0</label>
+<label><input type="radio" name="q3"> O tamanho da tela inteira</label>
+<label><input type="radio" name="q3"> 300 × 300, o padrão</label>
+<label><input type="radio" name="q3"> Dá erro de compilação</label>
+</div>
+
+<h3>Missão final: a quarta fatia</h3>
+
+<div class="tryflutter" data-goal="src:PizzaPainter\(const \[\s*50,\s*30,\s*20,\s*25\s*\]\);;src:cores = \[[^\]]*,[^\]]*,[^\]]*,[^\]]*\]" data-foto="assets/telas/custom-paint-5.png" data-foto-alt="O gráfico de pizza com quatro fatias: laranja, marrom, verde-azulada e uma roxa nova">
+<p class="try-task"><strong>Missão:</strong> a lojinha começou a vender suco: 25 na semana. Acrescente o <code>25</code> no fim da lista de valores e uma quarta cor (<code>Colors.purple</code>) no fim de <code>cores</code>. O <code>paint</code> não precisa mudar: ele já calcula as fatias para qualquer quantidade de valores. (O que acontece se você puser o valor e esquecer a cor? Experimente e leia o erro no console.)</p>
+<pre class="script" data-file="main.dart">import 'dart:math';
+
+import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaVendas(),
+    ));
+
+class TelaVendas extends StatelessWidget {
+  const TelaVendas({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Vendas da semana')),
+      body: Center(
+        child: CustomPaint(
+          size: const Size(260, 260),
+          painter: PizzaPainter(const [50, 30, 20]),
+        ),
+      ),
+    );
+  }
+}
+
+class PizzaPainter extends CustomPainter {
+  PizzaPainter(this.valores);
+
+  final List&lt;double&gt; valores;
+  static const cores = [Colors.orange, Colors.brown, Colors.teal];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final total = valores.reduce((a, b) =&gt; a + b);
+    final area = Offset.zero &amp; size;
+    var inicio = -pi / 2;
+    for (var i = 0; i &lt; valores.length; i++) {
+      final angulo = valores[i] / total * 2 * pi;
+      canvas.drawArc(area, inicio, angulo, true, Paint()..color = cores[i]);
+      inicio += angulo;
+    }
+    final borda = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4;
+    canvas.drawCircle(area.center, size.width / 2, borda);
+  }
+
+  @override
+  bool shouldRepaint(PizzaPainter oldDelegate) =&gt; oldDelegate.valores != valores;
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'dart:math';
+
+import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaVendas(),
+    ));
+
+class TelaVendas extends StatelessWidget {
+  const TelaVendas({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Vendas da semana')),
+      body: Center(
+        child: CustomPaint(
+          size: const Size(260, 260),
+          painter: PizzaPainter(const [50, 30, 20, 25]),
+        ),
+      ),
+    );
+  }
+}
+
+class PizzaPainter extends CustomPainter {
+  PizzaPainter(this.valores);
+
+  final List&lt;double&gt; valores;
+  static const cores = [Colors.orange, Colors.brown, Colors.teal, Colors.purple];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final total = valores.reduce((a, b) =&gt; a + b);
+    final area = Offset.zero &amp; size;
+    var inicio = -pi / 2;
+    for (var i = 0; i &lt; valores.length; i++) {
+      final angulo = valores[i] / total * 2 * pi;
+      canvas.drawArc(area, inicio, angulo, true, Paint()..color = cores[i]);
+      inicio += angulo;
+    }
+    final borda = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4;
+    canvas.drawCircle(area.center, size.width / 2, borda);
+  }
+
+  @override
+  bool shouldRepaint(PizzaPainter oldDelegate) =&gt; oldDelegate.valores != valores;
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>CustomPaint</code> reserva o papel; a sua classe <code>CustomPainter</code> desenha no <code>paint(canvas, size)</code>.</li>
+  <li>O <code>Paint</code> é o pincel (cor, preenchido ou contorno, espessura); o <code>Canvas</code> tem os <code>draw…</code>.</li>
+  <li>(0, 0) é o canto de cima à esquerda, e o y cresce para baixo. Ângulos em radianos, com o 0 apontando para a direita.</li>
+  <li><code>shouldRepaint</code> diz se vale redesenhar; devolva <code>true</code> só quando os dados mudarem.</li>
+  <li>Dê um tamanho ao <code>CustomPaint</code> (<code>size</code> ou um <code>child</code>): sem ele, o papel tem 0 × 0, o que depende do tamanho some e o resto é desenhado sem limite em volta de um ponto.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
