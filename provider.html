@@ -1,0 +1,1046 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Provider — compartilhando o estado entre telas | Guia Flutter</title>
+<meta name="description" content="O pacote provider do Flutter para quem nunca fez um app: ChangeNotifier e notifyListeners, ChangeNotifierProvider no topo do app, context.watch, context.read, context.select e Consumer, MultiProvider, o carrinho da lojinha da Ana e os erros reais (ProviderNotFoundException, watch fora do build, notifyListeners esquecido).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Provider</span></h1>
+
+<p class="intro">Na aula <a href="inherited-widget.html">InheritedWidget</a> você viu como o Flutter entrega um dado para qualquer widget lá embaixo na árvore, sem passar de mão em mão. Funciona, mas dá trabalho: é muita classe para escrever. O <strong>provider</strong> (em inglês, "fornecedor") é um pacote que faz esse trabalho por você. Ele é, há anos, o jeito <strong>recomendado na documentação oficial do Flutter</strong> para começar a gerenciar estado que várias telas usam: o carrinho da lojinha, o usuário que fez login, o tema escolhido.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A instalar o pacote <code>provider</code> com <code>flutter pub add</code>.</li>
+  <li>A escrever uma classe de estado com <code>ChangeNotifier</code> e avisar as mudanças com <code>notifyListeners()</code>.</li>
+  <li>A colocar o estado no topo do app com <code>ChangeNotifierProvider</code>.</li>
+  <li>A diferença entre <code>context.watch</code> (olhar e se redesenhar), <code>context.read</code> (só usar) e <code>context.select</code> (olhar só uma parte).</li>
+  <li>O widget <code>Consumer</code>, que redesenha só um pedacinho da tela.</li>
+  <li>A juntar vários estados com <code>MultiProvider</code>.</li>
+  <li>Os erros reais: <code>ProviderNotFoundException</code>, o <code>watch</code> fora do <code>build</code> e o <code>notifyListeners</code> esquecido.</li>
+</ul>
+</div>
+
+<p>Versões desta aula: <span class="versao">provider 6.1.5+1</span>, a versão mais nova no <a href="https://pub.dev/packages/provider">pub.dev</a> em outubro de 2026, e o Flutter estável do laboratório da Ana (usuária <code>ana</code>, computador <code>notebook</code>).</p>
+
+<hr>
+
+<h2>A ideia: o quadro de avisos da cozinha</h2>
+<p>Na casa da Ana, a lista de compras fica num <strong>quadro de avisos</strong> na porta da geladeira. Quem acaba com o café escreve "café" no quadro. Quem vai ao mercado <strong>olha</strong> o quadro antes de sair. Ninguém precisa ligar para ninguém: o quadro está num lugar que todo mundo enxerga.</p>
+<ol class="passo">
+  <li>O <strong>quadro</strong> é a classe de estado (o <code>ChangeNotifier</code>): guarda os dados e sabe mudá-los.</li>
+  <li>Pendurar o quadro na <strong>porta da geladeira</strong>, onde todos passam, é o <code>ChangeNotifierProvider</code>: ele fica no alto da árvore de widgets, e todo widget abaixo dele alcança o quadro.</li>
+  <li>Quem <strong>fica de olho</strong> no quadro (o ícone do carrinho, que mostra quantos itens tem) usa <code>context.watch</code>: toda vez que o quadro muda, ele se redesenha.</li>
+  <li>Quem só <strong>escreve</strong> no quadro (o botão "adicionar") usa <code>context.read</code>: ele não precisa se redesenhar quando o quadro muda.</li>
+</ol>
+<p>Sem o provider, o carrinho teria de ficar num <code>StatefulWidget</code> lá no alto, e a lista de itens e a função de adicionar desceriam de construtor em construtor, por widgets que nem usam esses dados (veja <a href="elevar-estado.html">Passando Dados e Elevando o Estado</a>). Com o provider, quem precisa pega direto do "quadro".</p>
+
+<pre>
+ChangeNotifierProvider&lt;Carrinho&gt;      « o quadro pendurado aqui em cima
+ └─ MaterialApp
+     └─ TelaProdutos
+         ├─ AppBar
+         │   └─ IconeCarrinho          « context.watch: mostra o total
+         └─ ListView
+             └─ ListTile (× 3)
+                 └─ IconButton         « context.read: adiciona um item
+</pre>
+
+<hr>
+
+<h2>1. Instalar o pacote</h2>
+<p>O provider não vem com o Flutter: é um <strong>pacote</strong> do <a href="pacotes.html">pub.dev</a>. Na pasta do projeto, a Ana rodou:</p>
+
+<pre class="term">$ cd lojinha
+$ flutter pub add provider
+Resolving dependencies...
+Downloading packages...
+  cupertino_icons 1.0.9 (2.0.0 available)
+  material_color_utilities 0.13.0 (0.13.1 available)
+  meta 1.18.3 (1.19.0 available)
++ nested 1.0.0
++ provider 6.1.5+1
+  test_api 0.7.12 (0.7.15 available)
+Changed 2 dependencies!
+4 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+</pre>
+
+<dl class="anatomy">
+  <dt>Resolving dependencies… / Downloading packages…</dt><dd>"Resolvendo as dependências… baixando os pacotes…": o <code>pub</code> (o gerenciador de pacotes do Dart) escolhe as versões que combinam entre si e baixa o que falta.</dd>
+  <dt>+ provider 6.1.5+1</dt><dd>O <code>+</code> marca um pacote <strong>novo</strong> no projeto. Veio também o <code>nested</code>, que o provider usa por dentro.</dd>
+  <dt>cupertino_icons 1.0.9 (2.0.0 available)</dt><dd>Linhas sem <code>+</code> são pacotes que o projeto já tinha; entre parênteses, uma versão mais nova que existe mas não foi usada. Não é erro.</dd>
+  <dt>Changed 2 dependencies!</dt><dd>"2 dependências mudaram": o provider e o nested.</dd>
+</dl>
+
+<p>O comando acrescentou uma linha no <code>pubspec.yaml</code>, na seção <code>dependencies</code>:</p>
+
+<pre class="file" data-file="pubspec.yaml">dependencies:
+  flutter:
+    sdk: flutter
+  …
+  cupertino_icons: ^1.0.8
+  provider: ^6.1.5+1
+</pre>
+
+<p>O <code>^</code> quer dizer "esta versão ou qualquer 6.x mais nova": correções chegam sozinhas, mas uma versão 7 (que poderia quebrar o seu código) não. Os detalhes estão em <a href="pacotes.html">Pacotes do pub.dev</a>.</p>
+
+<hr>
+
+<h2>2. O estado: uma classe <code>ChangeNotifier</code></h2>
+<p>Primeiro, o "quadro". É uma classe Dart comum que <strong>estende</strong> <code>ChangeNotifier</code> (uma classe do próprio Flutter):</p>
+
+<pre class="file" data-file="lib/carrinho.dart">import 'package:flutter/foundation.dart';
+
+class Carrinho extends ChangeNotifier {
+  final List&lt;String&gt; _itens = [];
+
+  List&lt;String&gt; get itens =&gt; List.unmodifiable(_itens);
+  int get total =&gt; _itens.length;
+
+  void adicionar(String item) {
+    _itens.add(item);
+    notifyListeners();
+  }
+
+  void limpar() {
+    _itens.clear();
+    notifyListeners();
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>extends ChangeNotifier</dt><dd>"Avisador de mudanças". Dá à classe uma lista de <strong>ouvintes</strong> (quem quer saber quando algo muda) e o método <code>notifyListeners()</code>.</dd>
+  <dt>final List&lt;String&gt; _itens</dt><dd>Os dados de verdade. O <code>_</code> no começo do nome deixa a lista <strong>privada</strong>: de fora, ninguém consegue fazer <code>carrinho._itens.add(…)</code> escondido, sem avisar ninguém.</dd>
+  <dt>get itens / get total</dt><dd>O que os widgets podem <strong>ler</strong>. O <code>List.unmodifiable</code> devolve uma cópia que não aceita <code>add</code>: quem quiser mudar, tem de passar pelos métodos.</dd>
+  <dt>void adicionar(…)</dt><dd>O único jeito de mudar o carrinho: muda os dados e…</dd>
+  <dt>notifyListeners()</dt><dd>…avisa todos os ouvintes: "mudei!". É o equivalente do <code>setState</code> (veja <a href="setstate.html">setState</a>): sem esta linha, os dados mudam mas a tela não fica sabendo (veja <a href="#errado">Quando dá errado</a>).</dd>
+</dl>
+
+<p>Repare que essa classe <strong>não tem nada de tela</strong>: nenhum widget, nenhum <code>build</code>. Ela só guarda e muda dados. Isso é bom: dá para testar o carrinho sem abrir app nenhum.</p>
+
+<hr>
+
+<h2>3. Pendurar o quadro: <code>ChangeNotifierProvider</code></h2>
+<p>Agora o carrinho vai para o topo do app, acima do <code>MaterialApp</code>, para todas as telas o alcançarem:</p>
+
+<pre class="file" data-file="lib/main.dart">void main() {
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) =&gt; Carrinho(),
+      child: const LojinhaApp(),
+    ),
+  );
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>ChangeNotifierProvider</dt><dd>Um widget do pacote provider. Ele cria o <code>Carrinho</code>, guarda e "pendura" para os filhos, e se inscreve como ouvinte: quando o carrinho chama <code>notifyListeners()</code>, ele avisa os widgets que estão de olho.</dd>
+  <dt>create: (context) =&gt; Carrinho()</dt><dd>Uma função que <strong>cria</strong> o estado. O provider a chama uma vez só, na primeira vez que alguém pede o carrinho, e guarda o objeto. Ele também chama o <code>dispose()</code> do carrinho quando sai da árvore: você não precisa se preocupar com isso.</dd>
+  <dt>child: const LojinhaApp()</dt><dd>O resto do app. Tudo o que estiver aqui dentro alcança o carrinho.</dd>
+</dl>
+
+<div class="tip">
+<strong>Onde colocar o provider?</strong>
+<p>O mais alto que <strong>precisa</strong>, e não mais. Um carrinho que várias telas usam vai acima do <code>MaterialApp</code> (porque cada tela nova do <a href="navegacao.html">Navigator</a> nasce debaixo dele). Um estado que só uma tela usa pode ficar só em volta dessa tela.</p>
+</div>
+
+<hr>
+
+<h2>4. Ler o estado: <code>context.watch</code> e <code>context.read</code></h2>
+<p>O app completo da lojinha. O <code>import 'package:provider/provider.dart'</code> traz os métodos <code>watch</code> e <code>read</code> para dentro do <code>context</code>:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+class Carrinho extends ChangeNotifier {
+  final List&lt;String&gt; _itens = [];
+
+  List&lt;String&gt; get itens =&gt; List.unmodifiable(_itens);
+  int get total =&gt; _itens.length;
+
+  void adicionar(String item) {
+    _itens.add(item);
+    notifyListeners();
+  }
+
+  void limpar() {
+    _itens.clear();
+    notifyListeners();
+  }
+}
+
+void main() {
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) =&gt; Carrinho(),
+      child: const LojinhaApp(),
+    ),
+  );
+}
+
+class LojinhaApp extends StatelessWidget {
+  const LojinhaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaProdutos(),
+    );
+  }
+}
+
+class TelaProdutos extends StatelessWidget {
+  const TelaProdutos({super.key});
+
+  static const produtos = ['Café', 'Pão de queijo', 'Bolo de cenoura'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Lojinha da Ana'),
+        actions: const [IconeCarrinho()],
+      ),
+      body: ListView(
+        children: [
+          for (final produto in produtos)
+            ListTile(
+              title: Text(produto),
+              trailing: IconButton(
+                icon: const Icon(Icons.add_shopping_cart),
+                tooltip: 'Adicionar $produto',
+                onPressed: () =&gt; context.read&lt;Carrinho&gt;().adicionar(produto),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class IconeCarrinho extends StatelessWidget {
+  const IconeCarrinho({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final total = context.watch&lt;Carrinho&gt;().total;
+    return Padding(
+      padding: const EdgeInsets.only(right: 16),
+      child: Badge(
+        label: Text('$total'),
+        child: const Icon(Icons.shopping_cart),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>context.watch&lt;Carrinho&gt;()</dt><dd>"Me dê o carrinho <strong>e fique de olho nele</strong>." Devolve o <code>Carrinho</code> mais próximo acima deste widget, e inscreve o widget: a cada <code>notifyListeners()</code>, o <code>build</code> do <code>IconeCarrinho</code> roda de novo, e o número no selo muda. Use dentro do <code>build</code>.</dd>
+  <dt>context.read&lt;Carrinho&gt;()</dt><dd>"Me dê o carrinho, <strong>só isso</strong>." Não inscreve ninguém. É o certo dentro de <code>onPressed</code>: o botão só quer chamar <code>adicionar</code>; ele não muda de aparência quando o carrinho muda.</dd>
+  <dt>&lt;Carrinho&gt;</dt><dd>O <strong>tipo</strong> que você está procurando. O provider acha o estado pelo tipo: por isso cada tipo de estado tem a sua classe.</dd>
+  <dt>Badge</dt><dd>Um widget do Material 3 que desenha o selinho com o número sobre o ícone.</dd>
+</dl>
+
+<p>A tela, assim que o app abre (carrinho vazio):</p>
+<figure class="tela"><img src="assets/telas/provider-1.png" alt="App 'Lojinha da Ana': no topo, o título e um ícone de carrinho com um selo vermelho mostrando 0; embaixo, três linhas (Café, Pão de queijo, Bolo de cenoura), cada uma com um ícone de adicionar ao carrinho à direita" width="390" height="844" loading="lazy"><figcaption>O app ao abrir: o selo do carrinho mostra 0 (Flutter 3.47.7, tamanho de celular).</figcaption></figure>
+
+<p>Depois de um toque no carrinho do Café e outro no do Pão de queijo, o selo mostra <strong>2</strong>, e nada mais na tela mudou:</p>
+<figure class="tela"><img src="assets/telas/provider-2.png" alt="A mesma tela da Lojinha da Ana, agora com o selo do carrinho mostrando 2" width="390" height="844" loading="lazy"><figcaption>Depois de dois toques: só o selo mudou.</figcaption></figure>
+
+<p>Só o <code>IconeCarrinho</code> usa <code>watch</code>; por isso, quando o carrinho muda, <strong>só ele</strong> é redesenhado. A <code>TelaProdutos</code> inteira, com a lista, fica quieta. Num app pequeno, isso não faz diferença visível; num app com listas longas, faz.</p>
+
+<div class="tryflutter" data-goal="src:read&lt;Carrinho&gt;\(\)\s*\.limpar\(\)">
+<p class="try-task"><strong>Missão:</strong> rode o app e toque nos botões de adicionar para ver o selo subir. Depois, acrescente nas <code>actions</code> da <code>AppBar</code>, antes do <code>IconeCarrinho</code>, um <code>IconButton</code> com o ícone <code>Icons.delete_outline</code> que <strong>esvazia</strong> o carrinho (chame o <code>limpar()</code> com <code>context.read</code>). Dica: a lista deixa de ser <code>const</code>, e o <code>const</code> vai para dentro, no <code>IconeCarrinho()</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+class Carrinho extends ChangeNotifier {
+  final List&lt;String&gt; _itens = [];
+
+  List&lt;String&gt; get itens =&gt; List.unmodifiable(_itens);
+  int get total =&gt; _itens.length;
+
+  void adicionar(String item) {
+    _itens.add(item);
+    notifyListeners();
+  }
+
+  void limpar() {
+    _itens.clear();
+    notifyListeners();
+  }
+}
+
+void main() {
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) =&gt; Carrinho(),
+      child: const LojinhaApp(),
+    ),
+  );
+}
+
+class LojinhaApp extends StatelessWidget {
+  const LojinhaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaProdutos(),
+    );
+  }
+}
+
+class TelaProdutos extends StatelessWidget {
+  const TelaProdutos({super.key});
+
+  static const produtos = ['Café', 'Pão de queijo', 'Bolo de cenoura'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Lojinha da Ana'),
+        actions: const [IconeCarrinho()],
+      ),
+      body: ListView(
+        children: [
+          for (final produto in produtos)
+            ListTile(
+              title: Text(produto),
+              trailing: IconButton(
+                icon: const Icon(Icons.add_shopping_cart),
+                tooltip: 'Adicionar $produto',
+                onPressed: () =&gt; context.read&lt;Carrinho&gt;().adicionar(produto),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class IconeCarrinho extends StatelessWidget {
+  const IconeCarrinho({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final total = context.watch&lt;Carrinho&gt;().total;
+    return Padding(
+      padding: const EdgeInsets.only(right: 16),
+      child: Badge(
+        label: Text('$total'),
+        child: const Icon(Icons.shopping_cart),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+class Carrinho extends ChangeNotifier {
+  final List&lt;String&gt; _itens = [];
+
+  List&lt;String&gt; get itens =&gt; List.unmodifiable(_itens);
+  int get total =&gt; _itens.length;
+
+  void adicionar(String item) {
+    _itens.add(item);
+    notifyListeners();
+  }
+
+  void limpar() {
+    _itens.clear();
+    notifyListeners();
+  }
+}
+
+void main() {
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) =&gt; Carrinho(),
+      child: const LojinhaApp(),
+    ),
+  );
+}
+
+class LojinhaApp extends StatelessWidget {
+  const LojinhaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaProdutos(),
+    );
+  }
+}
+
+class TelaProdutos extends StatelessWidget {
+  const TelaProdutos({super.key});
+
+  static const produtos = ['Café', 'Pão de queijo', 'Bolo de cenoura'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Lojinha da Ana'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_outline),
+            tooltip: 'Limpar carrinho',
+            onPressed: () =&gt; context.read&lt;Carrinho&gt;().limpar(),
+          ),
+          const IconeCarrinho(),
+        ],
+      ),
+      body: ListView(
+        children: [
+          for (final produto in produtos)
+            ListTile(
+              title: Text(produto),
+              trailing: IconButton(
+                icon: const Icon(Icons.add_shopping_cart),
+                tooltip: 'Adicionar $produto',
+                onPressed: () =&gt; context.read&lt;Carrinho&gt;().adicionar(produto),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class IconeCarrinho extends StatelessWidget {
+  const IconeCarrinho({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final total = context.watch&lt;Carrinho&gt;().total;
+    return Padding(
+      padding: const EdgeInsets.only(right: 16),
+      child: Badge(
+        label: Text('$total'),
+        child: const Icon(Icons.shopping_cart),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>5. <code>Consumer</code>: redesenhar só um pedaço</h2>
+<p>O <code>watch</code> redesenha o widget <strong>inteiro</strong> onde ele está. Às vezes o estado é usado no meio de um <code>build</code> grande, e você quer redesenhar só um pedacinho. Para isso existe o widget <code>Consumer</code> ("consumidor"):</p>
+
+<pre class="file" data-file="trecho.dart">Consumer&lt;Carrinho&gt;(
+  builder: (context, carrinho, child) {
+    return Text('Itens no carrinho: ${carrinho.total}');
+  },
+)
+</pre>
+
+<dl class="anatomy">
+  <dt>Consumer&lt;Carrinho&gt;</dt><dd>Fica de olho no <code>Carrinho</code>, como o <code>watch</code>, mas só redesenha o que o <code>builder</code> devolve.</dd>
+  <dt>builder: (context, carrinho, child)</dt><dd>A função que monta o pedaço. O segundo parâmetro já é o carrinho, pronto para usar. O terceiro, <code>child</code>, é um widget opcional que você passa ao <code>Consumer</code> e que <strong>não</strong> é refeito a cada mudança (útil para um pedaço pesado que não depende do carrinho).</dd>
+</dl>
+
+<p>O <code>watch</code> e o <code>Consumer</code> fazem a mesma coisa; o <code>Consumer</code> é mais antigo e mais "verboso", mas é cômodo quando você não quer criar uma classe de widget nova só para isolar o redesenho.</p>
+
+<hr>
+
+<h2>6. <code>context.select</code>: olhar só uma parte</h2>
+<p>O <code>watch</code> redesenha a cada <code>notifyListeners()</code>, mesmo que a parte que o widget usa não tenha mudado. O <code>select</code> olha <strong>um valor só</strong> e só redesenha quando <strong>esse valor</strong> muda:</p>
+
+<pre class="file" data-file="trecho.dart">final total = context.select&lt;Carrinho, int&gt;((c) =&gt; c.total);
+</pre>
+
+<dl class="anatomy">
+  <dt>select&lt;Carrinho, int&gt;</dt><dd>O primeiro tipo é o estado; o segundo, o tipo do valor escolhido (aqui, um <code>int</code>).</dd>
+  <dt>(c) =&gt; c.total</dt><dd>A função que escolhe o valor. O widget só é redesenhado quando o resultado dela muda.</dd>
+</dl>
+
+<hr>
+
+<h2>7. Vários estados: <code>MultiProvider</code></h2>
+<p>Um app de verdade tem mais de um "quadro": o carrinho, o usuário, as preferências. Em vez de empilhar um provider dentro do outro, use o <code>MultiProvider</code>:</p>
+
+<pre class="file" data-file="lib/main.dart">void main() {
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) =&gt; Carrinho()),
+        ChangeNotifierProvider(create: (context) =&gt; Usuario()),
+        Provider(create: (context) =&gt; const Loja(nome: 'Lojinha da Ana')),
+      ],
+      child: const LojinhaApp(),
+    ),
+  );
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>providers: [ … ]</dt><dd>A lista de providers. Funciona exatamente como se um estivesse dentro do outro, na ordem da lista.</dd>
+  <dt>Provider(create: …)</dt><dd>O provider "simples": entrega um valor que <strong>não muda</strong> (não é <code>ChangeNotifier</code>), como uma configuração ou um serviço. Ninguém é redesenhado, porque ele nunca avisa mudança.</dd>
+</dl>
+
+<p>O pacote tem outros tipos (<code>FutureProvider</code>, <code>StreamProvider</code>, <code>ProxyProvider</code>…) para casos mais específicos; o <code>ChangeNotifierProvider</code> resolve a maior parte dos apps.</p>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer a mesma coisa</h2>
+<p>Ler o carrinho dentro de um widget tem quatro jeitos. Todos estão no pacote:</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Forma</th><th>Redesenha quando muda?</th><th>Quando usar</th></tr>
+<tr><td><code>context.watch&lt;Carrinho&gt;()</code></td><td>Sim, o widget inteiro</td><td>Dentro do <code>build</code>, para mostrar dados</td></tr>
+<tr><td><code>context.select&lt;Carrinho, int&gt;((c) =&gt; c.total)</code></td><td>Só quando o valor escolhido muda</td><td>Dentro do <code>build</code>, quando o widget usa só um pedaço do estado</td></tr>
+<tr><td><code>Consumer&lt;Carrinho&gt;(builder: …)</code></td><td>Sim, só o que o <code>builder</code> devolve</td><td>Para isolar o redesenho sem criar uma classe nova</td></tr>
+<tr><td><code>context.read&lt;Carrinho&gt;()</code></td><td>Não</td><td>Em <code>onPressed</code>, <code>onTap</code>, <code>initState</code>: para <strong>chamar</strong> métodos</td></tr>
+</table>
+</div>
+
+<p>Em código mais antigo você vai ver <code>Provider.of&lt;Carrinho&gt;(context)</code>, que é o mesmo que <code>watch</code>, e <code>Provider.of&lt;Carrinho&gt;(context, listen: false)</code>, que é o mesmo que <code>read</code>. Os métodos <code>watch</code>/<code>read</code> são só atalhos mais curtos.</p>
+
+<p>E fora do provider? A aula <a href="riverpod.html">Riverpod</a> mostra o "sucessor" escrito pelo mesmo autor, e <a href="bloc.html">Uma Olhada no BLoC</a> mostra outra escola. Para um estado que só um widget usa, continue com <code>setState</code>.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Esqueceu o <code>ChangeNotifierProvider</code>: <code>ProviderNotFoundException</code></strong>
+<p>A Ana apagou o provider do <code>main</code> e deixou só <code>runApp(const LojinhaApp());</code>. O <code>IconeCarrinho</code> pede o carrinho, e não há carrinho nenhum acima dele. No modo debug, o lugar do ícone virou um retângulo vermelho com o começo da mensagem (e, como a mensagem não cabe na barra, as listras amarelas e pretas de estouro ao lado):</p>
+<figure class="tela"><img src="assets/telas/provider-3.png" alt="Tela da Lojinha da Ana em que a barra de cima virou um retângulo vermelho com o texto amarelo 'Error: Could not find the correct Provider&lt;Carri…' e 'This happens because you used a BuildContext…', com listras amarelas e pretas na ponta direita; a lista de produtos aparece normal embaixo" width="390" height="844" loading="lazy"><figcaption>Sem o provider: a barra do app vira a tela vermelha de erro.</figcaption></figure>
+<p>No console, o começo da mensagem (o resto é uma lista de causas possíveis, com exemplos):</p>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following ProviderNotFoundException was thrown building IconeCarrinho(dirty):
+Error: Could not find the correct Provider&lt;Carrinho&gt; above this IconeCarrinho Widget
+
+This happens because you used a `BuildContext` that does not include the provider
+of your choice. There are a few common scenarios:
+
+- You added a new provider in your `main.dart` and performed a hot-reload.
+  To fix, perform a hot-restart.
+
+- The provider you are trying to read is in a different route.
+…
+- You used a `BuildContext` that is an ancestor of the provider you are trying to read.
+
+  Make sure that IconeCarrinho is under your MultiProvider/Provider&lt;Carrinho&gt;.
+…
+</pre>
+<dl class="anatomy">
+  <dt>ProviderNotFoundException … building IconeCarrinho</dt><dd>"Provider não encontrado", ao construir o <code>IconeCarrinho</code>: é ele que fez o pedido.</dd>
+  <dt>Could not find the correct Provider&lt;Carrinho&gt; above this IconeCarrinho Widget</dt><dd>"Não achei o <code>Provider&lt;Carrinho&gt;</code> <strong>acima</strong> deste widget." A palavra-chave é <em>above</em>: o provider tem de estar mais alto na árvore.</dd>
+  <dt>You added a new provider … performed a hot-reload</dt><dd>Primeira causa comum: você <strong>acabou</strong> de pôr o provider no <code>main</code> e só deu <a href="hot-reload.html">hot reload</a>. O <code>main</code> não roda de novo num hot reload; faça um hot restart.</dd>
+  <dt>in a different route</dt><dd>Segunda: o provider foi posto <strong>dentro</strong> de uma tela, e outra tela (outra rota do Navigator) tenta usá-lo. Suba o provider para acima do <code>MaterialApp</code>.</dd>
+  <dt>an ancestor of the provider</dt><dd>Terceira: o <code>context</code> usado é o de um widget <strong>acima</strong> do provider (por exemplo, o mesmo <code>build</code> que cria o provider tenta lê-lo).</dd>
+</dl>
+<p><strong>Como consertar:</strong> envolva o app com o <code>ChangeNotifierProvider</code> no <code>main</code>, como na seção 3, e reinicie o app. Confira também o <strong>tipo</strong>: <code>context.watch&lt;Carrinho&gt;()</code> só acha um provider de <code>Carrinho</code>.</p>
+</div>
+
+<div class="cenario">
+<strong><code>context.watch</code> dentro do <code>onPressed</code></strong>
+<p>A Ana trocou o <code>read</code> do botão por <code>watch</code>: <code>onPressed: () =&gt; context.watch&lt;Carrinho&gt;().adicionar(produto)</code>. O app abre normal, mas o toque <strong>não adiciona nada</strong>: o selo continua em 0. Para ler a mensagem inteira, ela rodou o mesmo toque num teste (<code>flutter test</code>, veja <a href="testes-widget.html">Testes de Widget</a>):</p>
+<pre class="term">$ flutter test
+══╡ EXCEPTION CAUGHT BY GESTURE ╞═══════════════════════════════════════════════════════════════════
+The following assertion was thrown while handling a gesture:
+Tried to listen to a value exposed with provider, from outside of the widget tree.
+
+This is likely caused by an event handler (like a button's onPressed) that called
+Provider.of without passing `listen: false`.
+
+To fix, write:
+Provider.of&lt;Carrinho&gt;(context, listen: false);
+
+It is unsupported because may pointlessly rebuild the widget associated to the
+event handler, when the widget tree doesn't care about the value.
+
+The context used was: TelaProdutos
+…
+When the exception was thrown, this was the stack:
+#2      Provider.of (package:provider/src/provider.dart:308:7)
+#3      WatchContext.watch (package:provider/src/provider.dart:727:21)
+#4      TelaProdutos.build.&lt;anonymous closure&gt; (package:app/main.dart:62:42)
+…
+</pre>
+<dl class="anatomy">
+  <dt>Tried to listen to a value … from outside of the widget tree</dt><dd>"Tentou ficar de olho num valor do provider de fora da árvore de widgets." Ficar de olho só faz sentido durante o <code>build</code>; o <code>onPressed</code> roda depois, quando o dedo toca a tela.</dd>
+  <dt>an event handler (like a button's onPressed)</dt><dd>"Um tratador de evento, como o <code>onPressed</code> de um botão": exatamente o caso.</dd>
+  <dt>To fix, write: Provider.of&lt;Carrinho&gt;(context, listen: false)</dt><dd>O conserto que ele sugere, na forma antiga. A forma curta é o <code>context.read&lt;Carrinho&gt;()</code>.</dd>
+  <dt>#4 TelaProdutos.build.&lt;anonymous closure&gt; (package:app/main.dart:62:42)</dt><dd>Onde está o erro: na função sem nome (<em>anonymous closure</em>, o <code>() =&gt; …</code> do <code>onPressed</code>) dentro do <code>build</code> da <code>TelaProdutos</code>, linha 62 do <code>main.dart</code>.</dd>
+</dl>
+<p><strong>Como consertar:</strong> em <code>onPressed</code>, <code>onTap</code> e afins, use <code>context.read</code>. Regra fácil: <strong><code>watch</code> só no <code>build</code></strong>, fora de funções de botão.</p>
+</div>
+
+<div class="cenario">
+<strong>Esqueceu o <code>notifyListeners()</code>: os dados mudam, a tela não</strong>
+<p>Este não dá erro nenhum. A Ana tirou o <code>notifyListeners()</code> do <code>adicionar</code> e pôs um <code>print</code> no lugar, para ver a lista:</p>
+<pre class="file" data-file="lib/main.dart">  void adicionar(String item) {
+    _itens.add(item);
+    print('Carrinho: $_itens');
+  }
+</pre>
+<p>Depois de dois toques, o console mostra a lista crescendo…</p>
+<pre class="term">Carrinho: [Café]
+Carrinho: [Café, Pão de queijo]
+</pre>
+<p>…mas o selo continua em <strong>0</strong>, igual à primeira foto da seção 4. O carrinho mudou, só que ninguém avisou o <code>IconeCarrinho</code>, então o <code>build</code> dele não rodou de novo. <strong>Como consertar:</strong> todo método que muda os dados termina com <code>notifyListeners()</code>.</p>
+</div>
+
+<div class="tryflutter" data-goal="src:void adicionar\(String item\) \{[^}]*notifyListeners\(\)">
+<p class="try-task"><strong>Missão:</strong> este é o carrinho sem aviso. Rode, toque nos botões e veja o selo parado em 0 (a lista aparece no console do DartPad). Conserte o método <code>adicionar</code> para o selo voltar a contar.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+class Carrinho extends ChangeNotifier {
+  final List&lt;String&gt; _itens = [];
+
+  List&lt;String&gt; get itens =&gt; List.unmodifiable(_itens);
+  int get total =&gt; _itens.length;
+
+  void adicionar(String item) {
+    _itens.add(item);
+    print('Carrinho: $_itens');
+  }
+
+  void limpar() {
+    _itens.clear();
+    notifyListeners();
+  }
+}
+
+void main() {
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) =&gt; Carrinho(),
+      child: const LojinhaApp(),
+    ),
+  );
+}
+
+class LojinhaApp extends StatelessWidget {
+  const LojinhaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaProdutos(),
+    );
+  }
+}
+
+class TelaProdutos extends StatelessWidget {
+  const TelaProdutos({super.key});
+
+  static const produtos = ['Café', 'Pão de queijo', 'Bolo de cenoura'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Lojinha da Ana'),
+        actions: const [IconeCarrinho()],
+      ),
+      body: ListView(
+        children: [
+          for (final produto in produtos)
+            ListTile(
+              title: Text(produto),
+              trailing: IconButton(
+                icon: const Icon(Icons.add_shopping_cart),
+                tooltip: 'Adicionar $produto',
+                onPressed: () =&gt; context.read&lt;Carrinho&gt;().adicionar(produto),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class IconeCarrinho extends StatelessWidget {
+  const IconeCarrinho({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final total = context.watch&lt;Carrinho&gt;().total;
+    return Padding(
+      padding: const EdgeInsets.only(right: 16),
+      child: Badge(
+        label: Text('$total'),
+        child: const Icon(Icons.shopping_cart),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+class Carrinho extends ChangeNotifier {
+  final List&lt;String&gt; _itens = [];
+
+  List&lt;String&gt; get itens =&gt; List.unmodifiable(_itens);
+  int get total =&gt; _itens.length;
+
+  void adicionar(String item) {
+    _itens.add(item);
+    print('Carrinho: $_itens');
+    notifyListeners();
+  }
+
+  void limpar() {
+    _itens.clear();
+    notifyListeners();
+  }
+}
+
+void main() {
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) =&gt; Carrinho(),
+      child: const LojinhaApp(),
+    ),
+  );
+}
+
+class LojinhaApp extends StatelessWidget {
+  const LojinhaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaProdutos(),
+    );
+  }
+}
+
+class TelaProdutos extends StatelessWidget {
+  const TelaProdutos({super.key});
+
+  static const produtos = ['Café', 'Pão de queijo', 'Bolo de cenoura'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Lojinha da Ana'),
+        actions: const [IconeCarrinho()],
+      ),
+      body: ListView(
+        children: [
+          for (final produto in produtos)
+            ListTile(
+              title: Text(produto),
+              trailing: IconButton(
+                icon: const Icon(Icons.add_shopping_cart),
+                tooltip: 'Adicionar $produto',
+                onPressed: () =&gt; context.read&lt;Carrinho&gt;().adicionar(produto),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class IconeCarrinho extends StatelessWidget {
+  const IconeCarrinho({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final total = context.watch&lt;Carrinho&gt;().total;
+    return Padding(
+      padding: const EdgeInsets.only(right: 16),
+      child: Badge(
+        label: Text('$total'),
+        child: const Icon(Icons.shopping_cart),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>flutter pub add provider</code></td><td>Instala o pacote</td></tr>
+<tr><td><code>class X extends ChangeNotifier</code></td><td>Classe de estado que avisa mudanças</td></tr>
+<tr><td><code>notifyListeners()</code></td><td>"Mudei!": faz quem está de olho se redesenhar</td></tr>
+<tr><td><code>ChangeNotifierProvider(create: (context) =&gt; X(), child: …)</code></td><td>Cria o estado e o entrega aos widgets abaixo</td></tr>
+<tr><td><code>MultiProvider(providers: [ … ], child: …)</code></td><td>Vários providers de uma vez</td></tr>
+<tr><td><code>context.watch&lt;X&gt;()</code></td><td>Lê e fica de olho (no <code>build</code>)</td></tr>
+<tr><td><code>context.read&lt;X&gt;()</code></td><td>Só lê (em <code>onPressed</code> e afins)</td></tr>
+<tr><td><code>context.select&lt;X, T&gt;((x) =&gt; …)</code></td><td>Fica de olho em um valor só</td></tr>
+<tr><td><code>Consumer&lt;X&gt;(builder: (context, x, child) =&gt; …)</code></td><td>Redesenha só um pedaço</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete a classe de estado</h3>
+<p>Complete para o contador avisar a tela a cada aumento:</p>
+<div class="ex-code">class Contador extends <input data-answer="ChangeNotifier" aria-label="classe base"> {<br>&nbsp;&nbsp;int valor = 0;<br>&nbsp;&nbsp;void aumentar() {<br>&nbsp;&nbsp;&nbsp;&nbsp;valor++;<br>&nbsp;&nbsp;&nbsp;&nbsp;<input data-answer="notifyListeners" aria-label="método que avisa">();<br>&nbsp;&nbsp;}<br>}</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. Um <code>ElevatedButton</code> precisa chamar <code>carrinho.limpar()</code> no <code>onPressed</code>. Qual forma usar?</p>
+<label><input type="radio" name="q2"> <code>context.watch&lt;Carrinho&gt;().limpar()</code></label>
+<label><input type="radio" name="q2"> <code>context.read&lt;Carrinho&gt;().limpar()</code></label>
+<label><input type="radio" name="q2"> <code>Carrinho().limpar()</code></label>
+<label><input type="radio" name="q2"> <code>setState(() =&gt; limpar())</code></label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. O app mostra <code>ProviderNotFoundException</code>. Qual é a causa mais provável?</p>
+<label><input type="radio" name="q3"> Faltou o <code>notifyListeners()</code></label>
+<label><input type="radio" name="q3"> O pacote está numa versão antiga</label>
+<label><input type="radio" name="q3"> O widget que pediu o estado não está abaixo do <code>ChangeNotifierProvider</code> na árvore</label>
+<label><input type="radio" name="q3"> Usou <code>read</code> no lugar de <code>watch</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. O botão adiciona o item (o <code>print</code> mostra a lista crescendo), mas o número na tela não muda. O que falta?</p>
+<label><input type="radio" name="q4"> O <code>notifyListeners()</code> no método que muda a lista</label>
+<label><input type="radio" name="q4"> Um <code>const</code> no widget</label>
+<label><input type="radio" name="q4"> Trocar <code>ChangeNotifierProvider</code> por <code>Provider</code></label>
+<label><input type="radio" name="q4"> Rodar <code>flutter pub get</code></label>
+</div>
+
+<h3>Missão final: a lista do carrinho com <code>Consumer</code></h3>
+
+<div class="tryflutter" data-goal="src:Consumer&lt;Carrinho&gt;\(;;src:\.itens" data-foto="assets/telas/provider-6.png" data-foto-alt="A Lojinha da Ana com o selo do carrinho em 2 e, no rodapé da tela, o texto Itens: Café, Bolo de cenoura">
+<p class="try-task"><strong>Missão:</strong> mostre, no rodapé da tela, quais itens estão no carrinho, como <code>Itens: Café, Bolo de cenoura</code>. Acrescente no <code>Scaffold</code> um <code>bottomNavigationBar</code> com um <code>Padding</code> e, dentro dele, um <code>Consumer&lt;Carrinho&gt;</code> cujo <code>builder</code> devolve <code>Text('Itens: ${carrinho.itens.join(', ')}')</code>. A foto abaixo é o app depois de um toque no Café e outro no Bolo de cenoura.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+class Carrinho extends ChangeNotifier {
+  final List&lt;String&gt; _itens = [];
+
+  List&lt;String&gt; get itens =&gt; List.unmodifiable(_itens);
+  int get total =&gt; _itens.length;
+
+  void adicionar(String item) {
+    _itens.add(item);
+    notifyListeners();
+  }
+
+  void limpar() {
+    _itens.clear();
+    notifyListeners();
+  }
+}
+
+void main() {
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) =&gt; Carrinho(),
+      child: const LojinhaApp(),
+    ),
+  );
+}
+
+class LojinhaApp extends StatelessWidget {
+  const LojinhaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaProdutos(),
+    );
+  }
+}
+
+class TelaProdutos extends StatelessWidget {
+  const TelaProdutos({super.key});
+
+  static const produtos = ['Café', 'Pão de queijo', 'Bolo de cenoura'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Lojinha da Ana'),
+        actions: const [IconeCarrinho()],
+      ),
+      body: ListView(
+        children: [
+          for (final produto in produtos)
+            ListTile(
+              title: Text(produto),
+              trailing: IconButton(
+                icon: const Icon(Icons.add_shopping_cart),
+                tooltip: 'Adicionar $produto',
+                onPressed: () =&gt; context.read&lt;Carrinho&gt;().adicionar(produto),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class IconeCarrinho extends StatelessWidget {
+  const IconeCarrinho({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final total = context.watch&lt;Carrinho&gt;().total;
+    return Padding(
+      padding: const EdgeInsets.only(right: 16),
+      child: Badge(
+        label: Text('$total'),
+        child: const Icon(Icons.shopping_cart),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+class Carrinho extends ChangeNotifier {
+  final List&lt;String&gt; _itens = [];
+
+  List&lt;String&gt; get itens =&gt; List.unmodifiable(_itens);
+  int get total =&gt; _itens.length;
+
+  void adicionar(String item) {
+    _itens.add(item);
+    notifyListeners();
+  }
+
+  void limpar() {
+    _itens.clear();
+    notifyListeners();
+  }
+}
+
+void main() {
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) =&gt; Carrinho(),
+      child: const LojinhaApp(),
+    ),
+  );
+}
+
+class LojinhaApp extends StatelessWidget {
+  const LojinhaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaProdutos(),
+    );
+  }
+}
+
+class TelaProdutos extends StatelessWidget {
+  const TelaProdutos({super.key});
+
+  static const produtos = ['Café', 'Pão de queijo', 'Bolo de cenoura'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Lojinha da Ana'),
+        actions: const [IconeCarrinho()],
+      ),
+      body: ListView(
+        children: [
+          for (final produto in produtos)
+            ListTile(
+              title: Text(produto),
+              trailing: IconButton(
+                icon: const Icon(Icons.add_shopping_cart),
+                tooltip: 'Adicionar $produto',
+                onPressed: () =&gt; context.read&lt;Carrinho&gt;().adicionar(produto),
+              ),
+            ),
+        ],
+      ),
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Consumer&lt;Carrinho&gt;(
+          builder: (context, carrinho, child) {
+            return Text('Itens: ${carrinho.itens.join(', ')}');
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class IconeCarrinho extends StatelessWidget {
+  const IconeCarrinho({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final total = context.watch&lt;Carrinho&gt;().total;
+    return Padding(
+      padding: const EdgeInsets.only(right: 16),
+      child: Badge(
+        label: Text('$total'),
+        child: const Icon(Icons.shopping_cart),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O provider guarda um estado <strong>acima</strong> dos widgets que o usam, e cada widget o pega pelo tipo, sem passar de construtor em construtor.</li>
+  <li>A classe de estado estende <code>ChangeNotifier</code>; todo método que muda os dados termina com <code>notifyListeners()</code>.</li>
+  <li><code>ChangeNotifierProvider(create: …, child: …)</code> cria o estado e o entrega a toda a subárvore; <code>MultiProvider</code> junta vários.</li>
+  <li><code>context.watch</code> no <code>build</code> para mostrar (e se redesenhar); <code>context.read</code> no <code>onPressed</code> para agir; <code>select</code> e <code>Consumer</code> para redesenhar menos.</li>
+  <li><code>ProviderNotFoundException</code> = o widget não está debaixo do provider (ou pediu o tipo errado).</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
