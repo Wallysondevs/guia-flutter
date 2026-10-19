@@ -143,12 +143,13 @@ class _TelaFornoState extends State&lt;TelaForno&gt; {
 <figure class="tela"><img src="assets/telas/streambuilder-2.png" alt="App Forno da Ana com o texto Bolo pronto!, grande e marrom, no meio da tela" width="390" height="844" loading="lazy"><figcaption>Depois do 0, a função terminou: o <code>Stream</code> ficou <code>done</code>, e o <code>builder</code> mostrou o aviso.</figcaption></figure>
 
 <p>Repare que o Dart não reclamou de o <code>switch</code> não ter <code>return</code> no fim: o <code>ConnectionState</code> tem exatamente quatro valores, e os quatro estão nos <code>case</code>. O Dart 3 confere isso sozinho (o <code>switch</code> é <strong>exaustivo</strong>). No laboratório, apagamos o <code>case ConnectionState.done:</code> (e o <code>return</code> dele), e o app parou de compilar:</p>
-<pre class="term">lib/main.dart:52:30:
-Error: The type 'ConnectionState' is not exhaustively matched by the switch cases since it doesn't match 'ConnectionState.done'.
+<pre class="term">lib/main.dart:52:30: Error: The type 'ConnectionState' is not exhaustively matched by the switch cases since it doesn't match 'ConnectionState.done'.
+ - 'ConnectionState' is from 'package:flutter/src/widgets/async.dart'.     « o caminho do arquivo dentro do Flutter foi cortado
+Try adding a default case or cases that match 'ConnectionState.done'.
             switch (snapshot.connectionState) {
                              ^
 </pre>
-<p>"O tipo <code>ConnectionState</code> não é coberto por inteiro pelos <code>case</code> do <code>switch</code>, porque falta <code>ConnectionState.done</code>." O <code>^</code> aponta o <code>switch</code> da linha 52, coluna 30. É uma ajuda: o Dart não deixa você esquecer um estado.</p>
+<p>"O tipo <code>ConnectionState</code> não é coberto por inteiro pelos <code>case</code> do <code>switch</code>, porque falta <code>ConnectionState.done</code>." A linha seguinte diz de onde vem o <code>ConnectionState</code> (do próprio Flutter), e a <code>Try adding…</code> sugere o conserto: "tente acrescentar um <code>default</code> ou os <code>case</code> que cubram <code>ConnectionState.done</code>". O <code>^</code> aponta o <code>switch</code> da linha 52, coluna 30. É uma ajuda: o Dart não deixa você esquecer um estado.</p>
 
 <div class="tryflutter" data-goal="src:segundos = 10">
 <p class="try-task"><strong>Missão:</strong> o próximo bolo precisa de mais forno. Faça a contagem começar em <strong>10</strong>.</p>
@@ -642,7 +643,7 @@ class _TelaPedidosState extends State&lt;TelaPedidos&gt; {
 </pre>
 </div>
 
-<figure class="tela"><img src="assets/telas/streambuilder-5.png" alt="App Pedidos da Padaria, já consertado, depois de dois toques em Novo pedido: no meio da tela, duas linhas, Balcão: Pedido nº 2: bolo de cenoura e Cozinha: Pedido nº 2: bolo de cenoura" width="390" height="844" loading="lazy"><figcaption>A solução no laboratório, depois de dois toques: o balcão e a cozinha recebem o mesmo pedido.</figcaption></figure>
+<figure class="tela"><img src="assets/telas/streambuilder-5.png" alt="App Pedidos da Padaria, já consertado, depois de dois toques em Novo pedido: na metade da altura, encostadas à esquerda, duas linhas, Balcão: Pedido nº 2: bolo de cenoura e Cozinha: Pedido nº 2: bolo de cenoura" width="390" height="844" loading="lazy"><figcaption>A solução no laboratório, depois de dois toques: o balcão e a cozinha recebem o mesmo pedido.</figcaption></figure>
 <p>Antes do primeiro toque, os dois textos mostram <code>null</code> (<code>Balcão: null</code>): ainda não passou nenhum pedido, e este exemplo não tem <code>initialData</code>. Como você resolveria isso? (Dica: o <code>initialData</code> da seção 2.)</p>
 
 <hr>
