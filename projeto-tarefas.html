@@ -1,0 +1,978 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Projeto: Lista de Tarefas — um app completo, passo a passo | Guia Flutter</title>
+<meta name="description" content="Projeto do Guia Flutter: a lista de tarefas da Ana em 3 versões. Versão 1 com ListView.builder e uma lista no estado; versão 2 com TextField, TextEditingController e o botão Adicionar; versão 3 com uma classe de modelo, CheckboxListTile para marcar como feita e Dismissible para apagar arrastando. Código completo, foto real de cada tela e o erro real do ListView dentro de Column.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Projeto: Lista de Tarefas</span></h1>
+
+<p class="intro">A lista de tarefas é o "olá, mundo" dos apps que <strong>guardam coisas</strong>: você digita, a tarefa aparece na lista, você marca quando termina e arrasta para o lado para apagar. A Ana usa uma para não esquecer as encomendas de bolo. Neste projeto, você constrói o app dela em <strong>3 versões</strong>, cada uma com o código completo, a foto real da tela e uma missão no editor. É aqui que estado, listas e campos de texto trabalham juntos pela primeira vez.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Versão 1: guardar uma <strong>lista no estado</strong> e mostrá-la com <code>ListView.builder</code>.</li>
+  <li>Versão 2: ler o que a pessoa digita com <code>TextField</code> e <code>TextEditingController</code>, e acrescentar à lista com <code>setState</code>.</li>
+  <li>Versão 3: trocar os textos por uma <strong>classe de modelo</strong> (<code>Tarefa</code>), marcar como feita com <code>CheckboxListTile</code> e apagar arrastando com <code>Dismissible</code>.</li>
+  <li>O erro real de colocar um <code>ListView</code> dentro de uma <code>Column</code> sem <code>Expanded</code>, e como resolver.</li>
+</ul>
+</div>
+
+<p>Aulas que ajudam: <a href="setstate.html">setState</a>, <a href="listview-builder.html">ListView.builder</a>, <a href="textfield.html">Campos de Texto</a>, <a href="checkbox-switch.html">Checkbox, Switch e Radio</a>, <a href="dismissible.html">Arrastar para Apagar</a> e <a href="expanded.html">Expanded e Flexible</a>.</p>
+
+<hr>
+
+<h2>O plano</h2>
+<p>Pense numa lista de papel presa na geladeira: um título no alto, as tarefas uma embaixo da outra, um espaço para escrever a próxima, um "risco" em cima do que já foi feito. No app, cada parte vira uma peça:</p>
+
+<pre>TarefasApp (MaterialApp)
+└── TarefasPage (Scaffold, com estado: a lista de tarefas)
+    ├── appBar: AppBar → 'Tarefas (1/3)'
+    └── body: Column
+        ├── Padding → Row
+        │   ├── Expanded → TextField ('Nova tarefa')
+        │   └── FilledButton ('Adicionar')
+        └── Expanded → ListView.builder
+            └── (para cada tarefa) Dismissible → CheckboxListTile
+</pre>
+
+<p>A peça mais importante não aparece na tela: é a <strong>lista de tarefas guardada no estado</strong>. A tela é só um "retrato" dessa lista. Adicionar, marcar e apagar são sempre a mesma receita: mudar a lista dentro de <code>setState</code> e deixar o Flutter redesenhar.</p>
+
+<hr>
+
+<h2>Versão 1: a lista na tela</h2>
+<p>Comece com três tarefas já escritas no código. A página já nasce como <code>StatefulWidget</code>, porque a lista vai mudar nas próximas versões.</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const TarefasApp());
+
+class TarefasApp extends StatelessWidget {
+  const TarefasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Tarefas da Ana',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.indigo),
+      home: const TarefasPage(),
+    );
+  }
+}
+
+class TarefasPage extends StatefulWidget {
+  const TarefasPage({super.key});
+
+  @override
+  State&lt;TarefasPage&gt; createState() =&gt; _TarefasPageState();
+}
+
+class _TarefasPageState extends State&lt;TarefasPage&gt; {
+  final List&lt;String&gt; _tarefas = [
+    'Comprar farinha',
+    'Assar o bolo de cenoura',
+    'Entregar a encomenda da Dona Rosa',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Tarefas da Ana')),
+      body: ListView.builder(
+        itemCount: _tarefas.length,
+        itemBuilder: (context, index) {
+          return ListTile(
+            leading: const Icon(Icons.radio_button_unchecked),
+            title: Text(_tarefas[index]),
+          );
+        },
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>final List&lt;String&gt; _tarefas = [ … ];</dt><dd>A lista no estado. É <code>final</code> porque a <strong>variável</strong> sempre aponta para a mesma lista; o <strong>conteúdo</strong> da lista pode mudar (acrescentar, tirar). O <code>_</code> deixa o campo privado.</dd>
+  <dt>ListView.builder(</dt><dd>Uma lista rolável que constrói cada linha só quando ela vai aparecer na tela. Com 3 tarefas tanto faz; com 300, faz muita diferença (veja <a href="listview-builder.html">ListView.builder</a>).</dd>
+  <dt>itemCount: _tarefas.length</dt><dd>Quantas linhas a lista tem. Sempre ligue ao tamanho da sua lista: assim, quando a lista crescer, a tela acompanha.</dd>
+  <dt>itemBuilder: (context, index) { … }</dt><dd>Uma função que o Flutter chama para cada linha, com o <code>index</code> (posição: 0, 1, 2…). Ela devolve o widget daquela linha.</dd>
+  <dt>ListTile(leading: …, title: Text(_tarefas[index]))</dt><dd>A linha em si: um círculo vazio à esquerda e o texto da tarefa daquela posição.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/projeto-tarefas-1.png" alt="Tela com o título 'Tarefas da Ana' no alto e três linhas, cada uma com um círculo vazio à esquerda: 'Comprar farinha', 'Assar o bolo de cenoura' e 'Entregar a encomenda da Dona Rosa'; o resto da tela está vazio" width="390" height="844" loading="lazy"><figcaption>A versão 1: três tarefas fixas (Flutter 3.47, tamanho de celular).</figcaption></figure>
+
+<p>As três tarefas aparecem uma embaixo da outra, cada uma com o círculo vazio (o ícone <code>radio_button_unchecked</code>) e a mesma altura, que o <code>ListTile</code> define sozinho. O resto da tela fica vazio, mas a lista ocupa a altura toda: se houvesse 50 tarefas, ela rolaria.</p>
+
+<div class="tryflutter" data-goal="src:'Comprar ovos';;src:'Lavar as formas'">
+<p class="try-task"><strong>Missão:</strong> acrescente duas tarefas à lista: <code>'Comprar ovos'</code> e <code>'Lavar as formas'</code>. Repare que você não mexe em nada do <code>ListView</code>: o <code>itemCount</code> acompanha sozinho.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const TarefasApp());
+
+class TarefasApp extends StatelessWidget {
+  const TarefasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Tarefas da Ana',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.indigo),
+      home: const TarefasPage(),
+    );
+  }
+}
+
+class TarefasPage extends StatefulWidget {
+  const TarefasPage({super.key});
+
+  @override
+  State&lt;TarefasPage&gt; createState() =&gt; _TarefasPageState();
+}
+
+class _TarefasPageState extends State&lt;TarefasPage&gt; {
+  final List&lt;String&gt; _tarefas = [
+    'Comprar farinha',
+    'Assar o bolo de cenoura',
+    'Entregar a encomenda da Dona Rosa',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Tarefas da Ana')),
+      body: ListView.builder(
+        itemCount: _tarefas.length,
+        itemBuilder: (context, index) {
+          return ListTile(
+            leading: const Icon(Icons.radio_button_unchecked),
+            title: Text(_tarefas[index]),
+          );
+        },
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const TarefasApp());
+
+class TarefasApp extends StatelessWidget {
+  const TarefasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Tarefas da Ana',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.indigo),
+      home: const TarefasPage(),
+    );
+  }
+}
+
+class TarefasPage extends StatefulWidget {
+  const TarefasPage({super.key});
+
+  @override
+  State&lt;TarefasPage&gt; createState() =&gt; _TarefasPageState();
+}
+
+class _TarefasPageState extends State&lt;TarefasPage&gt; {
+  final List&lt;String&gt; _tarefas = [
+    'Comprar farinha',
+    'Assar o bolo de cenoura',
+    'Entregar a encomenda da Dona Rosa',
+    'Comprar ovos',
+    'Lavar as formas',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Tarefas da Ana')),
+      body: ListView.builder(
+        itemCount: _tarefas.length,
+        itemBuilder: (context, index) {
+          return ListTile(
+            leading: const Icon(Icons.radio_button_unchecked),
+            title: Text(_tarefas[index]),
+          );
+        },
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Versão 2: digitar e adicionar</h2>
+<p>Agora a Ana quer escrever tarefas novas sem mexer no código. No alto da tela entram um campo de texto e um botão <strong>Adicionar</strong>. Para ler o que foi digitado, o campo recebe um <strong>controlador</strong> (<code>TextEditingController</code>): um objeto que guarda o texto do campo e deixa você ler e limpar esse texto pelo código.</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const TarefasApp());
+
+class TarefasApp extends StatelessWidget {
+  const TarefasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Tarefas da Ana',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.indigo),
+      home: const TarefasPage(),
+    );
+  }
+}
+
+class TarefasPage extends StatefulWidget {
+  const TarefasPage({super.key});
+
+  @override
+  State&lt;TarefasPage&gt; createState() =&gt; _TarefasPageState();
+}
+
+class _TarefasPageState extends State&lt;TarefasPage&gt; {
+  final List&lt;String&gt; _tarefas = [
+    'Comprar farinha',
+    'Assar o bolo de cenoura',
+    'Entregar a encomenda da Dona Rosa',
+  ];
+  final _controller = TextEditingController();
+
+  void _adicionar() {
+    final texto = _controller.text.trim();
+    if (texto.isEmpty) return;
+    setState(() {
+      _tarefas.add(texto);
+    });
+    _controller.clear();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Tarefas da Ana')),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    decoration: const InputDecoration(
+                      labelText: 'Nova tarefa',
+                      border: OutlineInputBorder(),
+                    ),
+                    onSubmitted: (_) =&gt; _adicionar(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: _adicionar,
+                  child: const Text('Adicionar'),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: _tarefas.length,
+              itemBuilder: (context, index) {
+                return ListTile(
+                  leading: const Icon(Icons.radio_button_unchecked),
+                  title: Text(_tarefas[index]),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>final _controller = TextEditingController();</dt><dd>O controlador do campo, criado uma vez, junto com o estado.</dd>
+  <dt>_controller.text.trim()</dt><dd>O texto digitado, sem espaços nas pontas. Se a pessoa digitou só espaços, sobra uma string vazia.</dd>
+  <dt>if (texto.isEmpty) return;</dt><dd>Não deixa entrar tarefa em branco: se não há texto, a função para aqui.</dd>
+  <dt>setState(() { _tarefas.add(texto); });</dt><dd>Acrescenta a tarefa no fim da lista <strong>e</strong> avisa o Flutter para redesenhar. O <code>itemCount</code> passa de 3 para 4, e a linha nova aparece.</dd>
+  <dt>_controller.clear();</dt><dd>Esvazia o campo, pronto para a próxima tarefa.</dd>
+  <dt>void dispose() { _controller.dispose(); … }</dt><dd>Quando a tela sai de cena, o controlador é descartado e libera a memória. Todo controlador que você cria, você descarta (veja <a href="ciclo-de-vida.html">Ciclo de Vida do Widget</a>).</dd>
+  <dt>Expanded(child: TextField(…))</dt><dd>Dentro de um <code>Row</code>, o campo de texto precisa saber quanto de largura pode usar. O <code>Expanded</code> dá a ele todo o espaço que o botão não usar.</dd>
+  <dt>onSubmitted: (_) =&gt; _adicionar()</dt><dd>Apertar Enter (ou o "OK" do teclado do celular) também adiciona. O <code>_</code> é o texto que o campo manda, que não usamos aqui (já temos o controlador).</dd>
+  <dt>Expanded(child: ListView.builder(…))</dt><dd>A lista ocupa todo o resto da altura, abaixo do campo. Sem esse <code>Expanded</code>, o app quebra: veja <a href="#errado">Quando dá errado</a>.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/projeto-tarefas-2.png" alt="A tela de tarefas com um campo de texto contornado no alto, com o rótulo 'Nova tarefa' pequeno na borda e o texto 'Comprar ovos' digitado; ao lado, um botão azul-arroxeado 'Adicionar'; embaixo, as três tarefas da versão 1" width="390" height="844" loading="lazy"><figcaption>A versão 2: "Comprar ovos" digitado no campo, antes do toque em Adicionar.</figcaption></figure>
+
+<p>No lab, a foto foi tirada depois de clicar no campo e digitar <code>Comprar ovos</code>. Repare no rótulo: com o campo em foco, o <code>labelText</code> "Nova tarefa" subiu e ficou pequeno, encaixado na borda (é o comportamento do <code>OutlineInputBorder</code>). Em seguida, um clique em <strong>Adicionar</strong>:</p>
+
+<figure class="tela"><img src="assets/telas/projeto-tarefas-2b.png" alt="A mesma tela depois do clique em Adicionar: o campo voltou a mostrar só o rótulo 'Nova tarefa', vazio, e a lista agora tem quatro linhas, a última sendo 'Comprar ovos'" width="390" height="844" loading="lazy"><figcaption>Depois do toque em Adicionar: a quarta tarefa no fim da lista e o campo limpo.</figcaption></figure>
+
+<p>As três linhas do <code>_adicionar</code> aparecem na foto: a tarefa entrou no fim da lista (<code>add</code>), a tela foi redesenhada (<code>setState</code>) e o campo ficou vazio de novo (<code>clear</code>), com o rótulo de volta ao meio.</p>
+
+<div class="tryflutter" data-goal="src:_tarefas\.insert\(\s*0\s*,\s*texto\s*\)">
+<p class="try-task"><strong>Missão:</strong> a Ana prefere ver a tarefa mais nova <strong>no topo</strong>. Troque <code>_tarefas.add(texto)</code> por <code>_tarefas.insert(0, texto)</code> (inserir na posição 0). Digite uma tarefa e aperte Adicionar para conferir.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const TarefasApp());
+
+class TarefasApp extends StatelessWidget {
+  const TarefasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Tarefas da Ana',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.indigo),
+      home: const TarefasPage(),
+    );
+  }
+}
+
+class TarefasPage extends StatefulWidget {
+  const TarefasPage({super.key});
+
+  @override
+  State&lt;TarefasPage&gt; createState() =&gt; _TarefasPageState();
+}
+
+class _TarefasPageState extends State&lt;TarefasPage&gt; {
+  final List&lt;String&gt; _tarefas = [
+    'Comprar farinha',
+    'Assar o bolo de cenoura',
+    'Entregar a encomenda da Dona Rosa',
+  ];
+  final _controller = TextEditingController();
+
+  void _adicionar() {
+    final texto = _controller.text.trim();
+    if (texto.isEmpty) return;
+    setState(() {
+      _tarefas.add(texto);
+    });
+    _controller.clear();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Tarefas da Ana')),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    decoration: const InputDecoration(
+                      labelText: 'Nova tarefa',
+                      border: OutlineInputBorder(),
+                    ),
+                    onSubmitted: (_) =&gt; _adicionar(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: _adicionar,
+                  child: const Text('Adicionar'),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: _tarefas.length,
+              itemBuilder: (context, index) {
+                return ListTile(
+                  leading: const Icon(Icons.radio_button_unchecked),
+                  title: Text(_tarefas[index]),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const TarefasApp());
+
+class TarefasApp extends StatelessWidget {
+  const TarefasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Tarefas da Ana',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.indigo),
+      home: const TarefasPage(),
+    );
+  }
+}
+
+class TarefasPage extends StatefulWidget {
+  const TarefasPage({super.key});
+
+  @override
+  State&lt;TarefasPage&gt; createState() =&gt; _TarefasPageState();
+}
+
+class _TarefasPageState extends State&lt;TarefasPage&gt; {
+  final List&lt;String&gt; _tarefas = [
+    'Comprar farinha',
+    'Assar o bolo de cenoura',
+    'Entregar a encomenda da Dona Rosa',
+  ];
+  final _controller = TextEditingController();
+
+  void _adicionar() {
+    final texto = _controller.text.trim();
+    if (texto.isEmpty) return;
+    setState(() {
+      _tarefas.insert(0, texto);
+    });
+    _controller.clear();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Tarefas da Ana')),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    decoration: const InputDecoration(
+                      labelText: 'Nova tarefa',
+                      border: OutlineInputBorder(),
+                    ),
+                    onSubmitted: (_) =&gt; _adicionar(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: _adicionar,
+                  child: const Text('Adicionar'),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: _tarefas.length,
+              itemBuilder: (context, index) {
+                return ListTile(
+                  leading: const Icon(Icons.radio_button_unchecked),
+                  title: Text(_tarefas[index]),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Versão 3: marcar como feita e apagar arrastando</h2>
+<p>Uma tarefa agora tem <strong>duas</strong> informações: o título e se já foi feita. Uma <code>String</code> sozinha não dá conta, então cada tarefa vira um objeto de uma classe pequena, a <strong>classe de modelo</strong> <code>Tarefa</code> (o mesmo jeito de pensar da aula <a href="json-modelos.html">JSON e Classes de Modelo</a>). Na tela, cada linha ganha uma caixa de seleção, o texto fica riscado quando a tarefa está feita, e arrastar a linha para o lado apaga a tarefa. A barra do topo mostra quantas já foram feitas.</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const TarefasApp());
+
+class Tarefa {
+  Tarefa(this.titulo, {this.feita = false});
+
+  final String titulo;
+  bool feita;
+}
+
+class TarefasApp extends StatelessWidget {
+  const TarefasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Tarefas da Ana',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.indigo),
+      home: const TarefasPage(),
+    );
+  }
+}
+
+class TarefasPage extends StatefulWidget {
+  const TarefasPage({super.key});
+
+  @override
+  State&lt;TarefasPage&gt; createState() =&gt; _TarefasPageState();
+}
+
+class _TarefasPageState extends State&lt;TarefasPage&gt; {
+  final List&lt;Tarefa&gt; _tarefas = [
+    Tarefa('Comprar farinha', feita: true),
+    Tarefa('Assar o bolo de cenoura'),
+    Tarefa('Entregar a encomenda da Dona Rosa'),
+  ];
+  final _controller = TextEditingController();
+
+  void _adicionar() {
+    final texto = _controller.text.trim();
+    if (texto.isEmpty) return;
+    setState(() {
+      _tarefas.add(Tarefa(texto));
+    });
+    _controller.clear();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final feitas = _tarefas.where((t) =&gt; t.feita).length;
+    return Scaffold(
+      appBar: AppBar(title: Text('Tarefas ($feitas/${_tarefas.length})')),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    decoration: const InputDecoration(
+                      labelText: 'Nova tarefa',
+                      border: OutlineInputBorder(),
+                    ),
+                    onSubmitted: (_) =&gt; _adicionar(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: _adicionar,
+                  child: const Text('Adicionar'),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: _tarefas.length,
+              itemBuilder: (context, index) {
+                final tarefa = _tarefas[index];
+                return Dismissible(
+                  key: ObjectKey(tarefa),
+                  background: Container(color: Colors.red.shade300),
+                  onDismissed: (_) {
+                    setState(() {
+                      _tarefas.remove(tarefa);
+                    });
+                  },
+                  child: CheckboxListTile(
+                    value: tarefa.feita,
+                    onChanged: (valor) {
+                      setState(() {
+                        tarefa.feita = valor ?? false;
+                      });
+                    },
+                    controlAffinity: ListTileControlAffinity.leading,
+                    title: Text(
+                      tarefa.titulo,
+                      style: TextStyle(
+                        decoration:
+                            tarefa.feita ? TextDecoration.lineThrough : null,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>class Tarefa { … final String titulo; bool feita; }</dt><dd>A classe de modelo. O título nunca muda (<code>final</code>); o <code>feita</code> muda quando a Ana marca a caixa. O <code>{this.feita = false}</code> é um parâmetro nomeado opcional: <code>Tarefa('X')</code> nasce não feita; <code>Tarefa('X', feita: true)</code> nasce feita.</dd>
+  <dt>final List&lt;Tarefa&gt; _tarefas</dt><dd>A lista agora guarda objetos <code>Tarefa</code>, e não textos.</dd>
+  <dt>final feitas = _tarefas.where((t) =&gt; t.feita).length;</dt><dd>Conta as tarefas feitas: o <code>where</code> filtra as que têm <code>feita</code> verdadeiro, e o <code>length</code> conta quantas sobraram. Como isso fica dentro do <code>build</code>, o número é recalculado a cada <code>setState</code>.</dd>
+  <dt>Text('Tarefas ($feitas/${_tarefas.length})')</dt><dd>O título da barra, com interpolação. Para uma expressão com ponto (<code>_tarefas.length</code>), o Dart pede as chaves: <code>${…}</code>.</dd>
+  <dt>Dismissible(key: ObjectKey(tarefa), …)</dt><dd>Deixa a linha ser arrastada para o lado. A <code>key</code> é obrigatória e precisa identificar <strong>aquela</strong> tarefa: o <code>ObjectKey</code> usa o próprio objeto como identidade (veja <a href="keys.html">Keys</a>).</dd>
+  <dt>background: Container(color: Colors.red.shade300)</dt><dd>O fundo vermelho que aparece por trás enquanto a linha é arrastada.</dd>
+  <dt>onDismissed: (_) { setState(() { _tarefas.remove(tarefa); }); }</dt><dd>Quando a linha sai da tela, a tarefa sai da lista. Este passo não é opcional: o <code>Dismissible</code> só esconde a linha; quem apaga o dado é você.</dd>
+  <dt>CheckboxListTile(value: …, onChanged: …)</dt><dd>Uma linha de lista com caixa de seleção. <code>value</code> diz se a caixa está marcada; <code>onChanged</code> recebe o valor novo quando a pessoa toca. Esse valor é <code>bool?</code> (pode ser nulo), por isso o <code>valor ?? false</code>.</dd>
+  <dt>controlAffinity: ListTileControlAffinity.leading</dt><dd>Põe a caixa à esquerda do texto (o padrão é à direita).</dd>
+  <dt>decoration: tarefa.feita ? TextDecoration.lineThrough : null</dt><dd>O "risco" no meio do texto, só nas tarefas feitas (veja <a href="text-style.html">Estilos de Texto</a>).</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/projeto-tarefas-3.png" alt="A tela com o título 'Tarefas (1/3)', o campo 'Nova tarefa' e o botão Adicionar; embaixo, três linhas com caixas quadradas à esquerda: 'Comprar farinha' com a caixa marcada em azul-arroxeado e o texto riscado, e 'Assar o bolo de cenoura' e 'Entregar a encomenda da Dona Rosa' com as caixas vazias" width="390" height="844" loading="lazy"><figcaption>A versão 3: caixas de seleção, a tarefa feita riscada e a contagem na barra.</figcaption></figure>
+
+<p>O título da barra já é calculado: <code>Tarefas (1/3)</code>, porque só "Comprar farinha" nasceu com <code>feita: true</code>. Essa é a única linha com a caixa marcada e o texto riscado. Os círculos da versão 1 deram lugar às caixas quadradas do <code>CheckboxListTile</code>, à esquerda por causa do <code>controlAffinity</code>. O <code>Dismissible</code> não aparece na foto: ele só se mostra quando alguém arrasta uma linha, e aí surge o fundo vermelho por trás.</p>
+
+<div class="tryflutter" data-goal="src:Tarefa\('Assar o bolo de cenoura',\s*feita:\s*true\)">
+<p class="try-task"><strong>Missão:</strong> faça o app já abrir com <strong>duas</strong> tarefas feitas: marque também <code>'Assar o bolo de cenoura'</code> com <code>feita: true</code>. O título da barra deve mudar para <code>Tarefas (2/3)</code>. Depois, toque nas caixas e arraste uma linha para o lado.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const TarefasApp());
+
+class Tarefa {
+  Tarefa(this.titulo, {this.feita = false});
+
+  final String titulo;
+  bool feita;
+}
+
+class TarefasApp extends StatelessWidget {
+  const TarefasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Tarefas da Ana',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.indigo),
+      home: const TarefasPage(),
+    );
+  }
+}
+
+class TarefasPage extends StatefulWidget {
+  const TarefasPage({super.key});
+
+  @override
+  State&lt;TarefasPage&gt; createState() =&gt; _TarefasPageState();
+}
+
+class _TarefasPageState extends State&lt;TarefasPage&gt; {
+  final List&lt;Tarefa&gt; _tarefas = [
+    Tarefa('Comprar farinha', feita: true),
+    Tarefa('Assar o bolo de cenoura'),
+    Tarefa('Entregar a encomenda da Dona Rosa'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final feitas = _tarefas.where((t) =&gt; t.feita).length;
+    return Scaffold(
+      appBar: AppBar(title: Text('Tarefas ($feitas/${_tarefas.length})')),
+      body: ListView.builder(
+        itemCount: _tarefas.length,
+        itemBuilder: (context, index) {
+          final tarefa = _tarefas[index];
+          return Dismissible(
+            key: ObjectKey(tarefa),
+            background: Container(color: Colors.red.shade300),
+            onDismissed: (_) {
+              setState(() {
+                _tarefas.remove(tarefa);
+              });
+            },
+            child: CheckboxListTile(
+              value: tarefa.feita,
+              onChanged: (valor) {
+                setState(() {
+                  tarefa.feita = valor ?? false;
+                });
+              },
+              controlAffinity: ListTileControlAffinity.leading,
+              title: Text(
+                tarefa.titulo,
+                style: TextStyle(
+                  decoration:
+                      tarefa.feita ? TextDecoration.lineThrough : null,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const TarefasApp());
+
+class Tarefa {
+  Tarefa(this.titulo, {this.feita = false});
+
+  final String titulo;
+  bool feita;
+}
+
+class TarefasApp extends StatelessWidget {
+  const TarefasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Tarefas da Ana',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.indigo),
+      home: const TarefasPage(),
+    );
+  }
+}
+
+class TarefasPage extends StatefulWidget {
+  const TarefasPage({super.key});
+
+  @override
+  State&lt;TarefasPage&gt; createState() =&gt; _TarefasPageState();
+}
+
+class _TarefasPageState extends State&lt;TarefasPage&gt; {
+  final List&lt;Tarefa&gt; _tarefas = [
+    Tarefa('Comprar farinha', feita: true),
+    Tarefa('Assar o bolo de cenoura', feita: true),
+    Tarefa('Entregar a encomenda da Dona Rosa'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final feitas = _tarefas.where((t) =&gt; t.feita).length;
+    return Scaffold(
+      appBar: AppBar(title: Text('Tarefas ($feitas/${_tarefas.length})')),
+      body: ListView.builder(
+        itemCount: _tarefas.length,
+        itemBuilder: (context, index) {
+          final tarefa = _tarefas[index];
+          return Dismissible(
+            key: ObjectKey(tarefa),
+            background: Container(color: Colors.red.shade300),
+            onDismissed: (_) {
+              setState(() {
+                _tarefas.remove(tarefa);
+              });
+            },
+            child: CheckboxListTile(
+              value: tarefa.feita,
+              onChanged: (valor) {
+                setState(() {
+                  tarefa.feita = valor ?? false;
+                });
+              },
+              controlAffinity: ListTileControlAffinity.leading,
+              title: Text(
+                tarefa.titulo,
+                style: TextStyle(
+                  decoration:
+                      tarefa.feita ? TextDecoration.lineThrough : null,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+</pre>
+</div>
+<p>(Para a caixa ficar mais curta, o campo de texto saiu do código da missão. No seu projeto, ele continua lá.)</p>
+
+<hr>
+
+<h2>Formas diferentes de fazer</h2>
+<h3>Apagar: arrastar ou um botão de lixeira?</h3>
+<p>Em vez do <code>Dismissible</code>, dá para pôr um ícone de lixeira no fim da linha, com o <code>secondary</code> do <code>CheckboxListTile</code>:</p>
+<pre class="file" data-file="lib/main.dart (trecho)">CheckboxListTile(
+  value: tarefa.feita,
+  onChanged: (valor) =&gt; setState(() =&gt; tarefa.feita = valor ?? false),
+  controlAffinity: ListTileControlAffinity.leading,
+  title: Text(tarefa.titulo),
+  secondary: IconButton(
+    icon: const Icon(Icons.delete_outline),
+    onPressed: () =&gt; setState(() =&gt; _tarefas.remove(tarefa)),
+  ),
+),
+</pre>
+<p><strong>Qual usar:</strong> arrastar é rápido e comum em celular, mas ninguém descobre o gesto sozinho na primeira vez. O botão é visível e funciona igual no computador. Muitos apps usam os dois. Para não perder nada por engano, mostre um <code>SnackBar</code> com "Desfazer" depois de apagar (veja <a href="dialogos.html">Diálogos e SnackBar</a>).</p>
+
+<h3>Uma lista de <code>String</code>s ou uma classe de modelo?</h3>
+<p>Também daria para guardar duas listas paralelas (<code>List&lt;String&gt; titulos</code> e <code>List&lt;bool&gt; feitas</code>). Funciona até o dia em que você apaga de uma e esquece da outra, e os riscos passam a cair nas tarefas erradas. <strong>Qual usar:</strong> quando um item tem mais de uma informação, crie uma classe. É assim que os apps maiores se organizam (veja <a href="arquitetura.html">Organizando um App Maior</a>).</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<h3><code>ListView</code> dentro de <code>Column</code>, sem <code>Expanded</code></h3>
+<p>Na versão 2, se você puser o <code>ListView.builder</code> direto dentro da <code>Column</code>, sem o <code>Expanded</code> em volta:</p>
+<pre class="file" data-file="lib/main.dart (trecho errado)">body: Column(
+  children: [
+    Padding( … o campo e o botão … ),
+    ListView.builder(
+      itemCount: _tarefas.length,
+      itemBuilder: (context, index) { … },
+    ),
+  ],
+),
+</pre>
+<p>o app compila, mas a lista não aparece, e o console mostra:</p>
+<pre class="term">══╡ EXCEPTION CAUGHT BY RENDERING LIBRARY ╞═════════════════════════════════════════════════════════
+The following assertion was thrown during performResize():
+Vertical viewport was given unbounded height.
+Viewports expand in the scrolling direction to fill their container. In this case, a vertical
+viewport was given an unlimited amount of vertical space in which to expand. This situation
+typically happens when a scrollable widget is nested inside another scrollable widget.
+If this widget is always nested in a scrollable widget there is no need to use a viewport because
+there will always be enough vertical space for the children. In this case, consider using a Column
+or Wrap instead. Otherwise, consider using a CustomScrollView to concatenate arbitrary slivers into
+a single scrollable.
+«  … (a descrição do objeto que deu erro, cortada aqui) …
+  constraints: BoxConstraints(0.0&lt;=w&lt;=390.0, 0.0&lt;=h&lt;=Infinity)
+  size: MISSING
+«  …
+════════════════════════════════════════════════════════════════════════════════════════════════════
+Another exception was thrown: Assertion failed: "RenderBox was not laid out: RenderViewport#0ae40 NEEDS-LAYOUT NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE"
+«  … e mais 16 linhas "Another exception was thrown: … RenderBox was not laid out …"
+</pre>
+<p>O que cada parte quer dizer:</p>
+<dl class="anatomy">
+  <dt>EXCEPTION CAUGHT BY RENDERING LIBRARY</dt><dd>"Exceção capturada pela biblioteca de desenho": o erro aconteceu na hora de calcular tamanhos e posições, e não no seu código de lógica.</dd>
+  <dt>Vertical viewport was given unbounded height.</dt><dd>"A área de rolagem vertical recebeu uma altura sem limite." O <code>ListView</code> é uma área de rolagem (<em>viewport</em>) e quer ocupar toda a altura que receber. A <code>Column</code>, por sua vez, deixa cada filho ter a altura que quiser. Resultado: a lista pede "toda a altura possível" e ganha "infinito".</dd>
+  <dt>constraints: BoxConstraints(0.0&lt;=w&lt;=390.0, 0.0&lt;=h&lt;=Infinity)</dt><dd>A prova do problema: a largura vai até 390 (a tela do lab), mas a altura vai até <code>Infinity</code>, infinito.</dd>
+  <dt>size: MISSING</dt><dd>"Tamanho: faltando". Sem tamanho, a lista não pode ser desenhada.</dd>
+  <dt>Another exception was thrown: … RenderBox was not laid out</dt><dd>"Outra exceção: a caixa não foi posicionada." São consequências do primeiro erro, uma para cada peça acima da lista. Leia sempre o <strong>primeiro</strong> erro do bloco.</dd>
+</dl>
+<figure class="tela"><img src="assets/telas/projeto-tarefas-erro.png" alt="Tela quase toda vazia: só o título 'Tarefas da Ana' e, logo abaixo, a borda de baixo do campo de texto, cortada; nenhuma tarefa e nenhum botão aparecem" width="390" height="844" loading="lazy"><figcaption>A tela com o erro: sobrou só o título e um pedaço do campo de texto.</figcaption></figure>
+<p>Na tela, o estrago é grande: como a coluna inteira não conseguiu se organizar, nem o campo nem o botão foram desenhados direito (só sobrou a borda de baixo do campo), e nenhuma tarefa apareceu.</p>
+<p><strong>Como resolver:</strong> diga à lista quanto de altura ela tem. O jeito mais comum é o <code>Expanded</code> (a lista fica com todo o resto da coluna), como na versão 2. Outra saída é um <code>SizedBox(height: 300, child: ListView…)</code>, com altura fixa. A aula <a href="constraints.html">Como o Flutter Calcula Tamanhos</a> explica o porquê em detalhe.</p>
+</div>
+
+
+<hr>
+
+<h2>Referência rápida do projeto</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Peça</th><th>Para que serviu aqui</th><th>Aula</th></tr>
+<tr><td><code>List</code> no estado + <code>setState</code></td><td>Guardar as tarefas e redesenhar quando mudam</td><td><a href="setstate.html">setState</a></td></tr>
+<tr><td><code>ListView.builder</code></td><td>Mostrar as tarefas, uma linha por item</td><td><a href="listview-builder.html">ListView.builder</a></td></tr>
+<tr><td><code>TextField</code> + <code>TextEditingController</code></td><td>Ler, e depois limpar, o texto da tarefa nova</td><td><a href="textfield.html">Campos de Texto</a></td></tr>
+<tr><td><code>Expanded</code></td><td>Dar largura ao campo e altura à lista</td><td><a href="expanded.html">Expanded e Flexible</a></td></tr>
+<tr><td><code>CheckboxListTile</code></td><td>Marcar a tarefa como feita</td><td><a href="checkbox-switch.html">Checkbox, Switch e Radio</a></td></tr>
+<tr><td><code>Dismissible</code> + <code>ObjectKey</code></td><td>Apagar arrastando para o lado</td><td><a href="dismissible.html">Arrastar para Apagar</a></td></tr>
+<tr><td><code>dispose()</code></td><td>Descartar o controlador quando a tela sai</td><td><a href="ciclo-de-vida.html">Ciclo de Vida do Widget</a></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o <code>_adicionar</code></h3>
+<div class="ex-code">void _adicionar() {<br>&nbsp;&nbsp;final texto = _controller.text.<input data-answer="trim()" aria-label="método que tira espaços">;<br>&nbsp;&nbsp;if (texto.isEmpty) return;<br>&nbsp;&nbsp;<input data-answer="setState" aria-label="função que redesenha">(() {<br>&nbsp;&nbsp;&nbsp;&nbsp;_tarefas.add(texto);<br>&nbsp;&nbsp;});<br>&nbsp;&nbsp;_controller.<input data-answer="clear()" aria-label="método que esvazia o campo">;<br>}</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. Por que o <code>ListView.builder</code> da versão 2 está dentro de um <code>Expanded</code>?</p>
+<label><input type="radio" name="q2"> Para a lista rolar mais rápido.</label>
+<label><input type="radio" name="q2"> Porque, dentro de uma <code>Column</code>, a lista precisa receber uma altura definida.</label>
+<label><input type="radio" name="q2"> Para deixar as linhas com o mesmo tamanho.</label>
+<label><input type="radio" name="q2"> Porque o <code>ListView</code> só funciona dentro de <code>Expanded</code>.</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">3. No <code>CheckboxListTile</code>, por que se escreve <code>valor ?? false</code>?</p>
+<label><input type="radio" name="q3"> Para inverter o valor da caixa.</label>
+<label><input type="radio" name="q3"> Para a caixa começar desmarcada.</label>
+<label><input type="radio" name="q3"> Porque <code>feita</code> é <code>final</code>.</label>
+<label><input type="radio" name="q3"> Porque o valor que chega no <code>onChanged</code> é <code>bool?</code> e pode ser nulo.</label>
+</div>
+
+<div class="exercise">
+<h3>4. Desafio: limpar as feitas</h3>
+<p>Ponha na <code>AppBar</code> um botão de ação (<code>actions: [IconButton(…)]</code>) com o ícone <code>Icons.cleaning_services</code> que apaga de uma vez todas as tarefas feitas. Dica: dentro do <code>setState</code>, <code>_tarefas.removeWhere((t) =&gt; t.feita)</code>.</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>A tela é um retrato da lista guardada no estado: adicionar, marcar e apagar é sempre mudar a lista dentro de <code>setState</code>.</li>
+  <li><code>ListView.builder</code> com <code>itemCount: lista.length</code> acompanha o tamanho da lista sozinho.</li>
+  <li><code>TextEditingController</code> lê e limpa o campo de texto; crie-o no estado e descarte-o no <code>dispose</code>.</li>
+  <li>Dentro de <code>Row</code> e <code>Column</code>, <code>TextField</code> e <code>ListView</code> precisam de um tamanho: use <code>Expanded</code>.</li>
+  <li>Quando um item tem mais de uma informação, crie uma classe de modelo (<code>Tarefa</code>).</li>
+  <li><code>CheckboxListTile</code> marca; <code>Dismissible</code> (com uma <code>key</code> única) apaga arrastando, mas é você quem remove o item da lista no <code>onDismissed</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
