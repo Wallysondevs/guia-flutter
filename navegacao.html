@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Navigator — indo de uma tela para outra | Guia Flutter</title>
+<meta name="description" content="Navegação no Flutter para quem nunca fez um app: a pilha de telas do Navigator, abrir uma tela com Navigator.push e MaterialPageRoute, voltar com Navigator.pop e com a seta automática da AppBar, trocar de tela sem volta com pushReplacement, limpar a pilha com pushAndRemoveUntil e o erro real do context sem Navigator.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Navigator</span>: indo de uma tela para outra</h1>
+
+<p class="intro">Até aqui, cada app tinha <strong>uma tela só</strong>. Apps de verdade têm várias: a lista de receitas e, ao tocar numa, a tela da receita; o carrinho e a tela de pagamento; as configurações. No Flutter, cada tela é um widget (normalmente um <code>Scaffold</code>), e quem leva de uma para a outra é o <code>Navigator</code> ("navegador"): ele guarda as telas abertas numa <strong>pilha</strong>.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é a <strong>pilha</strong> de telas (as rotas) do <code>Navigator</code>.</li>
+  <li>Como abrir uma tela nova com <code>Navigator.push</code> e <code>MaterialPageRoute</code>.</li>
+  <li>Como voltar: <code>Navigator.pop</code>, a seta automática da <code>AppBar</code> e o botão Voltar do Android.</li>
+  <li>Como trocar de tela sem deixar volta (<code>pushReplacement</code>) e como limpar a pilha (<code>pushAndRemoveUntil</code>).</li>
+  <li>O erro real do <code>context</code> que não tem <code>Navigator</code>.</li>
+</ul>
+</div>
+
+<p>Esta aula usa telas separadas em widgets próprios, como em <a href="stateless.html">StatelessWidget</a>. Passar dados de uma tela para outra (qual receita abrir, o que a tela devolveu) tem aula própria: <a href="passar-dados-telas.html">Passando Dados entre Telas</a>.</p>
+
+<hr>
+
+<h2>A ideia: a pilha de pratos</h2>
+<p>Pense numa pilha de pratos na pia. Você só mexe no prato <strong>de cima</strong>: põe um novo em cima, ou tira o de cima. O <code>Navigator</code> funciona igual, só que com telas (que ele chama de <strong>rotas</strong>, <em>routes</em>):</p>
+<ol class="passo">
+  <li>O app abre com uma tela na pilha: a lista de receitas. É a que aparece.</li>
+  <li>A Ana toca no bolo: o app faz <strong><code>push</code></strong> ("empurrar", pôr em cima) da tela do bolo. Agora a pilha tem duas telas, e a de cima é a que aparece. A lista continua lá embaixo, do jeito que estava.</li>
+  <li>Ela toca na seta de voltar: o app faz <strong><code>pop</code></strong> ("tirar", o de cima). A tela do bolo sai, e a lista reaparece.</li>
+</ol>
+<pre>  push(bolo)              pop()
+┌─────────────┐
+│ Bolo        │  ← aparece
+├─────────────┤        ┌─────────────┐
+│ Lista       │        │ Lista       │  ← aparece de novo
+└─────────────┘        └─────────────┘
+</pre>
+
+<hr>
+
+<h2>1. A primeira navegação: <code>push</code> e <code>pop</code></h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: TelaInicial()));
+
+class TelaInicial extends StatelessWidget {
+  const TelaInicial({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: Center(
+        child: FilledButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) =&gt; const TelaReceita()),
+            );
+          },
+          child: const Text('Ver o bolo de cenoura'),
+        ),
+      ),
+    );
+  }
+}
+
+class TelaReceita extends StatelessWidget {
+  const TelaReceita({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Bolo de cenoura')),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('3 cenouras, 3 ovos, 2 xícaras de farinha'),
+            const SizedBox(height: 16),
+            OutlinedButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('Voltar para a lista'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>MaterialApp(home: TelaInicial())</dt><dd>O <code>MaterialApp</code> já cria um <code>Navigator</code>, e o <code>home</code> é a primeira tela da pilha.</dd>
+  <dt>class TelaReceita extends StatelessWidget</dt><dd>A segunda tela: um widget como outro qualquer, com o seu próprio <code>Scaffold</code> e a sua <code>AppBar</code>.</dd>
+  <dt>Navigator.push(context, …)</dt><dd>Põe uma tela nova em cima da pilha. O <code>context</code> é usado para achar o <code>Navigator</code> (ele procura para cima na árvore, até o do <code>MaterialApp</code>).</dd>
+  <dt>MaterialPageRoute(builder: (context) =&gt; const TelaReceita())</dt><dd>A <strong>rota</strong>: o "embrulho" da tela, que sabe fazer a animação de entrada e saída do jeito de cada plataforma (no Android, a tela sobe/aparece; no iPhone, desliza da direita). O <code>builder</code> é uma função que constrói a tela quando for a hora.</dd>
+  <dt>Navigator.pop(context)</dt><dd>Tira a tela de cima. A <code>TelaInicial</code> reaparece do jeito que estava.</dd>
+</dl>
+
+<p>A Ana abriu o app, tocou em <strong>Ver o bolo de cenoura</strong> e, na tela do bolo, tocou na <strong>seta</strong> do canto superior esquerdo:</p>
+<div class="table-wrap"><table class="ref"><tr><td><figure class="tela"><img src="assets/telas/navegacao-1.png" alt="Tela &#39;Receitas da Ana&#39; com um botão roxo arredondado &#39;Ver o bolo de cenoura&#39; no meio" width="390" height="844" loading="lazy"><figcaption>1. A primeira tela.</figcaption></figure></td><td><figure class="tela"><img src="assets/telas/navegacao-2.png" alt="Tela &#39;Bolo de cenoura&#39; com uma seta para a esquerda antes do título; no meio, o texto &#39;3 cenouras, 3 ovos, 2 xícaras de farinha&#39; e um botão contornado &#39;Voltar para a lista&#39;" width="390" height="844" loading="lazy"><figcaption>2. Depois do push.</figcaption></figure></td><td><figure class="tela"><img src="assets/telas/navegacao-3.png" alt="De novo a tela &#39;Receitas da Ana&#39; com o botão &#39;Ver o bolo de cenoura&#39;" width="390" height="844" loading="lazy"><figcaption>3. Depois da seta (pop).</figcaption></figure></td></tr></table></div>
+
+<h3>A seta da <code>AppBar</code> aparece sozinha</h3>
+<p>Repare na segunda tela: você não escreveu nenhuma seta, mas a <code>AppBar</code> desenhou uma, à esquerda do título. A <code>AppBar</code> percebe que há uma tela embaixo na pilha e põe o botão de voltar, que faz o mesmo que o <code>Navigator.pop(context)</code>. No Android, o botão (ou o gesto) Voltar do próprio celular também faz <code>pop</code>. Por isso o botão "Voltar para a lista" da segunda tela é opcional: muitos apps não têm.</p>
+
+<p>E se a tela de baixo for a <strong>última</strong>? No Android, o Voltar na primeira tela fecha o app; não chame <code>Navigator.pop</code> na tela inicial esperando outra coisa.</p>
+
+<div class="tryflutter" data-goal="src:TelaCarrinho\(\)">
+<p class="try-task"><strong>Missão:</strong> a lojinha da Ana tem a tela do carrinho pronta (a <code>TelaCarrinho</code>), mas o botão do carrinho na <code>AppBar</code> não faz nada. Faça ele abrir a <code>TelaCarrinho</code> com <code>Navigator.push</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Loja()));
+
+class Loja extends StatelessWidget {
+  const Loja({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Lojinha da Ana'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.shopping_cart),
+            tooltip: 'Carrinho',
+            onPressed: () {},
+          ),
+        ],
+      ),
+      body: const Center(child: Text('Canecas, camisetas e chaveiros')),
+    );
+  }
+}
+
+class TelaCarrinho extends StatelessWidget {
+  const TelaCarrinho({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Carrinho')),
+      body: const Center(child: Text('Seu carrinho está vazio')),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Loja()));
+
+class Loja extends StatelessWidget {
+  const Loja({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Lojinha da Ana'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.shopping_cart),
+            tooltip: 'Carrinho',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) =&gt; const TelaCarrinho()),
+              );
+            },
+          ),
+        ],
+      ),
+      body: const Center(child: Text('Canecas, camisetas e chaveiros')),
+    );
+  }
+}
+
+class TelaCarrinho extends StatelessWidget {
+  const TelaCarrinho({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Carrinho')),
+      body: const Center(child: Text('Seu carrinho está vazio')),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>2. Duas formas de escrever: <code>Navigator.push</code> e <code>Navigator.of(context).push</code></h2>
+<p>Você vai ver as duas em tutoriais. Fazem exatamente a mesma coisa:</p>
+<pre class="file" data-file="lib/main.dart (trecho)">Navigator.push(context, MaterialPageRoute(builder: (context) =&gt; const TelaReceita()));
+
+Navigator.of(context).push(MaterialPageRoute(builder: (context) =&gt; const TelaReceita()));
+</pre>
+<p>A primeira é um atalho para a segunda. O <code>Navigator.of(context)</code> acha o <code>Navigator</code> e devolve o "estado" dele, onde moram o <code>push</code>, o <code>pop</code> e os outros. Use a que achar mais fácil de ler; neste guia usamos a primeira.</p>
+
+<hr>
+
+<h2>3. Trocar de tela sem volta: <code>pushReplacement</code></h2>
+<p>Depois do login, a pessoa vai para a tela inicial do app. Se ela apertar Voltar, não faz sentido cair de novo no login. Para isso, o <code>pushReplacement</code> ("empurrar substituindo") <strong>troca</strong> a tela de cima pela nova, em vez de pôr em cima:</p>
+<pre class="file" data-file="lib/main.dart (trecho)">// na tela de login, depois de conferir a senha:
+Navigator.pushReplacement(
+  context,
+  MaterialPageRoute(builder: (context) =&gt; const TelaInicial()),
+);
+</pre>
+<pre>  antes                    depois do pushReplacement
+┌─────────────┐          ┌─────────────┐
+│ Login       │   →      │ Inicial     │  (sem seta de voltar)
+└─────────────┘          └─────────────┘
+</pre>
+
+<h3>Limpar a pilha inteira: <code>pushAndRemoveUntil</code></h3>
+<p>No "Sair da conta", a pessoa pode estar 4 telas para dentro. O app tem de voltar ao login e esquecer todas as telas abertas:</p>
+<pre class="file" data-file="lib/main.dart (trecho)">Navigator.pushAndRemoveUntil(
+  context,
+  MaterialPageRoute(builder: (context) =&gt; const TelaLogin()),
+  (rota) =&gt; false,
+);
+</pre>
+<p>O terceiro parâmetro é uma função que olha cada rota da pilha e responde "pode ficar?". Respondendo sempre <code>false</code>, todas saem, e só o login fica. Para o contrário, voltar várias telas de uma vez até a primeira, existe o <code>Navigator.popUntil(context, (rota) =&gt; rota.isFirst)</code>.</p>
+
+<hr>
+
+<h2 id="formas">Qual usar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>O que usar</th></tr>
+<tr><td>Abrir uma tela de detalhe, com volta</td><td><code>Navigator.push</code></td></tr>
+<tr><td>Voltar uma tela</td><td>A seta da <code>AppBar</code> (automática) ou <code>Navigator.pop(context)</code></td></tr>
+<tr><td>Ir para uma tela sem deixar volta (login → início)</td><td><code>Navigator.pushReplacement</code></td></tr>
+<tr><td>Recomeçar do zero (sair da conta)</td><td><code>Navigator.pushAndRemoveUntil(…, (rota) =&gt; false)</code></td></tr>
+<tr><td>Voltar até a primeira tela</td><td><code>Navigator.popUntil(context, (rota) =&gt; rota.isFirst)</code></td></tr>
+<tr><td>Muitas telas, chamadas por nome</td><td>Rotas nomeadas (aula <a href="rotas-nomeadas.html">Rotas Nomeadas</a>)</td></tr>
+<tr><td>App grande, com links da web e voltar do navegador</td><td>O pacote <code>go_router</code> (aula <a href="go-router.html">go_router</a>)</td></tr>
+<tr><td>Abas ou barra inferior (telas lado a lado, não empilhadas)</td><td><a href="bottom-navigation.html">Barra de Navegação Inferior</a> e <a href="tabs.html">Abas</a></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>O <code>context</code> que não tem <code>Navigator</code></strong>
+<p>O mesmo tropeço da aula <a href="dialogos.html">Diálogos</a>: tudo num widget só, que cria o <code>MaterialApp</code>, usando o <code>context</code> dele:</p>
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: FilledButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) =&gt; const Text('Receita')),
+              );
+            },
+            child: const Text('Abrir'),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<p>Ao tocar em Abrir, nada acontece, e o console mostra (de um teste da Ana que toca no botão):</p>
+<pre class="term">══╡ EXCEPTION CAUGHT BY GESTURE ╞═══════════════════════════════════════════════════════════════════
+The following assertion was thrown while handling a gesture:
+Navigator operation requested with a context that does not include a Navigator.
+The context used to push or pop routes from the Navigator must be that of a widget that is a
+descendant of a Navigator widget.
+
+When the exception was thrown, this was the stack:
+#0      Navigator.of.&lt;anonymous closure&gt; (package:flutter/src/widgets/navigator.dart:2959:9)
+#1      Navigator.of (package:flutter/src/widgets/navigator.dart:2966:6)
+#2      Navigator.push (package:flutter/src/widgets/navigator.dart:2337:22)
+#3      MeuApp.build.&lt;anonymous closure&gt; (file:///home/ana/app/test/nav_contexto_test.dart:14:25)
+…
+</pre>
+<dl class="anatomy">
+  <dt>Navigator operation requested with a context that does not include a Navigator.</dt><dd>"Pediram uma operação do Navigator com um <code>context</code> que não inclui um Navigator."</dd>
+  <dt>The context used to push or pop routes … must be that of a widget that is a descendant of a Navigator widget.</dt><dd>"O <code>context</code> usado no <code>push</code> ou no <code>pop</code> tem de ser de um widget <strong>descendente</strong> (abaixo) de um <code>Navigator</code>." O <code>Navigator</code> nasce dentro do <code>MaterialApp</code>; o <code>context</code> do <code>MeuApp</code> está acima dele.</dd>
+  <dt>#2 Navigator.push … #3 MeuApp.build</dt><dd>Foi o <code>push</code>, chamado no botão que está no <code>build</code> do <code>MeuApp</code>. Repare no <code>#1 Navigator.of</code>: o atalho <code>Navigator.push</code> chama o <code>Navigator.of(context)</code> por dentro, e é ele que não acha o <code>Navigator</code>.</dd>
+</dl>
+<p><strong>Como consertar:</strong> separe a tela num widget próprio e passe-o no <code>home:</code> (<code>MaterialApp(home: TelaInicial())</code>), como em todos os exemplos desta aula. Assim o <code>context</code> da tela fica abaixo do <code>Navigator</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>A tela nova sem <code>Scaffold</code></strong>
+<p>No exemplo acima, a rota mostra só um <code>Text('Receita')</code>, sem <code>Scaffold</code>. Com o <code>context</code> consertado (a tela num widget próprio), fica assim:</p>
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: TelaInicial()));
+
+class TelaInicial extends StatelessWidget {
+  const TelaInicial({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: FilledButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) =&gt; const Text('Receita')),
+            );
+          },
+          child: const Text('Abrir'),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<figure class="tela"><img src="assets/telas/navegacao-4.png" alt="Tela branca, sem barra de título, com a palavra &#39;Receita&#39; grande, em vermelho, colada no canto superior esquerdo e sublinhada por duas linhas amarelas" width="390" height="844" loading="lazy"><figcaption>A rota sem <code>Scaffold</code>, depois de tocar em Abrir.</figcaption></figure>
+<p>O texto saiu grande, vermelho e com sublinhado amarelo duplo: é o jeito do Flutter dizer "este texto não está dentro de um <code>Material</code>", então ele não recebeu o estilo do tema. Também não há <code>AppBar</code> nem seta de voltar, e o texto encosta no topo da tela. <strong>Como consertar:</strong> toda tela começa com um <code>Scaffold</code> (aula <a href="scaffold.html">Scaffold e AppBar</a>).</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz com a pilha</th></tr>
+<tr><td><code>Navigator.push(context, MaterialPageRoute(builder: (context) =&gt; Tela()))</code></td><td>Põe a tela em cima</td></tr>
+<tr><td><code>Navigator.pop(context)</code></td><td>Tira a de cima</td></tr>
+<tr><td><code>Navigator.pushReplacement(context, rota)</code></td><td>Troca a de cima pela nova</td></tr>
+<tr><td><code>Navigator.pushAndRemoveUntil(context, rota, (r) =&gt; false)</code></td><td>Põe a nova e tira todas as outras</td></tr>
+<tr><td><code>Navigator.popUntil(context, (r) =&gt; r.isFirst)</code></td><td>Tira até sobrar a primeira</td></tr>
+<tr><td><code>Navigator.canPop(context)</code></td><td><code>true</code> se há tela embaixo para voltar</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete a navegação</h3>
+<div class="ex-code">Navigator.<input data-answer="push" aria-label="método que abre a tela">(<br>&nbsp;&nbsp;context,<br>&nbsp;&nbsp;<input data-answer="MaterialPageRoute" aria-label="tipo da rota">(builder: (context) =&gt; const TelaPerfil()),<br>);</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. A pilha tem Lista → Receita → Comentários (Comentários em cima). O que aparece depois de um <code>Navigator.pop(context)</code>?</p>
+<label><input type="radio" name="q2"> Lista</label>
+<label><input type="radio" name="q2"> Receita</label>
+<label><input type="radio" name="q2"> Comentários</label>
+<label><input type="radio" name="q2"> O app fecha</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. Depois do login, qual comando leva à tela inicial sem deixar o login na pilha?</p>
+<label><input type="radio" name="q3"> <code>Navigator.push</code></label>
+<label><input type="radio" name="q3"> <code>Navigator.pop</code></label>
+<label><input type="radio" name="q3"> <code>Navigator.pushReplacement</code></label>
+<label><input type="radio" name="q3"> <code>Navigator.popUntil</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. Por que a segunda tela tem uma seta de voltar, se ninguém a escreveu?</p>
+<label><input type="radio" name="q4"> A <code>AppBar</code> vê que há uma tela embaixo na pilha e põe a seta sozinha</label>
+<label><input type="radio" name="q4"> O <code>MaterialPageRoute</code> desenha a seta por cima da tela</label>
+<label><input type="radio" name="q4"> É um bug do modo debug</label>
+<label><input type="radio" name="q4"> O <code>Scaffold</code> sempre tem seta</label>
+</div>
+
+<h3>Missão final: três telas</h3>
+<div class="tryflutter" data-goal="src:TelaPagamento\(\)">
+<p class="try-task"><strong>Missão:</strong> a lojinha tem três telas: Loja → Carrinho → Pagamento. O botão "Pagar" do carrinho ainda não faz nada: faça ele abrir a <code>TelaPagamento</code>. Depois, volte duas vezes com a seta e repare que a pilha desmonta na ordem certa.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Loja()));
+
+class Loja extends StatelessWidget {
+  const Loja({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Lojinha da Ana')),
+      body: Center(
+        child: FilledButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) =&gt; const TelaCarrinho()),
+            );
+          },
+          child: const Text('Ver carrinho'),
+        ),
+      ),
+    );
+  }
+}
+
+class TelaCarrinho extends StatelessWidget {
+  const TelaCarrinho({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Carrinho')),
+      body: Center(
+        child: FilledButton(
+          onPressed: () {},
+          child: const Text('Pagar'),
+        ),
+      ),
+    );
+  }
+}
+
+class TelaPagamento extends StatelessWidget {
+  const TelaPagamento({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Pagamento')),
+      body: const Center(child: Text('Pix, cartão ou boleto')),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Loja()));
+
+class Loja extends StatelessWidget {
+  const Loja({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Lojinha da Ana')),
+      body: Center(
+        child: FilledButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) =&gt; const TelaCarrinho()),
+            );
+          },
+          child: const Text('Ver carrinho'),
+        ),
+      ),
+    );
+  }
+}
+
+class TelaCarrinho extends StatelessWidget {
+  const TelaCarrinho({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Carrinho')),
+      body: Center(
+        child: FilledButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) =&gt; const TelaPagamento()),
+            );
+          },
+          child: const Text('Pagar'),
+        ),
+      ),
+    );
+  }
+}
+
+class TelaPagamento extends StatelessWidget {
+  const TelaPagamento({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Pagamento')),
+      body: const Center(child: Text('Pix, cartão ou boleto')),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O <code>Navigator</code> guarda as telas numa <strong>pilha</strong>; aparece sempre a de cima. O <code>MaterialApp</code> já cria um, com o <code>home</code> na base.</li>
+  <li><code>Navigator.push(context, MaterialPageRoute(builder: (context) =&gt; Tela()))</code> abre uma tela; <code>Navigator.pop(context)</code> volta.</li>
+  <li>A <code>AppBar</code> da tela nova ganha a seta de voltar sozinha; o Voltar do Android também faz <code>pop</code>.</li>
+  <li><code>pushReplacement</code> troca a tela sem deixar volta; <code>pushAndRemoveUntil</code> limpa a pilha.</li>
+  <li>O <code>context</code> tem de estar abaixo do <code>MaterialApp</code>: cada tela num widget próprio.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
