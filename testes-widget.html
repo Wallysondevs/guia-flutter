@@ -193,6 +193,8 @@ class _TelaComprasState extends State&lt;TelaCompras&gt; {
 }
 </pre>
 
+<figure class="tela"><img src="assets/telas/testes-widget-1.png" alt="Tela do app com o título 'Compras da Ana' no topo, o campo 'Novo item' vazio, a frase '1 itens na lista' centralizada, o item 'Arroz' na lista e o botão redondo com + no canto de baixo à direita" width="390" height="844" loading="lazy"><figcaption>O app depois de digitar "Arroz" no campo e tocar no +: o campo foi limpo, a frase virou "1 itens na lista" e o item apareceu (Flutter 3.47.7, modo debug). É exatamente isso que o segundo teste abaixo confere.</figcaption></figure>
+
 <p>A Ana apagou o <code>widget_test.dart</code> do contador (ele procura o <code>MyApp</code>, que não existe mais) e escreveu três testes num arquivo novo. O nome do arquivo <strong>tem de terminar em <code>_test.dart</code></strong>: é assim que o <code>flutter test</code> o encontra.</p>
 
 <pre class="file" data-file="test/compras_test.dart">import 'package:flutter/material.dart';
@@ -261,6 +263,7 @@ $ flutter test test/compras_test.dart     « só este arquivo
 
 <div class="tryflutter" data-goal="src:key:\s*const\s+Key\(\s*'campo-item'\s*\)">
 <p class="try-task"><strong>Missão:</strong> o teste da Ana procura o campo com <code>find.byKey(const Key('campo-item'))</code>, mas neste app o <code>TextField</code> está sem chave, e o teste falharia. Dê a ele a chave <code>key: const Key('campo-item')</code>. Rode e confira que o app continua igual: a chave não aparece na tela, ela só serve para achar o widget.</p>
+<figure class="tela"><img src="assets/telas/testes-widget-1.png" alt="O app de compras com 'Arroz' na lista e a frase '1 itens na lista'" width="390" height="844" loading="lazy"><figcaption>Com ou sem chave, a tela é a mesma: digite um item e toque no +.</figcaption></figure>
 <pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
 
 void main() =&gt; runApp(const AppCompras());
