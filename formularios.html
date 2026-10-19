@@ -103,7 +103,7 @@ class _CadastroState extends State&lt;Cadastro&gt; {
 </pre>
 
 <dl class="anatomy">
-  <dt>final _formKey = GlobalKey&lt;FormState&gt;();</dt><dd>A <strong>chave</strong> do formulário, criada uma vez no <code>State</code>. Ela dá acesso ao <code>FormState</code>, o "estado" do formulário, de qualquer lugar da tela. O <code>_</code> no começo do nome a deixa privada ao arquivo (convenção do Dart).</dd>
+  <dt>final _formKey = GlobalKey&lt;FormState&gt;();</dt><dd>A <strong>chave</strong> do formulário, criada uma vez no <code>State</code>. Ela dá acesso ao <code>FormState</code>, o "estado" do formulário, de qualquer lugar da tela. O <code>_</code> no começo do nome a deixa privada ao arquivo (<a href="https://wallysondevs.github.io/guia-dart/privado.html">convenção do Dart</a>).</dd>
   <dt>Form(key: _formKey, child: …)</dt><dd>O formulário. Ele não desenha nada: só junta os <code>TextFormField</code> que estão <strong>dentro</strong> dele, em qualquer profundidade (aqui, dentro de uma <code>Column</code>).</dd>
   <dt>TextFormField(…)</dt><dd>Um <code>TextField</code> que sabe participar de um <code>Form</code>. Aceita os mesmos parâmetros (<code>decoration</code>, <code>keyboardType</code>, <code>obscureText</code>, <code>controller</code>…) e mais alguns: <code>validator</code>, <code>onSaved</code>, <code>initialValue</code>.</dd>
   <dt>validator: (valor) { … }</dt><dd>A regra do campo. Recebe o texto (um <code>String?</code>) e devolve: <strong>um texto</strong>, que é a mensagem de erro, se o valor não presta; ou <strong><code>null</code></strong>, que quer dizer "está certo". Parece ao contrário, mas pense assim: a função responde "<em>qual é o problema?</em>"; <code>null</code> = "nenhum".</dd>
