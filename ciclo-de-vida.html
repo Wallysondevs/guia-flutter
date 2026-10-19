@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Ciclo de Vida — initState, build, didUpdateWidget e dispose | Guia Flutter</title>
+<meta name="description" content="O ciclo de vida de um StatefulWidget no Flutter: initState, didChangeDependencies, build, didUpdateWidget e dispose, vistos no console de um app real (um timer de forno), a ordem em que rodam, o mounted e o erro real 'setState() called after dispose()' de quem esquece de cancelar o Timer.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Ciclo de Vida</span></h1>
+
+<p class="intro">Um <code>State</code> nasce, vive e morre. Ele nasce quando o widget aparece na tela, vive enquanto você toca nos botões e a tela se redesenha, e morre quando o widget sai da tela. Em cada um desses momentos, o Flutter chama um método do seu <code>State</code>. Esse conjunto de momentos se chama <strong>ciclo de vida</strong> (em inglês, <em>lifecycle</em>), e saber usá-lo é o que separa um app que funciona de um app que fica gastando bateria escondido.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Os cinco métodos do ciclo de vida: <code>initState</code>, <code>didChangeDependencies</code>, <code>build</code>, <code>didUpdateWidget</code> e <code>dispose</code>.</li>
+  <li>A ordem em que eles rodam, vista no console de um app de verdade.</li>
+  <li>Onde começar as coisas (um <code>Timer</code>, uma busca) e onde terminá-las.</li>
+  <li>O que é o <code>mounted</code>.</li>
+  <li>O erro real <code>setState() called after dispose()</code>, de quem esquece de cancelar o <code>Timer</code>.</li>
+</ul>
+</div>
+
+<p>As telas e o console desta aula vieram de um Flutter de verdade, no laboratório da Ana, em tamanho de celular.</p>
+
+<hr>
+
+<h2>A ideia: o forno da padaria</h2>
+<p>Na padaria, cada fornada tem uma rotina:</p>
+<ol class="passo">
+  <li><strong>Ligar o forno</strong> uma vez, quando a fornada começa (<code>initState</code>).</li>
+  <li><strong>Olhar pelo vidro</strong> e mostrar ao cliente como está o pão, quantas vezes for preciso (<code>build</code>).</li>
+  <li>Se o pedido mudar ("agora é pão, não bolo"), <strong>ajustar</strong> sem desligar o forno (<code>didUpdateWidget</code>).</li>
+  <li><strong>Desligar o forno</strong> quando a fornada acaba (<code>dispose</code>). Esquecer de desligar é desperdício, e pode dar problema.</li>
+</ol>
+
+<hr>
+
+<h2>1. O timer do forno</h2>
+<p>A Ana fez um painel para a cozinha. Ele mostra um <code>TimerForno</code>, que conta os segundos desde que a receita entrou no forno, e dois botões: um troca a receita para "Pão" e o outro desliga (tira da tela) o timer. Cada método do ciclo de vida escreve no console quando roda:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'dart:async';
+
+import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Cozinha da Ana')),
+        body: const Center(child: Painel()),
+      ),
+    );
+  }
+}
+
+class Painel extends StatefulWidget {
+  const Painel({super.key});
+
+  @override
+  State&lt;Painel&gt; createState() =&gt; _PainelState();
+}
+
+class _PainelState extends State&lt;Painel&gt; {
+  bool _ligado = true;
+  String _receita = 'Bolo';
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (_ligado) TimerForno(receita: _receita),
+        const SizedBox(height: 16),
+        FilledButton(
+          onPressed: () =&gt; setState(() =&gt; _receita = 'Pão'),
+          child: const Text('Trocar para pão'),
+        ),
+        OutlinedButton(
+          onPressed: () =&gt; setState(() =&gt; _ligado = !_ligado),
+          child: Text(_ligado ? 'Desligar o timer' : 'Ligar o timer'),
+        ),
+      ],
+    );
+  }
+}
+
+class TimerForno extends StatefulWidget {
+  const TimerForno({super.key, required this.receita});
+
+  final String receita;
+
+  @override
+  State&lt;TimerForno&gt; createState() =&gt; _TimerFornoState();
+}
+
+class _TimerFornoState extends State&lt;TimerForno&gt; {
+  int _segundos = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    debugPrint('initState');
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      setState(() =&gt; _segundos++);
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    debugPrint('didChangeDependencies');
+  }
+
+  @override
+  void didUpdateWidget(TimerForno oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    debugPrint('didUpdateWidget: ${oldWidget.receita} -&gt; ${widget.receita}');
+  }
+
+  @override
+  void dispose() {
+    debugPrint('dispose');
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    debugPrint('build: $_segundos s');
+    return Text('${widget.receita} no forno: $_segundos s',
+        style: const TextStyle(fontSize: 26));
+  }
+}</pre>
+
+<p>Os métodos do ciclo de vida, na ordem em que aparecem no <code>_TimerFornoState</code>:</p>
+
+<dl class="anatomy">
+  <dt>import 'dart:async';</dt><dd>Traz o <code>Timer</code>, o relógio do Dart que chama uma função de tempos em tempos.</dd>
+  <dt>void initState()</dt><dd>"Iniciar o estado." Roda <strong>uma vez só</strong>, logo que o <code>State</code> é criado, antes do primeiro <code>build</code>. É o lugar de começar as coisas: ligar um <code>Timer</code>, começar uma busca, criar um controlador. A primeira linha tem de ser <code>super.initState();</code>.</dd>
+  <dt>Timer.periodic(const Duration(seconds: 1), (_) { … })</dt><dd>Um relógio que chama a função a cada segundo. A função soma 1 em <code>_segundos</code> dentro de um <code>setState</code>, e a tela se redesenha. O <code>(_)</code> é o parâmetro que o <code>Timer</code> passa (ele mesmo), que aqui não usamos.</dd>
+  <dt>void didChangeDependencies()</dt><dd>"As dependências mudaram." Roda logo depois do <code>initState</code> e de novo quando algo de que o widget depende muda lá em cima na árvore (o tema, o tamanho da tela, um <a href="inherited-widget.html">InheritedWidget</a>). No começo, raramente você vai precisar dele.</dd>
+  <dt>void didUpdateWidget(TimerForno oldWidget)</dt><dd>"O widget foi atualizado." Roda quando o <strong>pai</strong> se redesenha e manda um widget novo, do mesmo tipo, para o mesmo lugar (aqui, com outra <code>receita</code>). O <code>State</code> continua o mesmo; o <code>oldWidget</code> é o widget antigo e o <code>widget</code> é o novo, para você comparar.</dd>
+  <dt>void dispose()</dt><dd>"Descartar." Roda <strong>uma vez só</strong>, quando o widget sai da tela de vez. É o lugar de terminar tudo o que o <code>initState</code> começou: aqui, <code>_timer?.cancel()</code> para o relógio. A última linha tem de ser <code>super.dispose();</code>.</dd>
+  <dt>Widget build(BuildContext context)</dt><dd>Roda depois do <code>initState</code>/<code>didChangeDependencies</code>, depois de cada <code>setState</code> e depois de cada <code>didUpdateWidget</code>. Pode rodar <strong>muitas</strong> vezes: por isso nunca comece um <code>Timer</code> ou uma busca dentro dele.</dd>
+</dl>
+
+<h3>O que o console mostrou</h3>
+<p>A Ana abriu o app, esperou uns segundos, tocou em <strong>Trocar para pão</strong>, esperou mais um pouco e tocou em <strong>Desligar o timer</strong>. As telas, nessa ordem:</p>
+
+<figure class="tela"><img src="assets/telas/ciclo-de-vida-1.png" alt="Tela 'Cozinha da Ana' com o texto 'Bolo no forno: 4 s' e, embaixo, o botão roxo 'Trocar para pão' e o botão vazado 'Desligar o timer'" width="390" height="844" loading="lazy"><figcaption>Uns segundos depois de abrir: "Bolo no forno: 4 s".</figcaption></figure>
+<figure class="tela"><img src="assets/telas/ciclo-de-vida-2.png" alt="A mesma tela com o texto 'Pão no forno: 6 s'" width="390" height="844" loading="lazy"><figcaption>Depois de "Trocar para pão": a receita mudou, mas a contagem continuou (6 s).</figcaption></figure>
+<figure class="tela"><img src="assets/telas/ciclo-de-vida-3.png" alt="A mesma tela sem o texto do timer, só com os botões 'Trocar para pão' e 'Ligar o timer'" width="390" height="844" loading="lazy"><figcaption>Depois de "Desligar o timer": o timer saiu da tela, e o segundo botão virou "Ligar o timer".</figcaption></figure>
+
+<p>E o console, do começo ao fim:</p>
+
+<pre class="term">initState
+didChangeDependencies
+build: 0 s
+build: 1 s
+build: 2 s
+build: 3 s
+build: 4 s
+didUpdateWidget: Bolo -&gt; Pão
+build: 4 s
+build: 5 s
+build: 6 s
+dispose
+</pre>
+
+<p>Linha por linha:</p>
+<dl class="anatomy">
+  <dt>initState → didChangeDependencies → build: 0 s</dt><dd>O nascimento: sempre nessa ordem, uma vez.</dd>
+  <dt>build: 1 s … build: 4 s</dt><dd>A vida: a cada segundo o <code>Timer</code> chama o <code>setState</code>, e o <code>build</code> roda de novo.</dd>
+  <dt>didUpdateWidget: Bolo -&gt; Pão</dt><dd>O toque em "Trocar para pão" chamou o <code>setState</code> do <strong>pai</strong> (<code>_PainelState</code>). O pai se redesenhou e mandou um <code>TimerForno(receita: 'Pão')</code> novo para o mesmo lugar. O Flutter <strong>reaproveitou</strong> o <code>State</code> que já existia (por isso a contagem não voltou a 0) e avisou com o <code>didUpdateWidget</code>.</dd>
+  <dt>build: 4 s</dt><dd>Depois do <code>didUpdateWidget</code>, sempre vem um <code>build</code>, agora com "Pão".</dd>
+  <dt>dispose</dt><dd>A morte: o toque em "Desligar o timer" tirou o <code>TimerForno</code> da árvore (o <code>if (_ligado)</code> ficou falso). O <code>dispose</code> cancelou o <code>Timer</code>, e nenhum <code>build</code> aparece depois dele.</dd>
+</dl>
+
+<div class="note">
+<strong>E se ligar o timer de novo?</strong>
+<p>Um <code>TimerForno</code> novo entra na árvore com um <code>State</code> <strong>novo</strong>: <code>initState</code>, <code>didChangeDependencies</code> e <code>build: 0 s</code> de novo. O <code>State</code> antigo morreu no <code>dispose</code> e não volta.</p>
+</div>
+
+<div class="tryflutter">
+<p class="try-task"><strong>Experimente:</strong> rode o painel e abra o console do DartPad (embaixo do app, na aba Output). Toque em "Trocar para pão", depois em "Desligar o timer" e em "Ligar o timer", e acompanhe os métodos aparecendo no console.</p>
+<pre class="script" data-file="main.dart">import 'dart:async';
+
+import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Cozinha da Ana')),
+        body: const Center(child: Painel()),
+      ),
+    );
+  }
+}
+
+class Painel extends StatefulWidget {
+  const Painel({super.key});
+
+  @override
+  State&lt;Painel&gt; createState() =&gt; _PainelState();
+}
+
+class _PainelState extends State&lt;Painel&gt; {
+  bool _ligado = true;
+  String _receita = 'Bolo';
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (_ligado) TimerForno(receita: _receita),
+        const SizedBox(height: 16),
+        FilledButton(
+          onPressed: () =&gt; setState(() =&gt; _receita = 'Pão'),
+          child: const Text('Trocar para pão'),
+        ),
+        OutlinedButton(
+          onPressed: () =&gt; setState(() =&gt; _ligado = !_ligado),
+          child: Text(_ligado ? 'Desligar o timer' : 'Ligar o timer'),
+        ),
+      ],
+    );
+  }
+}
+
+class TimerForno extends StatefulWidget {
+  const TimerForno({super.key, required this.receita});
+
+  final String receita;
+
+  @override
+  State&lt;TimerForno&gt; createState() =&gt; _TimerFornoState();
+}
+
+class _TimerFornoState extends State&lt;TimerForno&gt; {
+  int _segundos = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    debugPrint('initState');
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      setState(() =&gt; _segundos++);
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    debugPrint('didChangeDependencies');
+  }
+
+  @override
+  void didUpdateWidget(TimerForno oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    debugPrint('didUpdateWidget: ${oldWidget.receita} -&gt; ${widget.receita}');
+  }
+
+  @override
+  void dispose() {
+    debugPrint('dispose');
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    debugPrint('build: $_segundos s');
+    return Text('${widget.receita} no forno: $_segundos s',
+        style: const TextStyle(fontSize: 26));
+  }
+}</pre>
+</div>
+
+<hr>
+
+<h2>2. O mapa do ciclo de vida</h2>
+<pre>       o widget entra na tela
+                │
+          createState()
+                │
+           initState()              ← começar: Timer, busca, controlador
+                │
+      didChangeDependencies()
+                │
+     ┌────────► build() ◄─────────────┐
+     │                                │
+ setState()                   didUpdateWidget()
+ (o próprio State)            (o pai mandou um widget novo)
+                │
+       o widget sai da tela
+                │
+            dispose()               ← terminar: cancelar, fechar, soltar
+</pre>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Método</th><th>Quantas vezes</th><th>Use para</th><th>Não use para</th></tr>
+<tr><td><code>initState</code></td><td>1</td><td>Começar <code>Timer</code>, busca, controladores (<code>TextEditingController</code>)</td><td>Ler o tema ou o <code>MediaQuery</code> (use o <code>didChangeDependencies</code> ou o <code>build</code>)</td></tr>
+<tr><td><code>didChangeDependencies</code></td><td>1 ou mais</td><td>Reagir a mudanças do que vem de cima (tema, <code>InheritedWidget</code>)</td><td>Trabalho pesado sem necessidade</td></tr>
+<tr><td><code>build</code></td><td>Muitas</td><td>Montar a tela com o estado atual</td><td>Começar <code>Timer</code>, buscas, <code>setState</code></td></tr>
+<tr><td><code>didUpdateWidget</code></td><td>0 ou mais</td><td>Reagir a parâmetros novos do pai (comparar <code>oldWidget</code> e <code>widget</code>)</td><td>—</td></tr>
+<tr><td><code>dispose</code></td><td>1</td><td>Cancelar <code>Timer</code>, fechar controladores e assinaturas</td><td>Chamar <code>setState</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>3. O <code>mounted</code>: "ainda estou na tela?"</h2>
+<p>Todo <code>State</code> tem uma propriedade <code>mounted</code> ("montado"): <code>true</code> do <code>initState</code> até o <code>dispose</code>, e <code>false</code> depois. Ela é útil depois de uma espera, quando o widget pode ter saído da tela enquanto você esperava (a pessoa voltou para a tela anterior, por exemplo):</p>
+
+<pre class="file" data-file="lib/main.dart">Future&lt;void&gt; _buscar() async {
+  final preco = await buscarPrecoNaInternet();
+  if (!mounted) return; // saiu da tela durante a espera: não mexe em nada
+  setState(() =&gt; _preco = preco);
+}
+</pre>
+<p>(O <code>buscarPrecoNaInternet</code> é ilustrativo; a busca de verdade está na aula <a href="http.html">Buscando Dados na Internet</a>.)</p>
+
+<hr>
+
+<h2 id="formas">Formas diferentes: onde começar as coisas</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Onde</th><th>Funciona?</th><th>Por quê</th></tr>
+<tr><td>No <code>initState</code></td><td>Sim: o certo</td><td>Roda uma vez, quando o <code>State</code> nasce</td></tr>
+<tr><td>Num botão ("Começar")</td><td>Sim</td><td>Quando a coisa só deve começar a pedido; guarde o <code>Timer</code> num campo para cancelar no <code>dispose</code></td></tr>
+<tr><td>No <code>build</code></td><td>Não</td><td>Cada <code>build</code> criaria um <code>Timer</code> novo: um a cada segundo, todos somando juntos</td></tr>
+<tr><td>No construtor do widget</td><td>Não</td><td>O widget é recriado a cada <code>build</code> do pai, e não tem <code>setState</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Esqueceu de cancelar o <code>Timer</code> no <code>dispose</code></strong>
+<p>A Ana apagou a linha <code>_timer?.cancel();</code>:</p>
+<pre class="file" data-file="lib/main.dart">  @override
+  void dispose() {
+    debugPrint('dispose');
+    super.dispose();
+  }
+</pre>
+<p>Ela abriu o app, tocou em "Desligar o timer" e esperou. A tela ficou igual à da terceira foto (os botões, sem o timer), mas o console:</p>
+<pre class="term">initState
+didChangeDependencies
+build: 0 s
+build: 1 s
+build: 2 s
+build: 3 s
+dispose
+[erro na página] setState() called after dispose(): _TimerFornoState#c7668(lifecycle state: defunct, not mounted)
+This error happens if you call setState() on a State object for a widget that no longer appears in the widget tree (e.g., whose parent widget no longer includes the widget in its build). This error can occur when code calls setState() from a timer, from an animation callback, or after an asynchronous operation (such as an awaited network request or other Future) completes after the widget has been removed from the tree.
+The preferred solution is to cancel the timer or stop listening to the animation in the dispose() callback. Another solution is to check the "mounted" property of this object before calling setState() to ensure the object is still in the tree.
+This error might indicate a memory leak if setState() is being called because another object is retaining a reference to this State object after it has been removed from the tree. To avoid memory leaks, consider breaking the reference to this object during dispose().
+« … e a mesma mensagem de novo a cada segundo
+</pre>
+<p>Linha por linha:</p>
+<dl class="anatomy">
+  <dt>setState() called after dispose(): _TimerFornoState#c7668(lifecycle state: defunct, not mounted)</dt><dd>"<code>setState()</code> chamado depois do <code>dispose()</code>." O estado está <code>defunct</code> ("morto") e <code>not mounted</code> (fora da tela). O <code>#c7668</code> é um número de identificação que muda a cada execução. O <code>[erro na página]</code> no começo é a marca do console do navegador do lab para um erro que ninguém tratou.</dd>
+  <dt>This error happens if you call setState() on a State object for a widget that no longer appears in the widget tree…</dt><dd>"Este erro acontece quando você chama <code>setState()</code> num <code>State</code> cujo widget não está mais na árvore." E a mensagem dá os suspeitos de sempre: um <strong>timer</strong>, uma animação ou uma espera (<code>await</code>) que terminou depois que o widget saiu.</dd>
+  <dt>The preferred solution is to cancel the timer … in the dispose() callback. Another solution is to check the "mounted" property…</dt><dd>As duas soluções: cancelar o timer no <code>dispose()</code> (a preferida) ou conferir o <code>mounted</code> antes do <code>setState</code>.</dd>
+  <dt>This error might indicate a memory leak…</dt><dd>"Pode ser um vazamento de memória": o <code>Timer</code> continua vivo, segurando o <code>State</code> morto, e o app gasta memória e bateria à toa.</dd>
+</dl>
+<p>O analisador do Dart até deixa uma pista antes de o app rodar: sem o <code>cancel()</code>, o campo <code>_timer</code> recebe um valor mas nunca é lido, e o <code>dart analyze</code> do lab avisa <code>The value of the field '_timer' isn't used. [unused_field]</code> ("o valor do campo <code>_timer</code> não é usado"). <strong>Como consertar:</strong> no <code>dispose</code>, cancele tudo o que o <code>initState</code> começou: <code>_timer?.cancel();</code>, antes do <code>super.dispose();</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Esqueceu o <code>super.initState()</code> ou o <code>super.dispose()</code></strong>
+<p>O Flutter também faz o trabalho dele nesses métodos; por isso eles são marcados com <code>@mustCallSuper</code> ("tem de chamar o super"). Sem a chamada, o analisador do editor sublinha o método com um aviso. Regra fácil: no <code>initState</code>, o <code>super</code> vem <strong>primeiro</strong>; no <code>dispose</code>, <strong>por último</strong>.</p>
+</div>
+
+<div class="tryflutter" data-goal="src:_timer\s*(\?|!)\.cancel\(\)">
+<p class="try-task"><strong>Missão:</strong> este é o painel com o <code>dispose</code> esquecido. Rode, toque em "Desligar o timer" e veja os erros chegando no console do DartPad. Depois conserte: cancele o <code>_timer</code> no <code>dispose</code>.</p>
+<pre class="script" data-file="main.dart">import 'dart:async';
+
+import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Cozinha da Ana')),
+        body: const Center(child: Painel()),
+      ),
+    );
+  }
+}
+
+class Painel extends StatefulWidget {
+  const Painel({super.key});
+
+  @override
+  State&lt;Painel&gt; createState() =&gt; _PainelState();
+}
+
+class _PainelState extends State&lt;Painel&gt; {
+  bool _ligado = true;
+  String _receita = 'Bolo';
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (_ligado) TimerForno(receita: _receita),
+        const SizedBox(height: 16),
+        FilledButton(
+          onPressed: () =&gt; setState(() =&gt; _receita = 'Pão'),
+          child: const Text('Trocar para pão'),
+        ),
+        OutlinedButton(
+          onPressed: () =&gt; setState(() =&gt; _ligado = !_ligado),
+          child: Text(_ligado ? 'Desligar o timer' : 'Ligar o timer'),
+        ),
+      ],
+    );
+  }
+}
+
+class TimerForno extends StatefulWidget {
+  const TimerForno({super.key, required this.receita});
+
+  final String receita;
+
+  @override
+  State&lt;TimerForno&gt; createState() =&gt; _TimerFornoState();
+}
+
+class _TimerFornoState extends State&lt;TimerForno&gt; {
+  int _segundos = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    debugPrint('initState');
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      setState(() =&gt; _segundos++);
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    debugPrint('didChangeDependencies');
+  }
+
+  @override
+  void didUpdateWidget(TimerForno oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    debugPrint('didUpdateWidget: ${oldWidget.receita} -&gt; ${widget.receita}');
+  }
+
+  @override
+  void dispose() {
+    debugPrint('dispose');
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    debugPrint('build: $_segundos s');
+    return Text('${widget.receita} no forno: $_segundos s',
+        style: const TextStyle(fontSize: 26));
+  }
+}</pre>
+<pre class="solucao" data-file="main.dart">import 'dart:async';
+
+import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Cozinha da Ana')),
+        body: const Center(child: Painel()),
+      ),
+    );
+  }
+}
+
+class Painel extends StatefulWidget {
+  const Painel({super.key});
+
+  @override
+  State&lt;Painel&gt; createState() =&gt; _PainelState();
+}
+
+class _PainelState extends State&lt;Painel&gt; {
+  bool _ligado = true;
+  String _receita = 'Bolo';
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (_ligado) TimerForno(receita: _receita),
+        const SizedBox(height: 16),
+        FilledButton(
+          onPressed: () =&gt; setState(() =&gt; _receita = 'Pão'),
+          child: const Text('Trocar para pão'),
+        ),
+        OutlinedButton(
+          onPressed: () =&gt; setState(() =&gt; _ligado = !_ligado),
+          child: Text(_ligado ? 'Desligar o timer' : 'Ligar o timer'),
+        ),
+      ],
+    );
+  }
+}
+
+class TimerForno extends StatefulWidget {
+  const TimerForno({super.key, required this.receita});
+
+  final String receita;
+
+  @override
+  State&lt;TimerForno&gt; createState() =&gt; _TimerFornoState();
+}
+
+class _TimerFornoState extends State&lt;TimerForno&gt; {
+  int _segundos = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    debugPrint('initState');
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      setState(() =&gt; _segundos++);
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    debugPrint('didChangeDependencies');
+  }
+
+  @override
+  void didUpdateWidget(TimerForno oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    debugPrint('didUpdateWidget: ${oldWidget.receita} -&gt; ${widget.receita}');
+  }
+
+  @override
+  void dispose() {
+    debugPrint('dispose');
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    debugPrint('build: $_segundos s');
+    return Text('${widget.receita} no forno: $_segundos s',
+        style: const TextStyle(fontSize: 26));
+  }
+}</pre>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>@override void initState() { super.initState(); … }</code></td><td>Começa as coisas; roda uma vez</td></tr>
+<tr><td><code>@override void didUpdateWidget(X oldWidget) { super.didUpdateWidget(oldWidget); … }</code></td><td>O pai mandou parâmetros novos</td></tr>
+<tr><td><code>@override void dispose() { …; super.dispose(); }</code></td><td>Termina as coisas; roda uma vez</td></tr>
+<tr><td><code>Timer.periodic(Duration(seconds: 1), (_) { … })</code></td><td>Chama a função a cada segundo (<code>import 'dart:async';</code>)</td></tr>
+<tr><td><code>_timer?.cancel()</code></td><td>Para o <code>Timer</code></td></tr>
+<tr><td><code>if (!mounted) return;</code></td><td>Depois de uma espera, sai se o widget não está mais na tela</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete a ordem</h3>
+<p>Quando o widget aparece na tela, os métodos rodam nesta ordem:</p>
+<div class="ex-code"><input data-answer="initState" aria-label="primeiro método"> → <input data-answer="didChangeDependencies" aria-label="segundo método"> → <input data-answer="build" aria-label="terceiro método"></div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">2. Onde se cancela um <code>Timer</code> criado no <code>initState</code>?</p>
+<label><input type="radio" name="q2"> No <code>build</code></label>
+<label><input type="radio" name="q2"> No <code>didUpdateWidget</code></label>
+<label><input type="radio" name="q2"> No <code>dispose</code></label>
+<label><input type="radio" name="q2"> Não precisa cancelar</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. O pai chamou <code>setState</code> e mandou um <code>TimerForno(receita: 'Pão')</code> no lugar do <code>TimerForno(receita: 'Bolo')</code>. O que roda no <code>State</code> do timer?</p>
+<label><input type="radio" name="q3"> <code>dispose</code> e depois <code>initState</code></label>
+<label><input type="radio" name="q3"> <code>didUpdateWidget</code> e depois <code>build</code></label>
+<label><input type="radio" name="q3"> Só o <code>initState</code></label>
+<label><input type="radio" name="q3"> Nada</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. Por que não se deve começar um <code>Timer</code> dentro do <code>build</code>?</p>
+<label><input type="radio" name="q4"> Porque o <code>build</code> roda muitas vezes, e cada vez criaria um <code>Timer</code> novo</label>
+<label><input type="radio" name="q4"> Porque o <code>build</code> não aceita <code>import 'dart:async'</code></label>
+<label><input type="radio" name="q4"> Porque o <code>Timer</code> só funciona no <code>main</code></label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O <code>State</code> nasce com <code>initState</code> → <code>didChangeDependencies</code> → <code>build</code>, vive com um <code>build</code> a cada <code>setState</code> ou <code>didUpdateWidget</code>, e morre com o <code>dispose</code>.</li>
+  <li><code>initState</code> e <code>dispose</code> rodam uma vez cada: comece as coisas num e termine-as no outro.</li>
+  <li><code>didUpdateWidget</code> avisa que o pai mandou parâmetros novos; o <code>State</code> é reaproveitado (a contagem continua).</li>
+  <li>O <code>build</code> roda muitas vezes: só monte a tela nele.</li>
+  <li>Esquecer o <code>cancel()</code> no <code>dispose</code> dá <code>setState() called after dispose()</code> e vazamento de memória. Depois de uma espera, confira o <code>mounted</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
