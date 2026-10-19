@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Card e ListTile — cartões e linhas de lista prontas | Guia Flutter</title>
+<meta name="description" content="Card e ListTile no Flutter para quem nunca fez um app: o cartão do Material 3 (Card, Card.filled e Card.outlined), elevation, cor e cantos, a linha de lista pronta (leading, title, subtitle, trailing, onTap), os dois juntos numa lista de receitas, e os erros reais (ListTile dentro de uma Row), com as telas fotografadas no Flutter de verdade.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Card e ListTile</span></h1>
+
+<p class="intro">Até aqui você montou tudo à mão: <code>Container</code> com cor, <code>Padding</code>, <code>Row</code> com ícone e texto. O Material Design já traz duas peças prontas que aparecem em quase todo app: o <code>Card</code> ("cartão"), uma caixa com cantos arredondados que parece um papel sobre a tela, e o <code>ListTile</code> ("ladrilho de lista"), uma linha pronta com ícone, título, subtítulo e alguma coisa na ponta. Juntos, eles fazem em poucas linhas uma lista bonita, como a de contatos do seu celular.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como o <code>Card</code> embrulha um conteúdo num cartão, e os três estilos do Material 3: <code>Card</code>, <code>Card.filled</code> e <code>Card.outlined</code>.</li>
+  <li>Como mudar a sombra (<code>elevation</code>), a cor, os cantos e a margem do cartão.</li>
+  <li>As quatro partes do <code>ListTile</code>: <code>leading</code>, <code>title</code>, <code>subtitle</code> e <code>trailing</code>, e o toque com <code>onTap</code>.</li>
+  <li>Como juntar os dois numa lista de receitas.</li>
+  <li>O erro real de pôr um <code>ListTile</code> dentro de uma <code>Row</code>.</li>
+</ul>
+</div>
+
+<p>Todos os apps desta aula são um <code>lib/main.dart</code> completo, compilados pelo Flutter <span class="versao">Flutter 3.47</span> do laboratório para a web e fotografados no navegador, em tamanho de celular (390 × 844).</p>
+
+<hr>
+
+<h2>A ideia: as fichas de receita</h2>
+<p>A Ana guarda as receitas da avó em fichas de papel, uma para cada prato. Cada ficha é um <strong>cartão</strong>: separa uma receita da outra e parece "flutuar" sobre a mesa. Dentro de cada ficha, a primeira linha segue sempre o mesmo formato: um desenho do prato à esquerda, o nome em destaque, uma linha menor com o tempo de preparo, e uma estrelinha na ponta direita se for favorita. O <code>Card</code> é a ficha; o <code>ListTile</code> é essa linha de formato fixo.</p>
+
+<hr>
+
+<h2>1. O <code>Card</code></h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Card(
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: Text('Bolo de cenoura com cobertura de chocolate', style: TextStyle(fontSize: 20)),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>Card(child: …)</dt><dd>O cartão. Ele desenha o fundo, os cantos arredondados e a sombra, e põe uma pequena margem em volta de si (4 de cada lado). Tem <strong>um</strong> filho.</dd>
+  <dt>Padding(padding: EdgeInsets.all(16), …)</dt><dd>O <code>Card</code> <strong>não</strong> tem padding: sem este <code>Padding</code>, o texto encostaria nas bordas do cartão. Quase sempre um <code>Card</code> tem um <code>Padding</code> logo dentro.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/card-1.png" alt="Barra Receitas da Ana e, logo abaixo, um cartão claro de cantos arredondados, quase da largura da tela, com o texto Bolo de cenoura com cobertura de chocolate em duas linhas" width="390" height="844" loading="lazy"><figcaption>Um Card com o texto da receita.</figcaption></figure>
+
+<p>O cartão ocupou a largura toda (menos a margem de 4 de cada lado), porque o texto comprido precisou dela e quebrou em duas linhas. Ele tem os cantos arredondados (raio 12, o padrão do Material 3), uma sombra bem leve embaixo e um fundo um tom diferente do fundo da tela. Essa cor vem do tema do app, o <code>ColorScheme</code> do Material 3 (aula <a href="material3.html">Material 3 e ColorScheme</a>): por isso você não escolheu cor nenhuma e o cartão já combina com o resto.</p>
+
+<h3>Os três estilos do Material 3</h3>
+<p>O Material 3 define três tipos de cartão, e o Flutter tem um construtor para cada:</p>
+
+<pre class="file" data-file="lib/main.dart (só o body)">        body: const Padding(
+          padding: EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Card(child: Padding(padding: EdgeInsets.all(24), child: Text('Card() — elevado'))),
+              Card.filled(child: Padding(padding: EdgeInsets.all(24), child: Text('Card.filled() — preenchido'))),
+              Card.outlined(child: Padding(padding: EdgeInsets.all(24), child: Text('Card.outlined() — com contorno'))),
+            ],
+          ),
+        ),
+</pre>
+
+<figure class="tela"><img src="assets/telas/card-2.png" alt="Três cartões da largura da tela: o primeiro, claro com uma sombra leve; o segundo, preenchido de cinza-arroxeado; o terceiro, branco com contorno cinza fino" width="390" height="844" loading="lazy"><figcaption>Os três estilos de cartão do Material 3, um embaixo do outro.</figcaption></figure>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Construtor</th><th>Aparência</th><th>Quando usar</th></tr>
+<tr><td><code>Card()</code></td><td>Fundo quase da cor da tela, com uma sombra leve embaixo (<code>elevation</code> 1)</td><td>O padrão: destacar um item do fundo</td></tr>
+<tr><td><code>Card.filled()</code></td><td>Fundo cinza-arroxeado mais escuro que a tela, sem sombra</td><td>Agrupar coisas sem chamar muita atenção</td></tr>
+<tr><td><code>Card.outlined()</code></td><td>Fundo branco, sem sombra, com uma linha fina de contorno</td><td>Listas com muitos cartões, num visual mais "limpo"</td></tr>
+</table>
+</div>
+
+<h3>Mudando a aparência</h3>
+<pre class="file" data-file="lib/main.dart (só o body)">        body: Card(
+          elevation: 8,
+          color: Colors.orange.shade50,
+          margin: const EdgeInsets.all(24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          child: const Padding(
+            padding: EdgeInsets.all(24),
+            child: Text('Pudim de leite', style: TextStyle(fontSize: 24)),
+          ),
+        ),
+</pre>
+
+<dl class="anatomy">
+  <dt>elevation: 8</dt><dd>A "altura" do cartão sobre a tela: quanto maior, mais forte a sombra. O <code>Card</code> comum usa 1.</dd>
+  <dt>color: Colors.orange.shade50</dt><dd>A cor do fundo do cartão (aqui, um laranja bem clarinho).</dd>
+  <dt>margin: const EdgeInsets.all(24)</dt><dd>O espaço em volta do cartão (aula <a href="padding-margin.html">Padding e Margem</a>), no lugar dos 4 do padrão.</dd>
+  <dt>shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24))</dt><dd>A forma: um retângulo com cantos arredondados de raio 24 (o padrão do Material 3 é 12). Bordas e cantos têm aula própria: <a href="decoration.html">BoxDecoration</a>.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/card-3.png" alt="Um cartão creme de cantos bem arredondados, com sombra visível embaixo, só do tamanho do texto Pudim de leite, afastado das bordas da tela" width="390" height="844" loading="lazy"><figcaption>Um Card com sombra maior, cor laranja-clara, margem de 24 e cantos bem arredondados. Repare que ele ficou do tamanho do texto: o texto curto não precisou da largura toda.</figcaption></figure>
+
+<hr>
+
+<h2>2. O <code>ListTile</code></h2>
+<p>O <code>ListTile</code> é uma linha pronta, com a altura, os espaços e os tamanhos de letra que o Material Design recomenda. Você só diz o que vai em cada lugar:</p>
+
+<pre class="file" data-file="lib/main.dart (só o body)">        body: Column(
+          children: [
+            const ListTile(title: Text('Só o title')),
+            const ListTile(
+              leading: Icon(Icons.cake),
+              title: Text('Bolo de cenoura'),
+              subtitle: Text('40 minutos · 8 porções'),
+              trailing: Icon(Icons.star, color: Colors.amber),
+            ),
+            ListTile(
+              leading: const Icon(Icons.icecream),
+              title: const Text('Sorvete de manga'),
+              subtitle: const Text('Toque para abrir'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {},
+            ),
+          ],
+        ),
+</pre>
+
+<pre>ListTile
+┌──────────┬───────────────────────────────┬──────────┐
+│ leading  │ title                         │ trailing │
+│ (começo) │ subtitle                      │ (ponta)  │
+└──────────┴───────────────────────────────┴──────────┘</pre>
+
+<dl class="anatomy">
+  <dt>leading</dt><dd>"O que vem na frente": um widget à esquerda, normalmente um <code>Icon</code> ou uma foto redonda (<code>CircleAvatar</code>).</dd>
+  <dt>title</dt><dd>O título, em letra maior. É o único que você quase sempre põe.</dd>
+  <dt>subtitle</dt><dd>A linha menor, embaixo do título, em cor mais apagada.</dd>
+  <dt>trailing</dt><dd>"O que vem atrás": um widget na ponta direita (uma estrela, uma seta, um <code>Switch</code>, um preço).</dd>
+  <dt>onTap: () {}</dt><dd>O que fazer ao tocar na linha. Com <code>onTap</code>, a linha inteira vira um botão: mostra o "respingo" de tinta ao toque. Aqui a função é vazia (não faz nada); em <a href="navegacao.html">Navegação</a> ela vai abrir outra tela.</dd>
+  <dt>const em cada peça</dt><dd>A terceira linha não pode ser <code>const</code> por causa do <code>onTap</code> (uma função criada na hora), então o <code>const</code> foi para as peças de dentro.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/card-4.png" alt="Três linhas de lista: a primeira só com o texto Só o title; a segunda com um ícone de bolo, Bolo de cenoura, embaixo 40 minutos · 8 porções em letra menor e uma estrela amarela na ponta direita; a terceira com um ícone de sorvete, Sorvete de manga, Toque para abrir e uma seta na ponta" width="390" height="844" loading="lazy"><figcaption>Três ListTile: só com título; completo, com ícone, subtítulo e estrela; e com seta e toque.</figcaption></figure>
+
+<p>Repare como o <code>ListTile</code> cuidou de tudo sozinho: o título em letra maior e o subtítulo menor e mais apagado, o ícone do <code>leading</code> alinhado com o texto, a estrela e a seta encostadas na ponta direita, e o mesmo espaço nas laterais de todas as linhas. A primeira linha, só com <code>title</code>, é mais baixa que as outras: a altura muda conforme as partes que você usa.</p>
+
+<hr>
+
+<h2>3. Os dois juntos: a lista de receitas</h2>
+<p>O par mais comum do Flutter: um <code>ListTile</code> dentro de cada <code>Card</code>. Para não repetir o mesmo código três vezes, fazemos um widget nosso, o <code>CartaoReceita</code>:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class CartaoReceita extends StatelessWidget {
+  const CartaoReceita({
+    super.key,
+    required this.icone,
+    required this.nome,
+    required this.detalhe,
+    this.favorita = false,
+  });
+
+  final IconData icone;
+  final String nome;
+  final String detalhe;
+  final bool favorita;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        leading: Icon(icone, size: 36),
+        title: Text(nome),
+        subtitle: Text(detalhe),
+        trailing: Icon(
+          favorita ? Icons.star : Icons.star_border,
+          color: Colors.amber,
+        ),
+      ),
+    );
+  }
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Padding(
+          padding: EdgeInsets.all(8),
+          child: Column(
+            children: [
+              CartaoReceita(icone: Icons.cake, nome: 'Bolo de cenoura', detalhe: '40 minutos · 8 porções', favorita: true),
+              CartaoReceita(icone: Icons.icecream, nome: 'Sorvete de manga', detalhe: '6 horas · 10 porções'),
+              CartaoReceita(icone: Icons.local_pizza, nome: 'Pizza de liquidificador', detalhe: '50 minutos · 6 porções', favorita: true),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>CartaoReceita</dt><dd>Um <code>StatelessWidget</code> nosso (aula <a href="stateless.html">StatelessWidget</a>) com quatro campos <code>final</code>. O <code>favorita</code> tem valor padrão <code>false</code>, então só precisa ser escrito quando for <code>true</code>.</dd>
+  <dt>IconData icone</dt><dd><code>IconData</code> é o tipo de <code>Icons.cake</code>, <code>Icons.icecream</code> etc.: o desenho do ícone, sem tamanho nem cor.</dd>
+  <dt>favorita ? Icons.star : Icons.star_border</dt><dd>O operador ternário do Dart: estrela cheia se for favorita, só o contorno se não for.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/card-5.png" alt="Três cartões claros empilhados, cada um com um ícone à esquerda (bolo, sorvete, fatia de pizza), o nome da receita, o tempo e as porções em letra menor, e uma estrela à direita: cheia no bolo e na pizza, só o contorno no sorvete" width="390" height="844" loading="lazy"><figcaption>Três cartões de receita, cada um com ícone, nome, tempo e porções, e a estrela de favorita.</figcaption></figure>
+
+<div class="tryflutter" data-goal="src:Pudim de leite;;src:Icons\.egg">
+<p class="try-task"><strong>Missão:</strong> acrescente um quarto cartão: o <strong>Pudim de leite</strong>, com o ícone <code>Icons.egg</code>, o detalhe <code>'1 hora · 8 porções'</code> e marcado como favorito.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class CartaoReceita extends StatelessWidget {
+  const CartaoReceita({
+    super.key,
+    required this.icone,
+    required this.nome,
+    required this.detalhe,
+    this.favorita = false,
+  });
+
+  final IconData icone;
+  final String nome;
+  final String detalhe;
+  final bool favorita;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        leading: Icon(icone, size: 36),
+        title: Text(nome),
+        subtitle: Text(detalhe),
+        trailing: Icon(
+          favorita ? Icons.star : Icons.star_border,
+          color: Colors.amber,
+        ),
+      ),
+    );
+  }
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Padding(
+          padding: EdgeInsets.all(8),
+          child: Column(
+            children: [
+              CartaoReceita(icone: Icons.cake, nome: 'Bolo de cenoura', detalhe: '40 minutos · 8 porções', favorita: true),
+              CartaoReceita(icone: Icons.icecream, nome: 'Sorvete de manga', detalhe: '6 horas · 10 porções'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class CartaoReceita extends StatelessWidget {
+  const CartaoReceita({
+    super.key,
+    required this.icone,
+    required this.nome,
+    required this.detalhe,
+    this.favorita = false,
+  });
+
+  final IconData icone;
+  final String nome;
+  final String detalhe;
+  final bool favorita;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        leading: Icon(icone, size: 36),
+        title: Text(nome),
+        subtitle: Text(detalhe),
+        trailing: Icon(
+          favorita ? Icons.star : Icons.star_border,
+          color: Colors.amber,
+        ),
+      ),
+    );
+  }
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Padding(
+          padding: EdgeInsets.all(8),
+          child: Column(
+            children: [
+              CartaoReceita(icone: Icons.cake, nome: 'Bolo de cenoura', detalhe: '40 minutos · 8 porções', favorita: true),
+              CartaoReceita(icone: Icons.icecream, nome: 'Sorvete de manga', detalhe: '6 horas · 10 porções'),
+              CartaoReceita(icone: Icons.egg, nome: 'Pudim de leite', detalhe: '1 hora · 8 porções', favorita: true),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<div class="note">
+<strong>E se forem 200 receitas?</strong>
+<p>Uma <code>Column</code> não rola: com muitos cartões, os de baixo estouram a tela (o overflow). Para listas compridas, troque a <code>Column</code> por um <code>ListView</code>, que rola e cria só os cartões que aparecem na tela. É o assunto das aulas <a href="listview.html">ListView</a> e <a href="listview-builder.html">ListView.builder</a>.</p>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Quero…</th><th>Use</th></tr>
+<tr><td>Um cartão com o visual do Material, sem pensar em sombra e cantos</td><td><code>Card</code> / <code>Card.filled</code> / <code>Card.outlined</code></td></tr>
+<tr><td>Uma caixa com sombra, cantos e cor <strong>do meu jeito</strong></td><td><code>Container</code> com <code>BoxDecoration</code> (aula <a href="decoration.html">BoxDecoration</a>)</td></tr>
+<tr><td>Uma linha com ícone, título e subtítulo</td><td><code>ListTile</code></td></tr>
+<tr><td>Uma linha com um formato que o <code>ListTile</code> não tem</td><td><code>Row</code> + <code>Column</code> à mão (aula <a href="row-column.html">Row e Column</a>)</td></tr>
+<tr><td>Uma linha com caixa de marcar ou chave liga-desliga</td><td><code>CheckboxListTile</code> e <code>SwitchListTile</code> (aula <a href="checkbox-switch.html">Checkbox, Switch e Radio</a>)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>ListTile</code> dentro de uma <code>Row</code></strong>
+<p>A Ana quis pôr duas receitas lado a lado:</p>
+<pre class="file" data-file="lib/main.dart (só o body)">        body: const Row(
+          children: [
+            ListTile(title: Text('Bolo')),
+            ListTile(title: Text('Pudim')),
+          ],
+        ),
+</pre>
+<pre class="term">══╡ EXCEPTION CAUGHT BY RENDERING LIBRARY ╞═════════════════════════════════════════════════════════
+The following assertion was thrown during performLayout():
+BoxConstraints forces an infinite width.
+The offending constraints were:
+  BoxConstraints(w=Infinity, 0.0&lt;=h&lt;=788.0)
+
+The relevant error-causing widget was:
+  ListTile ListTile:file:///home/ana/app/lib/main.dart:16:13
+«  (os detalhes do ListTile e a pilha)
+Another exception was thrown: Assertion failed: file:///home/ana/flutter/packages/flutter/lib/src/rendering/box.dart:2251:12
+</pre>
+<dl class="anatomy">
+  <dt>BoxConstraints forces an infinite width.</dt><dd>"As restrições obrigam uma largura <strong>infinita</strong>." O <code>ListTile</code> sempre tenta ocupar <strong>toda</strong> a largura que recebe (é assim que ele empurra o <code>trailing</code> para a ponta). Só que a <code>Row</code> não dá um limite de largura aos filhos: "pode ter quanto quiser". "Toda a largura" de "sem limite" é infinito, e nada pode ter largura infinita.</dd>
+  <dt>BoxConstraints(w=Infinity, …)</dt><dd>A restrição com problema: largura <strong>exatamente</strong> infinita.</dd>
+  <dt>ListTile … main.dart:16:13</dt><dd>O culpado, na linha 16.</dd>
+  <dt>Another exception was thrown</dt><dd>Depois do primeiro erro vêm outros, em cascata. Leia sempre o <strong>primeiro</strong>.</dd>
+</dl>
+<p><strong>Como consertar:</strong> diga a cada <code>ListTile</code> quanto espaço ele tem, embrulhando-o num <code>Expanded</code> (aula <a href="expanded.html">Expanded e Flexible</a>): <code>Row(children: [Expanded(child: ListTile(…)), Expanded(child: ListTile(…))])</code>. Por que a <code>Row</code> dá largura "sem limite" é explicado em <a href="constraints.html">Como o Flutter Calcula Tamanhos</a>.</p>
+</div>
+
+<div class="cenario">
+<strong>Cartão sem <code>Padding</code>: o texto colado na borda</strong>
+<pre class="file" data-file="lib/main.dart (só o body)">        body: const Card(
+          child: Text('Bolo de cenoura com cobertura de chocolate', style: TextStyle(fontSize: 20)),
+        ),
+</pre>
+<figure class="tela"><img src="assets/telas/card-6.png" alt="Um cartão claro quase da largura da tela com o texto do bolo de cenoura em duas linhas, encostado na borda esquerda e no alto do cartão" width="390" height="844" loading="lazy"><figcaption>Sem <code>Padding</code>: o texto encosta nas bordas do cartão.</figcaption></figure>
+<p>Não é um erro do Flutter (o console fica quieto), mas fica feio. <strong>Como consertar:</strong> ponha um <code>Padding</code> entre o <code>Card</code> e o conteúdo. Com <code>ListTile</code> dentro, não precisa: o <code>ListTile</code> já tem o espaço dele (no Material 3, 16 à esquerda e 24 à direita, que dá para mudar com <code>contentPadding:</code>).</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>Card(child: …)</code> / <code>Card.filled</code> / <code>Card.outlined</code></td><td>Cartão elevado / preenchido / com contorno</td></tr>
+<tr><td><code>elevation:</code>, <code>color:</code>, <code>margin:</code>, <code>shape:</code></td><td>Sombra, cor, espaço em volta e forma do cartão</td></tr>
+<tr><td><code>clipBehavior: Clip.antiAlias</code></td><td>Corta o conteúdo nos cantos arredondados (útil com uma foto no topo do cartão)</td></tr>
+<tr><td><code>ListTile(leading:, title:, subtitle:, trailing:)</code></td><td>Linha pronta: começo, título, subtítulo, ponta</td></tr>
+<tr><td><code>onTap: () { … }</code></td><td>A linha vira um botão</td></tr>
+<tr><td><code>contentPadding:</code>, <code>dense: true</code>, <code>isThreeLine: true</code></td><td>Espaço interno, linha mais baixa, subtítulo de duas linhas</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">1. Em que parte do <code>ListTile</code> vai a seta <code>Icons.chevron_right</code>, na ponta direita?</p>
+<label><input type="radio" name="q1"> <code>leading</code></label>
+<label><input type="radio" name="q1"> <code>subtitle</code></label>
+<label><input type="radio" name="q1"> <code>trailing</code></label>
+<label><input type="radio" name="q1"> <code>title</code></label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. O texto dentro de um <code>Card</code> ficou encostado nas bordas. O que falta?</p>
+<label><input type="radio" name="q2"> <code>elevation: 8</code></label>
+<label><input type="radio" name="q2"> Um <code>Padding</code> entre o <code>Card</code> e o texto</label>
+<label><input type="radio" name="q2"> <code>margin: EdgeInsets.all(16)</code> no <code>Card</code></label>
+<label><input type="radio" name="q2"> Trocar por <code>Card.outlined</code></label>
+</div>
+
+<div class="exercise">
+<h3>3. Complete</h3>
+<p>Complete a linha com o ícone de telefone à esquerda e o nome "Ana":</p>
+<div class="ex-code">ListTile(<br>&nbsp;&nbsp;<input data-answer="leading" aria-label="parte da esquerda">: Icon(Icons.phone),<br>&nbsp;&nbsp;<input data-answer="title" aria-label="parte do título">: Text('Ana'),<br>)</div>
+</div>
+
+<h3>Missão final: o cartão com contorno</h3>
+
+<div class="tryflutter" data-goal="src:Card\.outlined\(">
+<p class="try-task"><strong>Missão:</strong> troque o <code>Card</code> por um <code>Card.outlined</code>, o cartão com contorno do Material 3.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Card(
+          child: ListTile(
+            leading: Icon(Icons.cake),
+            title: Text('Bolo de cenoura'),
+            subtitle: Text('40 minutos'),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Card.outlined(
+          child: ListTile(
+            leading: Icon(Icons.cake),
+            title: Text('Bolo de cenoura'),
+            subtitle: Text('40 minutos'),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>Card</code> é um cartão do Material: fundo, cantos arredondados, sombra e uma margem de 4. Ele não tem padding: ponha um <code>Padding</code> dentro.</li>
+  <li>O Material 3 tem três estilos: <code>Card()</code> (elevado), <code>Card.filled()</code> e <code>Card.outlined()</code>; <code>elevation</code>, <code>color</code>, <code>margin</code> e <code>shape</code> mudam a aparência.</li>
+  <li><code>ListTile</code> é uma linha pronta: <code>leading</code>, <code>title</code>, <code>subtitle</code>, <code>trailing</code>; com <code>onTap</code>, vira um botão.</li>
+  <li>Um <code>ListTile</code> dentro de cada <code>Card</code> é o jeito mais rápido de fazer uma lista bonita; para listas compridas, use <code>ListView</code>.</li>
+  <li>O <code>ListTile</code> quer saber a largura: numa <code>Row</code>, embrulhe-o num <code>Expanded</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
