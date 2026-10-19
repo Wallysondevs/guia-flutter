@@ -74,7 +74,7 @@ O contrato completo está na §4. O básico:
 
 ### 4.2 O contrato da caixa
 ```html
-<div class="tryflutter" data-goal="src:Text\(\s*'Receitas da Ana'\s*\)" data-foto="assets/telas/text-3.png">
+<div class="tryflutter" data-goal="src:Text\(\s*'Receitas da Ana'\s*\)" data-foto="assets/telas/text-3.png" data-foto-alt="O app com o título 'Receitas da Ana' no topo…">
 <p class="try-task"><strong>Missão:</strong> troque o título para "Receitas da Ana".</p>
 <pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
 
@@ -88,12 +88,13 @@ void main() =&gt; runApp(const MeuApp());
 | `pre.script` | **Exatamente um**, com `data-file="main.dart"`: um **app completo** (o `import 'package:flutter/…'` e o `void main`) que compila como está. O DartPad só tem **um arquivo**: nada de `import 'telas/…'` nem `part`. Escape `<`, `>` e `&` (`=&gt;`, `List&lt;Widget&gt;`). |
 | `pre.solucao` | Obrigatório nas missões; o app completo que cumpre a missão. Também precisa compilar. |
 | `data-goal` | As metas, separadas por `;;`. **`src:REGEX`** = o código do leitor casa com a regex (flag `m`; JavaScript); **`nsrc:REGEX`** = o código **não** pode casar (ex.: "tire o `const`"). Não pode ser só `nsrc:`. Os **comentários são ignorados** (`// …` e `/* … */`, fora das strings): código comentado não cumpre missão. Deixe a regex tolerante a espaços (`\s*`) e às duas aspas (`['"]`) quando fizer sentido. |
-| `data-foto` (opcional) | Foto do **resultado esperado** (do lab, §5), mostrada na caixa com "Como deve ficar". Serve também para quem está sem internet. Sem `data-foto`, ponha a `figure` logo depois da caixa. |
+| `data-foto` + `data-foto-alt` (opcionais) | Foto do **resultado esperado** (do lab, §5), mostrada na caixa com "Como deve ficar"; o `data-foto-alt` (obrigatório com `data-foto`) descreve a foto **depois de você olhar para ela**. Serve também para quem está sem internet. Sem `data-foto`, ponha a `figure` logo depois da caixa. |
 | `data-altura` (opcional) | Altura do DartPad em px (padrão **520**). Use 600–700 em apps com listas ou formulários longos. |
 | `data-erro-proposital` (opcional) | O código **inicial** não compila de propósito (a missão é consertar). O testador então exige que ele **não** compile; a solução continua tendo de compilar. |
 | `p.try-task` | O texto da missão. O título "Experimente: edite o código e clique em Rodar" vem do `site.js`. |
 
 - Caixa **sem `data-goal`** = caixa livre (só para brincar). Pelo menos **uma missão por aula** (§2).
+- **Cuidado com as metas:** no Dart, dois textos lado a lado viram um só (`'café' 'manteiga'` = `'cafémanteiga'`, compila sem erro). Uma meta `src:'manteiga'` aceitaria a lista sem a vírgula; peça o trecho inteiro (`src:['"]café['"]\s*,\s*['"]manteiga['"]`). Confira a solução e um erro comum com `tools/testar-navegador.js --dartpad N --codigo errado.dart --fotos DIR`.
 - Na caixa: **▶ Rodar** (ou <kbd>Ctrl</kbd>+<kbd>Enter</kbd> no editor) confere a missão e roda; **✔ Missão cumprida!** quando todas as metas passam; **↺ Restaurar** volta ao código da aula; **Ver solução** → **Usar no editor**; **Copiar**; <kbd>Tab</kbd> no editor = 2 espaços.
 - O que dizer ao leitor: "clique em ▶ Rodar e espere o app aparecer no DartPad, logo abaixo"; "o código é compilado pelos servidores do DartPad, do Google (precisa de internet)". **Não** diga que o Flutter roda no navegador sem internet, nem que a missão confere a tela.
 
