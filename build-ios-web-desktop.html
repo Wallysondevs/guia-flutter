@@ -120,9 +120,8 @@ $ python3 -m http.server 8000
 <h3>Rodar na web durante o desenvolvimento</h3>
 <p>Para desenvolver, você não precisa gerar a pasta toda vez: <code>flutter run -d chrome</code> abre o app no Chrome com <em>hot reload</em> (veja <a href="flutter-run.html">flutter run</a>).</p>
 
-<div class="tryflutter" data-goal="src:Text\('Compras da Ana \(web\)'\)">
+<div class="tryflutter" data-goal="src:Text\('Compras da Ana \(web\)'\)" data-foto="assets/telas/build-ios-web-desktop-1.png" data-foto-alt="Tela com o título Compras da Ana (web) no topo e o texto Arroz, feijão e café no meio, fotografada num navegador (Flutter 3.47.7 compilado para web)">
 <p class="try-task"><strong>Missão:</strong> o editor do guia manda o seu código para o DartPad, que o compila nos servidores do Google e o roda <strong>como app web</strong>, no navegador, o mesmo tipo de app que o <code>flutter build web</code> gera. Troque o título para <code>Compras da Ana (web)</code> e rode: o mesmo código, sem mudar nada além do texto, vira página web.</p>
-<figure class="tela"><img src="assets/telas/build-ios-web-desktop-1.png" alt="Tela com o título 'Compras da Ana (web)' no topo e o texto 'Arroz, feijão e café' no meio" width="390" height="844" loading="lazy"><figcaption>O resultado esperado, fotografado num navegador (Flutter 3.47.7 compilado para web, modo debug).</figcaption></figure>
 <pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
 
 void main() =&gt; runApp(const AppCompras());
