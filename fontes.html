@@ -32,7 +32,7 @@
 </ul>
 </div>
 
-<p>Esta aula usa o <strong>Flutter <span class="versao">3.47</span></strong> e o <strong>google_fonts 9.0.0</strong>. As caixas "Experimente" rodam no DartPad (aula <a href="simulador.html">O Editor do Guia</a>), que já traz o <code>google_fonts</code>. O laboratório de fotos do guia compila um arquivo só, sem pacotes e sem arquivos de fonte; por isso esta aula não tem fotos: rode as caixas para ver cada fonte.</p>
+<p>Esta aula usa o <strong>Flutter <span class="versao">3.47</span></strong> e o <strong>google_fonts 9.0.0</strong>. As caixas "Experimente" rodam no DartPad (aula <a href="simulador.html">O Editor do Guia</a>), que já traz o <code>google_fonts</code>. As fotos do <code>google_fonts</code> são do laboratório do guia, com o pacote instalado; o laboratório não tem arquivos <code>.ttf</code> próprios, então as seções 2 e 3 não têm fotos.</p>
 
 <hr>
 
@@ -220,6 +220,8 @@ class ReceitasApp extends StatelessWidget {
   <dt>GoogleFonts.pacifico(fontSize: 26)</dt><dd>Um <code>TextStyle</code> com a fonte Pacifico. Ele aceita os mesmos parâmetros do <code>TextStyle</code> (<code>fontSize</code>, <code>color</code>, <code>fontWeight</code>…). O nome do método é o nome da fonte em minúsculas e sem espaços, no formato do Dart: "Open Sans" vira <code>GoogleFonts.openSans()</code>.</dd>
   <dt>Text(..., style: GoogleFonts.lato(...))</dt><dd>Repare que o <code>Text</code> perdeu o <code>const</code>: o estilo agora vem de uma função, que só roda com o app no ar.</dd>
 </dl>
+
+<figure class="tela"><img src="assets/telas/fontes-1.png" alt="Tela com o título 'Receitas da Ana' na barra, em letra cursiva grossa (Pacifico), e embaixo o texto 'Rale as cenouras e bata no liquidificador com os ovos e o óleo.' numa letra redonda (Lato)" width="390" height="844" loading="lazy"><figcaption>O título na Pacifico e o texto na Lato, baixadas pelo <code>google_fonts</code>.</figcaption></figure>
 
 <div class="tryflutter" data-goal="src:title:\s*Text\(\s*'Receitas da Ana',\s*style:\s*GoogleFonts\.(?!pacifico)\w+\(">
 <p class="try-task"><strong>Missão:</strong> troque a fonte do título por outra do Google Fonts, por exemplo <code>GoogleFonts.lobster()</code>, <code>GoogleFonts.caveat()</code> ou <code>GoogleFonts.dancingScript()</code>. Rode e compare.</p>
@@ -418,7 +420,7 @@ class ReceitasApp extends StatelessWidget {
 <hr>
 
 <h2 id="errado">Quando dá errado</h2>
-<div class="note"><strong>Ilustrativo</strong><p>Só o caso do <code>pubspec.yaml</code> mal indentado foi rodado no laboratório; os outros não (o laboratório de fotos não tem pacotes nem arquivos de fonte). A mensagem do <code>google_fonts</code> foi tirada do código do pacote, versão 9.0.0.</p></div>
+<div class="note"><strong>Ilustrativo</strong><p>Só o caso do <code>pubspec.yaml</code> mal indentado foi rodado no laboratório; os outros não (o laboratório de fotos não tem arquivos de fonte próprios). A mensagem do <code>google_fonts</code> foi tirada do código do pacote, versão 9.0.0.</p></div>
 
 <div class="cenario">
 <strong>O nome da família errado: não dá erro, a fonte não muda</strong>
@@ -528,7 +530,7 @@ Error on line 93, column 5: While parsing a block collection, expected '-'.
 
 <h3>Missão final: título e texto</h3>
 
-<div class="tryflutter" data-goal="src:GoogleFonts\.pacifico\(;;src:GoogleFonts\.lato\(">
+<div class="tryflutter" data-goal="src:GoogleFonts\.pacifico\(;;src:GoogleFonts\.lato\(" data-foto="assets/telas/fontes-2.png" data-foto-alt="O nome 'Bolo de cenoura' grande, em letra cursiva (Pacifico), e embaixo o modo de preparo 'Bata as cenouras com os ovos e o óleo. Misture a farinha e o açúcar.' em Lato">
 <p class="try-task"><strong>Missão:</strong> deixe o nome da receita na fonte Pacifico (<code>GoogleFonts.pacifico</code>) e o modo de preparo na Lato (<code>GoogleFonts.lato</code>). Lembre-se de tirar os <code>const</code> que ficarem no caminho.</p>
 <pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
