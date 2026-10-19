@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter fontes personalizadas — arquivos .ttf e google_fonts | Guia Flutter</title>
+<meta name="description" content="Fontes personalizadas no Flutter para quem nunca fez um app: a fonte padrão (Roboto), fontes em arquivo .ttf declaradas no pubspec.yaml (família, peso e itálico), fontFamily no TextStyle e no tema, o pacote google_fonts (GoogleFonts.pacifico, textTheme inteiro, getFont), quando baixar e quando embutir, e os erros comuns explicados em português.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Fontes Personalizadas</span></h1>
+
+<p class="intro">O nome do app de receitas ficou com cara de documento: a mesma letra de todos os apps Android. A Ana quer o título numa letra cursiva, de caderno de receitas da avó, e o texto corrido numa letra redonda e fácil de ler. No Flutter, há dois caminhos para usar outra fonte: <strong>colocar o arquivo da fonte no projeto</strong> (um <code>.ttf</code>) e declará-lo no <code>pubspec.yaml</code>, ou usar o pacote <strong><code>google_fonts</code></strong>, que traz as mais de mil fontes do Google Fonts com uma linha de código.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Qual é a fonte que o Flutter usa quando você não diz nada.</li>
+  <li>A pôr um arquivo de fonte no projeto e declará-lo no <code>pubspec.yaml</code> (família, pesos e itálico).</li>
+  <li>A usar a fonte num texto (<code>fontFamily</code>) e no app inteiro (pelo tema).</li>
+  <li>A usar o pacote <code>google_fonts</code>: uma fonte num texto, a fonte do app inteiro e a busca pelo nome.</li>
+  <li>A diferença entre baixar a fonte com o app rodando e embutir o arquivo no app.</li>
+  <li>Os erros comuns: o nome da família errado (que não avisa), o <code>pubspec.yaml</code> mal indentado, o nome que não existe no Google Fonts.</li>
+</ul>
+</div>
+
+<p>Esta aula usa o <strong>Flutter <span class="versao">3.47</span></strong> e o <strong>google_fonts 9.0.0</strong>. As caixas "Experimente" rodam no DartPad (aula <a href="simulador.html">O Editor do Guia</a>), que já traz o <code>google_fonts</code>. O laboratório de fotos do guia compila um arquivo só, sem pacotes e sem arquivos de fonte; por isso esta aula não tem fotos: rode as caixas para ver cada fonte.</p>
+
+<hr>
+
+<h2>A ideia: o jogo de carimbos de letras</h2>
+<p>Imagine que o app escreve com carimbos de letras. O Flutter já vem com um jogo de carimbos (a fonte padrão). Para escrever com outra letra, você precisa trazer outro jogo de carimbos para a cozinha e etiquetar a caixa com um nome ("Caderno"), para poder pedir: "escreva o título com os carimbos da caixa Caderno".</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Nos carimbos</th><th>No Flutter</th></tr>
+<tr><td>O jogo de carimbos</td><td>O arquivo da fonte (<code>.ttf</code> ou <code>.otf</code>)</td></tr>
+<tr><td>Trazer a caixa para a cozinha</td><td>Copiar o arquivo para uma pasta do projeto (ex.: <code>assets/fonts/</code>)</td></tr>
+<tr><td>A etiqueta na caixa</td><td>O nome da <strong>família</strong> no <code>pubspec.yaml</code></td></tr>
+<tr><td>"Use a caixa Caderno"</td><td><code>TextStyle(fontFamily: 'Caderno')</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>1. A fonte padrão</h2>
+<p>Sem você dizer nada, o Flutter com Material usa a <strong>Roboto</strong> no Android e na web, e a fonte do sistema da Apple (San Francisco) no iPhone. No laboratório do guia, que roda o Flutter na web, todos os textos das fotos das outras aulas estão em Roboto. Trocar a fonte é sempre <strong>somar</strong> uma fonte nova ao app; as do sistema continuam lá.</p>
+
+<hr>
+
+<h2>2. Uma fonte em arquivo: o <code>pubspec.yaml</code></h2>
+<p>A Ana baixou a fonte <strong>Pacifico</strong> (cursiva) no site do Google Fonts: veio o arquivo <code>Pacifico-Regular.ttf</code>. São três passos.</p>
+
+<ol class="passo">
+  <li><strong>Copie o arquivo</strong> para uma pasta do projeto. O costume é <code>assets/fonts/</code>, na raiz do projeto (ao lado da <code>lib/</code>):
+<pre>receitas_da_ana/
+ ├─ lib/
+ │   └─ main.dart
+ ├─ assets/
+ │   └─ fonts/
+ │       └─ Pacifico-Regular.ttf
+ └─ pubspec.yaml
+</pre></li>
+  <li><strong>Declare a fonte</strong> no <code>pubspec.yaml</code>, dentro da seção <code>flutter:</code>:
+<pre class="file" data-file="pubspec.yaml">flutter:
+  uses-material-design: true
+
+  fonts:
+    - family: Caderno
+      fonts:
+        - asset: assets/fonts/Pacifico-Regular.ttf
+</pre></li>
+  <li><strong>Pare o app e rode de novo</strong> (<code>flutter run</code>). Mudanças no <code>pubspec.yaml</code> não entram com a recarga a quente: o arquivo da fonte precisa ser empacotado no app.</li>
+</ol>
+
+<dl class="anatomy">
+  <dt>fonts:</dt><dd>A lista de famílias de fonte do app. Fica <strong>dentro</strong> de <code>flutter:</code>, com dois espaços de recuo.</dd>
+  <dt>- family: Caderno</dt><dd>O nome da família: a "etiqueta da caixa". É este nome, e não o nome do arquivo, que você usa no código. Pode ser o nome original da fonte (<code>Pacifico</code>) ou um apelido seu.</dd>
+  <dt>fonts: / - asset: …</dt><dd>Os arquivos dessa família, com o caminho a partir da raiz do projeto.</dd>
+</dl>
+
+<div class="warning">
+<strong>O YAML é exigente com os espaços</strong>
+<p>No <code>pubspec.yaml</code>, o recuo (a quantidade de espaços no começo da linha) diz quem está dentro de quem, como as chaves <code>{ }</code> do Dart. Use sempre <strong>espaços</strong> (nunca TAB) e alinhe os itens de mesmo nível. Um espaço a mais ou a menos e o <code>flutter pub get</code> reclama, ou, pior, a fonte é ignorada.</p>
+</div>
+
+<h3>Pesos e itálico</h3>
+<p>Muitas fontes vêm em vários arquivos: o normal, o negrito, o itálico. Todos entram na <strong>mesma</strong> família, cada um dizendo o que é:</p>
+
+<pre class="file" data-file="pubspec.yaml">flutter:
+  fonts:
+    - family: Lato
+      fonts:
+        - asset: assets/fonts/Lato-Regular.ttf
+        - asset: assets/fonts/Lato-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Lato-Italic.ttf
+          style: italic
+</pre>
+
+<dl class="anatomy">
+  <dt>weight: 700</dt><dd>O "peso" desse arquivo: 400 é o normal, 700 é o negrito (<code>FontWeight.bold</code> é o mesmo que <code>FontWeight.w700</code>). Quando um texto pede <code>fontWeight: FontWeight.bold</code>, o Flutter escolhe este arquivo.</dd>
+  <dt>style: italic</dt><dd>Este arquivo é o itálico, usado com <code>fontStyle: FontStyle.italic</code>.</dd>
+</dl>
+
+<p>Sem o arquivo negrito, o Flutter ainda "engorda" a letra normal para imitar o negrito, mas o resultado fica pior que o desenhado pelo autor da fonte.</p>
+
+<hr>
+
+<h2>3. Usando a fonte: num texto e no app inteiro</h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange, fontFamily: 'Lato'),
+      home: Scaffold(
+        appBar: AppBar(
+          title: const Text(
+            'Receitas da Ana',
+            style: TextStyle(fontFamily: 'Caderno', fontSize: 26),
+          ),
+        ),
+        body: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Text('Rale as cenouras e bata no liquidificador com os ovos e o óleo.'),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>TextStyle(fontFamily: 'Caderno')</dt><dd>Só este texto usa a família <code>Caderno</code> (a Pacifico). O nome tem de ser <strong>igual</strong> ao do <code>family:</code> do <code>pubspec.yaml</code>, com as mesmas maiúsculas.</dd>
+  <dt>ThemeData(fontFamily: 'Lato')</dt><dd>A fonte padrão do app inteiro: todos os textos, botões e barras que não pedirem outra. É a forma de trocar a "letra da casa" (a ideia de tema da aula <a href="temas.html">Temas</a>).</dd>
+</dl>
+
+<p>Este código <strong>não roda no editor do guia</strong>: o DartPad não tem os arquivos <code>.ttf</code> do seu projeto. Lá, os textos sairiam na fonte padrão, sem erro (veja <a href="#errado">Quando dá errado</a>). Para ver a fonte de verdade, rode no seu projeto, ou use o pacote da próxima seção.</p>
+
+<hr>
+
+<h2>4. O pacote <code>google_fonts</code></h2>
+<p>O pacote <code>google_fonts</code>, mantido pela equipe do Flutter, dá acesso às fontes do Google Fonts sem baixar arquivo nenhum à mão. Instale no projeto com:</p>
+
+<pre class="term">$ flutter pub add google_fonts
+« a saída (a lista dos pacotes baixados) não foi colhida no laboratório do guia, que ainda não tem terminal com o pub.dev
+</pre>
+
+<p>Cada fonte vira um método que devolve um <code>TextStyle</code> pronto:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            'Receitas da Ana',
+            style: GoogleFonts.pacifico(fontSize: 26),
+          ),
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            'Rale as cenouras e bata no liquidificador com os ovos e o óleo.',
+            style: GoogleFonts.lato(fontSize: 18),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>import 'package:google_fonts/google_fonts.dart';</dt><dd>Traz o pacote para o arquivo.</dd>
+  <dt>GoogleFonts.pacifico(fontSize: 26)</dt><dd>Um <code>TextStyle</code> com a fonte Pacifico. Ele aceita os mesmos parâmetros do <code>TextStyle</code> (<code>fontSize</code>, <code>color</code>, <code>fontWeight</code>…). O nome do método é o nome da fonte em minúsculas e sem espaços, no formato do Dart: "Open Sans" vira <code>GoogleFonts.openSans()</code>.</dd>
+  <dt>Text(..., style: GoogleFonts.lato(...))</dt><dd>Repare que o <code>Text</code> perdeu o <code>const</code>: o estilo agora vem de uma função, que só roda com o app no ar.</dd>
+</dl>
+
+<div class="tryflutter" data-goal="src:title:\s*Text\(\s*'Receitas da Ana',\s*style:\s*GoogleFonts\.(?!pacifico)\w+\(">
+<p class="try-task"><strong>Missão:</strong> troque a fonte do título por outra do Google Fonts, por exemplo <code>GoogleFonts.lobster()</code>, <code>GoogleFonts.caveat()</code> ou <code>GoogleFonts.dancingScript()</code>. Rode e compare.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            'Receitas da Ana',
+            style: GoogleFonts.pacifico(fontSize: 26),
+          ),
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            'Rale as cenouras e bata no liquidificador com os ovos e o óleo.',
+            style: GoogleFonts.lato(fontSize: 18),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            'Receitas da Ana',
+            style: GoogleFonts.lobster(fontSize: 26),
+          ),
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            'Rale as cenouras e bata no liquidificador com os ovos e o óleo.',
+            style: GoogleFonts.lato(fontSize: 18),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<h3>A fonte do app inteiro</h3>
+<p>Para trocar a fonte de <strong>todos</strong> os textos, junte o pacote com o <code>fontFamily</code> do tema (seção 3): cada estilo do <code>google_fonts</code> sabe o nome da família que ele registrou, e é esse nome que o tema precisa:</p>
+
+<pre class="file" data-file="lib/main.dart">theme: ThemeData(
+  colorSchemeSeed: Colors.orange,
+  fontFamily: GoogleFonts.lato().fontFamily,
+),
+</pre>
+
+<dl class="anatomy">
+  <dt>GoogleFonts.lato()</dt><dd>Um <code>TextStyle</code> com a Lato (e, por trás, o pedido para baixar a fonte).</dd>
+  <dt>.fontFamily</dt><dd>Só o nome da família, um <code>String</code>, que o <code>ThemeData(fontFamily: …)</code> aceita. Todos os textos, botões e barras do app passam a usar a Lato.</dd>
+</dl>
+
+<div class="warning">
+<strong>E o <code>GoogleFonts.latoTextTheme()</code>?</strong>
+<p>Tutoriais e a própria página do pacote mostram outro jeito: <code>textTheme: GoogleFonts.latoTextTheme()</code>, que gera os 15 estilos de texto do tema (aula <a href="temas.html">Temas</a>) na fonte escolhida. Com o <strong>google_fonts 9.0.0</strong> e o <strong>Flutter 3.47</strong>, essa linha <strong>não compila</strong> num app que importa o <code>package:flutter/material.dart</code>. O analisador do Dart, rodado no laboratório do guia, responde:</p>
+<pre class="term">The argument type 'TextTheme' can't be assigned to the parameter type 'TextTheme?'. [argument_type_not_assignable]
+</pre>
+<p>"O tipo <code>TextTheme</code> não pode ser passado para o parâmetro do tipo <code>TextTheme?</code>". Parece absurdo (<code>TextTheme</code> no lugar de <code>TextTheme?</code>), mas são <strong>duas classes diferentes com o mesmo nome</strong>: a versão 9.0.0 do pacote passou a usar o Material de um pacote separado, o <code>material_ui</code> (está no registro de mudanças do pacote, "Migrates to <code>material_ui</code>"), e o <code>TextTheme</code> dele não é o do <code>ThemeData</code> do seu app. Até isso se acertar, use o <code>fontFamily</code> acima, que só passa um texto e funciona nos dois mundos.</p>
+</div>
+
+<h3>A fonte pelo nome</h3>
+<p>Quando o nome da fonte vem de uma variável (uma configuração que a pessoa escolhe), use o <code>getFont</code>:</p>
+
+<pre class="file" data-file="lib/main.dart">final fonteEscolhida = 'Caveat';
+Text('Bolo de cenoura', style: GoogleFonts.getFont(fonteEscolhida, fontSize: 24));
+</pre>
+
+<div class="tryflutter" data-goal="src:fontFamily:\s*GoogleFonts\.nunito\(\s*\)\.fontFamily">
+<p class="try-task"><strong>Missão:</strong> deixe o app inteiro na fonte Nunito: no <code>ThemeData</code>, acrescente <code>fontFamily: GoogleFonts.nunito().fontFamily</code>. Repare que o botão e o texto mudam juntos, sem mexer neles.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Bolo de cenoura com cobertura de chocolate'),
+              const SizedBox(height: 12),
+              FilledButton(onPressed: () {}, child: const Text('Ver receita')),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorSchemeSeed: Colors.orange,
+        fontFamily: GoogleFonts.nunito().fontFamily,
+      ),
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Bolo de cenoura com cobertura de chocolate'),
+              const SizedBox(height: 12),
+              FilledButton(onPressed: () {}, child: const Text('Ver receita')),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Formas diferentes de fazer</h2>
+
+<h3>Baixar na hora ou embutir no app?</h3>
+<p>Por padrão, o <code>google_fonts</code> <strong>baixa</strong> o arquivo da fonte da internet na primeira vez que o app a usa, e guarda no aparelho para as próximas. É prático, mas tem dois efeitos: na primeira abertura, o texto pode aparecer por um instante na fonte padrão e depois "pular" para a nova; e sem internet na primeira vez, a fonte não vem.</p>
+<p>Para um app publicado, o pacote recomenda <strong>embutir</strong> os arquivos: baixe os <code>.ttf</code> do Google Fonts, ponha numa pasta listada nos <code>assets</code> do <code>pubspec.yaml</code> (aula <a href="assets.html">Assets</a>) e desligue o download:</p>
+
+<pre class="file" data-file="lib/main.dart">void main() {
+  GoogleFonts.config.allowRuntimeFetching = false;
+  runApp(const ReceitasApp());
+}
+</pre>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Jeito</th><th>Quando usar</th></tr>
+<tr><td>Arquivo <code>.ttf</code> + <code>fonts:</code> no <code>pubspec.yaml</code></td><td>Fontes que não estão no Google Fonts (a fonte da marca), ou quando você quer controle total e nenhuma dependência</td></tr>
+<tr><td><code>google_fonts</code> baixando na hora</td><td>Para experimentar e para protótipos: troca de fonte com uma linha</td></tr>
+<tr><td><code>google_fonts</code> com os arquivos embutidos</td><td>App publicado que usa fontes do Google: o código do pacote, sem depender da internet</td></tr>
+<tr><td><code>ThemeData(fontFamily: …)</code> (com arquivo, ou <code>GoogleFonts.x().fontFamily</code>)</td><td>A fonte do app inteiro</td></tr>
+<tr><td><code>TextStyle(fontFamily: …)</code> ou <code>GoogleFonts.x()</code> num <code>Text</code></td><td>Uma fonte só para um texto (um título, um logotipo)</td></tr>
+</table>
+</div>
+
+<div class="tip">
+<strong>Duas fontes bastam</strong>
+<p>Um app bonito raramente usa mais que duas fontes: uma para títulos (com personalidade, como a Pacifico) e uma para o texto corrido (bem legível, como a Lato). Fontes cursivas são lindas em títulos curtos e cansativas num parágrafo inteiro.</p>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+<div class="note"><strong>Ilustrativo</strong><p>Os casos abaixo não foram rodados no laboratório (ele não tem pacotes nem arquivos de fonte). A mensagem do <code>google_fonts</code> foi tirada do código do pacote, versão 9.0.0.</p></div>
+
+<div class="cenario">
+<strong>O nome da família errado: não dá erro, a fonte não muda</strong>
+<pre class="file" data-file="lib/main.dart">Text('Receitas da Ana', style: TextStyle(fontFamily: 'caderno'))
+</pre>
+<p>No <code>pubspec.yaml</code> a família se chama <code>Caderno</code>, com C maiúsculo. O Flutter procura <code>caderno</code>, não acha e, <strong>sem avisar</strong>, usa a fonte padrão. O mesmo acontece quando o <code>pubspec.yaml</code> não foi salvo, quando o app não foi reiniciado depois da mudança (a recarga a quente não basta), ou quando o código roda num lugar que não tem o arquivo (como o DartPad). <strong>Como consertar:</strong> confira o nome letra por letra com o <code>family:</code>, salve o <code>pubspec.yaml</code> e rode o app de novo do zero.</p>
+</div>
+
+<div class="cenario">
+<strong>O <code>pubspec.yaml</code> mal indentado</strong>
+<pre class="file" data-file="pubspec.yaml">flutter:
+  fonts:
+    - family: Caderno
+    fonts:
+        - asset: assets/fonts/Pacifico-Regular.ttf
+</pre>
+<p>O segundo <code>fonts:</code> devia estar alinhado com o <code>family:</code> (dois espaços a mais). Do jeito que está, o YAML o lê como outra chave no mesmo nível do primeiro <code>fonts:</code>, e o <code>flutter pub get</code> (que roda sozinho quando você salva o arquivo no VS Code) recusa o arquivo com uma mensagem apontando a linha. <strong>Como consertar:</strong> alinhe pelos exemplos desta aula; muitos editores mostram linhas-guia do recuo.</p>
+</div>
+
+<div class="cenario">
+<strong>O arquivo que não está onde o <code>pubspec.yaml</code> diz</strong>
+<p>Se o caminho do <code>asset:</code> não bate com o arquivo (pasta errada, <code>Pacifico-regular.ttf</code> com r minúsculo), a compilação do app para com um erro dizendo que não achou o arquivo listado no <code>pubspec.yaml</code>. <strong>Como consertar:</strong> o caminho é relativo à raiz do projeto e diferencia maiúsculas de minúsculas: copie o nome do arquivo direto da pasta.</p>
+</div>
+
+<div class="cenario">
+<strong>Um nome que não existe no Google Fonts</strong>
+<pre class="file" data-file="lib/main.dart">GoogleFonts.getFont('Pacifco')
+</pre>
+<p>Com o nome escrito errado, o <code>getFont</code> lança a exceção <code>No font family by name 'Pacifco' was found.</code> ("nenhuma família de fonte com o nome 'Pacifco' foi encontrada"). Com os métodos com nome (<code>GoogleFonts.pacifico()</code>), esse erro não acontece: um método que não existe é pego pelo editor antes de rodar. <strong>Como consertar:</strong> copie o nome exato do site do Google Fonts, com espaços e maiúsculas (<code>'Dancing Script'</code>).</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>flutter: fonts: - family: Nome / fonts: - asset: caminho.ttf</code></td><td>Declara uma família de fonte no <code>pubspec.yaml</code></td></tr>
+<tr><td><code>weight: 700</code> / <code>style: italic</code></td><td>Diz que o arquivo é o negrito / o itálico da família</td></tr>
+<tr><td><code>TextStyle(fontFamily: 'Nome')</code></td><td>Usa a família num texto</td></tr>
+<tr><td><code>ThemeData(fontFamily: 'Nome')</code></td><td>Fonte padrão do app inteiro</td></tr>
+<tr><td><code>flutter pub add google_fonts</code></td><td>Instala o pacote</td></tr>
+<tr><td><code>GoogleFonts.pacifico(fontSize: 26)</code></td><td><code>TextStyle</code> com uma fonte do Google</td></tr>
+<tr><td><code>ThemeData(fontFamily: GoogleFonts.lato().fontFamily)</code></td><td>A fonte do Google no app inteiro (o <code>latoTextTheme()</code> não compila com o google_fonts 9.0.0 + Flutter 3.47)</td></tr>
+<tr><td><code>GoogleFonts.getFont('Nome')</code></td><td>A fonte pelo nome (texto)</td></tr>
+<tr><td><code>GoogleFonts.config.allowRuntimeFetching = false</code></td><td>Não baixa da internet: usa só os arquivos embutidos</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. A etiqueta</h3>
+<p>Complete o parâmetro do <code>TextStyle</code> que escolhe a família da fonte:</p>
+<div class="ex-code">TextStyle(<input data-answer="fontFamily" aria-label="parâmetro">: 'Caderno')</div>
+</div>
+
+<div class="exercise">
+<h3>2. O negrito no pubspec</h3>
+<p>Qual peso indica o arquivo negrito?</p>
+<div class="ex-code">weight: <input data-answer="700" aria-label="peso"></div>
+</div>
+
+<div class="exercise">
+<h3>3. O pacote</h3>
+<p>Complete para usar a fonte Lato do Google Fonts:</p>
+<div class="ex-code">style: <input data-answer="GoogleFonts" aria-label="classe">.lato(fontSize: 18)</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. A Ana escreveu <code>fontFamily: 'caderno'</code>, mas no <code>pubspec.yaml</code> está <code>family: Caderno</code>. O que acontece?</p>
+<label><input type="radio" name="q4"> Erro de compilação</label>
+<label><input type="radio" name="q4"> O app fecha</label>
+<label><input type="radio" name="q4"> O texto sai na fonte padrão, sem aviso</label>
+<label><input type="radio" name="q4"> Funciona, porque o Flutter ignora maiúsculas</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. Depois de acrescentar uma fonte no <code>pubspec.yaml</code>, o que é preciso fazer?</p>
+<label><input type="radio" name="q5"> Parar o app e rodar de novo</label>
+<label><input type="radio" name="q5"> Só a recarga a quente</label>
+<label><input type="radio" name="q5"> Nada: ela aparece sozinha</label>
+<label><input type="radio" name="q5"> Reinstalar o Flutter</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">6. Qual linha deixa todos os textos do app na fonte Lato, com o <code>google_fonts</code>?</p>
+<label><input type="radio" name="q6"> <code>fontFamily: GoogleFonts.lato()</code></label>
+<label><input type="radio" name="q6"> <code>fontFamily: GoogleFonts.lato().fontFamily</code> no <code>ThemeData</code></label>
+<label><input type="radio" name="q6"> <code>GoogleFonts.lato()</code> no <code>MaterialApp</code></label>
+<label><input type="radio" name="q6"> <code>import 'lato.ttf';</code></label>
+</div>
+
+<h3>Missão final: título e texto</h3>
+
+<div class="tryflutter" data-goal="src:GoogleFonts\.pacifico\(;;src:GoogleFonts\.lato\(">
+<p class="try-task"><strong>Missão:</strong> deixe o nome da receita na fonte Pacifico (<code>GoogleFonts.pacifico</code>) e o modo de preparo na Lato (<code>GoogleFonts.lato</code>). Lembre-se de tirar os <code>const</code> que ficarem no caminho.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: const Scaffold(
+        body: Padding(
+          padding: EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Bolo de cenoura', style: TextStyle(fontSize: 32)),
+              SizedBox(height: 12),
+              Text('Bata as cenouras com os ovos e o óleo. Misture a farinha e o açúcar.'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.orange),
+      home: Scaffold(
+        body: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Bolo de cenoura', style: GoogleFonts.pacifico(fontSize: 32)),
+              const SizedBox(height: 12),
+              Text(
+                'Bata as cenouras com os ovos e o óleo. Misture a farinha e o açúcar.',
+                style: GoogleFonts.lato(fontSize: 16),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Sem dizer nada, o Flutter usa a Roboto (Android e web) ou a fonte da Apple (iPhone).</li>
+  <li>Fonte em arquivo: copie o <code>.ttf</code> para <code>assets/fonts/</code>, declare a família em <code>flutter: fonts:</code> no <code>pubspec.yaml</code> (com <code>weight</code> e <code>style</code> para negrito e itálico) e rode o app de novo.</li>
+  <li>Use com <code>TextStyle(fontFamily: 'Nome')</code> num texto, ou <code>ThemeData(fontFamily: 'Nome')</code> no app inteiro.</li>
+  <li>O <code>google_fonts</code> traz as fontes do Google: <code>GoogleFonts.pacifico()</code>, <code>ThemeData(fontFamily: GoogleFonts.lato().fontFamily)</code>, <code>GoogleFonts.getFont('Nome')</code>. Por padrão baixa na hora; num app publicado, embuta os arquivos e use <code>allowRuntimeFetching = false</code>.</li>
+  <li>Nome de família errado não dá erro: a fonte simplesmente não muda. Confira maiúsculas, o recuo do YAML e reinicie o app.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
