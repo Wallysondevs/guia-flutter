@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter O Editor do Guia — as caixas Experimente | Guia Flutter</title>
+<meta name="description" content="Como funcionam as caixas Experimente do Guia Flutter: o código no editor do guia, o botão Rodar que manda o app para o DartPad oficial (dartpad.dev) compilar e mostrar a tela, Restaurar, Ver solução, as missões, o que precisa de internet e o que fazer quando o DartPad não abre.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">O Editor do Guia</span></h1>
+
+<p class="intro">Em toda aula deste guia aparecem caixas <strong>Experimente</strong>: você mexe no código de um app Flutter, clica em <strong>Rodar</strong> e vê, logo embaixo, a tela do app funcionando, com botões que respondem ao clique. Quem compila e roda o app é o <strong>Flutter de verdade</strong>: o <strong>DartPad</strong> (<code>dartpad.dev</code>), a ferramenta oficial do Google que também aparece na documentação do Flutter. Nesta página você conhece cada parte da caixa, entende o caminho que o seu código faz e sabe o que fazer quando algo não abre.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>As partes de uma caixa Experimente: o editor, <strong>Rodar</strong>, <strong>Restaurar</strong>, <strong>Ver solução</strong>, <strong>Copiar</strong> e a tela do DartPad.</li>
+  <li>Para onde o seu código vai quando você clica em Rodar (e por que precisa de internet).</li>
+  <li>Como funcionam as <strong>missões</strong>.</li>
+  <li>Onde aparecem os erros de compilação.</li>
+  <li>O que fazer quando o DartPad não abre.</li>
+</ul>
+</div>
+
+<hr>
+
+<h2>A ideia: a oficina do lado da sala de aula</h2>
+<p>Pense numa escola de marcenaria. O professor explica no quadro como montar uma prateleira, mas a máquina de cortar madeira fica na oficina do lado. Você desenha a peça na sua mesa, leva o desenho até a oficina, e a máquina devolve a peça pronta.</p>
+<p>A caixa Experimente funciona assim. A <strong>sua mesa</strong> é o editor do guia, onde você escreve o código. A <strong>oficina</strong> é o DartPad: ele recebe o código, compila com o Flutter de verdade e mostra o app rodando. Cada vez que você clica em <strong>Rodar</strong>:</p>
+<ol class="passo">
+  <li>a caixa confere a <strong>missão</strong> (se a caixa tiver uma) no código que está no editor;</li>
+  <li>o código é enviado para o DartPad, que abre dentro da própria caixa;</li>
+  <li>os <strong>servidores do DartPad, do Google</strong>, compilam o app (alguns segundos);</li>
+  <li>o app aparece no DartPad, funcionando: dá para clicar, rolar e digitar.</li>
+</ol>
+
+<div class="warning">
+<strong>Precisa de internet.</strong> O Flutter é grande demais para rodar sozinho dentro de uma página: quem compila o seu app são os servidores do DartPad, do Google. Por isso o seu código sai do seu computador e vai até eles quando você clica em Rodar (e só quando você clica: antes disso a página não fala com o DartPad). Sem internet, ou com o DartPad fora do ar, a caixa avisa depois de 30 segundos; veja <a href="#errado">Quando dá errado</a>.
+</div>
+
+<hr>
+
+<h2>As partes da caixa</h2>
+<p>Experimente agora. A caixa abaixo tem um app pronto, o começo de um app de receitas. Clique em <strong>▶ Rodar</strong> e espere a tela aparecer.</p>
+
+<div class="tryflutter">
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Center(child: Text('Bolo de cenoura')),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<p>Depois do Rodar, a caixa fica como nesta foto (tirada num navegador de verdade, com o DartPad rodando o app acima):</p>
+<figure class="tela"><img src="assets/telas/simulador-1.png" alt="A caixa Experimente depois do Rodar: em cima, o editor do guia com o código e os botões Rodar e Restaurar; embaixo, o DartPad com as abas Code e Output, a Output aberta, mostrando o app com o título 'Receitas da Ana' no topo, o texto 'Bolo de cenoura' no meio e a faixa DEBUG no canto" width="770" height="1154" loading="lazy"><figcaption>A caixa depois do ▶ Rodar: o editor do guia em cima e o DartPad embaixo, na aba Output (o app).</figcaption></figure>
+
+<dl class="anatomy">
+  <dt>O editor (a aba <code>main.dart</code>)</dt>
+  <dd>Onde você escreve. É sempre <strong>um app completo num arquivo só</strong>, o <code>lib/main.dart</code> de um projeto Flutter: tem o <code>import</code>, o <code>main</code> e os widgets. A tecla <kbd>Tab</kbd> coloca dois espaços (o recuo do Dart) e <kbd>Ctrl</kbd>+<kbd>Enter</kbd> é o mesmo que clicar em Rodar.</dd>
+  <dt>▶ Rodar</dt>
+  <dd>Confere a missão e manda o código para o DartPad, que compila e mostra o app. Mudou o código? Clique de novo: o DartPad recebe a versão nova e roda outra vez.</dd>
+  <dt>↺ Restaurar</dt>
+  <dd>Volta o editor para o código original da aula. Use quando o código ficou bagunçado.</dd>
+  <dt>Ver solução</dt>
+  <dd>Só aparece nas missões. Mostra uma resposta possível; o botão <strong>Usar no editor</strong> copia essa resposta para o editor.</dd>
+  <dt>Copiar</dt>
+  <dd>Copia o código do editor, para você colar no seu projeto ou no <code>dartpad.dev</code> aberto em outra aba.</dd>
+  <dt>O DartPad (embaixo)</dt>
+  <dd>É o DartPad oficial, encaixado na página. Ele guarda <strong>uma cópia</strong> do código que recebeu e mostra o app. Na largura desta página ele costuma aparecer com duas abas: <strong>Code</strong> (a cópia do código) e <strong>Output</strong> (o app, que já vem aberta); numa tela bem larga, as duas partes ficam lado a lado. Você pode mexer na cópia e usar os botões dele (<strong>Run</strong> roda de novo, <strong>Reload</strong> faz a recarga a quente), mas lembre: <strong>a missão confere o editor do guia</strong>, o de cima.</dd>
+</dl>
+
+<div class="tip">
+<strong>Dica:</strong> a faixa <strong>DEBUG</strong> no canto do app é normal. Ela aparece em todo app Flutter rodando em modo de desenvolvimento, também no seu computador.
+</div>
+
+<hr>
+
+<h2>As missões</h2>
+<p>Muitas caixas trazem uma <strong>Missão</strong>: uma tarefa pequena, como trocar um texto ou acrescentar um widget. Quando você clica em Rodar, a caixa olha o seu código e diz se ele já tem o que a missão pede. Se tiver, aparece <strong>✔ Missão cumprida!</strong>. Comentários (<code>// …</code>) não contam: um código comentado não cumpre missão.</p>
+<p>Experimente: a missão abaixo pede para trocar o texto do meio da tela.</p>
+
+<div class="tryflutter" data-goal="src:Text\(\s*'Torta de limão'\s*\)">
+<p class="try-task"><strong>Missão:</strong> troque o texto <code>'Bolo de cenoura'</code> por <code>'Torta de limão'</code> e clique em Rodar.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Center(child: Text('Bolo de cenoura')),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Center(child: Text('Torta de limão')),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<div class="note">
+<strong>A missão olha o código, não a tela.</strong> O guia não consegue enxergar o que aparece dentro do DartPad (ele é outro site). Por isso a missão confere se o seu código tem o trecho pedido, e a tela do DartPad serve para você ver o resultado com os próprios olhos.
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<p><strong>Um erro no código.</strong> Se o código tem um erro (faltou uma vírgula, um parêntese, um nome escrito errado), o DartPad não consegue compilar e não mostra o app. Por exemplo, tire a vírgula do fim da linha do <code>appBar</code>:</p>
+<pre class="file" data-file="lib/main.dart">        appBar: AppBar(title: const Text('Receitas da Ana'))
+        body: const Center(child: Text('Bolo de cenoura')),</pre>
+<p>Ao clicar em Rodar, o DartPad sublinha em vermelho o lugar do problema na cópia do código (o <code>body</code>, porque é ali que ele esperava a vírgula), mostra <code>Expected to find ','.</code> com a linha e a coluna (<code>line 13, col 9</code>) e, onde o app apareceria, a mensagem completa do compilador:</p>
+<pre>main.dart:13:9: Error: Expected ',' before this.
+        body: const Center(child: Text('Bolo de cenoura')),
+        ^^^^</pre>
+<figure class="tela"><img src="assets/telas/simulador-2.png" alt="A caixa com o código sem a vírgula: no DartPad, a palavra body da linha 13 sublinhada em vermelho, a barra de baixo com 'Expected to find ','.' e 'line 13, col 9', e à direita, no lugar do app, a mensagem main.dart:13:9: Error: Expected ',' before this." width="920" height="1154" loading="lazy"><figcaption>Um erro de compilação no DartPad (numa tela larga, código e mensagem lado a lado).</figcaption></figure>
+<p>As mensagens saem em inglês, como no Flutter instalado no computador. Corrija no editor do guia (ou clique em ↺ Restaurar) e clique em Rodar de novo.</p>
+</div>
+
+<div class="cenario">
+<p><strong>O DartPad não abre.</strong> Sem internet, numa rede que bloqueia o <code>dartpad.dev</code> (algumas escolas e empresas bloqueiam) ou com o serviço do Google fora do ar, a caixa espera 30 segundos e avisa: <em>"O DartPad não respondeu…"</em>. O que fazer:</p>
+<ul>
+  <li>confira a internet e clique em Rodar de novo (recarregue a página se preciso);</li>
+  <li>clique em <strong>Copiar</strong> e cole o código em <code>dartpad.dev</code>, aberto em outra aba;</li>
+  <li>ou rode no seu computador, com o Flutter instalado (aula <a href="instalar.html">Instalar o Flutter</a>).</li>
+</ul>
+<p>As aulas também trazem a <strong>foto</strong> de cada tela, tirada de um Flutter de verdade, para você acompanhar mesmo sem o DartPad.</p>
+</div>
+
+<hr>
+
+<h2>O que o DartPad não faz</h2>
+<p>O DartPad roda o app <strong>dentro do navegador</strong> (como o Flutter para web). Então ele não tem:</p>
+<div class="table-wrap"><table class="ref">
+<thead><tr><th>Recurso</th><th>No DartPad</th><th>Onde ver no guia</th></tr></thead>
+<tbody>
+<tr><td>Widgets, layout, temas, <code>setState</code>, navegação, animações, formulários</td><td>✔ funcionam</td><td>nas caixas Experimente</td></tr>
+<tr><td>Vários arquivos (<code>lib/telas/…</code>), o <code>pubspec.yaml</code></td><td>✘ um arquivo só</td><td>no terminal da Ana, nas aulas de projeto</td></tr>
+<tr><td>Pacotes do pub.dev</td><td>só uma lista fixa de pacotes populares que o DartPad já traz</td><td>no terminal da Ana (<code>flutter pub add</code>)</td></tr>
+<tr><td>Câmera, GPS, notificações, arquivos do celular</td><td>✘</td><td>fotos e saídas do laboratório</td></tr>
+<tr><td><code>flutter create</code>, <code>flutter run</code>, <code>flutter doctor</code></td><td>✘ (o DartPad não tem terminal)</td><td>no terminal da Ana</td></tr>
+</tbody>
+</table></div>
+
+<hr>
+
+<h2>Exercícios</h2>
+<div class="exercise">
+<h2>Exercício 1</h2>
+<p>Na primeira caixa desta página, troque <code>'Receitas da Ana'</code> pelo seu nome e clique em Rodar. O que mudou na tela?</p>
+<details><summary>Resposta</summary><p>O título da barra do topo (o <code>AppBar</code>) passa a mostrar o seu nome. O texto do meio continua igual.</p></details>
+</div>
+<div class="exercise">
+<h2>Exercício 2</h2>
+<p>Apague a vírgula do fim da linha do <code>appBar</code> e clique em Rodar. Onde aparece o erro? Depois clique em ↺ Restaurar.</p>
+<details><summary>Resposta</summary><p>O DartPad não mostra o app: ele marca o erro na cópia do código e mostra a mensagem do compilador (em inglês). O ↺ Restaurar devolve o código original.</p></details>
+</div>
+<div class="exercise">
+<h2>Exercício 3</h2>
+<p>A missão confere o editor do guia ou a cópia do código dentro do DartPad? Por quê?</p>
+<details><summary>Resposta</summary><p>O editor do guia. O DartPad é outro site, e a página do guia não consegue ler o que está dentro dele.</p></details>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Cada caixa Experimente tem um app completo num arquivo só (<code>main.dart</code>).</li>
+  <li><strong>▶ Rodar</strong> (ou <kbd>Ctrl</kbd>+<kbd>Enter</kbd>) manda o código para o <strong>DartPad</strong>, que compila com o Flutter de verdade nos servidores do Google e mostra o app na caixa. Precisa de internet.</li>
+  <li><strong>↺ Restaurar</strong> volta ao código da aula; <strong>Ver solução</strong> mostra uma resposta; <strong>Copiar</strong> copia o código.</li>
+  <li>A missão confere o código do editor do guia: <strong>✔ Missão cumprida!</strong> quando ele tem o que foi pedido.</li>
+  <li>Erros de compilação aparecem no DartPad. Se o DartPad não abrir, use Copiar e o <code>dartpad.dev</code>, ou o seu computador.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
