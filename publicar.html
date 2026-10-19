@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Publicando nas Lojas — Google Play e App Store | Guia Flutter</title>
+<meta name="description" content="Como publicar um app Flutter na Google Play e na App Store, passo a passo: conta de desenvolvedor, ficha da loja (ícone, capturas, descrição), classificação, política de privacidade, segurança dos dados, envio do .aab, faixas de teste (interno, fechado, aberto), o teste fechado com 12 testadores por 14 dias, TestFlight, revisão e atualizações.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Publicando nas Lojas</span></h1>
+
+<p class="intro">O app de compras da Ana está pronto, testado e empacotado (<a href="build-android.html">Gerando o APK e o App Bundle</a>). Agora ela quer que qualquer pessoa ache o app na <strong>Google Play</strong> e, quem sabe um dia, na <strong>App Store</strong> do iPhone. Publicar não é programar: é preencher formulários, preparar imagens, responder perguntas sobre privacidade e esperar a loja revisar. Esta aula mostra o caminho inteiro, em ordem, para você saber o que esperar antes de começar.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que preparar antes: conta de desenvolvedor, nome, ícone, capturas de tela, textos e política de privacidade.</li>
+  <li>O caminho na <strong>Google Play</strong>: Play Console, ficha da loja, questionários, envio do <code>.aab</code>, faixas de teste e produção.</li>
+  <li>A exigência de <strong>teste fechado</strong> para contas pessoais novas (12 testadores, 14 dias).</li>
+  <li>O caminho na <strong>App Store</strong>: App Store Connect, <code>flutter build ipa</code>, TestFlight e revisão.</li>
+  <li>Como mandar <strong>atualizações</strong>.</li>
+</ul>
+</div>
+
+<div class="warning">
+<strong>Esta aula é ilustrativa</strong>
+<p>Publicar exige contas pagas e telas que mudam com frequência. Os passos seguem a documentação oficial do Flutter (<a href="https://docs.flutter.dev/deployment/android" target="_blank" rel="noopener">Android</a>, <a href="https://docs.flutter.dev/deployment/ios" target="_blank" rel="noopener">iOS</a>) e as páginas de ajuda das lojas em outubro de 2026. Nomes de botões, preços e regras mudam: confira nas lojas antes de pagar qualquer coisa. Só a foto do app (o diálogo "Sobre") veio do lab.</p>
+</div>
+
+<hr>
+
+<h2>A ideia: abrir uma barraca na feira</h2>
+<p>Para vender na feira, não basta ter o produto. A Ana precisa se <strong>cadastrar</strong> na prefeitura (a conta de desenvolvedor), fazer uma <strong>placa</strong> bonita com nome e fotos (a ficha da loja), mostrar que segue as <strong>regras</strong> (os questionários de conteúdo e privacidade) e passar pela <strong>fiscalização</strong> (a revisão). Só então a barraca abre. E, se ela mudar a receita, a nova versão também passa pela fiscalização.</p>
+
+<hr>
+
+<h2>1. Antes de tudo: o que preparar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Item</th><th>Para quê</th><th>Dica</th></tr>
+<tr><td><strong>Conta de desenvolvedor</strong></td><td>Publicar</td><td>Google Play: taxa única. Apple Developer Program: anuidade. Confira os valores atuais nos sites das lojas.</td></tr>
+<tr><td><strong>Nome do app</strong></td><td>Aparece na loja</td><td>Curto e procurável: "Compras da Ana: lista de mercado".</td></tr>
+<tr><td><strong>Ícone</strong></td><td>Loja e tela do celular</td><td>A Play pede 512 × 512 pixels (PNG). Faça um desenho simples, que funcione pequeno.</td></tr>
+<tr><td><strong>Capturas de tela</strong></td><td>Mostrar o app</td><td>Rode o app e capture as telas principais (sem a faixa DEBUG: <code>debugShowCheckedModeBanner: false</code> ou modo release).</td></tr>
+<tr><td><strong>Descrição</strong></td><td>Convencer a pessoa</td><td>Na Play: uma curta (até 80 caracteres) e uma completa (até 4000).</td></tr>
+<tr><td><strong>Política de privacidade</strong></td><td>Exigida pelas lojas</td><td>Uma página na web dizendo que dados o app coleta (mesmo que seja "nenhum").</td></tr>
+<tr><td><strong>App Bundle assinado</strong></td><td>O app em si</td><td><code>flutter build appbundle</code> com a sua chave (veja <a href="build-android.html">Gerando o APK</a>).</td></tr>
+</table>
+</div>
+
+<p>Um detalhe que o usuário vê: a tela "Sobre" do app com nome e versão. O Flutter tem uma pronta, o <code>showAboutDialog</code>, que ainda lista as licenças dos pacotes usados (as lojas e as licenças de código aberto pedem esse crédito):</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: TelaInicial()));
+
+class TelaInicial extends StatelessWidget {
+  const TelaInicial({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Compras da Ana')),
+      body: Center(
+        child: FilledButton(
+          onPressed: () =&gt; showAboutDialog(
+            context: context,
+            applicationName: 'Compras da Ana',
+            applicationVersion: '1.0.0',
+            applicationLegalese: '© 2026 Ana',
+          ),
+          child: const Text('Sobre o app'),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>showAboutDialog(context: context, …)</dt><dd>Abre o diálogo "Sobre" padrão do Material (veja <a href="dialogos.html">Diálogos</a>).</dd>
+  <dt>applicationName / applicationVersion</dt><dd>O nome e a versão mostrados. Use a mesma versão do <code>pubspec.yaml</code>.</dd>
+  <dt>applicationLegalese</dt><dd>Um texto legal curto: direitos autorais, por exemplo.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/publicar-1.png" alt="A tela do app escurecida e, no meio, um diálogo com 'Compras da Ana', '1.0.0', '© 2026 Ana' e dois botões de texto: 'View licenses' e 'Close'" width="390" height="844" loading="lazy"><figcaption>O diálogo depois de tocar em "Sobre o app" (Flutter 3.47.7, modo debug). "View licenses" ("ver licenças") abre a lista das licenças dos pacotes; "Close" fecha.</figcaption></figure>
+<p>Os botões saíram em inglês porque o app não configurou outro idioma. Para eles aparecerem em português ("Ver licenças", "Fechar"), o app precisa das traduções do Flutter (o pacote <code>flutter_localizations</code> e a lista <code>localizationsDelegates</code> do <code>MaterialApp</code>), um passo que vale fazer antes de publicar um app em português.</p>
+
+<div class="tryflutter" data-goal="src:applicationVersion:\s*'1\.0\.1'">
+<p class="try-task"><strong>Missão:</strong> a Ana vai publicar uma correção. Troque a versão do diálogo para <code>1.0.1</code>, rode e toque em "Sobre o app" para conferir.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: TelaInicial()));
+
+class TelaInicial extends StatelessWidget {
+  const TelaInicial({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Compras da Ana')),
+      body: Center(
+        child: FilledButton(
+          onPressed: () =&gt; showAboutDialog(
+            context: context,
+            applicationName: 'Compras da Ana',
+            applicationVersion: '1.0.0',
+            applicationLegalese: '© 2026 Ana',
+          ),
+          child: const Text('Sobre o app'),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: TelaInicial()));
+
+class TelaInicial extends StatelessWidget {
+  const TelaInicial({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Compras da Ana')),
+      body: Center(
+        child: FilledButton(
+          onPressed: () =&gt; showAboutDialog(
+            context: context,
+            applicationName: 'Compras da Ana',
+            applicationVersion: '1.0.1',
+            applicationLegalese: '© 2026 Ana',
+          ),
+          child: const Text('Sobre o app'),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>2. Google Play, passo a passo</h2>
+<ol class="passo">
+  <li><strong>Crie a conta</strong> no <strong>Google Play Console</strong> (play.google.com/console), pague a taxa e confirme a sua identidade (a Google pede documento).</li>
+  <li><strong>Crie o app</strong>: botão <em>Criar app</em>; informe o nome, o idioma padrão (Português – Brasil), se é app ou jogo e se é gratuito ou pago. <strong>Gratuito não pode virar pago depois.</strong></li>
+  <li><strong>Configure o app</strong> (o Console mostra uma lista de tarefas): política de privacidade, acesso ao app (se precisa de login, dê uma conta de teste aos revisores), anúncios (o app tem?), <strong>classificação do conteúdo</strong> (um questionário que gera a faixa etária), <strong>público-alvo</strong>, e a <strong>segurança dos dados</strong> (<em>Data safety</em>: que dados o app coleta e por quê).</li>
+  <li><strong>Monte a ficha da loja</strong>: descrições, ícone, imagem de destaque e capturas de tela.</li>
+  <li><strong>Envie o <code>.aab</code></strong> numa faixa de teste (próximo item). Na primeira vez, o Console oferece o <strong>Play App Signing</strong>: a Google guarda a chave final do app, e a sua chave vira só a <em>chave de envio</em> (se você a perder, dá para pedir a troca).</li>
+  <li><strong>Teste</strong>, e depois promova a versão para <strong>produção</strong>. A Google revisa; costuma levar de algumas horas a alguns dias.</li>
+</ol>
+
+<h3>As faixas de teste</h3>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Faixa</th><th>Quem recebe</th><th>Para quê</th></tr>
+<tr><td><strong>Teste interno</strong></td><td>Até 100 pessoas que você convida por e-mail</td><td>A família e os amigos: rápido, quase sem revisão</td></tr>
+<tr><td><strong>Teste fechado</strong></td><td>Grupos que você escolhe</td><td>Testar com mais gente antes de lançar</td></tr>
+<tr><td><strong>Teste aberto</strong></td><td>Qualquer um que entrar no programa pela loja</td><td>Um "beta" público</td></tr>
+<tr><td><strong>Produção</strong></td><td>Todo mundo</td><td>O lançamento</td></tr>
+</table>
+</div>
+
+<div class="note">
+<strong>Conta pessoal nova: 12 testadores por 14 dias</strong>
+<p>Segundo a ajuda do Play Console, contas de desenvolvedor <strong>pessoais</strong> criadas depois de 13 de novembro de 2023 precisam fazer um <strong>teste fechado</strong> antes de pedir acesso à produção, com no mínimo <strong>12 testadores</strong> inscritos <strong>continuamente por pelo menos 14 dias</strong> (dias seguidos: quem sai e volta recomeça a contagem). Planeje: chame os testadores antes de enviar a primeira versão.</p>
+</div>
+
+<hr>
+
+<h2>3. App Store (iPhone), passo a passo</h2>
+<p>Tudo aqui exige um <strong>Mac</strong> com Xcode (veja <a href="build-ios-web-desktop.html">iOS, Web e Desktop</a>).</p>
+<ol class="passo">
+  <li><strong>Entre no Apple Developer Program</strong> (developer.apple.com) e pague a anuidade.</li>
+  <li><strong>Registre o identificador</strong> (<em>Bundle ID</em>, como <code>br.com.anasilva.compras</code>) e crie o app no <strong>App Store Connect</strong> (appstoreconnect.apple.com).</li>
+  <li><strong>Ajuste o projeto</strong> no Xcode (<code>ios/Runner.xcworkspace</code>): nome, Bundle ID, equipe de assinatura, ícone.</li>
+  <li><strong>Gere o pacote</strong>: <code>flutter build ipa</code> cria o arquivo em <code>build/ios/ipa/</code>.</li>
+  <li><strong>Envie</strong> com o app <em>Transporter</em> da Apple ou pelo próprio Xcode.</li>
+  <li><strong>Teste com o TestFlight</strong>: o app de testes da Apple. Você convida pessoas por e-mail e elas instalam pelo TestFlight.</li>
+  <li><strong>Preencha a ficha</strong> (descrição, capturas nos tamanhos de tela pedidos, privacidade) e mande para <strong>revisão</strong>. A Apple costuma ser mais rigorosa que a Google: apps "vazios" ou que parecem só um site costumam ser recusados.</li>
+</ol>
+
+<hr>
+
+<h2>4. Atualizações</h2>
+<p>Para mandar uma versão nova:</p>
+<ol class="passo">
+  <li>Aumente a versão no <code>pubspec.yaml</code>: de <code>1.0.0+1</code> para <code>1.0.1+2</code>. O número depois do <code>+</code> <strong>sempre</strong> tem de subir.</li>
+  <li>Gere de novo (<code>flutter build appbundle</code> / <code>flutter build ipa</code>), com a mesma chave.</li>
+  <li>Envie na faixa de teste, teste e promova para produção. Escreva as <strong>notas da versão</strong> ("O que há de novo").</li>
+</ol>
+
+<h2>5. Qual loja primeiro?</h2>
+<p>Para quem está começando, a <strong>Google Play</strong>: funciona a partir de qualquer computador, a taxa é única e o teste interno deixa você mostrar o app aos amigos em poucas horas. A App Store faz sentido quando você tiver um Mac e o app estiver redondo.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>"Você precisa usar um código de versão diferente"</strong>
+<p>O Console recusa o <code>.aab</code> porque o <code>versionCode</code> (o número depois do <code>+</code>) é igual ao de uma versão já enviada. <strong>Como resolver:</strong> aumente-o no <code>pubspec.yaml</code> e gere de novo.</p>
+</div>
+
+<div class="cenario">
+<strong>"O app foi assinado no modo de depuração"</strong>
+<p>Você enviou um <code>.aab</code> assinado com a chave de debug (o padrão do <code>flutter create</code>). <strong>Como resolver:</strong> configure a sua chave no <code>build.gradle.kts</code> (aula <a href="build-android.html">Gerando o APK</a>, seção Assinatura).</p>
+</div>
+
+<div class="cenario">
+<strong>O botão de produção não libera</strong>
+<p>Conta pessoal nova sem o teste fechado completo (12 testadores, 14 dias seguidos), ou tarefas da lista de configuração pendentes. <strong>Como resolver:</strong> abra o painel do app no Console: ele mostra exatamente o que falta.</p>
+</div>
+
+<div class="cenario">
+<strong>Revisão recusada</strong>
+<p>As lojas mandam o motivo por e-mail e no painel, citando a regra. Os mais comuns: política de privacidade ausente ou que não bate com o formulário de dados, permissão pedida sem uso claro (câmera, localização), conteúdo enganoso na ficha. <strong>Como resolver:</strong> corrija o ponto citado, envie uma versão nova (com <code>versionCode</code> maior) ou responda pelo painel.</p>
+</div>
+
+<hr>
+
+<h2>Referência</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Etapa</th><th>Google Play</th><th>App Store</th></tr>
+<tr><td>Painel</td><td>Play Console</td><td>App Store Connect</td></tr>
+<tr><td>Arquivo</td><td><code>.aab</code> (<code>flutter build appbundle</code>)</td><td><code>.ipa</code> (<code>flutter build ipa</code>, no Mac)</td></tr>
+<tr><td>Teste com amigos</td><td>Teste interno</td><td>TestFlight</td></tr>
+<tr><td>Identificador</td><td><code>applicationId</code></td><td>Bundle ID</td></tr>
+<tr><td>Versão</td><td><code>versionName</code> + <code>versionCode</code></td><td>Version + Build</td></tr>
+<tr><td>Ambos vêm de</td><td colspan="2"><code>version: 1.0.1+2</code> no <code>pubspec.yaml</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. O arquivo da Play Store</h3>
+<p>Qual extensão de arquivo você envia para a Google Play?</p>
+<div class="ex-code">.<input data-answer="aab" aria-label="extensão"></div>
+</div>
+
+<div class="exercise">
+<h3>2. Quantos testadores?</h3>
+<p>Uma conta pessoal nova precisa de quantos testadores no teste fechado?</p>
+<div class="ex-code"><input data-answer="12" aria-label="número de testadores"> testadores</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. A Ana enviou a versão <code>1.0.0+1</code> e agora quer mandar uma correção. Qual <code>version</code> funciona?</p>
+<label><input type="radio" name="q3"> <code>1.0.1+1</code></label>
+<label><input type="radio" name="q3"> <code>1.0.1+2</code></label>
+<label><input type="radio" name="q3"> <code>1.0.0+1</code></label>
+<label><input type="radio" name="q3"> <code>0.9.9+0</code></label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. Como se chama o app da Apple para testar versões antes de publicar?</p>
+<label><input type="radio" name="q4"> Play Console</label>
+<label><input type="radio" name="q4"> Transporter</label>
+<label><input type="radio" name="q4"> TestFlight</label>
+<label><input type="radio" name="q4"> DevTools</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. A Ana marcou o app como gratuito. Depois de publicado, ela pode passar a cobrar pelo download?</p>
+<label><input type="radio" name="q5"> Não: na Play, um app gratuito não pode virar pago</label>
+<label><input type="radio" name="q5"> Sim, a qualquer momento</label>
+<label><input type="radio" name="q5"> Só depois de 14 dias</label>
+<label><input type="radio" name="q5"> Só com 12 testadores</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Publicar = conta de desenvolvedor + ficha da loja + questionários (conteúdo, público, dados) + o pacote assinado + revisão.</li>
+  <li>Google Play: Play Console, <code>.aab</code>, faixas de teste interno/fechado/aberto e produção; contas pessoais novas precisam de teste fechado com 12 testadores por 14 dias.</li>
+  <li>App Store: Mac, App Store Connect, <code>flutter build ipa</code>, TestFlight e uma revisão mais rigorosa.</li>
+  <li>Cada atualização aumenta o número depois do <code>+</code> no <code>pubspec.yaml</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
