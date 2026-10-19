@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hot Reload e Hot Restart — mudar o app sem fechar | Guia Flutter</title>
+<meta name="description" content="Hot reload e hot restart no Flutter: a recarga a quente que aplica o código novo em menos de um segundo sem perder o estado (o contador continua no 3), o reinício a quente que recomeça do zero, a reinicialização completa, as teclas r e R, o salvar do editor, as mensagens reais do flutter run e os casos em que o hot reload não mostra a mudança (main, initState, variáveis globais, erro de compilação).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Hot Reload e <span class="hl">Hot Restart</span></h1>
+
+<p class="intro">Em muitas ferramentas, cada mudança no código pede o mesmo ritual: salvar, compilar tudo de novo, esperar, abrir o app, navegar até a tela que você estava mexendo, repetir o que tinha feito. No Flutter, você salva e, em menos de um segundo, a mudança aparece no app <strong>que já estava aberto</strong>, no mesmo lugar, com os mesmos dados. Isso é o <strong>hot reload</strong> ("recarga a quente"), e é o recurso que faz muita gente se apaixonar pelo Flutter.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é o <strong>hot reload</strong> e o que é o <strong>estado</strong> que ele preserva.</li>
+  <li>O que é o <strong>hot restart</strong> e quando ele é necessário.</li>
+  <li>A diferença entre os dois e a reinicialização completa.</li>
+  <li>Como disparar cada um: <kbd>r</kbd> e <kbd>R</kbd> no terminal, salvar e os botões do editor.</li>
+  <li>Os casos em que o hot reload "não funciona", e por quê.</li>
+</ul>
+</div>
+
+<p>As saídas de terminal desta aula saíram da máquina da Ana (Flutter 3.47.7), com o app rodando no aparelho <code>web-server</code> (aula <a href="flutter-run.html">Rodando o App</a>). As telas foram fotografadas do mesmo app, no navegador.</p>
+
+<hr>
+
+<h2>A ideia: trocar a roupa do boneco</h2>
+<p>Pense num boneco de montar vestido de pirata, segurando uma espada. Você quer trocar o chapéu. Tem dois jeitos:</p>
+<ul>
+  <li><strong>Trocar só o chapéu</strong>: tira um, põe o outro. O boneco continua na mesma pose, segurando a espada. Esse é o <strong>hot reload</strong>.</li>
+  <li><strong>Desmontar e montar de novo</strong>, já com o chapéu novo: o boneco volta à pose inicial, de mãos vazias. Esse é o <strong>hot restart</strong>.</li>
+</ul>
+
+<p>No app, a "pose" é o <strong>estado</strong> (em inglês, <em>state</em>): tudo o que o app guardou enquanto você usava. O número do contador, o texto digitado num campo, a tela em que você está, a posição da lista rolada.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th></th><th>Hot reload (<kbd>r</kbd>)</th><th>Hot restart (<kbd>R</kbd>)</th><th>Reinício completo</th></tr>
+<tr><td>Como</td><td><kbd>r</kbd> ou salvar o arquivo</td><td><kbd>R</kbd> ou a seta circular</td><td>Parar (<kbd>q</kbd>) e <code>flutter run</code> de novo</td></tr>
+<tr><td>Código novo</td><td>Sim</td><td>Sim</td><td>Sim</td></tr>
+<tr><td>Estado</td><td><strong>Mantido</strong></td><td>Perdido (volta ao começo)</td><td>Perdido</td></tr>
+<tr><td>Roda o <code>main</code> de novo</td><td>Não</td><td>Sim</td><td>Sim</td></tr>
+<tr><td>Recompila tudo</td><td>Não</td><td>Não</td><td>Sim</td></tr>
+<tr><td>Tempo</td><td>Menos de 1 segundo</td><td>Alguns segundos</td><td>O tempo do <code>flutter run</code></td></tr>
+<tr><td>Quando usar</td><td>Quase sempre: textos, cores, layout</td><td>Quando o hot reload não mostra a mudança</td><td>Mudou código nativo, pacotes ou o <code>pubspec.yaml</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>1. Hot reload na prática</h2>
+<p>A Ana abriu o contador do <code>flutter create</code> e tocou três vezes no <strong>+</strong>:</p>
+
+<figure class="tela"><img src="assets/telas/criar-projeto-1b.png" alt="O contador com o título 'Flutter Demo Home Page' na barra lilás e o número 3 no meio da tela" width="390" height="844" loading="lazy"><figcaption>Antes: o título original e o contador em 3.</figcaption></figure>
+
+<p>Com o app aberto, ela mudou uma linha do <code>lib/main.dart</code>, o título da tela:</p>
+
+<pre class="file" data-file="lib/main.dart (trecho)">      home: const MyHomePage(title: 'Receitas da Ana'),
+</pre>
+
+<p>e apertou <kbd>r</kbd> no terminal do <code>flutter run</code>. O resultado: o título novo aparece, e o contador <strong>continua em 3</strong>.</p>
+
+<figure class="tela"><img src="assets/telas/hot-reload-2.png" alt="O mesmo contador, agora com o título 'Receitas da Ana' na barra lilás, e o número continua 3" width="390" height="844" loading="lazy"><figcaption>Depois do hot reload: título novo, estado preservado (o 3 continua lá).</figcaption></figure>
+
+<p>Repare: o Flutter não começou o app de novo. Ele trocou o código das funções e chamou o <code>build</code> de novo, por isso o título mudou; mas o <code>_counter</code>, guardado no estado da tela, continuou com o valor que tinha.</p>
+
+<div class="note">
+<strong>Como as fotos foram feitas</strong>
+<p>Cada foto do laboratório abre o app do zero. Por isso a foto "depois" foi tirada com o código novo e três toques no <strong>+</strong>, reproduzindo a tela que o hot reload produz. O comportamento (estado mantido no reload, perdido no restart) é o descrito na documentação oficial do Flutter (<code>docs.flutter.dev/tools/hot-reload</code>).</p>
+</div>
+
+<h3>No terminal</h3>
+<p>Assim ficou o terminal da Ana ao apertar <kbd>r</kbd>, depois <kbd>R</kbd> e por fim <kbd>q</kbd>:</p>
+
+<pre class="term">$ flutter run -d web-server --web-port 8080
+Launching lib/main.dart on Web Server in debug mode...
+Waiting for connection from debug service on Web Server...         24,0s
+lib/main.dart is being served at http://localhost:8080
+«  ... o aviso da extensão do Chrome e a lista de teclas
+
+Performing hot reload...                                            66ms
+Recompile complete. No client connected.
+
+Performing hot restart...                                           24ms
+Recompile complete. No client connected.
+
+Application finished.
+</pre>
+
+<dl class="anatomy">
+  <dt>Performing hot reload... 66ms</dt><dd>"Fazendo o hot reload": o Flutter recompilou só o que mudou, em 66 milésimos de segundo.</dd>
+  <dt>Recompile complete. No client connected.</dt><dd>"Recompilação completa. Nenhum cliente conectado." Nesta rodada, nenhum navegador estava com o app aberto (o <code>web-server</code> só serve o app; quem abre é você), então não havia app para receber o código novo. Com o app aberto num emulador, celular ou no Chrome, o terminal informa no lugar dessa frase quantas bibliotecas foram recarregadas e em quanto tempo.</dd>
+  <dt>Performing hot restart... 24ms</dt><dd>"Fazendo o hot restart".</dd>
+  <dt>Application finished.</dt><dd>"Aplicativo encerrado": a tecla <kbd>q</kbd>.</dd>
+</dl>
+
+<h3>No editor</h3>
+<p>No VS Code e no Android Studio, o hot reload acontece <strong>sozinho ao salvar</strong> (<kbd>Ctrl</kbd>+<kbd>S</kbd>), com o app rodando pelo editor. Também há o botão do raio na barra de depuração (aula <a href="editor.html">VS Code e Android Studio</a>).</p>
+
+<hr>
+
+<h2>2. Hot restart</h2>
+<p>Com o mesmo código novo, um <kbd>R</kbd> (maiúsculo) recomeça o app: o título novo continua, mas o contador volta a 0, porque o estado foi jogado fora e o <code>main</code> rodou de novo.</p>
+
+<figure class="tela"><img src="assets/telas/hot-reload-3.png" alt="O contador com o título 'Receitas da Ana' e o número 0 no meio da tela" width="390" height="844" loading="lazy"><figcaption>Depois do hot restart: título novo e contador de volta a 0.</figcaption></figure>
+
+<p>O hot restart ainda é bem mais rápido que parar e rodar de novo, porque não recompila o app inteiro nem reinstala no aparelho.</p>
+
+<hr>
+
+<h2>3. Experimente</h2>
+<p>No editor do guia, cada clique em Rodar compila e abre o app do começo, como um reinício. A missão é a mesma mudança que você faria com o hot reload num app de verdade:</p>
+
+<div class="tryflutter" data-goal="src:Text\('Bolos que a Ana já fez:'\)">
+<p class="try-task"><strong>Missão:</strong> troque a frase <code>'You have pushed the button this many times:'</code> por <code>'Bolos que a Ana já fez:'</code>. Rode e toque no <strong>+</strong> algumas vezes.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Flutter Demo',
+      theme: ThemeData(
+        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+      ),
+      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+    );
+  }
+}
+
+class MyHomePage extends StatefulWidget {
+  const MyHomePage({super.key, required this.title});
+  final String title;
+
+  @override
+  State&lt;MyHomePage&gt; createState() =&gt; _MyHomePageState();
+}
+
+class _MyHomePageState extends State&lt;MyHomePage&gt; {
+  int _counter = 0;
+
+  void _incrementCounter() {
+    setState(() {
+      _counter++;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: Text(widget.title),
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: .center,
+          children: [
+            const Text('You have pushed the button this many times:'),
+            Text(
+              '$_counter',
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _incrementCounter,
+        tooltip: 'Increment',
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Flutter Demo',
+      theme: ThemeData(
+        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+      ),
+      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+    );
+  }
+}
+
+class MyHomePage extends StatefulWidget {
+  const MyHomePage({super.key, required this.title});
+  final String title;
+
+  @override
+  State&lt;MyHomePage&gt; createState() =&gt; _MyHomePageState();
+}
+
+class _MyHomePageState extends State&lt;MyHomePage&gt; {
+  int _counter = 0;
+
+  void _incrementCounter() {
+    setState(() {
+      _counter++;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: Text(widget.title),
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: .center,
+          children: [
+            const Text('Bolos que a Ana já fez:'),
+            Text(
+              '$_counter',
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _incrementCounter,
+        tooltip: 'Increment',
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<figure class="tela"><img src="assets/telas/hot-reload-4.png" alt="O resultado esperado: o contador com a frase 'Bolos que a Ana já fez:' e o número 2, depois de dois toques no botão de mais" width="390" height="844" loading="lazy"><figcaption>O resultado esperado, depois de dois toques no +.</figcaption></figure>
+
+<hr>
+
+<h2 id="errado">Quando dá errado: o hot reload "não funcionou"</h2>
+<p>Às vezes você aperta <kbd>r</kbd>, o terminal diz que deu certo, e a tela não muda. Quase sempre é um destes casos, todos descritos na documentação oficial (ilustrativos: o laboratório não tem um aparelho conectado para recarregar):</p>
+
+<div class="cenario">
+<strong>A mudança foi no <code>main()</code> ou no <code>initState()</code></strong>
+<p>O hot reload troca o código e chama os <code>build</code> de novo, mas <strong>não</strong> roda o <code>main</code> de novo, nem o <code>initState</code> (o método que prepara o estado de uma tela, aula <a href="ciclo-de-vida.html">Ciclo de Vida do Widget</a>). Mudou o <code>runApp(...)</code>? O app não vai ver. Regra prática da documentação: se o código mudado roda quando a árvore de widgets é reconstruída (dentro de um <code>build</code>), o hot reload mostra; se não roda, não mostra. <strong>Como consertar:</strong> <kbd>R</kbd>.</p>
+</div>
+
+<div class="cenario">
+<strong>Mudou o valor inicial de uma variável global ou de um campo <code>static</code></strong>
+<pre class="file" data-file="lib/main.dart (trecho)">final saudacao = 'Bom dia';   // mudou para 'Boa tarde'
+</pre>
+<p>Variáveis globais e campos <code>static</code> contam como <strong>estado</strong>: o hot reload não roda de novo o valor inicial delas. A tela continua com o valor antigo. <strong>Como consertar:</strong> <kbd>R</kbd>. Se for uma constante, declare com <code>const</code> no lugar de <code>final</code>: mudanças em <code>const</code> sempre aparecem no hot reload.</p>
+</div>
+
+<div class="cenario">
+<strong>O estado antigo não combina com o código novo</strong>
+<p>A Ana mudou o valor inicial do contador de <code>int _counter = 0;</code> para <code>int _counter = 10;</code>, apertou <kbd>r</kbd>, e o número continuou o mesmo. Faz sentido: o hot reload <strong>preserva o estado</strong>, e o <code>_counter</code> já existia com o valor antigo; o valor inicial só é usado quando a tela é criada. <strong>Como consertar:</strong> <kbd>R</kbd>, que cria a tela do zero.</p>
+</div>
+
+<div class="cenario">
+<strong>Erro de compilação</strong>
+<p>Se o código salvo tem um erro, o hot reload é <strong>recusado</strong>: o terminal mostra a mensagem com o arquivo, a linha e a coluna, e o app continua rodando com o código anterior. <strong>Como consertar:</strong> corrija o erro e aperte <kbd>r</kbd> de novo; não precisa reiniciar.</p>
+</div>
+
+<div class="cenario">
+<strong>Mudou o <code>pubspec.yaml</code>, um pacote ou código nativo</strong>
+<p>Pacote novo, imagem nova nos <em>assets</em>, ou código em Kotlin, Java ou Swift (nas pastas <code>android/</code> e <code>ios/</code>): nada disso entra com o hot reload nem com o hot restart. <strong>Como consertar:</strong> pare o app (<kbd>q</kbd>) e rode <code>flutter run</code> de novo.</p>
+</div>
+
+<div class="cenario">
+<strong>Só no modo debug</strong>
+<p>Hot reload e hot restart existem só no modo debug. Com <code>flutter run --release</code>, as teclas não estão disponíveis (aula <a href="flutter-run.html">Rodando o App</a>).</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Use</th></tr>
+<tr><td>Mudou textos, cores, tamanhos, widgets dentro de um <code>build</code></td><td>Hot reload: <kbd>r</kbd> ou salvar</td></tr>
+<tr><td>Mudou o <code>main</code>, o <code>initState</code>, valores iniciais, variáveis globais</td><td>Hot restart: <kbd>R</kbd></td></tr>
+<tr><td>Quer o app "zerado" para testar desde o começo</td><td>Hot restart: <kbd>R</kbd></td></tr>
+<tr><td>Mudou o <code>pubspec.yaml</code>, pacotes, assets ou código nativo</td><td>Parar (<kbd>q</kbd>) e <code>flutter run</code></td></tr>
+<tr><td>Erro de compilação</td><td>Corrigir e <kbd>r</kbd> de novo</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. A tecla do hot reload</h3>
+<p>No terminal do <code>flutter run</code>, qual tecla faz o hot reload?</p>
+<div class="ex-code"><input data-answer="r" aria-label="tecla"></div>
+</div>
+
+<div class="exercise">
+<h3>2. A tecla do hot restart</h3>
+<p>E qual faz o hot restart?</p>
+<div class="ex-code"><input data-answer="R" aria-label="tecla"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. O contador está em 5. A Ana muda a cor do botão e faz hot reload. Qual número aparece?</p>
+<label><input type="radio" name="q3"> 0</label>
+<label><input type="radio" name="q3"> 5</label>
+<label><input type="radio" name="q3"> 6</label>
+<label><input type="radio" name="q3"> O app fecha</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. A Ana mudou o texto dentro do <code>runApp(...)</code> no <code>main</code> e fez hot reload. Nada mudou. O que fazer?</p>
+<label><input type="radio" name="q4"> Reinstalar o Flutter</label>
+<label><input type="radio" name="q4"> Apertar <kbd>r</kbd> várias vezes</label>
+<label><input type="radio" name="q4"> Apagar a pasta <code>lib</code></label>
+<label><input type="radio" name="q4"> Fazer hot restart (<kbd>R</kbd>): o hot reload não roda o <code>main</code> de novo</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. A Ana acrescentou um pacote novo no <code>pubspec.yaml</code>. O que ela precisa fazer para o app usá-lo?</p>
+<label><input type="radio" name="q5"> Parar o app e rodar <code>flutter run</code> de novo</label>
+<label><input type="radio" name="q5"> Hot reload</label>
+<label><input type="radio" name="q5"> Hot restart</label>
+<label><input type="radio" name="q5"> Nada: o app percebe sozinho</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><strong>Hot reload</strong> (<kbd>r</kbd> ou salvar): aplica o código novo em menos de um segundo e <strong>mantém o estado</strong> (o contador, a tela, o texto digitado).</li>
+  <li><strong>Hot restart</strong> (<kbd>R</kbd>): recomeça o app com o código novo e <strong>perde o estado</strong>; roda o <code>main</code> de novo.</li>
+  <li>Reinício completo (<kbd>q</kbd> e <code>flutter run</code>): para mudanças no <code>pubspec.yaml</code>, em pacotes, assets e código nativo.</li>
+  <li>O hot reload só mostra o que é refeito no <code>build</code>. Mudanças no <code>main</code>, no <code>initState</code>, em valores iniciais e em variáveis globais pedem hot restart.</li>
+  <li>Com erro de compilação, o hot reload é recusado e o app continua com o código antigo: corrija e recarregue.</li>
+  <li>Só funciona no modo debug.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
