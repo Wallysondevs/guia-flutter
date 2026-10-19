@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Material 3 e ColorScheme — as cores do app com papéis | Guia Flutter</title>
+<meta name="description" content="Material 3 e ColorScheme no Flutter para quem nunca fez um app: o que é o Material Design 3, os papéis das cores (primary, onPrimary, primaryContainer, secondary, tertiary, error, surface e os surfaceContainer), ColorScheme.fromSeed, as variantes de paleta (dynamicSchemeVariant), qual componente usa qual cor, a comparação com o Material 2 e os erros reais explicados em português.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Material 3 e ColorScheme</span></h1>
+
+<p class="intro">Na aula <a href="temas.html">Temas</a>, uma linha (<code>colorSchemeSeed: Colors.green</code>) pintou o app inteiro. Mas que verde vai no botão? E no fundo do cartão, na pílula da barra de baixo, no texto em cima do botão? Quem decide é o <strong><code>ColorScheme</code></strong> ("esquema de cores"): uma paleta em que cada cor tem um <strong>papel</strong>, como os atores de uma peça. Esta aula mostra a paleta por dentro, conta o que é o <strong>Material 3</strong>, o sistema de design que dá essas regras, e ensina a ajustar a paleta sem perder a harmonia.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é o Material Design 3 e o que mudou em relação ao Material 2.</li>
+  <li>Os <strong>papéis</strong> das cores: <code>primary</code>, <code>secondary</code>, <code>tertiary</code>, <code>error</code>, <code>surface</code>, os <code>...Container</code> e os pares <code>on...</code>.</li>
+  <li>A criar a paleta com <code>ColorScheme.fromSeed</code> e a trocar uma cor só, sem perder as outras.</li>
+  <li>As <strong>variantes</strong> de paleta (<code>dynamicSchemeVariant</code>): mais viva, mais fiel à semente, em tons de cinza…</li>
+  <li>Qual componente usa qual cor, para saber o que muda quando você mexe num papel.</li>
+  <li>Os erros reais: <code>colorSchemeSeed</code> e <code>colorScheme</code> juntos, e o texto invisível por usar a cor errada.</li>
+</ul>
+</div>
+
+<p>Tudo nesta aula foi compilado com o <strong>Flutter <span class="versao">3.47</span></strong> no laboratório do guia.</p>
+
+<hr>
+
+<h2>A ideia: o elenco de uma peça</h2>
+<p>Numa peça de teatro, cada ator tem um papel: o protagonista, o coadjuvante, o figurante, o cenário. Trocar o ator do protagonista não muda o papel: quem fizer o papel continua no centro do palco. O <code>ColorScheme</code> é o elenco das cores: o papel <code>primary</code> é sempre a cor de destaque (o botão principal), o papel <code>surface</code> é sempre o "cenário" (o fundo). Você troca as cores; os componentes continuam sabendo qual papel usar.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Papel</th><th>Para que serve</th><th>Exemplos</th></tr>
+<tr><td><code>primary</code> / <code>onPrimary</code></td><td>A cor de destaque principal e o texto sobre ela</td><td><code>FilledButton</code>, <code>Switch</code> ligado, links</td></tr>
+<tr><td><code>primaryContainer</code> / <code>onPrimaryContainer</code></td><td>Um tom suave da principal, para áreas de destaque</td><td>O botão flutuante (<code>FloatingActionButton</code>)</td></tr>
+<tr><td><code>secondary</code> / <code>secondaryContainer</code></td><td>Destaques menores, que não devem competir com o principal</td><td>A pílula do <code>NavigationBar</code>, chips selecionados</td></tr>
+<tr><td><code>tertiary</code> / <code>tertiaryContainer</code></td><td>Um contraste, para equilibrar ou chamar atenção de outro jeito</td><td>Um selo "novo", um gráfico</td></tr>
+<tr><td><code>error</code> / <code>errorContainer</code></td><td>Erros e avisos</td><td>Campo de formulário inválido, <code>Badge</code></td></tr>
+<tr><td><code>surface</code> / <code>onSurface</code></td><td>O fundo e o texto comum</td><td>O fundo do <code>Scaffold</code> e da <code>AppBar</code></td></tr>
+<tr><td><code>surfaceContainerLowest</code> … <code>surfaceContainerHighest</code></td><td>Cinco fundos um pouco mais escuros que o <code>surface</code>, para separar camadas</td><td><code>Card</code> (<code>Low</code>), <code>NavigationBar</code> (o do meio, <code>surfaceContainer</code>)</td></tr>
+<tr><td><code>outline</code> / <code>outlineVariant</code></td><td>Bordas e divisórias</td><td><code>OutlinedButton</code>, <code>Divider</code></td></tr>
+</table>
+</div>
+
+<p>Os exemplos da tabela foram conferidos no código do próprio Flutter 3.47: é de lá que cada componente tira a cor quando você não diz nada.</p>
+
+<hr>
+
+<h2>1. O que é o Material 3</h2>
+<p><strong>Material Design</strong> é o sistema de design do Google: um conjunto de regras sobre cores, letras, formas e movimento, que os apps Android (e muitos outros) seguem. A terceira versão, o <strong>Material 3</strong> (também chamado de <em>Material You</em>), trouxe a paleta gerada a partir de uma cor, formas mais arredondadas, botões e barras novos (<code>FilledButton</code>, <code>NavigationBar</code>, <code>NavigationDrawer</code>) e os papéis de cor desta aula.</p>
+<p>No Flutter, o Material 3 é o <strong>padrão</strong> desde a versão 3.16: você não precisa ligar nada. O parâmetro <code>useMaterial3</code> do <code>ThemeData</code> ainda existe e, com <code>false</code>, volta ao visual antigo, o Material 2 (seção "Formas diferentes").</p>
+
+<hr>
+
+<h2>2. A paleta por dentro</h2>
+<p>Para enxergar a paleta, o app abaixo desenha uma faixa para cada papel, pintada com a cor do papel e escrita com a cor "on" dele:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const PaletaApp());
+
+class PaletaApp extends StatelessWidget {
+  const PaletaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.green),
+      home: const PaletaPage(),
+    );
+  }
+}
+
+class PaletaPage extends StatelessWidget {
+  const PaletaPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
+    final papeis = [
+      ('primary', c.primary, c.onPrimary),
+      ('primaryContainer', c.primaryContainer, c.onPrimaryContainer),
+      ('secondary', c.secondary, c.onSecondary),
+      ('secondaryContainer', c.secondaryContainer, c.onSecondaryContainer),
+      ('tertiary', c.tertiary, c.onTertiary),
+      ('tertiaryContainer', c.tertiaryContainer, c.onTertiaryContainer),
+      ('error', c.error, c.onError),
+      ('surface', c.surface, c.onSurface),
+      ('surfaceContainer', c.surfaceContainer, c.onSurface),
+      ('surfaceContainerHighest', c.surfaceContainerHighest, c.onSurface),
+      ('outline', c.outline, c.surface),
+    ];
+    return Scaffold(
+      appBar: AppBar(title: const Text('A paleta da Ana')),
+      body: ListView(
+        children: [
+          for (final (nome, fundo, texto) in papeis)
+            Container(
+              color: fundo,
+              padding: const EdgeInsets.all(16),
+              child: Text(nome, style: TextStyle(color: texto)),
+            ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+
+<figure class="tela"><img src="assets/telas/material3-1.png" alt="Lista de faixas coloridas, cada uma com o nome do papel: primary verde-escuro, primaryContainer verde-claro, secondary verde acinzentado, secondaryContainer verde bem claro, tertiary azul-petróleo, tertiaryContainer azul-claro, error vermelho, surface quase branco, surfaceContainer e surfaceContainerHighest em cinzas esverdeados claros e outline cinza-escuro" width="390" height="844" loading="lazy"><figcaption>A paleta gerada a partir do verde: uma faixa por papel.</figcaption></figure>
+
+<dl class="anatomy">
+  <dt>final c = Theme.of(context).colorScheme;</dt><dd>A paleta do tema atual. Cada papel é uma propriedade: <code>c.primary</code>, <code>c.onPrimary</code>…</dd>
+  <dt>('primary', c.primary, c.onPrimary)</dt><dd>Um <strong>registro</strong> (<em>record</em>) do Dart com três valores: o nome, a cor do papel e a cor do texto sobre ela. O <code>for (final (nome, fundo, texto) in papeis)</code> desmonta cada registro nas três variáveis.</dd>
+</dl>
+
+<p>Repare em três coisas. Os papéis vêm em <strong>pares de tom</strong>: o <code>primary</code> é um verde-escuro e o <code>primaryContainer</code>, um verde-claro da mesma família. O <code>secondary</code> é um verde acinzentado, mais discreto, e o <code>tertiary</code> é um azul-petróleo: uma cor diferente, escolhida pelo Flutter para combinar com o verde. E o texto de cada faixa (a cor <code>on…</code>) é branco nas faixas escuras e escuro nas claras, sempre legível, sem você escolher nada. O <code>error</code> é vermelho em qualquer paleta.</p>
+
+<hr>
+
+<h2>3. <code>ColorScheme.fromSeed</code>: a paleta com ajustes</h2>
+<p>O <code>colorSchemeSeed</code> é um atalho. O jeito completo é criar o <code>ColorScheme</code> você mesmo, com <code>ColorScheme.fromSeed</code>, e entregá-lo no <code>colorScheme</code> do <code>ThemeData</code>. As duas linhas abaixo dão o mesmo resultado:</p>
+
+<pre class="file" data-file="lib/main.dart">theme: ThemeData(colorSchemeSeed: Colors.green),
+
+theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.green)),
+</pre>
+
+<p>A vantagem do jeito completo: dá para trocar <strong>um</strong> papel e deixar o resto calculado. A Ana gostou de tudo, mas quer o terciário num laranja de cenoura:</p>
+
+<pre class="file" data-file="lib/main.dart">theme: ThemeData(
+  colorScheme: ColorScheme.fromSeed(
+    seedColor: Colors.green,
+    tertiary: const Color(0xFFE65100),
+  ),
+),
+</pre>
+
+<dl class="anatomy">
+  <dt>ColorScheme.fromSeed(seedColor: ...)</dt><dd>Gera a paleta inteira a partir da semente, como o <code>colorSchemeSeed</code>.</dd>
+  <dt>tertiary: const Color(0xFFE65100)</dt><dd>Qualquer papel pode ser passado à mão e vence o calculado. <code>0xFFE65100</code> é a cor em hexadecimal: <code>FF</code> de opacidade total e <code>E65100</code>, o laranja (aula <a href="decoration.html">Cores, Bordas e Sombras</a>). Atenção: o <code>onTertiary</code> continua o calculado; se você trocar um papel por uma cor muito diferente, confira se o texto sobre ela ainda é legível.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/material3-2.png" alt="A mesma lista de faixas, agora com a faixa tertiary laranja vivo; a tertiaryContainer logo abaixo continua azul-clara" width="390" height="844" loading="lazy"><figcaption>A mesma paleta com o <code>tertiary</code> trocado. Repare que só ele mudou: o <code>tertiaryContainer</code> continua azul-claro. Quem troca um papel à mão costuma trocar o par inteiro (<code>tertiary</code>, <code>onTertiary</code>, <code>tertiaryContainer</code>, <code>onTertiaryContainer</code>).</figcaption></figure>
+
+<div class="tryflutter" data-goal="src:ColorScheme\.fromSeed\(;;src:seedColor:\s*Colors\.\w+">
+<p class="try-task"><strong>Missão:</strong> troque o <code>colorSchemeSeed</code> por um <code>colorScheme: ColorScheme.fromSeed(seedColor: ...)</code> com a semente que você quiser, e veja a paleta inteira mudar.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const PaletaApp());
+
+class PaletaApp extends StatelessWidget {
+  const PaletaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.green),
+      home: const PaletaPage(),
+    );
+  }
+}
+
+class PaletaPage extends StatelessWidget {
+  const PaletaPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
+    final papeis = [
+      ('primary', c.primary, c.onPrimary),
+      ('primaryContainer', c.primaryContainer, c.onPrimaryContainer),
+      ('secondary', c.secondary, c.onSecondary),
+      ('tertiary', c.tertiary, c.onTertiary),
+      ('surface', c.surface, c.onSurface),
+    ];
+    return Scaffold(
+      appBar: AppBar(title: const Text('A paleta da Ana')),
+      body: ListView(
+        children: [
+          for (final (nome, fundo, texto) in papeis)
+            Container(
+              color: fundo,
+              padding: const EdgeInsets.all(16),
+              child: Text(nome, style: TextStyle(color: texto)),
+            ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const PaletaApp());
+
+class PaletaApp extends StatelessWidget {
+  const PaletaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+      ),
+      home: const PaletaPage(),
+    );
+  }
+}
+
+class PaletaPage extends StatelessWidget {
+  const PaletaPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
+    final papeis = [
+      ('primary', c.primary, c.onPrimary),
+      ('primaryContainer', c.primaryContainer, c.onPrimaryContainer),
+      ('secondary', c.secondary, c.onSecondary),
+      ('tertiary', c.tertiary, c.onTertiary),
+      ('surface', c.surface, c.onSurface),
+    ];
+    return Scaffold(
+      appBar: AppBar(title: const Text('A paleta da Ana')),
+      body: ListView(
+        children: [
+          for (final (nome, fundo, texto) in papeis)
+            Container(
+              color: fundo,
+              padding: const EdgeInsets.all(16),
+              child: Text(nome, style: TextStyle(color: texto)),
+            ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>4. Variantes da paleta: <code>dynamicSchemeVariant</code></h2>
+<p>A mesma semente pode virar paletas de "personalidades" diferentes. O <code>fromSeed</code> tem o parâmetro <code>dynamicSchemeVariant</code> ("variante do esquema"), e o padrão, <code>tonalSpot</code>, dá cores calmas, um pouco apagadas. O app abaixo mostra quatro variantes da mesma semente verde, lado a lado:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const VariantesApp());
+
+class VariantesApp extends StatelessWidget {
+  const VariantesApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    const variantes = [
+      DynamicSchemeVariant.tonalSpot,
+      DynamicSchemeVariant.fidelity,
+      DynamicSchemeVariant.vibrant,
+      DynamicSchemeVariant.monochrome,
+    ];
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Semente verde')),
+        body: ListView(
+          padding: const EdgeInsets.all(12),
+          children: [
+            for (final v in variantes) Faixa(variante: v),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class Faixa extends StatelessWidget {
+  const Faixa({super.key, required this.variante});
+
+  final DynamicSchemeVariant variante;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = ColorScheme.fromSeed(
+      seedColor: Colors.green,
+      dynamicSchemeVariant: variante,
+    );
+    final cores = [c.primary, c.primaryContainer, c.secondary, c.tertiary, c.surfaceContainer];
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(variante.name),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              for (final cor in cores)
+                Expanded(child: Container(height: 48, color: cor)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+
+<figure class="tela"><img src="assets/telas/material3-3.png" alt="Quatro fileiras de cinco quadrados coloridos, com os nomes tonalSpot, fidelity, vibrant e monochrome; as três primeiras em verdes (o terciário azul-petróleo, vinho e verde-azulado), a última só em preto e cinzas" width="390" height="844" loading="lazy"><figcaption>Quatro variantes da mesma semente: cinco cores de cada paleta (primary, primaryContainer, secondary, tertiary e surfaceContainer).</figcaption></figure>
+
+<p>Na <code>tonalSpot</code>, os verdes são apagados e o terciário é um azul-petróleo. Na <code>fidelity</code>, o primeiro quadrado é um verde bem mais vivo, perto do <code>Colors.green</code>, e o terciário virou um vinho. A <code>vibrant</code> tem o <code>primaryContainer</code> num verde-limão bem saturado. A <code>monochrome</code> ignora o verde: só preto e cinzas. Todas foram geradas da mesma semente.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Variante</th><th>Personalidade</th></tr>
+<tr><td><code>tonalSpot</code> (padrão)</td><td>Calma, tons suaves; a recomendada para a maioria dos apps</td></tr>
+<tr><td><code>fidelity</code></td><td>Fiel à semente: o <code>primary</code> fica bem perto da cor que você deu (boa para cores de marca)</td></tr>
+<tr><td><code>vibrant</code></td><td>Cores mais saturadas e vivas</td></tr>
+<tr><td><code>monochrome</code></td><td>Só cinzas, ignorando a cor da semente</td></tr>
+<tr><td><code>neutral</code>, <code>expressive</code>, <code>content</code>, <code>rainbow</code>, <code>fruitSalad</code></td><td>Outras personalidades; experimente no editor</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Formas diferentes de fazer</h2>
+
+<h3>Material 3 × Material 2</h3>
+<p>Com <code>useMaterial3: false</code>, o Flutter volta ao visual antigo. A mesma vitrine da aula <a href="temas.html">Temas</a>, com semente verde, nos dois sistemas:</p>
+
+<pre class="file" data-file="lib/main.dart">theme: ThemeData(colorSchemeSeed: Colors.green, useMaterial3: false),
+</pre>
+
+<figure class="tela"><img src="assets/telas/material3-4.png" alt="Vitrine no Material 2: barra de cima verde-escura com título branco, cartão branco com sombra, botão 'Ver receita' verde, botão 'Favoritar' de cantos retos, interruptor pequeno cinza e botão flutuante redondo escuro com um +" width="390" height="844" loading="lazy"><figcaption>A vitrine com <code>useMaterial3: false</code> (Material 2).</figcaption></figure>
+
+<p>No Material 2, a <code>AppBar</code> volta a ser colorida (verde-escuro com título branco, à esquerda), o botão contornado tem cantos quase retos, o cartão tem sombra e fundo branco, o interruptor desativado é menor e o botão flutuante é um círculo escuro, não mais o quadrado arredondado verde-claro do Material 3. Compare com a foto <code>temas-2</code> da aula <a href="temas.html">Temas</a>.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Jeito de definir as cores</th><th>Quando usar</th></tr>
+<tr><td><code>colorSchemeSeed: cor</code></td><td>O mais simples: uma cor e pronto</td></tr>
+<tr><td><code>colorScheme: ColorScheme.fromSeed(seedColor: cor, ...)</code></td><td>Quando quer trocar um papel ou escolher a variante</td></tr>
+<tr><td><code>colorScheme: ColorScheme(brightness: ..., primary: ..., onPrimary: ..., ...)</code></td><td>Paleta 100% à mão (exige todos os papéis obrigatórios); para quem tem um manual de marca fechado</td></tr>
+<tr><td><code>useMaterial3: false</code></td><td>Só para manter um app antigo com o visual de antes; o Material 2 não recebe novidades</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>colorSchemeSeed</code> e <code>colorScheme</code> juntos</strong>
+<pre class="file" data-file="lib/main.dart">theme: ThemeData(
+  colorSchemeSeed: Colors.green,
+  colorScheme: ColorScheme.fromSeed(seedColor: Colors.orange),
+),
+</pre>
+<p>O app compila, mas abre na tela vermelha de erro, e o console mostra:</p>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following assertion was thrown building PaletaApp(dirty):
+Assertion failed:
+file:///home/ana/flutter/packages/flutter/lib/src/material/theme_data.dart:431:12
+colorSchemeSeed == null || colorScheme == null
+is not true
+
+The relevant error-causing widget was:
+  PaletaApp PaletaApp:file:///home/ana/app/lib/main.dart:3:29
+
+When the exception was thrown, this was the stack:
+«  … as linhas da pilha, todas dentro do Flutter
+</pre>
+<p>A regra que falhou, na linha 431 do <code>theme_data.dart</code> (o arquivo do Flutter que define o <code>ThemeData</code>), diz: "o <code>colorSchemeSeed</code> tem de ser nulo <strong>ou</strong> o <code>colorScheme</code> tem de ser nulo". Em outras palavras: um ou outro, nunca os dois. O widget apontado é o <code>PaletaApp</code>, criado na linha 3 do <code>main.dart</code> (o <code>runApp(const PaletaApp())</code>), porque é no <code>build</code> dele que o <code>ThemeData</code> é montado.</p>
+<p><strong>Como consertar:</strong> escolha um dos dois. O <code>colorSchemeSeed</code> é o atalho do <code>colorScheme: ColorScheme.fromSeed(...)</code>; os dois juntos seriam duas respostas para a mesma pergunta.</p>
+</div>
+
+<div class="cenario">
+<strong>O texto que sumiu</strong>
+<pre class="file" data-file="lib/main.dart">Container(
+  color: c.primary,
+  padding: const EdgeInsets.all(16),
+  child: Text('Receita do dia', style: TextStyle(color: c.primary)),
+),
+Container(
+  color: c.primary,
+  padding: const EdgeInsets.all(16),
+  child: Text('Receita do dia', style: TextStyle(color: c.onPrimary)),
+),
+</pre>
+<figure class="tela"><img src="assets/telas/material3-erro2.png" alt="Uma faixa verde-escura de duas alturas: a metade de cima parece vazia e a de baixo mostra 'Receita do dia' em branco" width="390" height="844" loading="lazy"><figcaption>Duas faixas verdes: na de cima, o texto sumiu; na de baixo, com <code>onPrimary</code>, ele aparece em branco.</figcaption></figure>
+<p>Nenhuma mensagem de erro: o texto está lá, mas na mesma cor do fundo. <strong>Como consertar:</strong> use sempre o par: fundo <code>primary</code> → texto <code>onPrimary</code>; fundo <code>primaryContainer</code> → texto <code>onPrimaryContainer</code>; fundo <code>surface</code> → texto <code>onSurface</code>. O par foi calculado para ter contraste, no claro e no escuro.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>Theme.of(context).colorScheme</code></td><td>A paleta atual</td></tr>
+<tr><td><code>.primary</code> / <code>.onPrimary</code> / <code>.primaryContainer</code> / <code>.onPrimaryContainer</code></td><td>Destaque principal e os pares de texto</td></tr>
+<tr><td><code>.secondary…</code> / <code>.tertiary…</code> / <code>.error…</code></td><td>Destaque secundário, contraste, erro (com <code>Container</code> e <code>on</code>)</td></tr>
+<tr><td><code>.surface</code> / <code>.onSurface</code> / <code>.surfaceContainerLowest…Highest</code></td><td>Fundos e texto comum</td></tr>
+<tr><td><code>.outline</code> / <code>.outlineVariant</code></td><td>Bordas e divisórias</td></tr>
+<tr><td><code>ColorScheme.fromSeed(seedColor: cor)</code></td><td>Paleta a partir de uma cor</td></tr>
+<tr><td><code>ColorScheme.fromSeed(seedColor: cor, tertiary: outra)</code></td><td>Troca um papel e mantém o resto</td></tr>
+<tr><td><code>dynamicSchemeVariant: DynamicSchemeVariant.vibrant</code></td><td>Outra personalidade de paleta</td></tr>
+<tr><td><code>ThemeData(useMaterial3: false)</code></td><td>Volta ao Material 2</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. O par</h3>
+<p>Num fundo <code>primary</code>, qual papel usar para o texto?</p>
+<div class="ex-code">TextStyle(color: c.<input data-answer="onPrimary" aria-label="papel">)</div>
+</div>
+
+<div class="exercise">
+<h3>2. A paleta com ajustes</h3>
+<p>Complete para criar a paleta a partir do laranja:</p>
+<div class="ex-code">ColorScheme.<input data-answer="fromSeed" aria-label="construtor">(seedColor: Colors.orange)</div>
+</div>
+
+<div class="exercise">
+<h3>3. O fundo do cartão</h3>
+<p>No Material 3, de qual papel vem o fundo de um <code>Card</code>, quando você não diz nada?</p>
+<div class="ex-code">c.<input data-answer="surfaceContainerLow" aria-label="papel"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. Desde qual versão do Flutter o Material 3 é o padrão?</p>
+<label><input type="radio" name="q4"> 2.0</label>
+<label><input type="radio" name="q4"> 3.16</label>
+<label><input type="radio" name="q4"> 3.47</label>
+<label><input type="radio" name="q4"> Ainda não é o padrão</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">5. A Ana quer que o <code>primary</code> fique bem parecido com a cor da marca dela. Qual variante ajuda?</p>
+<label><input type="radio" name="q5"> <code>monochrome</code></label>
+<label><input type="radio" name="q5"> <code>tonalSpot</code></label>
+<label><input type="radio" name="q5"> <code>fidelity</code></label>
+<label><input type="radio" name="q5"> <code>rainbow</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">6. Qual papel o <code>FilledButton</code> usa como fundo?</p>
+<label><input type="radio" name="q6"> <code>primary</code></label>
+<label><input type="radio" name="q6"> <code>surface</code></label>
+<label><input type="radio" name="q6"> <code>secondaryContainer</code></label>
+<label><input type="radio" name="q6"> <code>error</code></label>
+</div>
+
+<h3>Missão final: a etiqueta de destaque</h3>
+
+<div class="tryflutter" data-goal="src:color:\s*c\.tertiaryContainer;;src:color:\s*c\.onTertiaryContainer">
+<p class="try-task"><strong>Missão:</strong> a etiqueta "Novidade!" está com cores escritas à mão. Troque o fundo por <code>c.tertiaryContainer</code> e o texto pelo par dele, <code>c.onTertiaryContainer</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const EtiquetaApp());
+
+class EtiquetaApp extends StatelessWidget {
+  const EtiquetaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.green),
+      home: const EtiquetaPage(),
+    );
+  }
+}
+
+class EtiquetaPage extends StatelessWidget {
+  const EtiquetaPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          color: Colors.yellow,
+          child: const Text('Novidade!', style: TextStyle(color: Colors.black)),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const EtiquetaApp());
+
+class EtiquetaApp extends StatelessWidget {
+  const EtiquetaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.green),
+      home: const EtiquetaPage(),
+    );
+  }
+}
+
+class EtiquetaPage extends StatelessWidget {
+  const EtiquetaPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          color: c.tertiaryContainer,
+          child: Text('Novidade!', style: TextStyle(color: c.onTertiaryContainer)),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O Material 3 é o sistema de design padrão do Flutter desde a 3.16: paleta gerada de uma semente, formas arredondadas, componentes novos.</li>
+  <li>O <code>ColorScheme</code> é a paleta, com <strong>papéis</strong>: <code>primary</code>, <code>secondary</code>, <code>tertiary</code>, <code>error</code>, <code>surface</code> (e os <code>surfaceContainer…</code>), <code>outline</code>. Cada fundo tem o seu par <code>on…</code> para o texto.</li>
+  <li>Os componentes usam papéis fixos: <code>FilledButton</code> → <code>primary</code>; botão flutuante → <code>primaryContainer</code>; <code>Card</code> → <code>surfaceContainerLow</code>; pílula do <code>NavigationBar</code> → <code>secondaryContainer</code>.</li>
+  <li><code>ColorScheme.fromSeed(seedColor:)</code> = o <code>colorSchemeSeed</code>, com a chance de trocar papéis e de escolher a <code>dynamicSchemeVariant</code>.</li>
+  <li>Não use <code>colorSchemeSeed</code> e <code>colorScheme</code> juntos; e escreva sempre com o par <code>on…</code> do fundo.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
