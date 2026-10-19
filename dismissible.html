@@ -1,0 +1,821 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Dismissible — arrastar para apagar um item da lista | Guia Flutter</title>
+<meta name="description" content="O Dismissible do Flutter para quem nunca fez um app: arrastar um item da lista para o lado e apagá-lo, a Key obrigatória, o fundo vermelho com a lixeira, as direções, a pergunta 'tem certeza?' com confirmDismiss, o SnackBar com Desfazer e os erros reais (o item que continua na árvore e as chaves repetidas).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Dismissible</span></h1>
+
+<p class="intro">No aplicativo de e-mail do seu celular, você arrasta uma mensagem para o lado e ela some. Na lista de compras da Ana, comprou o leite? Arrasta, e o leite sai da lista. Esse gesto é tão comum que o Flutter tem um widget pronto para ele: o <code>Dismissible</code>. Em inglês, <em>dismiss</em> quer dizer "dispensar, mandar embora"; um <code>Dismissible</code> é "uma peça que pode ser mandada embora" com um arrasto.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como embrulhar um item da lista num <code>Dismissible</code> para ele poder ser arrastado para fora da tela.</li>
+  <li>Por que o <code>Dismissible</code> <strong>exige</strong> uma <code>key</code>, e qual valor usar nela.</li>
+  <li>Como tirar o item <strong>da sua lista de dados</strong> no <code>onDismissed</code> (o widget não faz isso sozinho).</li>
+  <li>Como mostrar um fundo vermelho com uma lixeira (<code>background</code>) e um fundo diferente para cada lado (<code>secondaryBackground</code>).</li>
+  <li>Como escolher a direção do arrasto (<code>direction</code>) e perguntar "tem certeza?" antes de apagar (<code>confirmDismiss</code>).</li>
+  <li>Como oferecer um <strong>Desfazer</strong> com um <code>SnackBar</code>.</li>
+  <li>Os erros reais: o item apagado que continua na árvore e as chaves repetidas.</li>
+</ul>
+</div>
+
+<p>Esta aula usa o que você viu em <a href="listview-builder.html">ListView.builder</a>, <a href="setstate.html">setState</a> e <a href="keys.html">Keys</a>. Os apps rodaram no Flutter do laboratório, e as fotos são das telas de verdade.</p>
+
+<hr>
+
+<h2>A ideia: o papelzinho que você amassa e joga fora</h2>
+<p>Imagine a lista de compras da Ana escrita em papeizinhos, um item em cada, presos na geladeira. Comprou o leite? Ela <strong>puxa</strong> o papel do leite para o lado e joga no lixo. Três coisas acontecem nessa cena:</p>
+<ol class="passo">
+  <li>O papel <strong>acompanha a mão</strong> enquanto ela puxa. Se ela soltar no meio do caminho, o papel volta para o lugar.</li>
+  <li>Se ela puxar até o fim, o papel <strong>sai</strong> da geladeira e os outros papéis <strong>sobem</strong> para tapar o buraco.</li>
+  <li>Ela <strong>risca o leite</strong> da lista que está na cabeça dela; senão, amanhã escreveria o papel do leite de novo.</li>
+</ol>
+<p>O <code>Dismissible</code> cuida dos passos 1 e 2: a animação do arrasto, o "volta para o lugar" e o espaço que fecha. O passo 3 é <strong>seu</strong>: tirar o item da <code>List</code> do seu app. Se você esquecer, o Flutter reclama (está em <a href="#errado">Quando dá errado</a>).</p>
+
+<hr>
+
+<h2>1. O primeiro Dismissible</h2>
+<p>A lista de compras da Ana, com cada item embrulhado num <code>Dismissible</code>:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: ListaDeCompras()));
+
+class ListaDeCompras extends StatefulWidget {
+  const ListaDeCompras({super.key});
+
+  @override
+  State&lt;ListaDeCompras&gt; createState() =&gt; _ListaDeComprasState();
+}
+
+class _ListaDeComprasState extends State&lt;ListaDeCompras&gt; {
+  final List&lt;String&gt; itens = ['Leite', 'Pão', 'Ovos', 'Café', 'Banana'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Lista de compras')),
+      body: ListView.builder(
+        itemCount: itens.length,
+        itemBuilder: (context, index) {
+          final item = itens[index];
+          return Dismissible(
+            key: ValueKey(item),
+            onDismissed: (direction) {
+              setState(() {
+                itens.removeAt(index);
+              });
+            },
+            child: ListTile(title: Text(item)),
+          );
+        },
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>StatefulWidget</dt><dd>A lista <strong>muda</strong> (itens saem dela), então a tela precisa de estado (veja <a href="stateful.html">StatefulWidget</a>). A <code>List&lt;String&gt; itens</code> mora no <code>State</code>.</dd>
+  <dt>Dismissible(…)</dt><dd>O "embrulho" que deixa o filho ser arrastado para fora. Ele não desenha nada sozinho: o que aparece é o <code>child</code>.</dd>
+  <dt>key: ValueKey(item)</dt><dd><strong>Obrigatória.</strong> Uma etiqueta que diz ao Flutter <em>qual</em> item é este, mesmo depois que a lista muda de tamanho. O valor tem de ser <strong>único</strong> e <strong>estável</strong>: o mesmo item, a mesma chave, sempre. Aqui o próprio texto serve, porque não há dois itens iguais. (Mais sobre isso em <a href="#chave">Qual chave usar</a>.)</dd>
+  <dt>onDismissed: (direction) { … }</dt><dd>A função que o Flutter chama <strong>depois</strong> que a animação terminou e o item saiu da tela. O parâmetro <code>direction</code> diz para que lado ele foi. É aqui que você faz o passo 3 da geladeira.</dd>
+  <dt>setState(() { itens.removeAt(index); })</dt><dd>Tira o item da lista <strong>e</strong> avisa o Flutter para redesenhar a tela (veja <a href="setstate.html">setState</a>). O <code>ListView.builder</code> passa a ter um item a menos.</dd>
+  <dt>child: ListTile(…)</dt><dd>O que aparece na tela e o que se move com o dedo: a linha da lista (veja <a href="card.html">Card e ListTile</a>).</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/dismissible-1.png" alt="App com a barra de título 'Lista de compras' e cinco itens um embaixo do outro: Leite, Pão, Ovos, Café e Banana; no canto superior direito, a faixa vermelha DEBUG" width="390" height="844" loading="lazy"><figcaption>A lista antes de qualquer arrasto (Flutter 3.47, modo debug: por isso a faixa DEBUG no canto).</figcaption></figure>
+
+<p>Repare que nada na tela diz que os itens podem ser arrastados: o <code>Dismissible</code> é invisível até alguém pôr o dedo. Ao arrastar o Leite para o lado, ele acompanha o dedo; se você soltar antes de chegar a 40% da largura (o padrão do <code>dismissThresholds</code>), ele volta para o lugar; se passar disso, ele desliza para fora, o espaço dele encolhe e o Pão sobe. Só então o <code>onDismissed</code> roda.</p>
+
+<div class="tryflutter" data-goal="src:'Arroz'">
+<p class="try-task"><strong>Missão:</strong> acrescente <code>'Arroz'</code> na lista de compras e arraste dois itens para fora. Repare que os de baixo sobem para tapar o buraco.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: ListaDeCompras()));
+
+class ListaDeCompras extends StatefulWidget {
+  const ListaDeCompras({super.key});
+
+  @override
+  State&lt;ListaDeCompras&gt; createState() =&gt; _ListaDeComprasState();
+}
+
+class _ListaDeComprasState extends State&lt;ListaDeCompras&gt; {
+  final List&lt;String&gt; itens = ['Leite', 'Pão', 'Ovos', 'Café', 'Banana'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Lista de compras')),
+      body: ListView.builder(
+        itemCount: itens.length,
+        itemBuilder: (context, index) {
+          final item = itens[index];
+          return Dismissible(
+            key: ValueKey(item),
+            onDismissed: (direction) {
+              setState(() {
+                itens.removeAt(index);
+              });
+            },
+            child: ListTile(title: Text(item)),
+          );
+        },
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: ListaDeCompras()));
+
+class ListaDeCompras extends StatefulWidget {
+  const ListaDeCompras({super.key});
+
+  @override
+  State&lt;ListaDeCompras&gt; createState() =&gt; _ListaDeComprasState();
+}
+
+class _ListaDeComprasState extends State&lt;ListaDeCompras&gt; {
+  final List&lt;String&gt; itens = ['Leite', 'Pão', 'Ovos', 'Café', 'Banana', 'Arroz'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Lista de compras')),
+      body: ListView.builder(
+        itemCount: itens.length,
+        itemBuilder: (context, index) {
+          final item = itens[index];
+          return Dismissible(
+            key: ValueKey(item),
+            onDismissed: (direction) {
+              setState(() {
+                itens.removeAt(index);
+              });
+            },
+            child: ListTile(title: Text(item)),
+          );
+        },
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>2. O fundo que aparece por trás: <code>background</code></h2>
+<p>No primeiro exemplo, quando o item anda, aparece só o fundo branco da tela. Fica estranho: a pessoa não sabe o que vai acontecer. O comum é mostrar, <strong>por trás</strong> do item, uma faixa vermelha com uma lixeira. Para isso existe o parâmetro <code>background</code> ("fundo"):</p>
+
+<pre class="file" data-file="lib/main.dart (trecho)">return Dismissible(
+  key: ValueKey(item),
+  background: Container(
+    color: Colors.red,
+    alignment: Alignment.centerLeft,
+    padding: const EdgeInsets.symmetric(horizontal: 20),
+    child: const Icon(Icons.delete, color: Colors.white),
+  ),
+  onDismissed: (direction) {
+    setState(() {
+      itens.removeAt(index);
+    });
+  },
+  child: ListTile(title: Text(item)),
+);
+</pre>
+
+<dl class="anatomy">
+  <dt>background:</dt><dd>Um widget qualquer, desenhado <strong>atrás</strong> do <code>child</code>. Ele fica parado; é o <code>child</code> que anda e vai revelando o fundo.</dd>
+  <dt>Container(color: Colors.red, …)</dt><dd>A faixa vermelha, do tamanho do item (veja <a href="container.html">Container</a>).</dd>
+  <dt>alignment: Alignment.centerLeft</dt><dd>Põe a lixeira no meio da altura, encostada à <strong>esquerda</strong>: é o lado que aparece primeiro quando o item é arrastado para a direita.</dd>
+  <dt>padding: …horizontal: 20</dt><dd>Afasta a lixeira 20 pixels da borda, para não ficar colada.</dd>
+</dl>
+
+
+<h3>Um fundo para cada lado: <code>secondaryBackground</code></h3>
+<p>Se o item pode ir para os dois lados, o <code>background</code> aparece nos dois, e a lixeira à esquerda fica escondida quando o arrasto é para a esquerda. Use o <code>secondaryBackground</code> ("fundo secundário") para o arrasto <strong>da direita para a esquerda</strong>. Um uso clássico: para a direita, "comprado" (verde); para a esquerda, "apagar" (vermelho):</p>
+
+<pre class="file" data-file="lib/main.dart (trecho)">return Dismissible(
+  key: ValueKey(item),
+  background: Container(
+    color: Colors.green,
+    alignment: Alignment.centerLeft,
+    padding: const EdgeInsets.symmetric(horizontal: 20),
+    child: const Icon(Icons.check, color: Colors.white),
+  ),
+  secondaryBackground: Container(
+    color: Colors.red,
+    alignment: Alignment.centerRight,
+    padding: const EdgeInsets.symmetric(horizontal: 20),
+    child: const Icon(Icons.delete, color: Colors.white),
+  ),
+  onDismissed: (direction) {
+    final acao = direction == DismissDirection.startToEnd ? 'comprado' : 'apagado';
+    setState(() {
+      itens.removeAt(index);
+    });
+    debugPrint('$item: $acao');
+  },
+  child: ListTile(title: Text(item)),
+);
+</pre>
+
+<p>O <code>direction</code> que chega no <code>onDismissed</code> diz o lado: <code>DismissDirection.startToEnd</code> ("do começo para o fim", isto é, da esquerda para a direita em português) ou <code>DismissDirection.endToStart</code> (da direita para a esquerda). Assim, o mesmo gesto pode fazer duas coisas diferentes.</p>
+
+
+<div class="note">
+<strong>Por que "start" e "end", e não "left" e "right"?</strong>
+<p>Porque há línguas escritas da direita para a esquerda, como o árabe e o hebraico. Nelas, o "começo" da linha fica à direita, e o Flutter inverte os lados sozinho. Em português, <em>start</em> = esquerda e <em>end</em> = direita.</p>
+</div>
+
+<hr>
+
+<h2>3. Só para um lado: <code>direction</code></h2>
+<p>Por padrão, o item vai para a esquerda e para a direita (<code>DismissDirection.horizontal</code>). Para aceitar só um lado, passe o <code>direction</code>:</p>
+
+<pre class="file" data-file="lib/main.dart (trecho)">return Dismissible(
+  key: ValueKey(item),
+  direction: DismissDirection.endToStart,
+  background: Container(
+    color: Colors.red,
+    alignment: Alignment.centerRight,
+    padding: const EdgeInsets.symmetric(horizontal: 20),
+    child: const Icon(Icons.delete, color: Colors.white),
+  ),
+  onDismissed: (direction) {
+    setState(() {
+      itens.removeAt(index);
+    });
+  },
+  child: ListTile(title: Text(item)),
+);
+</pre>
+
+<p>Agora o item só sai arrastado para a esquerda; para a direita, ele nem se mexe. Repare que, com uma direção só, o fundo vai no <code>background</code> mesmo (com a lixeira à direita, que é o lado que aparece).</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th><code>DismissDirection.</code></th><th>O item sai…</th></tr>
+<tr><td><code>horizontal</code> (padrão)</td><td>para a esquerda ou para a direita</td></tr>
+<tr><td><code>startToEnd</code></td><td>só para a direita (em português)</td></tr>
+<tr><td><code>endToStart</code></td><td>só para a esquerda (em português)</td></tr>
+<tr><td><code>vertical</code></td><td>para cima ou para baixo (útil em listas que rolam para o lado)</td></tr>
+<tr><td><code>up</code> / <code>down</code></td><td>só para cima / só para baixo</td></tr>
+<tr><td><code>none</code></td><td>não sai: o arrasto fica desligado</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>4. "Tem certeza?": <code>confirmDismiss</code></h2>
+<p>Apagar com um arrasto é rápido, rápido até demais: um dedo distraído e lá se foi a receita de bolo da avó. O <code>confirmDismiss</code> ("confirmar a dispensa") é chamado quando o arrasto chega ao fim, <strong>antes</strong> de o item sumir. Ele devolve um <code>Future&lt;bool?&gt;</code>: <code>true</code> deixa o item ir; <code>false</code> (ou <code>null</code>) faz o item <strong>voltar</strong> para o lugar.</p>
+
+<pre class="file" data-file="lib/main.dart (trecho)">return Dismissible(
+  key: ValueKey(item),
+  background: Container(color: Colors.red),
+  confirmDismiss: (direction) {
+    return showDialog&lt;bool&gt;(
+      context: context,
+      builder: (context) =&gt; AlertDialog(
+        title: const Text('Apagar item?'),
+        content: Text('Tirar "$item" da lista?'),
+        actions: [
+          TextButton(
+            onPressed: () =&gt; Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () =&gt; Navigator.pop(context, true),
+            child: const Text('Apagar'),
+          ),
+        ],
+      ),
+    );
+  },
+  onDismissed: (direction) {
+    setState(() {
+      itens.removeAt(index);
+    });
+  },
+  child: ListTile(title: Text(item)),
+);
+</pre>
+
+<dl class="anatomy">
+  <dt>confirmDismiss: (direction) { … }</dt><dd>Recebe a direção (para você poder perguntar só num dos lados) e tem de devolver um <code>Future&lt;bool?&gt;</code>, uma resposta que "chega depois" (veja <a href="https://wallysondevs.github.io/guia-dart/">o Guia Dart</a>, aulas de assincronia).</dd>
+  <dt>showDialog&lt;bool&gt;(…)</dt><dd>Abre a caixinha de pergunta e devolve um <code>Future&lt;bool?&gt;</code> com o valor que o botão mandou no <code>Navigator.pop</code>. É exatamente o tipo que o <code>confirmDismiss</code> quer, então dá para devolver direto. Os diálogos têm aula própria: <a href="dialogos.html">Diálogos e SnackBar</a>.</dd>
+  <dt>Navigator.pop(context, false)</dt><dd>Fecha o diálogo respondendo <code>false</code>: o item volta.</dd>
+  <dt>Navigator.pop(context, true)</dt><dd>Fecha respondendo <code>true</code>: o item sai e o <code>onDismissed</code> roda.</dd>
+</dl>
+
+<p>Se a pessoa tocar <strong>fora</strong> do diálogo, ele fecha sem resposta: o <code>Future</code> termina com <code>null</code>, e o <code>Dismissible</code> trata <code>null</code> como "não": o item volta.</p>
+
+
+<hr>
+
+<h2>5. Desfazer com um SnackBar</h2>
+<p>Outra forma de proteger contra o dedo distraído, mais moderna: apagar na hora, sem perguntar, mas mostrar uma barrinha embaixo com o botão <strong>Desfazer</strong> por alguns segundos. É o que o Gmail faz. A barrinha é o <code>SnackBar</code> (veja <a href="dialogos.html">Diálogos e SnackBar</a>):</p>
+
+<pre class="file" data-file="lib/main.dart (trecho)">onDismissed: (direction) {
+  setState(() {
+    itens.removeAt(index);
+  });
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text('$item apagado'),
+      action: SnackBarAction(
+        label: 'Desfazer',
+        onPressed: () {
+          setState(() {
+            itens.insert(index, item);
+          });
+        },
+      ),
+    ),
+  );
+},
+</pre>
+
+<dl class="anatomy">
+  <dt>itens.removeAt(index)</dt><dd>Apaga na hora, como antes.</dd>
+  <dt>ScaffoldMessenger.of(context).showSnackBar(…)</dt><dd>Mostra a barrinha no pé do <code>Scaffold</code>.</dd>
+  <dt>SnackBarAction(label: 'Desfazer', onPressed: …)</dt><dd>O botão dentro da barrinha. Quando tocado, devolve o item para a <strong>mesma posição</strong> com <code>itens.insert(index, item)</code>. As variáveis <code>item</code> e <code>index</code> continuam valendo dentro da função, porque ela as "lembra" do momento em que foi criada.</dd>
+</dl>
+
+<p>Como o item volta com o <strong>mesmo texto</strong>, ele volta com a <strong>mesma chave</strong> (<code>ValueKey('Leite')</code>), e o Flutter o desenha de novo no lugar certo, sem animação de arrasto.</p>
+
+<h3>O app completo, com uma lixeira para quem não arrasta</h3>
+<p>Aqui o código de apagar foi para uma função, <code>apagar(index)</code>, chamada pelo arrasto <strong>e</strong> por um botão de lixeira no fim de cada linha (o <code>trailing</code> do <code>ListTile</code>). Assim, quem não sabe que dá para arrastar também consegue apagar:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: ListaDeCompras()));
+
+class ListaDeCompras extends StatefulWidget {
+  const ListaDeCompras({super.key});
+
+  @override
+  State&lt;ListaDeCompras&gt; createState() =&gt; _ListaDeComprasState();
+}
+
+class _ListaDeComprasState extends State&lt;ListaDeCompras&gt; {
+  final List&lt;String&gt; itens = ['Leite', 'Pão', 'Ovos', 'Café', 'Banana'];
+
+  void apagar(int index) {
+    final item = itens[index];
+    setState(() {
+      itens.removeAt(index);
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$item apagado'),
+        action: SnackBarAction(
+          label: 'Desfazer',
+          onPressed: () {
+            setState(() {
+              itens.insert(index, item);
+            });
+          },
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Lista de compras')),
+      body: ListView.builder(
+        itemCount: itens.length,
+        itemBuilder: (context, index) {
+          final item = itens[index];
+          return Dismissible(
+            key: ValueKey(item),
+            background: Container(
+              color: Colors.red,
+              alignment: Alignment.centerLeft,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: const Icon(Icons.delete, color: Colors.white),
+            ),
+            onDismissed: (direction) =&gt; apagar(index),
+            child: ListTile(
+              title: Text(item),
+              trailing: IconButton(
+                icon: const Icon(Icons.delete_outline),
+                tooltip: 'Apagar $item',
+                onPressed: () =&gt; apagar(index),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+</pre>
+
+<p>A Ana tocou na lixeira do Leite. O Leite sumiu, a lista subiu, e a barrinha apareceu no pé da tela:</p>
+<figure class="tela"><img src="assets/telas/dismissible-3.png" alt="A lista agora com Pão, Ovos, Café e Banana, cada um com um ícone de lixeira à direita; no pé da tela, uma barra escura com o texto 'Leite apagado' à esquerda e o botão 'Desfazer', em lilás, à direita" width="390" height="844" loading="lazy"><figcaption>Depois de apagar o Leite: o <code>SnackBar</code> com o <code>SnackBarAction</code> "Desfazer".</figcaption></figure>
+
+<p>Ela tocou em <strong>Desfazer</strong>. O Leite voltou para o topo, na mesma posição, e a barrinha sumiu:</p>
+<figure class="tela"><img src="assets/telas/dismissible-4.png" alt="A lista de novo com os cinco itens, Leite, Pão, Ovos, Café e Banana, cada um com a lixeira à direita, e sem a barra no pé da tela" width="390" height="844" loading="lazy"><figcaption>Depois do Desfazer: o <code>itens.insert(index, item)</code> devolveu o Leite ao lugar dele.</figcaption></figure>
+
+<div class="tryflutter" data-goal="src:SnackBarAction">
+<p class="try-task"><strong>Missão:</strong> o app abaixo apaga sem volta. Dentro do <code>onDismissed</code>, depois do <code>setState</code>, mostre um <code>SnackBar</code> com um <code>SnackBarAction</code> "Desfazer" que devolve o item com <code>itens.insert(index, item)</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: ListaDeCompras()));
+
+class ListaDeCompras extends StatefulWidget {
+  const ListaDeCompras({super.key});
+
+  @override
+  State&lt;ListaDeCompras&gt; createState() =&gt; _ListaDeComprasState();
+}
+
+class _ListaDeComprasState extends State&lt;ListaDeCompras&gt; {
+  final List&lt;String&gt; itens = ['Leite', 'Pão', 'Ovos', 'Café', 'Banana'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Lista de compras')),
+      body: ListView.builder(
+        itemCount: itens.length,
+        itemBuilder: (context, index) {
+          final item = itens[index];
+          return Dismissible(
+            key: ValueKey(item),
+            background: Container(color: Colors.red),
+            onDismissed: (direction) {
+              setState(() {
+                itens.removeAt(index);
+              });
+              // mostre o SnackBar aqui
+            },
+            child: ListTile(title: Text(item)),
+          );
+        },
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: ListaDeCompras()));
+
+class ListaDeCompras extends StatefulWidget {
+  const ListaDeCompras({super.key});
+
+  @override
+  State&lt;ListaDeCompras&gt; createState() =&gt; _ListaDeComprasState();
+}
+
+class _ListaDeComprasState extends State&lt;ListaDeCompras&gt; {
+  final List&lt;String&gt; itens = ['Leite', 'Pão', 'Ovos', 'Café', 'Banana'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Lista de compras')),
+      body: ListView.builder(
+        itemCount: itens.length,
+        itemBuilder: (context, index) {
+          final item = itens[index];
+          return Dismissible(
+            key: ValueKey(item),
+            background: Container(color: Colors.red),
+            onDismissed: (direction) {
+              setState(() {
+                itens.removeAt(index);
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('$item apagado'),
+                  action: SnackBarAction(
+                    label: 'Desfazer',
+                    onPressed: () {
+                      setState(() {
+                        itens.insert(index, item);
+                      });
+                    },
+                  ),
+                ),
+              );
+            },
+            child: ListTile(title: Text(item)),
+          );
+        },
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2 id="chave">Qual chave usar</h2>
+<p>A <code>key</code> é o que permite ao Flutter saber que o "Pão" que agora está na posição 0 é o <strong>mesmo</strong> "Pão" que antes estava na posição 1. As regras:</p>
+<ul>
+  <li><strong>Única</strong> na lista: com duas chaves iguais, o Flutter não tem como saber qual dos dois itens é qual. Cuidado: numa <code>ListView.builder</code> ele nem sempre avisa (no lab, uma lista com dois <code>ValueKey('Leite')</code> rodou sem mensagem nenhuma), então o erro passa calado.</li>
+  <li><strong>Estável</strong>: o mesmo item tem de ter a mesma chave em todo <code>build</code>. Nada de <code>UniqueKey()</code> criada dentro do <code>itemBuilder</code> (ela muda a cada desenho) nem de <code>ValueKey(index)</code> (a posição muda quando um item sai, e o "Pão" herdaria a chave do "Leite").</li>
+  <li>O ideal é um <strong>identificador do dado</strong>: o <code>id</code> que veio do banco de dados, por exemplo <code>ValueKey(tarefa.id)</code>. Quando o texto pode se repetir (dois "Leite" na lista), o texto não serve; use o <code>id</code>.</li>
+</ul>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Chave</th><th>Serve?</th></tr>
+<tr><td><code>ValueKey(tarefa.id)</code></td><td>A melhor: única e estável</td></tr>
+<tr><td><code>ValueKey(item)</code> (o texto)</td><td>Só se o texto nunca se repetir</td></tr>
+<tr><td><code>ObjectKey(tarefa)</code></td><td>Serve se o objeto é sempre o mesmo (não é recriado a cada <code>build</code>)</td></tr>
+<tr><td><code>ValueKey(index)</code></td><td>Não: a posição muda quando um item sai</td></tr>
+<tr><td><code>UniqueKey()</code> dentro do <code>itemBuilder</code></td><td>Não: é uma chave nova a cada desenho</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>O que usar</th></tr>
+<tr><td>Apagar com um gesto, sem perigo de perder nada importante</td><td><code>Dismissible</code> com <code>onDismissed</code></td></tr>
+<tr><td>Apagar algo que faz falta (uma receita, um contato)</td><td><code>Dismissible</code> + <code>SnackBar</code> com Desfazer, ou <code>confirmDismiss</code> com diálogo</td></tr>
+<tr><td>Arrastar com um significado para cada lado (arquivar × apagar)</td><td><code>background</code> + <code>secondaryBackground</code> e o <code>direction</code> do <code>onDismissed</code></td></tr>
+<tr><td>Quem não sabe arrastar (ou usa leitor de tela) também precisa apagar</td><td>Além do arrasto, um botão: <code>ListTile(trailing: IconButton(icon: Icon(Icons.delete), …))</code></td></tr>
+<tr><td>Arrastar para mudar a <strong>ordem</strong>, não para apagar</td><td><code>ReorderableListView</code> (outro widget, fora desta aula)</td></tr>
+</table>
+</div>
+
+<div class="tip">
+<strong>Sempre ofereça outro caminho</strong>
+<p>O arrasto é invisível: ninguém sabe que ele existe até tentar. Um botão de lixeira no <code>trailing</code> do <code>ListTile</code>, que chama o mesmo código de apagar, ajuda quem nunca usou o app e quem usa leitor de tela.</p>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>O item saiu da tela, mas não saiu da lista</strong>
+<p>Um engano muito comum: trocar o <code>removeAt</code> pelo <code>remove</code>. Os dois existem, mas fazem coisas diferentes: <code>removeAt(0)</code> tira o item da <strong>posição</strong> 0; <code>remove(0)</code> procura o <strong>valor</strong> <code>0</code> na lista. Numa lista de textos não existe o número 0, então nada sai, e o Dart nem reclama:</p>
+<pre class="file" data-file="lib/main.dart (trecho)">onDismissed: (direction) {
+  setState(() {
+    itens.remove(index); // errado: procura o número index, que não está na lista
+  });
+},
+</pre>
+<p>Para ver a mensagem, a Ana escreveu um teste que arrasta o Leite para fora (você aprende a escrever testes assim em <a href="testes-widget.html">Testes de Widget</a>; no <code>flutter run</code>, o mesmo erro aparece no console quando você arrasta com o dedo). O começo da saída:</p>
+<pre class="term">$ flutter test test/naoremove_test.dart
+00:00 +0: loading /home/ana/app/test/naoremove_test.dart
+00:00 +0: arrastar o Leite
+══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following assertion was thrown building Dismissible-[&lt;'Leite'&gt;](dependencies: [Directionality],
+state: _DismissibleState#7e148(tickers: tracking 2 tickers)):
+A dismissed Dismissible widget is still part of the tree.
+Make sure to implement the onDismissed handler and to immediately remove the Dismissible widget from
+the application once that handler has fired.
+
+The relevant error-causing widget was:
+  Dismissible-[&lt;'Leite'&gt;]
+  Dismissible:file:///home/ana/app/test/naoremove_test.dart:22:18
+
+When the exception was thrown, this was the stack:
+#0      _DismissibleState.build.&lt;anonymous closure&gt; (package:flutter/src/widgets/dismissible.dart:626:11)
+…                                                   « mais de 200 linhas da pilha
+00:02 +0 -1: Some tests failed.
+</pre>
+<dl class="anatomy">
+  <dt>EXCEPTION CAUGHT BY WIDGETS LIBRARY</dt><dd>"Exceção capturada pela biblioteca de widgets": o erro aconteceu enquanto o Flutter montava a tela.</dd>
+  <dt>thrown building Dismissible-[&lt;'Leite'&gt;]</dt><dd>Ao construir o <code>Dismissible</code> com a chave <code>'Leite'</code>. Olha a chave ajudando: ela diz <strong>qual</strong> item deu problema.</dd>
+  <dt>A dismissed Dismissible widget is still part of the tree.</dt><dd>"Um Dismissible que já foi dispensado ainda faz parte da árvore." O Leite saiu da tela, mas o <code>setState</code> redesenhou a lista, e o Leite ainda estava nela.</dd>
+  <dt>Make sure to implement the onDismissed handler and to immediately remove…</dt><dd>"Implemente o <code>onDismissed</code> e tire o Dismissible do app <strong>imediatamente</strong> depois que ele rodar." É o passo 3 da geladeira.</dd>
+  <dt>The relevant error-causing widget was: … :22:18</dt><dd>O widget culpado e onde ele está no código: linha 22, coluna 18 (a linha do <code>return Dismissible(</code>). No seu app, aparece <code>lib/main.dart:LINHA:COLUNA</code>.</dd>
+</dl>
+<p><strong>Como consertar:</strong> <code>itens.removeAt(index)</code>, dentro do <code>setState</code>. Se a lista vem de outro lugar (um banco de dados, um <code>Provider</code>), tire o item de lá, na hora, antes de redesenhar.</p>
+</div>
+
+<div class="cenario">
+<strong>Esqueceu a <code>key</code></strong>
+<p>O primeiro exemplo da aula, sem a linha <code>key: ValueKey(item),</code>. O app nem compila:</p>
+<pre class="term">lib/main.dart:23:29:
+Error: Required named parameter 'key' must be provided.
+          return Dismissible(
+                            ^
+…                                                   « 3 linhas mostrando o construtor do Dismissible
+Error: Compilation failed.
+</pre>
+<p>"O parâmetro nomeado obrigatório <code>key</code> tem de ser passado." Na maioria dos widgets a <code>key</code> é opcional; no <code>Dismissible</code> ela é <code>required</code> justamente porque sem ela o Flutter não consegue acompanhar qual item saiu. A seta <code>^</code> aponta o parêntese do <code>Dismissible(</code> na linha 23. <strong>Como consertar:</strong> <code>key: ValueKey(item)</code> (ou o <code>id</code> do dado).</p>
+</div>
+
+<div class="cenario">
+<strong><code>secondaryBackground</code> sem <code>background</code></strong>
+<pre class="file" data-file="lib/main.dart (trecho)">return Dismissible(
+  key: ValueKey(item),
+  secondaryBackground: Container(color: Colors.red),
+  onDismissed: …,
+  child: ListTile(title: Text(item)),
+);
+</pre>
+<p>Compila, mas o Flutter acusa o erro logo ao montar a lista, antes de qualquer arrasto. O começo da mensagem (do mesmo teste da Ana):</p>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following assertion was thrown building:
+'package:flutter/src/widgets/dismissible.dart': Failed assertion: line 118 pos 15:
+'secondaryBackground == null || background != null': is not true.
+</pre>
+<p>Uma <strong>assertion</strong> ("afirmação") é uma conferência que o próprio Flutter faz no modo debug. Esta diz: "ou não tem <code>secondaryBackground</code>, ou tem <code>background</code>". O fundo secundário é só para o <strong>segundo</strong> lado; o primeiro tem de existir. <strong>Como consertar:</strong> passe também o <code>background</code> (ou troque o <code>secondaryBackground</code> por <code>background</code>, se for um fundo só).</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Parâmetro</th><th>O que faz</th></tr>
+<tr><td><code>key</code> (obrigatório)</td><td>Identifica o item; única e estável</td></tr>
+<tr><td><code>child</code> (obrigatório)</td><td>O que aparece e se move com o dedo</td></tr>
+<tr><td><code>onDismissed: (direction) {…}</code></td><td>Roda depois que o item saiu; tire-o dos dados aqui, com <code>setState</code></td></tr>
+<tr><td><code>background</code></td><td>Fundo revelado ao arrastar (para os dois lados, se não houver <code>secondaryBackground</code>)</td></tr>
+<tr><td><code>secondaryBackground</code></td><td>Fundo do arrasto da direita para a esquerda; exige <code>background</code></td></tr>
+<tr><td><code>direction</code></td><td>Para que lados o item pode ir (padrão <code>DismissDirection.horizontal</code>)</td></tr>
+<tr><td><code>confirmDismiss: (direction) async {…}</code></td><td>Pergunta antes; <code>true</code> deixa ir, <code>false</code>/<code>null</code> faz voltar</td></tr>
+<tr><td><code>dismissThresholds</code></td><td>Quanto arrastar para valer (padrão: 40% da largura, <code>0.4</code>)</td></tr>
+<tr><td><code>movementDuration</code> / <code>resizeDuration</code></td><td>Duração da volta/saída e do "fechar o buraco"</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o Dismissible</h3>
+<p>Complete para o item ser apagado da lista quando sair da tela:</p>
+<div class="ex-code">return Dismissible(<br>&nbsp;&nbsp;<input data-answer="key" aria-label="parâmetro obrigatório">: ValueKey(item),<br>&nbsp;&nbsp;<input data-answer="onDismissed" aria-label="função chamada quando o item sai">: (direction) {<br>&nbsp;&nbsp;&nbsp;&nbsp;<input data-answer="setState" aria-label="função que redesenha">(() {<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;itens.removeAt(index);<br>&nbsp;&nbsp;&nbsp;&nbsp;});<br>&nbsp;&nbsp;},<br>&nbsp;&nbsp;child: ListTile(title: Text(item)),<br>);</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">2. Numa lista de tarefas em que duas tarefas podem ter o mesmo texto, qual chave usar no <code>Dismissible</code>?</p>
+<label><input type="radio" name="q2"> <code>ValueKey(tarefa.texto)</code></label>
+<label><input type="radio" name="q2"> <code>ValueKey(index)</code></label>
+<label><input type="radio" name="q2"> <code>ValueKey(tarefa.id)</code></label>
+<label><input type="radio" name="q2"> <code>UniqueKey()</code></label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. O <code>confirmDismiss</code> devolveu <code>false</code>. O que acontece?</p>
+<label><input type="radio" name="q3"> O item sai e o <code>onDismissed</code> roda</label>
+<label><input type="radio" name="q3"> O item volta para o lugar e o <code>onDismissed</code> não roda</label>
+<label><input type="radio" name="q3"> O app mostra um erro</label>
+<label><input type="radio" name="q3"> O item sai, mas o <code>onDismissed</code> não roda</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. Você quer que o item só saia arrastado da direita para a esquerda (em português). Qual <code>direction</code>?</p>
+<label><input type="radio" name="q4"> <code>DismissDirection.endToStart</code></label>
+<label><input type="radio" name="q4"> <code>DismissDirection.startToEnd</code></label>
+<label><input type="radio" name="q4"> <code>DismissDirection.horizontal</code></label>
+<label><input type="radio" name="q4"> <code>DismissDirection.left</code></label>
+</div>
+
+<h3>Missão final: arquivar ou apagar</h3>
+
+<div class="tryflutter" data-goal="src:secondaryBackground;;src:DismissDirection\.startToEnd">
+<p class="try-task"><strong>Missão:</strong> na lista de compras abaixo, faça o arrasto para a <strong>direita</strong> mostrar um fundo verde com <code>Icons.check</code> (<code>background</code>) e o arrasto para a <strong>esquerda</strong>, um fundo vermelho com <code>Icons.delete</code> (<code>secondaryBackground</code>). No <code>onDismissed</code>, use <code>direction == DismissDirection.startToEnd</code> para escolher o texto do <code>SnackBar</code>: "Leite comprado" ou "Leite apagado".</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: ListaDeCompras()));
+
+class ListaDeCompras extends StatefulWidget {
+  const ListaDeCompras({super.key});
+
+  @override
+  State&lt;ListaDeCompras&gt; createState() =&gt; _ListaDeComprasState();
+}
+
+class _ListaDeComprasState extends State&lt;ListaDeCompras&gt; {
+  final List&lt;String&gt; itens = ['Leite', 'Pão', 'Ovos', 'Café', 'Banana'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Lista de compras')),
+      body: ListView.builder(
+        itemCount: itens.length,
+        itemBuilder: (context, index) {
+          final item = itens[index];
+          return Dismissible(
+            key: ValueKey(item),
+            background: Container(color: Colors.red),
+            onDismissed: (direction) {
+              setState(() {
+                itens.removeAt(index);
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('$item apagado')),
+              );
+            },
+            child: ListTile(title: Text(item)),
+          );
+        },
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: ListaDeCompras()));
+
+class ListaDeCompras extends StatefulWidget {
+  const ListaDeCompras({super.key});
+
+  @override
+  State&lt;ListaDeCompras&gt; createState() =&gt; _ListaDeComprasState();
+}
+
+class _ListaDeComprasState extends State&lt;ListaDeCompras&gt; {
+  final List&lt;String&gt; itens = ['Leite', 'Pão', 'Ovos', 'Café', 'Banana'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Lista de compras')),
+      body: ListView.builder(
+        itemCount: itens.length,
+        itemBuilder: (context, index) {
+          final item = itens[index];
+          return Dismissible(
+            key: ValueKey(item),
+            background: Container(
+              color: Colors.green,
+              alignment: Alignment.centerLeft,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: const Icon(Icons.check, color: Colors.white),
+            ),
+            secondaryBackground: Container(
+              color: Colors.red,
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: const Icon(Icons.delete, color: Colors.white),
+            ),
+            onDismissed: (direction) {
+              final acao = direction == DismissDirection.startToEnd
+                  ? 'comprado'
+                  : 'apagado';
+              setState(() {
+                itens.removeAt(index);
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('$item $acao')),
+              );
+            },
+            child: ListTile(title: Text(item)),
+          );
+        },
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O <code>Dismissible</code> embrulha um item e deixa a pessoa arrastá-lo para fora da tela; ele cuida da animação e de fechar o buraco.</li>
+  <li>A <code>key</code> é obrigatória e tem de ser <strong>única e estável</strong>: de preferência o <code>id</code> do dado; nunca o <code>index</code>.</li>
+  <li>No <code>onDismissed</code>, tire o item da sua lista com <code>setState</code>. Sem isso, o Flutter reclama que o item dispensado "ainda faz parte da árvore".</li>
+  <li><code>background</code> é o fundo revelado pelo arrasto; <code>secondaryBackground</code>, o do arrasto para a esquerda. <code>direction</code> limita os lados.</li>
+  <li>Para não perder nada por engano: <code>confirmDismiss</code> (pergunta antes) ou <code>SnackBar</code> com Desfazer (desfaz depois).</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
