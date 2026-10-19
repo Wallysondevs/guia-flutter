@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter MaterialApp — o widget que monta o app | Guia Flutter</title>
+<meta name="description" content="O MaterialApp do Flutter: o que ele faz por você (direção do texto, tema, navegação), os parâmetros home, title, debugShowCheckedModeBanner e theme com ColorScheme.fromSeed, a faixa DEBUG, e os erros reais de um Scaffold sem MaterialApp e de um MaterialApp sem home, com fotos da tela e missões no editor.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">MaterialApp</span></h1>
+
+<p class="intro">Na aula <a href="primeiro-app.html">Seu Primeiro App</a>, um <code>Text</code> sozinho na tela precisou de ajuda até para saber a direção das letras. O <code>MaterialApp</code> é o widget que resolve isso e muito mais de uma vez só: ele monta a "casa" onde o app mora, com tema, cores, fontes, direção do texto e o sistema de telas. Quase todo app Flutter tem um, logo no topo da árvore.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que o <code>MaterialApp</code> faz por você, sem que você peça.</li>
+  <li>O parâmetro <code>home</code>: a tela inicial.</li>
+  <li>O <code>title</code>: o nome do app para o sistema.</li>
+  <li>A faixa <strong>DEBUG</strong> do canto e o <code>debugShowCheckedModeBanner</code>.</li>
+  <li>O <code>theme</code> com uma cor-semente (<code>ColorScheme.fromSeed</code>), para o app inteiro ganhar as cores da Ana.</li>
+  <li>Os erros reais: um <code>Scaffold</code> sem <code>MaterialApp</code> e um <code>MaterialApp</code> sem tela inicial.</li>
+</ul>
+</div>
+
+<p>Todos os apps desta aula foram compilados com o Flutter estável do laboratório e fotografados numa tela do tamanho de um celular.</p>
+
+<hr>
+
+<h2>A ideia: o prédio antes dos apartamentos</h2>
+<p>Antes de alguém decorar um apartamento, o prédio precisa existir: a portaria, o elevador, a luz e a água que chegam em todos os andares. Ninguém instala a rede elétrica de novo em cada sala.</p>
+
+<p>O <code>MaterialApp</code> é o prédio. Ele não é uma tela: ele é a estrutura que <strong>todas</strong> as telas do app compartilham.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>No prédio</th><th>No <code>MaterialApp</code></th></tr>
+<tr><td>A luz e a água que chegam em todo andar</td><td>O <strong>tema</strong> (cores, fontes) e a <strong>direção do texto</strong>, que valem para todos os widgets abaixo dele</td></tr>
+<tr><td>O apartamento onde você entra primeiro</td><td>O <code>home</code>: a tela inicial</td></tr>
+<tr><td>O elevador que leva de um andar a outro</td><td>O <strong>Navigator</strong>, que troca de tela (aula <a href="navegacao.html">Navigator</a>)</td></tr>
+<tr><td>O nome na fachada</td><td>O <code>title</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>1. O mínimo: <code>home</code></h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Text('Receitas da Ana'),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>MaterialApp( ... )</dt><dd>O app no estilo <strong>Material</strong>, o padrão visual criado pelo Google (é o visual do Android). O Flutter usa o <strong>Material 3</strong>, a versão mais nova desse padrão.</dd>
+  <dt>home:</dt><dd>"Casa": o widget da <strong>tela inicial</strong>, a primeira que aparece quando o app abre. Normalmente é um <code>Scaffold</code> (aula <a href="scaffold.html">Scaffold e AppBar</a>) ou um widget seu que devolve um <code>Scaffold</code>.</dd>
+  <dt>Scaffold(body: ...)</dt><dd>A estrutura da tela. Aqui só com o <code>body</code>, o conteúdo.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/material-app-1.png" alt="Tela com fundo branco levemente rosado, o texto 'Receitas da Ana' em cinza-escuro no meio e a faixa vermelha DEBUG no canto de cima à direita" width="390" height="844" loading="lazy"><figcaption>O <code>MaterialApp</code> mais simples (Flutter 3.47.7).</figcaption></figure>
+
+<p>Só com isso, o <code>MaterialApp</code> já entregou uma porção de coisas que você não pediu:</p>
+<ul>
+  <li><strong>Direção do texto</strong>: o <code>Text</code> não precisou de <code>textDirection</code>.</li>
+  <li><strong>Fonte e cor do texto</strong> do tema padrão do Material 3.</li>
+  <li><strong>Cores</strong> de fundo, de botões e de barras (o esquema de cores padrão).</li>
+  <li>O <strong>Navigator</strong>, pronto para abrir outras telas.</li>
+  <li>A faixa <strong>DEBUG</strong> no canto (seção 3).</li>
+</ul>
+
+<hr>
+
+<h2>2. <code>title</code>: o nome do app para o sistema</h2>
+<p>O <code>title</code> é um texto curto com o nome do app. Ele <strong>não aparece na tela</strong> do app: quem usa é o sistema. No Android, ele aparece na lista de apps recentes; num app que roda no navegador (Flutter web), vira o título da aba.</p>
+
+<pre class="file" data-file="lib/main.dart">    return const MaterialApp(
+      title: 'Receitas da Ana',
+      home: Scaffold(
+        body: Center(
+          child: Text('Receitas da Ana'),
+        ),
+      ),
+    );
+</pre>
+
+<dl class="anatomy">
+  <dt>title: 'Receitas da Ana'</dt><dd>O nome do app. Não confunda com o título da barra do topo da tela, que é o <code>AppBar</code> do <code>Scaffold</code> (aula <a href="scaffold.html">Scaffold e AppBar</a>).</dd>
+</dl>
+
+
+<div class="note">
+<strong>E o nome embaixo do ícone?</strong>
+<p>O nome que aparece embaixo do ícone do app, na tela inicial do celular, <strong>não</strong> vem do <code>title</code>. Ele fica nos arquivos de cada plataforma (no Android, o <code>android:label</code> do <code>AndroidManifest.xml</code>; aula <a href="build-android.html">Gerando o APK</a>).</p>
+</div>
+
+<hr>
+
+<h2>3. A faixa DEBUG: <code>debugShowCheckedModeBanner</code></h2>
+<p>Em todas as fotos até aqui apareceu uma faixa vermelha escrita <strong>DEBUG</strong>, atravessada no canto de cima, à direita. Quem a põe é o <code>MaterialApp</code>: ela avisa que o app está rodando no modo de <strong>depuração</strong> (<em>debug</em>), o modo de desenvolvimento, com as ferramentas de achar erros ligadas. Para escondê-la:</p>
+
+<pre class="file" data-file="lib/main.dart">    return const MaterialApp(
+      title: 'Receitas da Ana',
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        body: Center(
+          child: Text('Receitas da Ana'),
+        ),
+      ),
+    );
+</pre>
+
+<dl class="anatomy">
+  <dt>debugShowCheckedModeBanner: false</dt><dd>"Mostrar a faixa do modo de depuração": <code>false</code> esconde a faixa. O padrão é <code>true</code>. Ela só existe no modo <strong>debug</strong> (o modo do <code>flutter run</code>, aula <a href="flutter-run.html">Rodando o App</a>); no app que vai para a loja (modo <strong>release</strong>) ela some sozinha.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/material-app-2.png" alt="A mesma tela de fundo branco levemente rosado com 'Receitas da Ana' no meio, agora sem a faixa DEBUG no canto" width="390" height="844" loading="lazy"><figcaption>Com <code>debugShowCheckedModeBanner: false</code>, a faixa sumiu. O <code>title</code> não aparece em lugar nenhum da tela.</figcaption></figure>
+
+<div class="tip">
+<strong>Esconder ou não?</strong>
+<p>A faixa não atrapalha nada e lembra você de que está no modo debug, que é mais lento que o app final. Esconda quando for tirar fotos da tela ou mostrar o app para alguém. Neste guia, a maioria dos exemplos deixa a faixa, porque é assim que você vai ver o app no seu computador.</p>
+</div>
+
+<hr>
+
+<h2>4. <code>theme</code>: as cores do app inteiro</h2>
+<p>O <code>theme</code> recebe um <code>ThemeData</code>, o "manual de estilo" do app: cores, fontes, formato dos botões. O jeito mais simples de dar uma cara ao app é escolher <strong>uma cor-semente</strong> e deixar o Material 3 calcular as outras a partir dela:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Receitas da Ana',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.orange),
+      ),
+      home: Scaffold(
+        appBar: AppBar(
+          title: const Text('Receitas da Ana'),
+        ),
+        body: const Center(
+          child: Text('Bolo de cenoura'),
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {},
+          child: const Icon(Icons.add),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>theme: ThemeData(...)</dt><dd>O tema do app. Vale para <strong>todas</strong> as telas abaixo do <code>MaterialApp</code>.</dd>
+  <dt>colorScheme: ColorScheme.fromSeed(seedColor: Colors.orange)</dt><dd>"Esquema de cores a partir de uma semente": você dá uma cor (laranja, a cor da cenoura) e o Material 3 gera uma paleta inteira que combina com ela: a cor dos botões, dos fundos, dos textos sobre essas cores.</dd>
+  <dt>AppBar e FloatingActionButton</dt><dd>A barra do topo e o botão redondo flutuante, que entraram aqui só para você <strong>ver</strong> o tema funcionando. Os dois são explicados nas aulas <a href="scaffold.html">Scaffold e AppBar</a> e <a href="botoes.html">Botões</a>.</dd>
+  <dt>MaterialApp sem const</dt><dd>Repare que o <code>const</code> saiu de antes do <code>MaterialApp</code> e foi para dentro, nas partes que não mudam. <code>ThemeData(...)</code> e <code>ColorScheme.fromSeed(...)</code> são calculados quando o app roda, e por isso não podem ser <code>const</code> (veja o cenário em <a href="#errado">Quando dá errado</a>).</dd>
+</dl>
+
+<p>Para ver o que a semente mudou, o lab fotografou o mesmo app duas vezes: sem o <code>theme</code> (à esquerda) e com a semente laranja (à direita):</p>
+
+<figure class="tela"><img src="assets/telas/material-app-3b.png" alt="App sem tema: barra do topo com 'Receitas da Ana' à esquerda, fundo branco levemente rosado, 'Bolo de cenoura' no meio e, no canto de baixo à direita, um botão quadrado de cantos arredondados lilás com um sinal de mais" width="390" height="844" loading="lazy"><figcaption>Sem <code>theme</code>: as cores padrão do Material 3, puxadas para o roxo.</figcaption></figure>
+
+<figure class="tela"><img src="assets/telas/material-app-3.png" alt="O mesmo app com tema laranja: fundo levemente pêssego e o botão do canto de baixo em laranja-claro com o sinal de mais em marrom" width="390" height="844" loading="lazy"><figcaption>Com <code>ColorScheme.fromSeed(seedColor: Colors.orange)</code>: o fundo e o botão ganharam tons de laranja.</figcaption></figure>
+
+<p>Repare que o Material 3 <strong>não</strong> usa o laranja puro em lugar nenhum: ele gera tons suaves a partir da semente (o fundo quase branco puxado para o pêssego, o botão laranja-claro, o <code>+</code> marrom para dar contraste). É de propósito: as cores calculadas sempre combinam entre si e têm contraste suficiente para leitura. A barra do topo, no Material 3, tem a mesma cor do fundo.</p>
+
+<div class="tryflutter" data-goal="src:seedColor:\s*Colors\.green">
+<p class="try-task"><strong>Missão:</strong> a Ana mudou de ideia: o app de receitas vai ser verde. Troque a cor-semente para <code>Colors.green</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Receitas da Ana',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.orange),
+      ),
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Center(child: Text('Bolo de cenoura')),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {},
+          child: const Icon(Icons.add),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Receitas da Ana',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
+      ),
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Center(child: Text('Bolo de cenoura')),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {},
+          child: const Icon(Icons.add),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<p>Temas têm muito mais: tema escuro, fontes, estilo de cada tipo de botão. Isso fica para o nível 2, nas aulas <a href="temas.html">Temas (ThemeData)</a>, <a href="material3.html">Material 3 e ColorScheme</a> e <a href="tema-escuro.html">Tema Escuro</a>.</p>
+
+<hr>
+
+<h2>Formas diferentes: <code>MaterialApp</code>, <code>CupertinoApp</code> e <code>WidgetsApp</code></h2>
+<p>O <code>MaterialApp</code> não é o único "prédio" possível:</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Widget</th><th>Visual</th><th>Quando usar</th></tr>
+<tr><td><code>MaterialApp</code></td><td>Material (Android, Google)</td><td><strong>Quase sempre.</strong> Funciona em todas as plataformas e é o que este guia usa.</td></tr>
+<tr><td><code>CupertinoApp</code></td><td>iOS (Apple)</td><td>Quando o app precisa parecer um app nativo de iPhone em tudo. Vem do <code>import 'package:flutter/cupertino.dart';</code>.</td></tr>
+<tr><td><code>WidgetsApp</code></td><td>Nenhum</td><td>Raro: quando você vai desenhar todo o visual do zero. É a base dos dois de cima.</td></tr>
+</table>
+</div>
+
+<p>E dentro do <code>MaterialApp</code>, o <code>home</code> não é o único jeito de dizer qual é a tela inicial: dá para usar <code>routes</code> e <code>initialRoute</code>, com nomes para cada tela. Isso é assunto da aula <a href="rotas-nomeadas.html">Rotas Nomeadas</a>; até lá, use o <code>home</code>.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>const</code> antes de um <code>MaterialApp</code> com <code>ThemeData</code></strong>
+<p>A Ana tinha o <code>const MaterialApp(...)</code> da seção 1 e só acrescentou o <code>theme</code> (o começo do arquivo é igual ao da seção 1; o <code>return</code> está na linha 12):</p>
+<pre class="file" data-file="lib/main.dart">    return const MaterialApp(
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.orange),
+      ),
+      home: Scaffold(
+        body: Center(
+          child: Text('Receitas da Ana'),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<p>O app nem chegou a abrir: o compilador do <code>flutter run</code> recusou o código.</p>
+<pre class="term">
+lib/main.dart:14:34: Error: Cannot invoke a non-'const' factory where a const expression is expected.
+Try using a constructor or factory that is 'const'.
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.orange),
+                                 ^^^^^^^^
+lib/main.dart:13:14: Error: Cannot invoke a non-'const' factory where a const expression is expected.
+Try using a constructor or factory that is 'const'.
+      theme: ThemeData(
+             ^^^^^^^^^
+</pre>
+<dl class="anatomy">
+  <dt>lib/main.dart:14:34:</dt><dd>Arquivo, linha 14, coluna 34: o <code>fromSeed</code>.</dd>
+  <dt>Cannot invoke a non-'const' factory where a const expression is expected.</dt><dd>"Não dá para chamar uma <em>factory</em> que não é <code>const</code> onde se espera uma expressão <code>const</code>". O <code>const</code> do <code>MaterialApp</code> vale para tudo o que está dentro dele, e o <code>ColorScheme.fromSeed</code> e o <code>ThemeData(...)</code> calculam as cores na hora em que o app roda: não podem ser <code>const</code>.</dd>
+  <dt>Try using a constructor or factory that is 'const'.</dt><dd>"Tente usar um construtor que seja <code>const</code>": a dica genérica do Dart. Aqui, o conserto é o contrário: tirar o <code>const</code>.</dd>
+</dl>
+<p><strong>Como consertar:</strong> tire o <code>const</code> de antes do <code>MaterialApp</code> e ponha-o nas partes de dentro que não mudam, como na seção 4: <code>home: const Scaffold(...)</code>.</p>
+</div>
+
+<div class="cenario">
+<strong><code>MaterialApp</code> sem <code>home</code>: tela branca, sem erro</strong>
+<pre class="file" data-file="lib/main.dart">    return const MaterialApp(
+      title: 'Receitas da Ana',
+    );
+</pre>
+<figure class="tela"><img src="assets/telas/material-app-5.png" alt="Tela totalmente branca, só com a faixa vermelha DEBUG no canto de cima à direita" width="390" height="844" loading="lazy"><figcaption>Um <code>MaterialApp</code> sem tela inicial: só a faixa DEBUG.</figcaption></figure>
+<p>A Ana esqueceu a tela inicial. O app abriu, a faixa DEBUG apareceu (então o <code>MaterialApp</code> está lá), mas não há nada para mostrar, e o console ficou quieto: nenhuma mensagem de erro no Flutter 3.47.7. <strong>Como consertar:</strong> dê ao <code>MaterialApp</code> um <code>home:</code> (ou as rotas, aula <a href="rotas-nomeadas.html">Rotas Nomeadas</a>).</p>
+</div>
+
+<div class="cenario">
+<strong>Um <code>Scaffold</code> sem <code>MaterialApp</code></strong>
+<p>Se o <code>MaterialApp</code> fica de fora e o <code>runApp</code> recebe direto um <code>Scaffold</code>, a tela fica vermelha de erro: o <code>Scaffold</code> precisa de coisas que só o <code>MaterialApp</code> fornece. A mensagem real, explicada, está na aula <a href="scaffold.html">Scaffold e AppBar</a>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Parâmetro</th><th>O que faz</th><th>Exemplo</th></tr>
+<tr><td><code>home</code></td><td>A tela inicial</td><td><code>home: Scaffold(...)</code></td></tr>
+<tr><td><code>title</code></td><td>Nome do app para o sistema (apps recentes, aba do navegador); não aparece na tela</td><td><code>title: 'Receitas da Ana'</code></td></tr>
+<tr><td><code>debugShowCheckedModeBanner</code></td><td>Mostra (<code>true</code>, o padrão) ou esconde a faixa DEBUG</td><td><code>debugShowCheckedModeBanner: false</code></td></tr>
+<tr><td><code>theme</code></td><td>O tema claro do app</td><td><code>theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.orange))</code></td></tr>
+<tr><td><code>darkTheme</code> / <code>themeMode</code></td><td>Tema escuro e qual usar (aula <a href="tema-escuro.html">Tema Escuro</a>)</td><td><code>themeMode: ThemeMode.system</code></td></tr>
+<tr><td><code>routes</code> / <code>initialRoute</code></td><td>Telas com nome (aula <a href="rotas-nomeadas.html">Rotas Nomeadas</a>)</td><td><code>routes: {'/': (context) =&gt; ...}</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. A tela inicial</h3>
+<p>Complete com o nome do parâmetro da tela inicial:</p>
+<div class="ex-code">MaterialApp(<input data-answer="home" aria-label="parâmetro">: Scaffold(...))</div>
+</div>
+
+<div class="exercise">
+<h3>2. Sem a faixa</h3>
+<p>Complete para esconder a faixa DEBUG:</p>
+<div class="ex-code">debugShowCheckedModeBanner: <input data-answer="false" aria-label="valor"></div>
+</div>
+
+<div class="exercise">
+<h3>3. A semente</h3>
+<p>Complete para gerar as cores do app a partir do roxo:</p>
+<div class="ex-code">colorScheme: ColorScheme.<input data-answer="fromSeed" aria-label="construtor">(seedColor: Colors.purple)</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. Onde aparece o texto do <code>title</code> do <code>MaterialApp</code>?</p>
+<label><input type="radio" name="q4"> Na barra do topo da tela</label>
+<label><input type="radio" name="q4"> Para o sistema: na lista de apps recentes do Android e na aba do navegador</label>
+<label><input type="radio" name="q4"> Embaixo do ícone, na tela inicial do celular</label>
+<label><input type="radio" name="q4"> No meio da tela, quando o app abre</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">5. A faixa DEBUG aparece no app que vai para a loja?</p>
+<label><input type="radio" name="q5"> Sim, sempre, a não ser que você a esconda</label>
+<label><input type="radio" name="q5"> Só no iPhone</label>
+<label><input type="radio" name="q5"> Não: ela só aparece no modo debug</label>
+<label><input type="radio" name="q5"> Só quando o app tem erro</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">6. Quantos <code>MaterialApp</code> um app normal tem?</p>
+<label><input type="radio" name="q6"> Um, no topo da árvore</label>
+<label><input type="radio" name="q6"> Um por tela</label>
+<label><input type="radio" name="q6"> Um por <code>Scaffold</code></label>
+<label><input type="radio" name="q6"> Nenhum: o <code>runApp</code> cria sozinho</label>
+</div>
+
+<h3>Missão final: o app da lojinha</h3>
+
+<div class="tryflutter" data-goal="src:title:\s*'Lojinha da Ana';;src:debugShowCheckedModeBanner:\s*false;;src:seedColor:\s*Colors\.purple">
+<p class="try-task"><strong>Missão:</strong> monte o "prédio" da lojinha da Ana: dê ao app o <code>title</code> <code>Lojinha da Ana</code>, esconda a faixa DEBUG e use <code>Colors.purple</code> como cor-semente.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const LojinhaApp());
+}
+
+class LojinhaApp extends StatelessWidget {
+  const LojinhaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lojinha da Ana')),
+        body: const Center(child: Text('Bem-vinda!')),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const LojinhaApp());
+}
+
+class LojinhaApp extends StatelessWidget {
+  const LojinhaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Lojinha da Ana',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.purple),
+      ),
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lojinha da Ana')),
+        body: const Center(child: Text('Bem-vinda!')),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O <code>MaterialApp</code> é a estrutura do app inteiro: direção do texto, tema, fontes e navegação para todos os widgets abaixo dele. Fica no topo da árvore, um só por app.</li>
+  <li><code>home</code> é a tela inicial, normalmente um <code>Scaffold</code>.</li>
+  <li><code>title</code> é o nome do app para o sistema; não aparece na tela.</li>
+  <li>A faixa DEBUG só existe no modo debug; <code>debugShowCheckedModeBanner: false</code> a esconde.</li>
+  <li><code>theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: ...))</code> pinta o app inteiro a partir de uma cor.</li>
+  <li><code>ThemeData(...)</code> não pode ser <code>const</code>: tire o <code>const</code> de antes do <code>MaterialApp</code> e ponha-o nas partes que não mudam.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
