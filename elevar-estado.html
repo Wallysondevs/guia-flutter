@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Elevar o Estado — passando dados e callbacks entre widgets | Guia Flutter</title>
+<meta name="description" content="Como passar dados entre widgets no Flutter: para baixo pelo construtor, para cima com callbacks (VoidCallback e ValueChanged), e elevar o estado para o pai em comum. Uma lojinha com carrinho, fotos reais antes e depois dos toques e o erro real de chamar setState num StatelessWidget.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Elevando o Estado</span></h1>
+
+<p class="intro">Um app é feito de muitos widgets pequenos, e eles precisam conversar. O nome do produto tem de chegar ao cartão do produto; o toque no botão "comprar" tem de chegar ao carrinho, que fica lá no topo da tela. Nesta aula você vai ver os dois caminhos da conversa: <strong>dados descem</strong> pelo construtor e <strong>avisos sobem</strong> por funções (os <em>callbacks</em>). E vai aprender a regra que resolve a maioria dos problemas de "como esse widget fica sabendo daquilo?": <strong>elevar o estado</strong> (em inglês, <em>lifting state up</em>).</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como passar dados de um widget pai para um filho: parâmetros no construtor.</li>
+  <li>Por que um estado guardado no filho fica "preso" lá dentro.</li>
+  <li>Como elevar o estado para o pai e devolver ao filho só uma função (<code>VoidCallback</code>).</li>
+  <li>Como mandar um valor junto com o aviso (<code>ValueChanged&lt;T&gt;</code>).</li>
+  <li>O erro real de chamar <code>setState</code> num <code>StatelessWidget</code>.</li>
+</ul>
+</div>
+
+<p>As telas desta aula vieram de um Flutter de verdade, no laboratório da Ana, em tamanho de celular, com fotos antes e depois dos toques.</p>
+
+<hr>
+
+<h2>A ideia: o caderno do caixa</h2>
+<p>Na lojinha da Ana, cada prateleira tem um funcionário. Se cada um anotar as vendas no <strong>próprio</strong> caderninho, ninguém sabe o total do dia: o caixa teria de ir de prateleira em prateleira perguntando. O jeito certo é ter <strong>um caderno só, no caixa</strong>. Os funcionários não anotam nada; eles só <strong>avisam</strong> o caixa: "vendi um café".</p>
+<ul>
+  <li>O caixa é o <strong>pai</strong>: guarda o estado (o total).</li>
+  <li>Os funcionários são os <strong>filhos</strong>: recebem o que precisam mostrar (nome, preço) e recebem um jeito de avisar (a função <code>onComprar</code>).</li>
+</ul>
+
+<hr>
+
+<h2>1. O problema: o estado preso no filho</h2>
+<p>Na primeira versão, cada <code>ProdutoTile</code> é um <code>StatefulWidget</code> com a sua própria quantidade:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lojinha da Ana')),
+        body: const Column(
+          children: [
+            ProdutoTile(nome: 'Café', preco: 18.90),
+            ProdutoTile(nome: 'Pão de forma', preco: 9.50),
+            ProdutoTile(nome: 'Manteiga', preco: 12.00),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ProdutoTile extends StatefulWidget {
+  const ProdutoTile({super.key, required this.nome, required this.preco});
+
+  final String nome;
+  final double preco;
+
+  @override
+  State&lt;ProdutoTile&gt; createState() =&gt; _ProdutoTileState();
+}
+
+class _ProdutoTileState extends State&lt;ProdutoTile&gt; {
+  int _quantidade = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final valor = widget.preco.toStringAsFixed(2).replaceAll('.', ',');
+    return ListTile(
+      title: Text(widget.nome),
+      subtitle: Text('R\$ $valor · no carrinho: $_quantidade'),
+      trailing: IconButton(
+        icon: const Icon(Icons.add_shopping_cart),
+        tooltip: 'Comprar ${widget.nome}',
+        onPressed: () =&gt; setState(() =&gt; _quantidade++),
+      ),
+    );
+  }
+}</pre>
+
+<dl class="anatomy">
+  <dt>ProdutoTile(nome: 'Café', preco: 18.90)</dt><dd><strong>Dados descendo</strong>: o pai passa o nome e o preço pelo construtor. Dentro do <code>State</code>, eles são lidos com <code>widget.nome</code> e <code>widget.preco</code> (veja <a href="stateful.html">StatefulWidget</a>).</dd>
+  <dt>int _quantidade = 0;</dt><dd>O estado, guardado <strong>em cada produto</strong>.</dd>
+  <dt>toStringAsFixed(2).replaceAll('.', ',')</dt><dd>Escreve o preço com duas casas e vírgula: <code>18,90</code>.</dd>
+  <dt>tooltip: 'Comprar ${widget.nome}'</dt><dd>A dica do botão de ícone ("Comprar Café"), que o leitor de tela também fala.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/elevar-estado-1.png" alt="Tela 'Lojinha da Ana' com três produtos: Café 'R$ 18,90 · no carrinho: 2', Pão de forma 'R$ 9,50 · no carrinho: 0' e Manteiga 'R$ 12,00 · no carrinho: 1', cada um com um ícone de carrinho na direita" width="390" height="844" loading="lazy"><figcaption>Depois de dois toques no Café e um na Manteiga.</figcaption></figure>
+
+<p>Cada produto conta direitinho: 2 cafés, 0 pães, 1 manteiga. Mas tente mostrar o <strong>total</strong> no título ou no pé da tela: o <code>MeuApp</code> não tem como saber. Cada <code>_quantidade</code> está trancada dentro do seu <code>_ProdutoTileState</code>, e um widget não consegue ler o estado de outro. É o caderninho em cada prateleira.</p>
+
+<hr>
+
+<h2>2. A solução: elevar o estado para o pai</h2>
+<p>A regra é: <strong>o estado mora no widget mais baixo da árvore que é pai de todos os que precisam dele</strong>. Quem precisa do total? O título, o pé da tela e os botões dos três produtos. O pai em comum é a tela inteira, a <code>Loja</code>. Então o estado sobe para ela, e o <code>ProdutoTile</code> vira um <code>StatelessWidget</code>:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(home: Loja());
+  }
+}
+
+class Loja extends StatefulWidget {
+  const Loja({super.key});
+
+  @override
+  State&lt;Loja&gt; createState() =&gt; _LojaState();
+}
+
+class _LojaState extends State&lt;Loja&gt; {
+  int _itens = 0;
+  double _total = 0;
+
+  void _comprar(double preco) {
+    setState(() {
+      _itens++;
+      _total += preco;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final total = _total.toStringAsFixed(2).replaceAll('.', ',');
+    return Scaffold(
+      appBar: AppBar(title: Text('Lojinha da Ana · $_itens itens')),
+      body: Column(
+        children: [
+          ProdutoTile(nome: 'Café', preco: 18.90, onComprar: () =&gt; _comprar(18.90)),
+          ProdutoTile(nome: 'Pão de forma', preco: 9.50, onComprar: () =&gt; _comprar(9.50)),
+          ProdutoTile(nome: 'Manteiga', preco: 12.00, onComprar: () =&gt; _comprar(12.00)),
+          const Divider(),
+          Text('Total: R\$ $total', style: const TextStyle(fontSize: 24)),
+        ],
+      ),
+    );
+  }
+}
+
+class ProdutoTile extends StatelessWidget {
+  const ProdutoTile({
+    super.key,
+    required this.nome,
+    required this.preco,
+    required this.onComprar,
+  });
+
+  final String nome;
+  final double preco;
+  final VoidCallback onComprar;
+
+  @override
+  Widget build(BuildContext context) {
+    final valor = preco.toStringAsFixed(2).replaceAll('.', ',');
+    return ListTile(
+      title: Text(nome),
+      subtitle: Text('R\$ $valor'),
+      trailing: IconButton(
+        icon: const Icon(Icons.add_shopping_cart),
+        tooltip: 'Comprar $nome',
+        onPressed: onComprar,
+      ),
+    );
+  }
+}</pre>
+
+<dl class="anatomy">
+  <dt>class _LojaState … int _itens = 0; double _total = 0;</dt><dd>O estado subiu: agora o caderno é um só, na <code>Loja</code>.</dd>
+  <dt>void _comprar(double preco)</dt><dd>O único lugar que muda o estado. Recebe o preço, soma um item e soma o preço ao total, num <code>setState</code>.</dd>
+  <dt>final VoidCallback onComprar;</dt><dd>No filho, um parâmetro que é uma <strong>função</strong>. <code>VoidCallback</code> é o nome do Flutter para "uma função sem parâmetros que não devolve nada", o mesmo que <code>void Function()</code>. O filho não sabe o que ela faz; só sabe chamá-la.</dd>
+  <dt>onPressed: onComprar</dt><dd>O botão do filho chama a função que veio do pai. É o <strong>aviso subindo</strong>.</dd>
+  <dt>onComprar: () =&gt; _comprar(18.90)</dt><dd>No pai, cada produto recebe uma função que chama o <code>_comprar</code> com o preço dele.</dd>
+  <dt>appBar: AppBar(title: Text('Lojinha da Ana · $_itens itens'))</dt><dd>Agora o título <strong>consegue</strong> mostrar o número de itens, porque o estado está no mesmo widget que monta o título. Por isso o <code>Scaffold</code> passou para dentro da <code>Loja</code>.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/elevar-estado-2.png" alt="Tela 'Lojinha da Ana · 0 itens' com Café R$ 18,90, Pão de forma R$ 9,50 e Manteiga R$ 12,00, uma linha divisória e 'Total: R$ 0,00' embaixo" width="390" height="844" loading="lazy"><figcaption>Antes: 0 itens, total R$ 0,00.</figcaption></figure>
+<figure class="tela"><img src="assets/telas/elevar-estado-3.png" alt="A mesma tela com o título 'Lojinha da Ana · 3 itens' e 'Total: R$ 49,80'" width="390" height="844" loading="lazy"><figcaption>Depois de dois toques no Café e um na Manteiga: 3 itens, R$ 49,80.</figcaption></figure>
+
+<p>Os mesmos toques da seção 1, e agora o título mostra <code>3 itens</code> e o pé da tela, <code>Total: R$ 49,80</code> (18,90 + 18,90 + 12,00). O caminho de um toque:</p>
+<ol class="passo">
+  <li>A Ana toca no carrinho do Café. O <code>IconButton</code> chama o <code>onComprar</code> que o <code>ProdutoTile</code> recebeu.</li>
+  <li>Essa função foi criada na <code>Loja</code>: ela chama <code>_comprar(18.90)</code>.</li>
+  <li>O <code>_comprar</code> roda o <code>setState</code> da <strong>Loja</strong>.</li>
+  <li>O <code>build</code> da <code>Loja</code> roda de novo e monta o título, os três <code>ProdutoTile</code> e o total, todos com os valores novos.</li>
+</ol>
+
+<p>A árvore, com o caminho dos dados (↓) e dos avisos (↑):</p>
+<pre>Loja  (estado: _itens, _total)
+└─ Scaffold
+   ├─ AppBar  ↓ "Lojinha da Ana · 3 itens"
+   └─ Column
+      ├─ ProdutoTile ↓ nome, preco, onComprar   ↑ onComprar()
+      ├─ ProdutoTile ↓ nome, preco, onComprar   ↑ onComprar()
+      ├─ ProdutoTile ↓ nome, preco, onComprar   ↑ onComprar()
+      └─ Text  ↓ "Total: R$ 49,80"
+</pre>
+
+<div class="tryflutter" data-goal="src:onComprar:\s*\(\)\s*=&gt;\s*_comprar\(18\.90?\);;src:onComprar:\s*\(\)\s*=&gt;\s*_comprar\(9\.50?\);;src:onComprar:\s*\(\)\s*=&gt;\s*_comprar\(12(\.00?)?\)">
+<p class="try-task"><strong>Missão:</strong> nesta versão, os produtos recebem uma função vazia (<code>onComprar: () {}</code>), e o carrinho nunca muda. Ligue cada produto ao caixa: troque cada <code>() {}</code> por uma função que chama o <code>_comprar</code> com o preço do produto, como <code>() =&gt; _comprar(18.90)</code>. (Pista: o analisador do Dart avisa que o <code>_comprar</code> não é usado em lugar nenhum: <code>The declaration '_comprar' isn't referenced.</code>)</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(home: Loja());
+  }
+}
+
+class Loja extends StatefulWidget {
+  const Loja({super.key});
+
+  @override
+  State&lt;Loja&gt; createState() =&gt; _LojaState();
+}
+
+class _LojaState extends State&lt;Loja&gt; {
+  int _itens = 0;
+  double _total = 0;
+
+  void _comprar(double preco) {
+    setState(() {
+      _itens++;
+      _total += preco;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final total = _total.toStringAsFixed(2).replaceAll('.', ',');
+    return Scaffold(
+      appBar: AppBar(title: Text('Lojinha da Ana · $_itens itens')),
+      body: Column(
+        children: [
+          ProdutoTile(nome: 'Café', preco: 18.90, onComprar: () {}),
+          ProdutoTile(nome: 'Pão de forma', preco: 9.50, onComprar: () {}),
+          ProdutoTile(nome: 'Manteiga', preco: 12.00, onComprar: () {}),
+          const Divider(),
+          Text('Total: R\$ $total', style: const TextStyle(fontSize: 24)),
+        ],
+      ),
+    );
+  }
+}
+
+class ProdutoTile extends StatelessWidget {
+  const ProdutoTile({
+    super.key,
+    required this.nome,
+    required this.preco,
+    required this.onComprar,
+  });
+
+  final String nome;
+  final double preco;
+  final VoidCallback onComprar;
+
+  @override
+  Widget build(BuildContext context) {
+    final valor = preco.toStringAsFixed(2).replaceAll('.', ',');
+    return ListTile(
+      title: Text(nome),
+      subtitle: Text('R\$ $valor'),
+      trailing: IconButton(
+        icon: const Icon(Icons.add_shopping_cart),
+        tooltip: 'Comprar $nome',
+        onPressed: onComprar,
+      ),
+    );
+  }
+}</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(home: Loja());
+  }
+}
+
+class Loja extends StatefulWidget {
+  const Loja({super.key});
+
+  @override
+  State&lt;Loja&gt; createState() =&gt; _LojaState();
+}
+
+class _LojaState extends State&lt;Loja&gt; {
+  int _itens = 0;
+  double _total = 0;
+
+  void _comprar(double preco) {
+    setState(() {
+      _itens++;
+      _total += preco;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final total = _total.toStringAsFixed(2).replaceAll('.', ',');
+    return Scaffold(
+      appBar: AppBar(title: Text('Lojinha da Ana · $_itens itens')),
+      body: Column(
+        children: [
+          ProdutoTile(nome: 'Café', preco: 18.90, onComprar: () =&gt; _comprar(18.90)),
+          ProdutoTile(nome: 'Pão de forma', preco: 9.50, onComprar: () =&gt; _comprar(9.50)),
+          ProdutoTile(nome: 'Manteiga', preco: 12.00, onComprar: () =&gt; _comprar(12.00)),
+          const Divider(),
+          Text('Total: R\$ $total', style: const TextStyle(fontSize: 24)),
+        ],
+      ),
+    );
+  }
+}
+
+class ProdutoTile extends StatelessWidget {
+  const ProdutoTile({
+    super.key,
+    required this.nome,
+    required this.preco,
+    required this.onComprar,
+  });
+
+  final String nome;
+  final double preco;
+  final VoidCallback onComprar;
+
+  @override
+  Widget build(BuildContext context) {
+    final valor = preco.toStringAsFixed(2).replaceAll('.', ',');
+    return ListTile(
+      title: Text(nome),
+      subtitle: Text('R\$ $valor'),
+      trailing: IconButton(
+        icon: const Icon(Icons.add_shopping_cart),
+        tooltip: 'Comprar $nome',
+        onPressed: onComprar,
+      ),
+    );
+  }
+}</pre>
+</div>
+<p>O resultado esperado é o da segunda foto acima: o título e o total mudando a cada toque.</p>
+
+<hr>
+
+<h2 id="formas">3. Formas diferentes de avisar o pai</h2>
+<p>O <code>VoidCallback</code> só diz "aconteceu". Quando o filho precisa mandar um <strong>valor</strong> junto, use <code>ValueChanged&lt;T&gt;</code>, "uma função que recebe um valor do tipo <code>T</code>". Assim, o próprio produto manda o seu preço, e o pai não precisa repetir o número:</p>
+
+<pre class="file" data-file="lib/main.dart">// no filho
+final ValueChanged&lt;double&gt; onComprar;
+…
+onPressed: () =&gt; onComprar(preco),
+
+// no pai: passa o próprio método, sem parênteses
+ProdutoTile(nome: 'Café', preco: 18.90, onComprar: _comprar),
+</pre>
+
+<p>Repare no <code>onComprar: _comprar</code>: como o <code>_comprar</code> já recebe um <code>double</code>, ele mesmo serve de <code>ValueChanged&lt;double&gt;</code>. É o mesmo padrão que os widgets do Flutter usam: o <code>onChanged</code> de um <code>Switch</code> é um <code>ValueChanged&lt;bool&gt;</code>, e o de um <code>TextField</code>, um <code>ValueChanged&lt;String&gt;</code> (aulas <a href="checkbox-switch.html">Checkbox, Switch e Radio</a> e <a href="textfield.html">Campos de Texto</a>).</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Tipo</th><th>É o mesmo que</th><th>Use quando</th></tr>
+<tr><td><code>VoidCallback</code></td><td><code>void Function()</code></td><td>O filho só avisa que algo aconteceu (um toque)</td></tr>
+<tr><td><code>ValueChanged&lt;T&gt;</code></td><td><code>void Function(T valor)</code></td><td>O filho manda um valor junto (o preço, o texto digitado)</td></tr>
+<tr><td><code>void Function(String nome, int qtd)</code></td><td>—</td><td>Vários valores (ou mande um objeto)</td></tr>
+</table>
+</div>
+
+<p>E quando o estado precisa ser lido por widgets <strong>muito</strong> longe uns dos outros (a tela do carrinho e a tela de pagamento), passar funções de pai para filho para neto fica cansativo. Para isso existem o <a href="inherited-widget.html">InheritedWidget</a> e o <a href="provider.html">Provider</a>, no nível 3.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Chamou <code>setState</code> dentro do filho <code>StatelessWidget</code></strong>
+<pre class="file" data-file="lib/main.dart">      trailing: IconButton(
+        icon: const Icon(Icons.add_shopping_cart),
+        tooltip: 'Comprar $nome',
+        onPressed: () =&gt; setState(() {}),
+      ),</pre>
+<pre class="term">lib/main.dart:71:26: Error: The method 'setState' isn't defined for the type 'ProdutoTile'.
+ - 'ProdutoTile' is from 'package:app/main.dart' ('lib/main.dart').
+Try correcting the name to the name of an existing method, or defining a method named 'setState'.
+        onPressed: () =&gt; setState(() {}),
+                         ^^^^^^^^
+</pre>
+<p>"O método <code>setState</code> não está definido para o tipo <code>ProdutoTile</code>." O <code>setState</code> é um método da classe <code>State</code>; um <code>StatelessWidget</code> não tem. E mesmo que tivesse, redesenhar o filho não mudaria o total, que mora no pai. <strong>Como consertar:</strong> o filho não muda estado nenhum; ele chama a função que recebeu (<code>onPressed: onComprar</code>), e quem roda o <code>setState</code> é o pai.</p>
+</div>
+
+<div class="cenario">
+<strong>Copiou o estado do pai para o filho</strong>
+<p>Um erro sem mensagem: o filho recebe <code>quantidade</code> do pai e, no <code>initState</code>, copia para um <code>_quantidade</code> próprio. Na primeira vez funciona; quando o pai muda o valor, o filho continua mostrando a cópia antiga, porque o <code>initState</code> não roda de novo (veja <a href="ciclo-de-vida.html">Ciclo de Vida</a>). <strong>Como consertar:</strong> não duplique o estado: o filho mostra <code>widget.quantidade</code> direto, e só o pai guarda o valor.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>Filho(nome: 'Café')</code> + <code>final String nome;</code></td><td>Dado descendo do pai para o filho</td></tr>
+<tr><td><code>final VoidCallback onComprar;</code></td><td>O filho recebe uma função para avisar o pai</td></tr>
+<tr><td><code>onPressed: onComprar</code></td><td>O filho chama a função no toque</td></tr>
+<tr><td><code>onComprar: () =&gt; _comprar(18.90)</code></td><td>O pai decide o que o aviso faz</td></tr>
+<tr><td><code>final ValueChanged&lt;double&gt; onComprar;</code> + <code>onComprar(preco)</code></td><td>Aviso com um valor junto</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o filho</h3>
+<div class="ex-code">class Botao extends StatelessWidget {<br>&nbsp;&nbsp;const Botao({super.key, required this.aoTocar});<br>&nbsp;&nbsp;final <input data-answer="VoidCallback" aria-label="tipo da função sem parâmetros"> aoTocar;<br>&nbsp;&nbsp;@override<br>&nbsp;&nbsp;Widget build(BuildContext context) =&gt;<br>&nbsp;&nbsp;&nbsp;&nbsp;FilledButton(onPressed: <input data-answer="aoTocar" aria-label="a função recebida">, child: const Text('OK'));<br>}</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. O título da tela e três cartões de produto precisam do total do carrinho. Onde deve ficar o estado?</p>
+<label><input type="radio" name="q2"> Em cada cartão de produto</label>
+<label><input type="radio" name="q2"> No widget que é pai do título e dos três cartões</label>
+<label><input type="radio" name="q2"> No <code>main</code></label>
+<label><input type="radio" name="q2"> No <code>AppBar</code></label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. Qual tipo usar para um aviso que manda o texto digitado?</p>
+<label><input type="radio" name="q3"> <code>VoidCallback</code></label>
+<label><input type="radio" name="q3"> <code>String</code></label>
+<label><input type="radio" name="q3"> <code>ValueChanged&lt;String&gt;</code></label>
+<label><input type="radio" name="q3"> <code>setState</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. Num <code>StatelessWidget</code> filho, como o toque de um botão muda o estado?</p>
+<label><input type="radio" name="q4"> Chamando uma função que o pai passou; o pai roda o <code>setState</code></label>
+<label><input type="radio" name="q4"> Chamando <code>setState</code> no filho</label>
+<label><input type="radio" name="q4"> Mudando um campo <code>final</code></label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><strong>Dados descem</strong> pelo construtor (campos <code>final</code>); <strong>avisos sobem</strong> por funções (<code>VoidCallback</code>, <code>ValueChanged&lt;T&gt;</code>).</li>
+  <li>Estado guardado num filho fica preso lá: nem o pai nem os irmãos conseguem ler.</li>
+  <li><strong>Elevar o estado</strong>: guarde-o no pai mais próximo de todos os que precisam dele; os filhos viram <code>StatelessWidget</code> que recebem valores e funções.</li>
+  <li>Só quem guarda o estado chama <code>setState</code>. Num <code>StatelessWidget</code>, <code>setState</code> nem existe.</li>
+  <li>Não duplique o estado no filho: mostre o valor que veio do pai.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
