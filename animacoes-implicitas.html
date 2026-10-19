@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Animações Implícitas — o widget anima sozinho | Guia Flutter</title>
+<meta name="description" content="Animações implícitas no Flutter para quem nunca fez um app: AnimatedContainer, duration e curve, AnimatedOpacity, AnimatedAlign, AnimatedSwitcher e TweenAnimationBuilder, com o cartão de receita da Ana que cresce ao toque, fotos do começo e do fim, e os erros reais (sem setState, duration esquecida, AnimatedSwitcher sem key).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Animações Implícitas</span></h1>
+
+<p class="intro">Um app em que tudo "pula" de um jeito para o outro parece duro. Um botão que cresce suavemente, uma mensagem que aparece aos poucos, uma cor que muda devagar: são detalhes que fazem o app parecer caprichado. No Flutter, o jeito mais fácil de animar é o das <strong>animações implícitas</strong>: você usa um widget "Animated…" no lugar do comum, diz quanto tempo a mudança leva, e <strong>muda o valor com <code>setState</code></strong>. O widget anima sozinho do valor antigo até o novo. Você não controla nenhum quadro da animação: ela está <em>implícita</em> (subentendida) na mudança.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O <code>AnimatedContainer</code>: um <a href="container.html">Container</a> que anima tamanho, cor, borda e espaçamento.</li>
+  <li>Os dois parâmetros de toda animação implícita: <code>duration</code> (quanto tempo) e <code>curve</code> (com que ritmo).</li>
+  <li><code>AnimatedOpacity</code> (aparecer e sumir) e <code>AnimatedAlign</code> (mudar de lugar).</li>
+  <li><code>AnimatedSwitcher</code>: trocar um widget por outro com transição.</li>
+  <li><code>TweenAnimationBuilder</code>: animar qualquer valor, mesmo sem um widget "Animated…" pronto.</li>
+  <li>Os erros mais comuns: mudar o valor sem <code>setState</code> e o <code>AnimatedSwitcher</code> que não anima.</li>
+</ul>
+</div>
+
+<div class="note">
+<strong>Sobre as fotos desta aula</strong>
+<p>Uma foto não mostra movimento. Por isso, cada exemplo tem duas fotos tiradas no laboratório: o <strong>começo</strong> e o <strong>fim</strong> da animação. Para ver o movimento de verdade, rode o exemplo no <strong>Experimente</strong>.</p>
+</div>
+
+<hr>
+
+<h2>A ideia: o dimmer da luz da sala</h2>
+<p>Um interruptor comum liga a luz de uma vez: <em>clac</em>, apagado, aceso. Um <strong>dimmer</strong> (aquele botão de girar) faz a luz ir acendendo aos poucos. Você só diz <strong>aonde</strong> quer chegar ("luz forte"); o dimmer cuida do caminho.</p>
+<p>Um <code>Container</code> comum é o interruptor: troque a largura de 120 para 280 e ele <strong>pula</strong>. O <code>AnimatedContainer</code> é o dimmer: troque a largura e ele <strong>vai crescendo</strong> durante o tempo que você mandou.</p>
+
+<hr>
+
+<h2>1. <code>AnimatedContainer</code>: o cartão que cresce</h2>
+<p>A Ana quer que o cartão da receita do dia cresça e mude de cor quando ela toca nele:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaReceita(),
+    ));
+
+class TelaReceita extends StatefulWidget {
+  const TelaReceita({super.key});
+
+  @override
+  State&lt;TelaReceita&gt; createState() =&gt; _TelaReceitaState();
+}
+
+class _TelaReceitaState extends State&lt;TelaReceita&gt; {
+  bool _aberto = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receita do dia')),
+      body: Center(
+        child: GestureDetector(
+          onTap: () =&gt; setState(() =&gt; _aberto = !_aberto),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeInOut,
+            width: _aberto ? 280 : 160,
+            height: _aberto ? 200 : 100,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: _aberto ? Colors.orange : Colors.teal,
+              borderRadius: BorderRadius.circular(_aberto ? 32 : 8),
+            ),
+            child: const Text(
+              'Bolo de cenoura',
+              style: TextStyle(color: Colors.white, fontSize: 20),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>bool _aberto = false</dt><dd>O estado: o cartão está aberto ou fechado? Ele mora num <a href="stateful.html">StatefulWidget</a>, porque muda.</dd>
+  <dt>GestureDetector(onTap: …)</dt><dd>Detecta o toque (veja <a href="gestos.html">Toques e Gestos</a>) e chama <code>setState</code> para inverter o <code>_aberto</code>.</dd>
+  <dt>AnimatedContainer</dt><dd>Aceita quase os mesmos parâmetros do <code>Container</code>. A diferença: quando um deles muda de um <code>build</code> para o outro, ele <strong>anima</strong> a mudança.</dd>
+  <dt>duration: const Duration(milliseconds: 400)</dt><dd><strong>Obrigatório.</strong> Quanto tempo a animação leva: 400 milissegundos (0,4 s). Entre 200 e 500 ms é o normal para coisas pequenas na tela.</dd>
+  <dt>curve: Curves.easeInOut</dt><dd>O <strong>ritmo</strong>: começa devagar, acelera no meio, freia no fim. Sem <code>curve</code>, o padrão é <code>Curves.linear</code> (velocidade constante, que parece mecânico).</dd>
+  <dt>width: _aberto ? 280 : 160</dt><dd>O valor <strong>de destino</strong>. Você escreve só o fim; o widget lembra o valor anterior e anima entre os dois.</dd>
+</dl>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Começo (<code>_aberto = false</code>)</th><th>Fim (<code>_aberto = true</code>)</th></tr>
+<tr><td><figure class="tela"><img src="assets/telas/animacoes-implicitas-1.png" alt="Tela Receita do dia com um cartão pequeno, verde-azulado, de cantos pouco arredondados, no meio da tela, escrito Bolo de cenoura em branco" width="390" height="844" loading="lazy"><figcaption>Começo: 160 × 100, verde-azulado.</figcaption></figure></td><td><figure class="tela"><img src="assets/telas/animacoes-implicitas-2.png" alt="A mesma tela com o cartão Bolo de cenoura bem maior, laranja e de cantos bem arredondados" width="390" height="844" loading="lazy"><figcaption>Fim, depois do toque: 280 × 200, laranja.</figcaption></figure></td></tr>
+</table>
+</div>
+
+<p>Entre as duas fotos, durante 0,4 s, o Flutter desenha os quadros intermediários (cerca de 60 por segundo): larguras entre 160 e 280, cantos cada vez mais redondos e cores misturadas entre o verde-azulado e o laranja. Tudo isso sem uma linha a mais de código.</p>
+
+<div class="tryflutter" data-goal="src:Curves\.bounceOut;;src:seconds:\s*2">
+<p class="try-task"><strong>Missão:</strong> rode e toque no cartão (toque de novo para ele voltar). Depois, deixe a animação bem mais lenta, com <strong>2 segundos</strong> (<code>Duration(seconds: 2)</code>), e troque a curva por <code>Curves.bounceOut</code>, para o cartão "quicar" ao chegar.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaReceita(),
+    ));
+
+class TelaReceita extends StatefulWidget {
+  const TelaReceita({super.key});
+
+  @override
+  State&lt;TelaReceita&gt; createState() =&gt; _TelaReceitaState();
+}
+
+class _TelaReceitaState extends State&lt;TelaReceita&gt; {
+  bool _aberto = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receita do dia')),
+      body: Center(
+        child: GestureDetector(
+          onTap: () =&gt; setState(() =&gt; _aberto = !_aberto),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeInOut,
+            width: _aberto ? 280 : 160,
+            height: _aberto ? 200 : 100,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: _aberto ? Colors.orange : Colors.teal,
+              borderRadius: BorderRadius.circular(_aberto ? 32 : 8),
+            ),
+            child: const Text(
+              'Bolo de cenoura',
+              style: TextStyle(color: Colors.white, fontSize: 20),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaReceita(),
+    ));
+
+class TelaReceita extends StatefulWidget {
+  const TelaReceita({super.key});
+
+  @override
+  State&lt;TelaReceita&gt; createState() =&gt; _TelaReceitaState();
+}
+
+class _TelaReceitaState extends State&lt;TelaReceita&gt; {
+  bool _aberto = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receita do dia')),
+      body: Center(
+        child: GestureDetector(
+          onTap: () =&gt; setState(() =&gt; _aberto = !_aberto),
+          child: AnimatedContainer(
+            duration: const Duration(seconds: 2),
+            curve: Curves.bounceOut,
+            width: _aberto ? 280 : 160,
+            height: _aberto ? 200 : 100,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: _aberto ? Colors.orange : Colors.teal,
+              borderRadius: BorderRadius.circular(_aberto ? 32 : 8),
+            ),
+            child: const Text(
+              'Bolo de cenoura',
+              style: TextStyle(color: Colors.white, fontSize: 20),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>2. O ritmo: <code>Curves</code></h2>
+<p>A <code>curve</code> diz como o valor caminha do começo ao fim. As mais usadas:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Curva</th><th>Como parece</th></tr>
+<tr><td><code>Curves.linear</code></td><td>Velocidade constante (o padrão). Bom para coisas que giram sem parar.</td></tr>
+<tr><td><code>Curves.easeInOut</code></td><td>Começa devagar, acelera, freia. O "natural" para quase tudo.</td></tr>
+<tr><td><code>Curves.easeOut</code></td><td>Sai rápido e freia no fim. Bom para coisas que <strong>entram</strong> na tela.</td></tr>
+<tr><td><code>Curves.easeIn</code></td><td>Sai devagar e acelera. Bom para coisas que <strong>saem</strong> da tela.</td></tr>
+<tr><td><code>Curves.bounceOut</code></td><td>Chega e "quica", como uma bola.</td></tr>
+<tr><td><code>Curves.elasticOut</code></td><td>Passa do ponto e volta, como um elástico.</td></tr>
+</table>
+</div>
+<p>A documentação do Flutter (<a href="https://api.flutter.dev/flutter/animation/Curves-class.html">api.flutter.dev/flutter/animation/Curves-class.html</a>) tem um pequeno vídeo de cada curva.</p>
+
+<hr>
+
+<h2>3. <code>AnimatedOpacity</code>: aparecer e sumir</h2>
+<p>A opacidade vai de <code>0.0</code> (invisível) a <code>1.0</code> (normal). Para o recado "Receita salva!" aparecer aos poucos:</p>
+
+<pre class="file" data-file="trecho.dart">AnimatedOpacity(
+  opacity: _salvo ? 1.0 : 0.0,
+  duration: const Duration(milliseconds: 500),
+  child: const Text('Receita salva!'),
+)
+</pre>
+
+<p>Um detalhe: com opacidade 0 o texto fica <strong>invisível, mas continua lá</strong>, ocupando espaço. Se o espaço também tem de sumir, use o <code>AnimatedSwitcher</code> (seção 5) ou o <code>AnimatedSize</code>.</p>
+
+<hr>
+
+<h2>4. <code>AnimatedAlign</code>: mudar de lugar</h2>
+<p>Muda o alinhamento do filho dentro do espaço disponível (veja <a href="center-align.html">Center e Align</a>), animando o caminho:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaPrato(),
+    ));
+
+class TelaPrato extends StatefulWidget {
+  const TelaPrato({super.key});
+
+  @override
+  State&lt;TelaPrato&gt; createState() =&gt; _TelaPratoState();
+}
+
+class _TelaPratoState extends State&lt;TelaPrato&gt; {
+  bool _servido = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Servindo a mesa')),
+      body: AnimatedAlign(
+        alignment: _servido ? Alignment.bottomRight : Alignment.topLeft,
+        duration: const Duration(seconds: 1),
+        curve: Curves.easeInOut,
+        child: const Padding(
+          padding: EdgeInsets.all(24),
+          child: Icon(Icons.lunch_dining, size: 64),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () =&gt; setState(() =&gt; _servido = !_servido),
+        label: const Text('Servir'),
+      ),
+    );
+  }
+}
+</pre>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Começo (<code>Alignment.topLeft</code>)</th><th>Fim (<code>Alignment.bottomRight</code>)</th></tr>
+<tr><td><figure class="tela"><img src="assets/telas/animacoes-implicitas-3.png" alt="Tela Servindo a mesa com um ícone de hambúrguer no canto de cima, à esquerda, e um botão Servir embaixo, no meio" width="390" height="844" loading="lazy"><figcaption>Começo: no canto de cima, à esquerda.</figcaption></figure></td><td><figure class="tela"><img src="assets/telas/animacoes-implicitas-4.png" alt="A mesma tela com o hambúrguer no canto de baixo, à direita, ao lado do botão Servir" width="390" height="844" loading="lazy"><figcaption>Fim, depois de tocar em Servir: canto de baixo, à direita.</figcaption></figure></td></tr>
+</table>
+</div>
+
+<p>Há uma família inteira de widgets assim. Os mais úteis:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Widget comum</th><th>Versão animada</th><th>Anima…</th></tr>
+<tr><td><code>Container</code></td><td><code>AnimatedContainer</code></td><td>tamanho, cor, borda, sombra, espaçamento</td></tr>
+<tr><td><code>Opacity</code></td><td><code>AnimatedOpacity</code></td><td>transparência</td></tr>
+<tr><td><code>Align</code></td><td><code>AnimatedAlign</code></td><td>posição dentro do pai</td></tr>
+<tr><td><code>Padding</code></td><td><code>AnimatedPadding</code></td><td>espaçamento</td></tr>
+<tr><td><code>Positioned</code></td><td><code>AnimatedPositioned</code></td><td>posição dentro de um <a href="stack.html">Stack</a></td></tr>
+<tr><td><code>DefaultTextStyle</code></td><td><code>AnimatedDefaultTextStyle</code></td><td>tamanho e cor da fonte</td></tr>
+<tr><td>—</td><td><code>AnimatedSize</code></td><td>o tamanho quando o filho cresce ou encolhe</td></tr>
+<tr><td>—</td><td><code>AnimatedRotation</code> / <code>AnimatedScale</code></td><td>giro (em voltas) / escala</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>5. <code>AnimatedSwitcher</code>: trocar um widget por outro</h2>
+<p>Os widgets acima animam um <strong>valor</strong> do mesmo widget. O <code>AnimatedSwitcher</code> anima a <strong>troca</strong> de um widget por outro: o velho some aos poucos enquanto o novo aparece (por padrão, um "esmaecer cruzado").</p>
+
+<pre class="file" data-file="trecho.dart">AnimatedSwitcher(
+  duration: const Duration(milliseconds: 300),
+  child: Text(
+    '$_porcoes porções',
+    key: ValueKey(_porcoes),
+    style: const TextStyle(fontSize: 32),
+  ),
+)
+</pre>
+
+<dl class="anatomy">
+  <dt>child</dt><dd>O widget atual. Quando ele é trocado por <strong>outro</strong>, o switcher anima a troca.</dd>
+  <dt>key: ValueKey(_porcoes)</dt><dd>O pulo do gato. Um <code>Text</code> trocado por outro <code>Text</code> é, para o Flutter, o <strong>mesmo</strong> widget com outro texto, e não há troca para animar. A <a href="keys.html">key</a> diferente a cada número diz "este é outro widget".</dd>
+</dl>
+
+<hr>
+
+<h2>6. <code>TweenAnimationBuilder</code>: animar qualquer valor</h2>
+<p>E quando não existe um "Animated…" pronto para o que você quer? O <code>TweenAnimationBuilder</code> anima um <strong>número</strong> (ou cor, ou tamanho) e chama um <code>builder</code> a cada quadro com o valor do momento. Uma barra de progresso do preparo da receita:</p>
+
+<pre class="file" data-file="trecho.dart">TweenAnimationBuilder&lt;double&gt;(
+  tween: Tween(begin: 0, end: _progresso),
+  duration: const Duration(seconds: 1),
+  builder: (context, valor, child) {
+    return LinearProgressIndicator(value: valor);
+  },
+)
+</pre>
+
+<dl class="anatomy">
+  <dt>tween: Tween(begin: 0, end: _progresso)</dt><dd><em>Tween</em> vem de <em>in-between</em>, "entre": a faixa de valores. O <code>begin</code> só vale na primeira vez; depois, quando o <code>end</code> muda, ele anima do valor atual até o novo <code>end</code>.</dd>
+  <dt>builder: (context, valor, child)</dt><dd>Chamado a cada quadro, com o <code>valor</code> do momento (0.0, 0.03, 0.1… até o <code>end</code>).</dd>
+</dl>
+
+<hr>
+
+<h2 id="formas">Implícita ou explícita?</h2>
+<p>Tudo o que esta aula mostrou anima <strong>de A até B, uma vez, quando um valor muda</strong>. Para animações que se repetem sem parar, que vão e voltam, que você quer pausar no meio ou controlar com o dedo, o caminho são as <a href="animacoes-explicitas.html">Animações Explícitas</a>, com <code>AnimationController</code>.</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Você quer…</th><th>Use</th></tr>
+<tr><td>Que uma mudança de tamanho/cor/posição fique suave</td><td>Um widget <code>Animated…</code></td></tr>
+<tr><td>Trocar um widget por outro com transição</td><td><code>AnimatedSwitcher</code></td></tr>
+<tr><td>Animar um valor qualquer, uma vez</td><td><code>TweenAnimationBuilder</code></td></tr>
+<tr><td>Repetir, ir e voltar, pausar, controlar</td><td><code>AnimationController</code> (<a href="animacoes-explicitas.html">explícitas</a>)</td></tr>
+<tr><td>Um elemento "voar" de uma tela para outra</td><td><a href="hero.html">Hero</a></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Mudou o valor sem <code>setState</code>: nada acontece</strong>
+<pre class="file" data-file="lib/main.dart">          onTap: () =&gt; _aberto = !_aberto,
+</pre>
+<p>Compila e roda sem erro, mas o toque não faz nada: depois do toque (e de esperar 1 segundo), a tela é idêntica à do começo:</p>
+<figure class="tela"><img src="assets/telas/animacoes-implicitas-5.png" alt="A tela Receita do dia com o cartão Bolo de cenoura ainda pequeno e verde-azulado, depois do toque" width="390" height="844" loading="lazy"><figcaption>Depois do toque, sem <code>setState</code>: o cartão não mudou.</figcaption></figure>
+<p>O <code>_aberto</code> mudou, sim, mas ninguém pediu ao Flutter para rodar o <code>build</code> de novo. O <code>AnimatedContainer</code> só anima quando recebe valores <strong>novos</strong> num <code>build</code> novo (veja <a href="setstate.html">setState</a>). <strong>Como consertar:</strong> <code>onTap: () =&gt; setState(() =&gt; _aberto = !_aberto)</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Esqueceu a <code>duration</code></strong>
+<p>A Ana apagou a linha da <code>duration</code>. O app nem compila:</p>
+<pre class="term">lib/main.dart:25:35:
+Error: Required named parameter 'duration' must be provided.
+          child: AnimatedContainer(
+                                  ^
+/home/ana/flutter/packages/flutter/lib/src/widgets/implicit_animations.dart:606:3:
+Info: Found this candidate, but the arguments don't match.
+  AnimatedContainer({
+  ^^^^^^^^^^^^^^^^^
+</pre>
+<dl class="anatomy">
+  <dt>lib/main.dart:25:35</dt><dd>Arquivo, linha 25, coluna 35: onde o <code>AnimatedContainer(</code> começa. O <code>^</code> embaixo aponta o lugar.</dd>
+  <dt>Required named parameter 'duration' must be provided</dt><dd>"O parâmetro nomeado obrigatório <code>duration</code> tem de ser passado." Sem saber quanto tempo, não há animação.</dd>
+  <dt>Info: Found this candidate, but the arguments don't match</dt><dd>"Achei este construtor, mas os argumentos não batem": a linha do código do próprio Flutter onde o <code>AnimatedContainer</code> é definido. É só uma pista; o erro está no seu arquivo.</dd>
+</dl>
+<p><strong>Como consertar:</strong> <code>duration: const Duration(milliseconds: 400),</code>. Todos os widgets <code>Animated…</code> exigem a <code>duration</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>O <code>AnimatedSwitcher</code> troca sem animar</strong>
+<p>Com <code>child: Text('$_porcoes porções')</code> e sem <code>key</code>, o número muda de uma vez, sem transição. Não há erro: para o Flutter, um <code>Text</code> no lugar de outro <code>Text</code> é o <strong>mesmo</strong> widget com outro texto, então não há "troca" para animar. <strong>Como consertar:</strong> <code>key: ValueKey(_porcoes)</code> no filho (seção 5).</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>AnimatedContainer(duration: …, curve: …, width: …, color: …)</code></td><td>Container que anima as mudanças</td></tr>
+<tr><td><code>duration: const Duration(milliseconds: 300)</code></td><td>Tempo da animação (obrigatório)</td></tr>
+<tr><td><code>curve: Curves.easeInOut</code></td><td>Ritmo da animação (padrão: <code>linear</code>)</td></tr>
+<tr><td><code>AnimatedOpacity(opacity: 0.0 … 1.0)</code></td><td>Aparecer e sumir</td></tr>
+<tr><td><code>AnimatedAlign(alignment: …)</code></td><td>Mudar de lugar</td></tr>
+<tr><td><code>AnimatedSwitcher(child: X(key: ValueKey(v)))</code></td><td>Trocar um widget por outro com transição</td></tr>
+<tr><td><code>TweenAnimationBuilder(tween: Tween(begin, end), builder: …)</code></td><td>Animar qualquer valor</td></tr>
+<tr><td><code>onEnd: () { … }</code></td><td>Função chamada quando a animação termina</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete a animação</h3>
+<div class="ex-code"><input data-answer="AnimatedContainer" aria-label="nome do widget">(<br>&nbsp;&nbsp;<input data-answer="duration" aria-label="parâmetro do tempo">: const Duration(milliseconds: 300),<br>&nbsp;&nbsp;width: _grande ? 200 : 100,<br>)</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">2. A Ana mudou <code>_aberto = true</code> dentro do <code>onTap</code>, sem <code>setState</code>. O que acontece com o <code>AnimatedContainer</code>?</p>
+<label><input type="radio" name="q2"> Anima normalmente</label>
+<label><input type="radio" name="q2"> Pula direto para o fim, sem animar</label>
+<label><input type="radio" name="q2"> Nada: o <code>build</code> não roda de novo, e o cartão fica como estava</label>
+<label><input type="radio" name="q2"> Dá erro de compilação</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. Qual curva começa devagar, acelera e freia no fim?</p>
+<label><input type="radio" name="q3"> <code>Curves.linear</code></label>
+<label><input type="radio" name="q3"> <code>Curves.easeInOut</code></label>
+<label><input type="radio" name="q3"> <code>Curves.bounceOut</code></label>
+<label><input type="radio" name="q3"> <code>Curves.easeIn</code></label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. Um <code>AnimatedSwitcher</code> com <code>child: Text('$n')</code> não anima quando <code>n</code> muda. O que falta?</p>
+<label><input type="radio" name="q4"> Uma <code>curve</code></label>
+<label><input type="radio" name="q4"> Trocar por <code>AnimatedContainer</code></label>
+<label><input type="radio" name="q4"> Um <code>const</code> no <code>Text</code></label>
+<label><input type="radio" name="q4"> Uma <code>key</code> diferente para cada valor: <code>key: ValueKey(n)</code></label>
+</div>
+
+<h3>Missão final: do pulo para o dimmer</h3>
+
+<div class="tryflutter" data-goal="src:AnimatedContainer\(;;src:duration:" data-foto="assets/telas/animacoes-implicitas-2.png" data-foto-alt="O cartão Bolo de cenoura grande, laranja e de cantos bem arredondados, no meio da tela Receita do dia">
+<p class="try-task"><strong>Missão:</strong> este cartão usa um <code>Container</code> comum: rode, toque nele e veja que ele <strong>pula</strong> de um jeito para o outro. Transforme-o num <code>AnimatedContainer</code> com <code>duration</code> de 400 ms e a curva que preferir, para ele crescer suavemente. A foto mostra o fim do caminho, depois do toque.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaReceita(),
+    ));
+
+class TelaReceita extends StatefulWidget {
+  const TelaReceita({super.key});
+
+  @override
+  State&lt;TelaReceita&gt; createState() =&gt; _TelaReceitaState();
+}
+
+class _TelaReceitaState extends State&lt;TelaReceita&gt; {
+  bool _aberto = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receita do dia')),
+      body: Center(
+        child: GestureDetector(
+          onTap: () =&gt; setState(() =&gt; _aberto = !_aberto),
+          child: Container(
+            width: _aberto ? 280 : 160,
+            height: _aberto ? 200 : 100,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: _aberto ? Colors.orange : Colors.teal,
+              borderRadius: BorderRadius.circular(_aberto ? 32 : 8),
+            ),
+            child: const Text(
+              'Bolo de cenoura',
+              style: TextStyle(color: Colors.white, fontSize: 20),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaReceita(),
+    ));
+
+class TelaReceita extends StatefulWidget {
+  const TelaReceita({super.key});
+
+  @override
+  State&lt;TelaReceita&gt; createState() =&gt; _TelaReceitaState();
+}
+
+class _TelaReceitaState extends State&lt;TelaReceita&gt; {
+  bool _aberto = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receita do dia')),
+      body: Center(
+        child: GestureDetector(
+          onTap: () =&gt; setState(() =&gt; _aberto = !_aberto),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeInOut,
+            width: _aberto ? 280 : 160,
+            height: _aberto ? 200 : 100,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: _aberto ? Colors.orange : Colors.teal,
+              borderRadius: BorderRadius.circular(_aberto ? 32 : 8),
+            ),
+            child: const Text(
+              'Bolo de cenoura',
+              style: TextStyle(color: Colors.white, fontSize: 20),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Animação implícita: troque o widget pelo seu "Animated…", dê uma <code>duration</code>, e mude o valor com <code>setState</code>. O widget anima do valor velho até o novo.</li>
+  <li><code>curve</code> dá o ritmo; <code>Curves.easeInOut</code> é o mais natural, <code>linear</code> é o padrão.</li>
+  <li><code>AnimatedContainer</code>, <code>AnimatedOpacity</code>, <code>AnimatedAlign</code>, <code>AnimatedPadding</code>, <code>AnimatedPositioned</code>… há uma versão animada para os widgets mais comuns.</li>
+  <li><code>AnimatedSwitcher</code> anima a troca de um widget por outro, desde que eles tenham <code>key</code>s diferentes.</li>
+  <li><code>TweenAnimationBuilder</code> anima qualquer valor. Para repetir ou controlar, vá para as animações explícitas.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
