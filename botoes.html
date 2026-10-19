@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Botões — FilledButton, ElevatedButton, OutlinedButton, TextButton | Guia Flutter</title>
+<meta name="description" content="Os botões do Flutter 3 com Material 3: FilledButton, ElevatedButton, OutlinedButton, TextButton e IconButton, o onPressed (e o botão desligado com null), botões com ícone (.icon), cores com styleFrom, qual usar em cada caso, e os erros reais de esquecer o onPressed e de chamar a função em vez de passá-la, com fotos da tela e missões no editor.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Botões</span></h1>
+
+<p class="intro">"Salvar receita", "Adicionar ao carrinho", "Cancelar": um app sem botões só serve para olhar. O Material 3 tem uma família de botões, cada um com um "peso" visual diferente, do mais chamativo ao mais discreto. Nesta aula a Ana conhece a família toda, aprende a dizer o que cada botão faz quando é tocado e a desligar um botão.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Os cinco botões do dia a dia: <code>FilledButton</code>, <code>ElevatedButton</code>, <code>OutlinedButton</code>, <code>TextButton</code> e <code>IconButton</code>.</li>
+  <li>O <code>onPressed</code>: a função que roda no toque.</li>
+  <li>A <strong>desligar</strong> um botão com <code>onPressed: null</code>.</li>
+  <li>Botões com ícone e texto (<code>.icon</code>).</li>
+  <li>A mudar as cores de um botão com <code>styleFrom</code>.</li>
+  <li>Qual botão usar em cada situação.</li>
+  <li>Os erros reais: esquecer o <code>onPressed</code> e chamar a função em vez de passá-la.</li>
+</ul>
+</div>
+
+<p>Todos os apps desta aula foram compilados com o Flutter 3.47.7 do laboratório e fotografados numa tela do tamanho de um celular. Os toques também são de verdade: a ferramenta de fotos do lab clicou nos botões.</p>
+
+<hr>
+
+<h2>A ideia: o volume da voz</h2>
+<p>Numa conversa, você não fala tudo no mesmo volume. O importante você fala mais alto; o detalhe, baixinho. Uma tela também: a ação principal ("Salvar") precisa gritar, e as secundárias ("Cancelar", "Ver detalhes") só sussurram.</p>
+
+<p>Os botões do Material 3 são esses volumes, do mais alto para o mais baixo: <code>FilledButton</code> (preenchido), <code>ElevatedButton</code> (com sombra), <code>OutlinedButton</code> (só o contorno) e <code>TextButton</code> (só o texto).</p>
+
+<hr>
+
+<h2>1. A família inteira</h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              FilledButton(
+                onPressed: () {},
+                child: const Text('FilledButton'),
+              ),
+              ElevatedButton(
+                onPressed: () {},
+                child: const Text('ElevatedButton'),
+              ),
+              OutlinedButton(
+                onPressed: () {},
+                child: const Text('OutlinedButton'),
+              ),
+              TextButton(
+                onPressed: () {},
+                child: const Text('TextButton'),
+              ),
+              IconButton(
+                onPressed: () {},
+                icon: const Icon(Icons.favorite),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>FilledButton( ... )</dt><dd>O botão <strong>preenchido</strong> com a cor principal do tema. O mais chamativo: para a ação mais importante da tela.</dd>
+  <dt>onPressed: () {}</dt><dd>"Ao ser pressionado": a <strong>função</strong> que roda quando o botão é tocado. Aqui, <code>() {}</code> é uma função vazia, sem nome (uma função anônima, como você viu no Dart): o botão funciona, mas não faz nada ainda.</dd>
+  <dt>child: const Text('...')</dt><dd>O que aparece <strong>dentro</strong> do botão. Quase sempre um <code>Text</code>, mas pode ser qualquer widget.</dd>
+  <dt>ElevatedButton</dt><dd>Fundo claro e uma <strong>sombra</strong> leve, como se flutuasse.</dd>
+  <dt>OutlinedButton</dt><dd>Só o <strong>contorno</strong>, sem fundo.</dd>
+  <dt>TextButton</dt><dd>Só o <strong>texto</strong>, na cor do tema. O mais discreto.</dd>
+  <dt>IconButton(onPressed: ..., icon: ...)</dt><dd>Um botão que é só um ícone. Repare: em vez de <code>child</code>, ele usa <code>icon</code>.</dd>
+  <dt>Column(...)</dt><dd>Põe os botões um embaixo do outro (aula <a href="row-column.html">Row e Column</a>).</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/botoes-1.png" alt="No meio da tela, um embaixo do outro: um botão roxo cheio com texto branco 'FilledButton'; um botão quase branco com leve sombra e texto roxo 'ElevatedButton'; um botão só com contorno cinza e texto roxo 'OutlinedButton'; o texto roxo 'TextButton' sem nenhuma moldura; e um coração cinza-escuro" width="390" height="844" loading="lazy"><figcaption>A família, do mais forte ao mais discreto. As cores vêm do tema padrão (roxo).</figcaption></figure>
+
+<hr>
+
+<h2>2. Fazendo alguma coisa no toque</h2>
+<p>O <code>onPressed</code> recebe uma função. Tudo o que estiver dentro das chaves roda a cada toque. Para ver isso acontecer sem saber ainda mudar a tela (isso é o <code>setState</code>, aula <a href="setstate.html">setState</a>), a Ana usa o <code>debugPrint</code>, que escreve no console:</p>
+
+<pre class="file" data-file="lib/main.dart">        body: Center(
+          child: FilledButton(
+            onPressed: () {
+              debugPrint('Receita salva!');
+            },
+            child: const Text('Salvar receita'),
+          ),
+        ),
+</pre>
+
+<dl class="anatomy">
+  <dt>onPressed: () { ... }</dt><dd>A função com uma linha dentro. Ela <strong>não</strong> roda quando o app abre: o botão a guarda e só a chama no toque.</dd>
+  <dt>debugPrint('Receita salva!');</dt><dd>Escreve no console (o terminal do <code>flutter run</code>, ou o console do navegador). É o <code>print</code> recomendado no Flutter.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/botoes-2.png" alt="Um botão roxo arredondado 'Salvar receita' no meio da tela" width="390" height="844" loading="lazy"><figcaption>O botão depois de dois cliques: a tela não muda; quem mostra o efeito é o console.</figcaption></figure>
+<p>A ferramenta de fotos do lab clicou duas vezes no botão. A tela continuou igual (ainda não há nada que a mude), mas o console mostrou uma linha por clique:</p>
+<pre class="devtools">Receita salva!
+Receita salva!
+</pre>
+
+<div class="tryflutter" data-goal="src:Text\(\s*'Adicionar ao carrinho'\s*\);;src:debugPrint\(\s*'Item adicionado'\s*\)">
+<p class="try-task"><strong>Missão:</strong> na lojinha, troque o texto do botão para <code>Adicionar ao carrinho</code> e faça o toque escrever <code>Item adicionado</code> no console (com <code>debugPrint</code>). Clique em ▶ Rodar e depois no botão do app: a mensagem aparece no console do DartPad, embaixo do app.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const LojinhaApp());
+}
+
+class LojinhaApp extends StatelessWidget {
+  const LojinhaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lojinha da Ana')),
+        body: Center(
+          child: FilledButton(
+            onPressed: () {},
+            child: const Text('Comprar'),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const LojinhaApp());
+}
+
+class LojinhaApp extends StatelessWidget {
+  const LojinhaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lojinha da Ana')),
+        body: Center(
+          child: FilledButton(
+            onPressed: () {
+              debugPrint('Item adicionado');
+            },
+            child: const Text('Adicionar ao carrinho'),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>3. Botão desligado: <code>onPressed: null</code></h2>
+<p>Às vezes o botão não pode ser usado <strong>ainda</strong>: "Finalizar compra" com o carrinho vazio. No Flutter não existe um parâmetro "desligado": o botão fica desligado quando o <code>onPressed</code> é <code>null</code>.</p>
+
+<pre class="file" data-file="lib/main.dart">            children: [
+              FilledButton(
+                onPressed: () {},
+                child: const Text('Ligado'),
+              ),
+              const FilledButton(
+                onPressed: null,
+                child: Text('Desligado'),
+              ),
+            ],
+</pre>
+
+<dl class="anatomy">
+  <dt>onPressed: null</dt><dd>Sem função para chamar, o botão fica <strong>desligado</strong>: cinza, e o toque não faz nada. O Flutter faz isso sozinho, em todos os tipos de botão.</dd>
+  <dt>const FilledButton(...)</dt><dd>Com <code>null</code> no lugar da função, o botão inteiro pode ser <code>const</code>.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/botoes-3.png" alt="Dois botões no meio: 'Ligado', roxo com texto branco, e embaixo 'Desligado', cinza-claro com texto cinza apagado" width="390" height="844" loading="lazy"><figcaption>O <code>onPressed: null</code> deixou o segundo botão cinza.</figcaption></figure>
+
+<p>Na prática, o <code>onPressed</code> vem de uma condição: <code>onPressed: carrinhoVazio ? null : finalizar</code>. Você vai fazer isso quando aprender estado, em <a href="setstate.html">setState</a>.</p>
+
+<hr>
+
+<h2>4. Ícone e texto: os construtores <code>.icon</code></h2>
+
+<pre class="file" data-file="lib/main.dart">            children: [
+              FilledButton.icon(
+                onPressed: () {},
+                icon: const Icon(Icons.add_shopping_cart),
+                label: const Text('Adicionar'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () {},
+                icon: const Icon(Icons.share),
+                label: const Text('Compartilhar'),
+              ),
+            ],
+</pre>
+
+<dl class="anatomy">
+  <dt>FilledButton.icon( ... )</dt><dd>O mesmo botão, num construtor com nome que aceita um ícone. Todos os quatro botões com texto têm o seu <code>.icon</code>.</dd>
+  <dt>icon:</dt><dd>O ícone, à esquerda (aula <a href="icon.html">Ícones</a>).</dd>
+  <dt>label:</dt><dd>"Rótulo": o texto. Repare que aqui ele se chama <code>label</code>, e não <code>child</code>.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/botoes-4.png" alt="Dois botões: um roxo cheio com o ícone de carrinho com sinal de mais e o texto 'Adicionar', e um com só o contorno, com o ícone de compartilhar e o texto 'Compartilhar'" width="390" height="844" loading="lazy"><figcaption>Ícone à esquerda, texto à direita.</figcaption></figure>
+
+<hr>
+
+<h2>5. Cores: <code>styleFrom</code></h2>
+
+<pre class="file" data-file="lib/main.dart">              FilledButton(
+                onPressed: () {},
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.deepOrange,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Salvar receita'),
+              ),
+              TextButton(
+                onPressed: () {},
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: const Text('Apagar receita'),
+              ),
+</pre>
+
+<dl class="anatomy">
+  <dt>style:</dt><dd>O estilo do botão.</dd>
+  <dt>FilledButton.styleFrom( ... )</dt><dd>"Estilo a partir de": monta o estilo só com o que você disser. Cada botão tem o seu: <code>ElevatedButton.styleFrom</code>, <code>TextButton.styleFrom</code>...</dd>
+  <dt>backgroundColor</dt><dd>A cor de fundo.</dd>
+  <dt>foregroundColor</dt><dd>A cor do que fica <strong>sobre</strong> o fundo: o texto e o ícone.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/botoes-5.png" alt="Um botão laranja-avermelhado cheio com texto branco 'Salvar receita' e, embaixo, o texto vermelho 'Apagar receita' sem moldura" width="390" height="844" loading="lazy"><figcaption>Cores próprias com <code>styleFrom</code>.</figcaption></figure>
+
+<div class="tryflutter" data-goal="src:OutlinedButton;;src:Text\(\s*'Cancelar'\s*\);;src:backgroundColor:\s*Colors\.green">
+<p class="try-task"><strong>Missão:</strong> o botão "Salvar" deve ficar verde (<code>backgroundColor: Colors.green</code>), e acrescente embaixo dele um <code>OutlinedButton</code> com o texto <code>Cancelar</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Nova receita')),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              FilledButton(
+                onPressed: () {},
+                child: const Text('Salvar'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Nova receita')),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              FilledButton(
+                onPressed: () {},
+                style: FilledButton.styleFrom(backgroundColor: Colors.green),
+                child: const Text('Salvar'),
+              ),
+              OutlinedButton(
+                onPressed: () {},
+                child: const Text('Cancelar'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Qual botão usar?</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Botão</th><th>Peso</th><th>Quando usar</th><th>Exemplo</th></tr>
+<tr><td><code>FilledButton</code></td><td>Máximo</td><td>A ação principal da tela. Uma por tela, de preferência.</td><td>"Salvar receita", "Finalizar compra"</td></tr>
+<tr><td><code>FilledButton.tonal</code></td><td>Alto</td><td>Importante, mas não a principal (fundo num tom mais suave).</td><td>"Adicionar ingrediente"</td></tr>
+<tr><td><code>ElevatedButton</code></td><td>Médio</td><td>Quando o botão precisa se destacar de um fundo com imagem ou cor.</td><td>Botão sobre uma foto</td></tr>
+<tr><td><code>OutlinedButton</code></td><td>Médio</td><td>Ações importantes que não são a principal; o par do <code>FilledButton</code>.</td><td>"Cancelar", "Voltar"</td></tr>
+<tr><td><code>TextButton</code></td><td>Baixo</td><td>Ações secundárias, links, botões de diálogos.</td><td>"Ver detalhes", "Esqueci a senha"</td></tr>
+<tr><td><code>IconButton</code></td><td>Variável</td><td>Ações conhecidas pelo ícone, em barras e cartões.</td><td>Favoritar, buscar, apagar</td></tr>
+<tr><td><code>FloatingActionButton</code></td><td>Máximo</td><td>A ação principal da tela inteira, flutuando (aula <a href="scaffold.html">Scaffold</a>).</td><td>"Nova receita"</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<p>Os dois erros abaixo são de <strong>compilação</strong>, os mais comuns com botões. O compilador do <code>flutter run</code> recusa o código e o app não abre. (O arquivo é o da seção 2; o botão começa na linha 16.)</p>
+
+<div class="cenario">
+<strong>Esqueceu o <code>onPressed</code></strong>
+<pre class="file" data-file="lib/main.dart">        body: const Center(
+          child: FilledButton(
+            child: Text('Salvar receita'),
+          ),
+        ),
+</pre>
+<pre class="term">lib/main.dart:16:30: Error: Required named parameter 'onPressed' must be provided.
+          child: FilledButton(
+                             ^
+/home/ana/flutter/packages/flutter/lib/src/material/filled_button.dart:81:9: Context: Found this candidate, but the arguments don't match.
+  const FilledButton({                     « o código do próprio Flutter, na pasta onde ele está instalado
+        ^^^^^^^^^^^^
+</pre>
+<dl class="anatomy">
+  <dt>Required named parameter 'onPressed' must be provided.</dt><dd>"O parâmetro com nome obrigatório <code>onPressed</code> precisa ser informado". Todo botão exige o <code>onPressed</code>, nem que seja <code>null</code>: o Flutter quer que você diga, de propósito, se o botão está ligado ou não.</dd>
+  <dt>Context: Found this candidate, but the arguments don't match.</dt><dd>"Achei este construtor, mas os argumentos não batem": aponta para o construtor do <code>FilledButton</code>, dentro do próprio Flutter, onde o <code>onPressed</code> é declarado como <code>required</code>.</dd>
+</dl>
+<p><strong>Como consertar:</strong> <code>onPressed: () {}</code> (ou <code>onPressed: null</code>, se ele deve ficar desligado).</p>
+</div>
+
+<div class="cenario">
+<strong>Chamou a função em vez de passá-la</strong>
+<pre class="file" data-file="lib/main.dart">        body: Center(
+          child: FilledButton(
+            onPressed: debugPrint('Receita salva!'),
+            child: const Text('Salvar receita'),
+          ),
+        ),
+</pre>
+<pre class="term">lib/main.dart:17:34: Error: This expression has type 'void' and can't be used.
+            onPressed: debugPrint('Receita salva!'),
+                                 ^
+</pre>
+<p>"Esta expressão tem o tipo <code>void</code> e não pode ser usada". Com os parênteses, <code>debugPrint('...')</code> <strong>roda na hora</strong> e o que vai para o <code>onPressed</code> é o resultado, que é <code>void</code> (nada). O botão queria uma função para guardar e chamar depois, no toque. É a diferença entre entregar a receita do bolo e entregar o bolo já comido.</p>
+<p><strong>Como consertar:</strong> embrulhe numa função: <code>onPressed: () { debugPrint('Receita salva!'); }</code>, ou com a seta, <code>onPressed: () =&gt; debugPrint('Receita salva!')</code>. Se você já tem uma função sem parâmetros, como <code>void salvar() {...}</code>, passe só o nome, sem parênteses: <code>onPressed: salvar</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>FilledButton(onPressed: () {}, child: Text('...'))</code></td><td>Botão preenchido</td></tr>
+<tr><td><code>ElevatedButton</code> / <code>OutlinedButton</code> / <code>TextButton</code></td><td>Os outros botões de texto, mesmos parâmetros</td></tr>
+<tr><td><code>IconButton(onPressed: ..., icon: Icon(...))</code></td><td>Botão de ícone (usa <code>icon</code>, não <code>child</code>)</td></tr>
+<tr><td><code>onPressed: null</code></td><td>Botão desligado</td></tr>
+<tr><td><code>FilledButton.icon(onPressed: ..., icon: ..., label: ...)</code></td><td>Botão com ícone e texto (usa <code>label</code>)</td></tr>
+<tr><td><code>style: FilledButton.styleFrom(backgroundColor: ..., foregroundColor: ...)</code></td><td>Cores do botão</td></tr>
+<tr><td><code>onLongPress: () {}</code></td><td>Função para o toque longo</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. O toque</h3>
+<p>Complete com o parâmetro da função que roda no toque:</p>
+<div class="ex-code">TextButton(<input data-answer="onPressed" aria-label="parâmetro">: () {}, child: Text('Ver mais'))</div>
+</div>
+
+<div class="exercise">
+<h3>2. Desligado</h3>
+<p>Complete para o botão ficar desligado:</p>
+<div class="ex-code">FilledButton(onPressed: <input data-answer="null" aria-label="valor">, child: Text('Finalizar'))</div>
+</div>
+
+<div class="exercise">
+<h3>3. O texto do botão com ícone</h3>
+<p>No <code>FilledButton.icon</code>, qual parâmetro recebe o texto?</p>
+<div class="ex-code">FilledButton.icon(onPressed: () {}, icon: Icon(Icons.add), <input data-answer="label" aria-label="parâmetro">: Text('Adicionar'))</div>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. Qual botão usar para a ação <strong>principal</strong> da tela, "Finalizar compra"?</p>
+<label><input type="radio" name="q4"> <code>FilledButton</code></label>
+<label><input type="radio" name="q4"> <code>TextButton</code></label>
+<label><input type="radio" name="q4"> <code>OutlinedButton</code></label>
+<label><input type="radio" name="q4"> <code>IconButton</code></label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">5. Qual é a diferença entre <code>onPressed: salvar</code> e <code>onPressed: salvar()</code>?</p>
+<label><input type="radio" name="q5"> Nenhuma</label>
+<label><input type="radio" name="q5"> A segunda deixa o botão desligado</label>
+<label><input type="radio" name="q5"> A primeira entrega a função para o botão chamar no toque; a segunda chama a função na hora e entrega o resultado</label>
+<label><input type="radio" name="q5"> A primeira só funciona no <code>IconButton</code></label>
+</div>
+
+<h3>Missão final: a barra de ações da receita</h3>
+
+<div class="tryflutter" data-goal="src:FilledButton\.icon;;src:Icons\.bookmark;;src:Text\(\s*'Salvar'\s*\);;src:TextButton;;src:onPressed:\s*null">
+<p class="try-task"><strong>Missão:</strong> monte a coluna de ações: um <code>FilledButton.icon</code> com o ícone <code>Icons.bookmark</code> e o texto <code>Salvar</code>, e um <code>TextButton</code> "Imprimir" <strong>desligado</strong> (a impressora ainda não funciona).</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Bolo de cenoura')),
+        body: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('Botões aqui'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Bolo de cenoura')),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              FilledButton.icon(
+                onPressed: () {},
+                icon: const Icon(Icons.bookmark),
+                label: const Text('Salvar'),
+              ),
+              const TextButton(
+                onPressed: null,
+                child: Text('Imprimir'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Os botões do Material 3, do mais forte ao mais discreto: <code>FilledButton</code>, <code>ElevatedButton</code>, <code>OutlinedButton</code>, <code>TextButton</code>; e o <code>IconButton</code> para ícones.</li>
+  <li><code>onPressed</code> recebe a <strong>função</strong> que roda no toque: <code>() { ... }</code>. Passe a função, não o resultado dela.</li>
+  <li><code>onPressed: null</code> desliga o botão.</li>
+  <li><code>.icon(icon: ..., label: ...)</code> põe ícone e texto.</li>
+  <li><code>style: XButton.styleFrom(backgroundColor: ..., foregroundColor: ...)</code> muda as cores de um botão; para o app inteiro, use o tema.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
