@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Stack e Positioned — um widget em cima do outro | Guia Flutter</title>
+<meta name="description" content="Stack e Positioned no Flutter para quem nunca fez um app: empilhar widgets em camadas, o alignment do Stack, posicionar com top, left, right e bottom, Positioned.fill, o selinho com o número no ícone do carrinho, o que fica cortado (clipBehavior) e os erros reais, com as telas fotografadas no Flutter de verdade.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Stack e Positioned</span></h1>
+
+<p class="intro">A <code>Row</code> põe os widgets lado a lado; a <code>Column</code>, um embaixo do outro. Falta uma direção: <strong>um em cima do outro</strong>, como camadas. O nome do prato escrito <strong>sobre</strong> a foto, o selinho vermelho com o número <strong>sobre</strong> o ícone do carrinho, o botão de favorito no canto da imagem. Para isso existe o <code>Stack</code> ("pilha"), e, dentro dele, o <code>Positioned</code> ("posicionado"), que coloca uma camada num lugar exato.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como o <code>Stack</code> empilha os filhos em camadas: o primeiro embaixo, o último em cima.</li>
+  <li>Como o <code>alignment</code> do <code>Stack</code> decide onde ficam as camadas menores.</li>
+  <li>Como o <code>Positioned</code> prende uma camada às bordas com <code>top</code>, <code>left</code>, <code>right</code> e <code>bottom</code>.</li>
+  <li>Como fazer o selinho com o número em cima de um ícone.</li>
+  <li>O que acontece com o que passa da borda (<code>clipBehavior</code>) e os erros reais.</li>
+</ul>
+</div>
+
+<p>Todos os apps desta aula são um <code>lib/main.dart</code> completo, compilados pelo Flutter <span class="versao">Flutter 3.47</span> do laboratório para a web e fotografados no navegador, em tamanho de celular (390 × 844).</p>
+
+<hr>
+
+<h2>A ideia: folhas de papel na mesa</h2>
+<p>A Ana põe na mesa uma foto do bolo. Por cima, cola um bilhetinho com o nome da receita. Por cima do bilhete, um adesivo de estrela. Cada coisa nova fica <strong>por cima</strong> das anteriores e pode tapar um pedaço delas. O <code>Stack</code> funciona assim: os filhos são desenhados <strong>na ordem da lista</strong>, então o primeiro fica no fundo e o último fica na frente.</p>
+<pre>Stack(children: [ foto, bilhete, estrela ])
+
+      ┌─ estrela   (último: na frente)
+    ┌─┴ bilhete
+  ┌─┴── foto       (primeiro: no fundo)</pre>
+
+<hr>
+
+<h2>1. O primeiro <code>Stack</code></h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: Stack(
+          children: [
+            Container(width: 300, height: 200, color: Colors.orange),
+            Container(width: 200, height: 120, color: Colors.yellow),
+            const Text('Bolo de cenoura', style: TextStyle(fontSize: 24)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>Stack(children: [ … ])</dt><dd>A pilha. Como a <code>Row</code> e a <code>Column</code>, recebe uma lista de filhos.</dd>
+  <dt>Container laranja (300 × 200)</dt><dd>O primeiro filho: a camada do <strong>fundo</strong> (no app de verdade, seria a foto do bolo).</dd>
+  <dt>Container amarelo (200 × 120)</dt><dd>A segunda camada, por cima da laranja.</dd>
+  <dt>Text('Bolo de cenoura')</dt><dd>O último filho: a camada da <strong>frente</strong>, por cima de tudo.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/stack-1.png" alt="Abaixo da barra, um retângulo laranja de 300 × 200 encostado à esquerda; por cima dele, no canto de cima, um retângulo amarelo menor; e por cima do amarelo, no mesmo canto, o texto Bolo de cenoura" width="390" height="844" loading="lazy"><figcaption>As três camadas encostadas no canto de cima, à esquerda: o laranja no fundo, o amarelo no meio e o texto na frente.</figcaption></figure>
+
+<p>Duas regras aparecem nessa foto:</p>
+<ul>
+  <li>As camadas ficam encostadas no <strong>canto de cima, à esquerda</strong>. É o <code>alignment</code> padrão do <code>Stack</code> (<code>AlignmentDirectional.topStart</code>, "começo do topo").</li>
+  <li>O <code>Stack</code> fica com o tamanho da <strong>maior</strong> camada (aqui, a laranja, 300 × 200).</li>
+</ul>
+
+<hr>
+
+<h2>2. Para onde vão as camadas: <code>alignment</code></h2>
+<p>O <code>alignment</code> do <code>Stack</code> diz onde ficam as camadas menores dentro da maior. Os valores são os do <code>Alignment</code>: <code>topLeft</code>, <code>topCenter</code>, <code>topRight</code>, <code>centerLeft</code>, <code>center</code>, <code>centerRight</code>, <code>bottomLeft</code>, <code>bottomCenter</code> e <code>bottomRight</code> (aula <a href="center-align.html">Center e Align</a>). Este app mostra três <code>Stack</code>s iguais, mudando só o <code>alignment</code>:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class Camadas extends StatelessWidget {
+  const Camadas(this.alinhamento, this.nome, {super.key});
+
+  final Alignment alinhamento;
+  final String nome;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(8),
+      child: Stack(
+        alignment: alinhamento,
+        children: [
+          Container(width: 300, height: 160, color: Colors.orange),
+          Container(width: 140, height: 60, color: Colors.yellow),
+          Text(nome, style: const TextStyle(fontSize: 18)),
+        ],
+      ),
+    );
+  }
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('alignment')),
+        body: const Column(
+          children: [
+            Camadas(Alignment.topLeft, 'topLeft'),
+            Camadas(Alignment.center, 'center'),
+            Camadas(Alignment.bottomRight, 'bottomRight'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<figure class="tela"><img src="assets/telas/stack-2.png" alt="Três retângulos laranja iguais, um embaixo do outro, cada um com um retângulo amarelo menor e um texto por cima: no primeiro, o amarelo e o texto topLeft no canto de cima à esquerda; no segundo, no meio, com o texto center; no terceiro, no canto de baixo à direita, com o texto bottomRight" width="390" height="844" loading="lazy"><figcaption>O mesmo Stack com <code>topLeft</code>, <code>center</code> e <code>bottomRight</code>.</figcaption></figure>
+
+<p>Com <code>topLeft</code>, o amarelo e o texto encostam no canto de cima à esquerda do laranja; com <code>center</code>, ficam os dois no meio; com <code>bottomRight</code>, no canto de baixo à direita. Repare que o <strong>texto</strong> também se moveu: o <code>alignment</code> vale para <strong>todas</strong> as camadas que não têm <code>Positioned</code>, cada uma alinhada pelo seu próprio tamanho dentro do <code>Stack</code>.</p>
+
+<div class="tryflutter" data-goal="src:alignment:\s*Alignment\.bottomCenter">
+<p class="try-task"><strong>Missão:</strong> o nome do prato deve ficar <strong>embaixo, no meio</strong> da "foto" laranja. Troque o <code>alignment</code> do <code>Stack</code> para <code>Alignment.bottomCenter</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: Stack(
+          alignment: Alignment.topLeft,
+          children: [
+            Container(width: 390, height: 240, color: Colors.orange),
+            const Text('Bolo de cenoura', style: TextStyle(fontSize: 28, color: Colors.white)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: Stack(
+          alignment: Alignment.bottomCenter,
+          children: [
+            Container(width: 390, height: 240, color: Colors.orange),
+            const Text('Bolo de cenoura', style: TextStyle(fontSize: 28, color: Colors.white)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>3. <code>Positioned</code>: um lugar exato</h2>
+<p>O <code>alignment</code> vale para todas as camadas ao mesmo tempo. Quando cada camada precisa de um lugar diferente, embrulhe-a num <code>Positioned</code> e diga a distância até as bordas do <code>Stack</code>:</p>
+
+<pre class="file" data-file="lib/main.dart (só o body)">        body: Stack(
+          children: [
+            Container(width: 390, height: 240, color: Colors.orange),
+            const Positioned(
+              left: 16,
+              bottom: 16,
+              child: Text('Bolo de cenoura', style: TextStyle(fontSize: 28, color: Colors.white)),
+            ),
+            const Positioned(
+              top: 8,
+              right: 8,
+              child: Icon(Icons.favorite, color: Colors.red, size: 40),
+            ),
+          ],
+        ),
+</pre>
+
+<dl class="anatomy">
+  <dt>Positioned(left: 16, bottom: 16, …)</dt><dd>"16 de distância da borda esquerda e 16 da borda de baixo do <code>Stack</code>." O texto fica no canto de baixo, à esquerda.</dd>
+  <dt>Positioned(top: 8, right: 8, …)</dt><dd>O coração, a 8 do topo e 8 da direita: o canto de cima, à direita.</dd>
+  <dt>const Positioned</dt><dd>O <code>Positioned</code> tem construtor <code>const</code>; como o texto e o ícone também são constantes, ele inteiro pode ser.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/stack-3.png" alt="Uma faixa laranja da largura da tela; dentro dela, o texto branco Bolo de cenoura no canto de baixo à esquerda e um coração vermelho no canto de cima à direita" width="390" height="844" loading="lazy"><figcaption>O nome no canto de baixo, à esquerda, e o coração no canto de cima, à direita, ambos sobre o laranja.</figcaption></figure>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Você diz</th><th>O que acontece</th></tr>
+<tr><td><code>top</code> ou <code>bottom</code> (um dos dois)</td><td>A distância até aquela borda; a altura é a do filho</td></tr>
+<tr><td><code>top</code> <strong>e</strong> <code>bottom</code></td><td>O filho é <strong>esticado</strong> entre as duas bordas</td></tr>
+<tr><td><code>left</code> ou <code>right</code> (um dos dois)</td><td>A distância até aquela borda; a largura é a do filho</td></tr>
+<tr><td><code>left</code> <strong>e</strong> <code>right</code></td><td>O filho é esticado entre as duas bordas</td></tr>
+<tr><td><code>width</code> / <code>height</code></td><td>Um tamanho fixo (só combina com <strong>um</strong> dos lados daquela direção)</td></tr>
+<tr><td><code>Positioned.fill(child: …)</code></td><td><code>top</code>, <code>left</code>, <code>right</code> e <code>bottom</code> = 0: o filho cobre o <code>Stack</code> inteiro</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>4. O selinho com o número</h2>
+<p>O exemplo mais famoso de <code>Stack</code>: o ícone do carrinho com uma bolinha vermelha mostrando quantos itens há nele.</p>
+
+<pre class="file" data-file="lib/main.dart (só o body)">        body: Center(
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              const Icon(Icons.shopping_cart, size: 64),
+              Positioned(
+                right: -6,
+                top: -6,
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                  child: const Text('3', style: TextStyle(color: Colors.white, fontSize: 16)),
+                ),
+              ),
+            ],
+          ),
+        ),
+</pre>
+
+<dl class="anatomy">
+  <dt>Center</dt><dd>Só para pôr o carrinho no meio da tela (aula <a href="center-align.html">Center e Align</a>).</dd>
+  <dt>Icon(Icons.shopping_cart, size: 64)</dt><dd>A camada de baixo. Como é a única sem <code>Positioned</code>, é ela que dá o tamanho do <code>Stack</code>: 64 × 64.</dd>
+  <dt>right: -6, top: -6</dt><dd><strong>Números negativos</strong>: a bolinha passa um pouco <strong>para fora</strong> do <code>Stack</code>, no canto de cima à direita, como nos apps de verdade.</dd>
+  <dt>clipBehavior: Clip.none</dt><dd>"Não corte nada." Por padrão, o <code>Stack</code> <strong>corta</strong> o que passa da borda dele (<code>Clip.hardEdge</code>). Sem esta linha, a bolinha apareceria cortada.</dd>
+  <dt>BoxDecoration(… shape: BoxShape.circle)</dt><dd>Pinta o <code>Container</code> de vermelho, em forma de círculo (aula <a href="decoration.html">BoxDecoration</a>).</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/stack-4.png" alt="No meio da tela, o ícone preto de um carrinho de compras com uma bolinha vermelha com o número 3 em branco, inteira, saindo um pouco pelo canto de cima à direita do carrinho" width="390" height="844" loading="lazy"><figcaption>O carrinho no meio da tela com a bolinha vermelha do número 3 no canto de cima, à direita.</figcaption></figure>
+
+<p>E sem o <code>clipBehavior: Clip.none</code>, o mesmo código fica assim:</p>
+
+<figure class="tela"><img src="assets/telas/stack-5.png" alt="O mesmo carrinho, mas a bolinha vermelha aparece cortada: falta o pedaço de cima e o da direita, e o número 3 está pela metade" width="390" height="844" loading="lazy"><figcaption>Sem <code>Clip.none</code>: a parte da bolinha que passa da borda do Stack (64 × 64) é cortada.</figcaption></figure>
+
+<div class="note">
+<strong>O Material 3 já tem um selinho pronto: <code>Badge</code></strong>
+<p>Para esse caso específico, o Flutter tem o widget <code>Badge</code> ("crachá"): <code>Badge(label: Text('3'), child: Icon(Icons.shopping_cart))</code>. Ele faz o <code>Stack</code> por você, com as cores do tema. Mesmo assim, vale entender o <code>Stack</code>: é com ele que você monta tudo o que não vem pronto.</p>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Quero…</th><th>Use</th></tr>
+<tr><td>Todas as camadas no mesmo ponto (no meio, embaixo…)</td><td><code>Stack(alignment: …)</code></td></tr>
+<tr><td>Cada camada num lugar, presa às bordas</td><td><code>Positioned(top:, left:, …)</code></td></tr>
+<tr><td>Uma camada num ponto "relativo" (no meio de baixo)</td><td><code>Align(alignment: …)</code> como filho do Stack (aula <a href="center-align.html">Center e Align</a>)</td></tr>
+<tr><td>Uma camada cobrindo tudo (uma película escura sobre a foto)</td><td><code>Positioned.fill</code></td></tr>
+<tr><td>Um número sobre um ícone</td><td><code>Badge</code></td></tr>
+<tr><td>Uma imagem de <strong>fundo</strong> atrás de um conteúdo</td><td><code>Container</code> com <code>decoration: BoxDecoration(image: …)</code> (aula <a href="decoration.html">BoxDecoration</a>)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>Positioned</code> fora de um <code>Stack</code></strong>
+<pre class="file" data-file="lib/main.dart (só o body)">        body: const Column(
+          children: [
+            Positioned(top: 10, left: 10, child: Text('Bolo de cenoura')),
+          ],
+        ),
+</pre>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following assertion was thrown while applying parent data.:
+Incorrect use of ParentDataWidget.
+The ParentDataWidget Positioned(left: 10.0, top: 10.0) wants to apply ParentData of type
+StackParentData to a RenderObject, which has been set up to accept ParentData of incompatible type
+FlexParentData.
+Usually, this means that the Positioned widget has the wrong ancestor RenderObjectWidget. Typically,
+Positioned widgets are placed directly inside Stack widgets.
+The offending Positioned is currently placed inside a Column widget.
+«  (a "cadeia" de widgets)
+</pre>
+<figure class="tela"><img src="assets/telas/stack-8.png" alt="A barra Receitas da Ana e, logo abaixo, o texto Bolo de cenoura colado no canto esquerdo, sem nenhum afastamento" width="390" height="844" loading="lazy"><figcaption>O app abre, mas o <code>Positioned</code> é ignorado: o texto fica no canto, sem os 10 de distância.</figcaption></figure>
+<p>"Uso errado de <code>ParentDataWidget</code>." Como o <code>Expanded</code> (aula <a href="expanded.html">Expanded e Flexible</a>), o <code>Positioned</code> não desenha nada: ele deixa um recado (as distâncias) para o pai, e só o <code>Stack</code> sabe ler esse recado. A última linha diz onde ele está: <code>inside a Column widget</code>, "dentro de uma <code>Column</code>". <strong>Como consertar:</strong> o <code>Positioned</code> tem de ser filho <strong>direto</strong> de um <code>Stack</code>. Para só afastar um widget das bordas, sem camadas, use um <a href="padding-margin.html">Padding</a>.</p>
+</div>
+
+<div class="cenario">
+<strong><code>left</code>, <code>right</code> e <code>width</code> ao mesmo tempo</strong>
+<pre class="file" data-file="lib/main.dart (só o body)">        body: Stack(
+          children: [
+            Container(width: 390, height: 200, color: Colors.orange),
+            Positioned(left: 10, right: 10, width: 100, child: Container(height: 50, color: Colors.yellow)),
+          ],
+        ),
+</pre>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following assertion was thrown building MeuApp(dirty):
+Assertion failed:
+file:///home/ana/flutter/packages/flutter/lib/src/widgets/basic.dart:4917:15
+left == null || right == null || width == null
+is not true
+
+The relevant error-causing widget was:
+  MeuApp MeuApp:file:///home/ana/app/lib/main.dart:3:29
+«  (a pilha)
+</pre>
+<p>"Uma asserção falhou: <code>left == null || right == null || width == null</code> não é verdade." Traduzindo a condição: "pelo menos um dos três (<code>left</code>, <code>right</code>, <code>width</code>) tem de ficar vazio". Faz sentido: com a distância da esquerda <strong>e</strong> da direita, a largura já está decidida; um <code>width</code> a mais seria uma terceira opinião, possivelmente diferente. O endereço <code>basic.dart:4917</code> é o lugar, no código do Flutter, onde o <code>Positioned</code> faz essa conferência. Com o app rodando no modo de depuração, a tela inteira fica vermelha com essa mesma mensagem em amarelo. <strong>Como consertar:</strong> use só dois dos três na horizontal (<code>left</code> e <code>right</code>, <strong>ou</strong> <code>left</code> e <code>width</code>…); a mesma regra vale para <code>top</code>, <code>bottom</code> e <code>height</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Todas as camadas com <code>Positioned</code>, dentro de uma <code>Column</code></strong>
+<pre class="file" data-file="lib/main.dart (só o body)">        body: const Column(
+          children: [
+            Text('Antes'),
+            Stack(
+              children: [
+                Positioned(top: 0, left: 0, child: Icon(Icons.star, size: 48)),
+              ],
+            ),
+            Text('Depois'),
+          ],
+        ),
+</pre>
+<figure class="tela"><img src="assets/telas/stack-6.png" alt="Só a barra Receitas da Ana; o resto da tela está vazio, sem o texto Antes, sem a estrela e sem o texto Depois" width="390" height="844" loading="lazy"><figcaption>Compilado em modo <em>release</em> (o do app publicado): não aparece nem o "Antes" nem o "Depois". O layout inteiro da coluna falhou.</figcaption></figure>
+<p>No modo de depuração (o do <code>flutter run</code>), o console explica:</p>
+<pre class="term">══╡ EXCEPTION CAUGHT BY RENDERING LIBRARY ╞═════════════════════════════════════════════════════════
+The following assertion was thrown during performLayout():
+Assertion failed:
+file:///home/ana/flutter/packages/flutter/lib/src/rendering/stack.dart:666:7
+size.isFinite
+"A Stack requires bounded constraints from its parent. This error commonly occurs when a Stack is
+placed inside a widget like Column, ListView, or other widgets that do not constrain their children.
+To fix this, wrap the Stack in a widget that provides finite height and width constraints, such as a
+SizedBox or ConstrainedBox. Use Expanded only if the parent is a Flex widget like Row or Column."
+
+The relevant error-causing widget was:
+  Stack Stack:file:///home/ana/app/lib/main.dart:17:13
+«  (os detalhes)
+  constraints: BoxConstraints(0.0&lt;=w&lt;=390.0, 0.0&lt;=h&lt;=Infinity)
+  size: MISSING
+</pre>
+<p>Quando <strong>todas</strong> as camadas têm <code>Positioned</code>, nenhuma delas dá tamanho ao <code>Stack</code>; aí ele tenta ficar do <strong>maior</strong> tamanho que o pai deixar. Dentro de uma <code>Column</code>, a altura permitida vai até <code>Infinity</code> (veja a linha <code>constraints</code>), e nada pode ter altura infinita: a conferência <code>size.isFinite</code> ("o tamanho é finito") falha. A mensagem entre aspas traduz: "Um Stack precisa de restrições com limite. Isso costuma acontecer quando ele está dentro de uma <code>Column</code>, de um <code>ListView</code>… Para consertar, embrulhe o Stack num widget que dê largura e altura finitas, como um <code>SizedBox</code>." <strong>Como consertar:</strong> <code>SizedBox(height: 60, child: Stack(…))</code>, ou deixe pelo menos uma camada sem <code>Positioned</code> para dar o tamanho. O porquê do "infinito" está em <a href="constraints.html">Como o Flutter Calcula Tamanhos</a>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>Stack(children: [a, b, c])</code></td><td><code>a</code> no fundo, <code>c</code> na frente</td></tr>
+<tr><td><code>Stack(alignment: Alignment.center, …)</code></td><td>Onde ficam as camadas sem <code>Positioned</code> (padrão: em cima, no começo)</td></tr>
+<tr><td><code>Stack(clipBehavior: Clip.none, …)</code></td><td>Não corta o que passa da borda (padrão: <code>Clip.hardEdge</code>, corta)</td></tr>
+<tr><td><code>Stack(fit: StackFit.expand, …)</code></td><td>As camadas sem <code>Positioned</code> esticam até o tamanho máximo</td></tr>
+<tr><td><code>Positioned(top:, right:, bottom:, left:, width:, height:, child:)</code></td><td>Prende o filho às bordas do Stack</td></tr>
+<tr><td><code>Positioned.fill(child: w)</code></td><td><code>w</code> cobre o Stack inteiro</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">1. Em <code>Stack(children: [foto, texto, estrela])</code>, quem aparece na frente de todos?</p>
+<label><input type="radio" name="q1"> <code>foto</code></label>
+<label><input type="radio" name="q1"> <code>texto</code></label>
+<label><input type="radio" name="q1"> <code>estrela</code></label>
+<label><input type="radio" name="q1"> Depende do tamanho de cada um</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. Como pôr uma camada no canto de baixo, à direita, a 8 das bordas?</p>
+<label><input type="radio" name="q2"> <code>Positioned(top: 8, left: 8, …)</code></label>
+<label><input type="radio" name="q2"> <code>Positioned(bottom: 8, right: 8, …)</code></label>
+<label><input type="radio" name="q2"> <code>Padding(padding: EdgeInsets.all(8), …)</code></label>
+<label><input type="radio" name="q2"> <code>Positioned.fill(…)</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">3. A bolinha com <code>top: -6</code> aparece cortada. O que falta?</p>
+<label><input type="radio" name="q3"> <code>clipBehavior: Clip.none</code> no Stack</label>
+<label><input type="radio" name="q3"> <code>const</code> no Positioned</label>
+<label><input type="radio" name="q3"> Trocar <code>-6</code> por <code>6</code></label>
+<label><input type="radio" name="q3"> <code>alignment: Alignment.center</code></label>
+</div>
+
+<h3>Missão final: o selo de "novo"</h3>
+
+<div class="tryflutter" data-goal="src:Positioned\(;;src:top:\s*12;;src:left:\s*12">
+<p class="try-task"><strong>Missão:</strong> a receita é nova! Embrulhe a etiqueta verde "NOVO" num <code>Positioned</code> com <code>top: 12</code> e <code>left: 12</code>, para ela ficar no canto de cima, à esquerda, da foto laranja (e não no meio, onde o <code>alignment</code> a põe).</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(width: 390, height: 240, color: Colors.orange),
+            const Text('Torta de limão', style: TextStyle(fontSize: 28, color: Colors.white)),
+            Container(
+              color: Colors.green,
+              padding: const EdgeInsets.all(6),
+              child: const Text('NOVO', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(width: 390, height: 240, color: Colors.orange),
+            const Text('Torta de limão', style: TextStyle(fontSize: 28, color: Colors.white)),
+            Positioned(
+              top: 12,
+              left: 12,
+              child: Container(
+                color: Colors.green,
+                padding: const EdgeInsets.all(6),
+                child: const Text('NOVO', style: TextStyle(color: Colors.white)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<figure class="tela"><img src="assets/telas/stack-7.png" alt="Uma faixa laranja com o texto branco Torta de limão no meio e uma etiqueta verde NOVO no canto de cima à esquerda" width="390" height="844" loading="lazy"><figcaption>O resultado esperado da missão.</figcaption></figure>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>Stack</code> empilha os filhos em camadas: o primeiro da lista fica no fundo, o último na frente.</li>
+  <li>O <code>Stack</code> tem o tamanho da maior camada sem <code>Positioned</code>; o <code>alignment</code> (padrão: em cima, no começo) posiciona essas camadas.</li>
+  <li><code>Positioned</code> prende uma camada às bordas com <code>top</code>, <code>right</code>, <code>bottom</code>, <code>left</code> (e <code>width</code>/<code>height</code>); <code>Positioned.fill</code> cobre tudo.</li>
+  <li>O que passa da borda é cortado, a não ser com <code>clipBehavior: Clip.none</code>.</li>
+  <li><code>Positioned</code> só funciona como filho direto de um <code>Stack</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
