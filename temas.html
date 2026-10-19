@@ -1,0 +1,653 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter ThemeData — o tema do app inteiro num lugar só | Guia Flutter</title>
+<meta name="description" content="Temas no Flutter para quem nunca fez um app: o ThemeData no theme do MaterialApp, a cor-semente (colorSchemeSeed), ler o tema com Theme.of(context), estilos de texto do tema, temas de componentes (AppBarThemeData, FilledButtonThemeData, CardThemeData), um tema só para um pedaço da tela com Theme e copyWith, e os erros reais explicados em português.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Temas (ThemeData)</span></h1>
+
+<p class="intro">A Ana decidiu que o app de receitas vai ser <strong>verde</strong>, a cor da horta. Ela poderia escrever <code>color: Colors.green</code> em cada botão, cada barra, cada ícone… e, no mês que vem, quando mudar de ideia, trocar tudo de novo, um por um. O Flutter tem um jeito melhor: o <strong>tema</strong>. Você descreve as cores, os textos e o jeito dos componentes <strong>uma vez</strong>, no <code>MaterialApp</code>, e todos os widgets do app seguem. Esse "manual de estilo" é o <strong><code>ThemeData</code></strong> ("dados do tema").</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Onde mora o tema (<code>MaterialApp(theme: ThemeData(...))</code>) e o que ele muda.</li>
+  <li>A pintar o app inteiro a partir de uma cor só, com <code>colorSchemeSeed</code>.</li>
+  <li>A <strong>ler</strong> o tema dentro dos seus widgets com <code>Theme.of(context)</code>: as cores e os estilos de texto.</li>
+  <li>A mudar o jeito de um tipo de componente no app todo: <code>appBarTheme</code>, <code>filledButtonTheme</code>, <code>cardTheme</code>.</li>
+  <li>A dar um tema diferente a um pedaço da tela com o widget <code>Theme</code> e o <code>copyWith</code>.</li>
+  <li>Os erros reais: o <code>Theme.of</code> que lê o tema errado e o estilo de texto que pode ser <code>null</code>.</li>
+</ul>
+</div>
+
+<p>Tudo nesta aula foi compilado com o <strong>Flutter <span class="versao">3.47</span></strong> no laboratório do guia. As cores em detalhe (o <code>ColorScheme</code>) são o assunto da próxima aula, <a href="material3.html">Material 3 e ColorScheme</a>; o modo escuro vem logo depois, em <a href="tema-escuro.html">Tema Escuro</a>.</p>
+
+<hr>
+
+<h2>A ideia: o manual de identidade visual</h2>
+<p>A padaria do bairro tem um "manual da marca": a cor do toldo, a letra do cardápio, o formato das etiquetas. Quem pinta a placa nova, quem imprime o saquinho e quem faz o cardápio consultam o manual, em vez de inventar. Quando a padaria muda de cor, muda o manual, e tudo o que for feito depois sai com a cor nova.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Na padaria</th><th>No Flutter</th></tr>
+<tr><td>O manual da marca</td><td>O <code>ThemeData</code>, no <code>theme:</code> do <code>MaterialApp</code></td></tr>
+<tr><td>As cores da marca</td><td>O <code>colorScheme</code> (gerado do <code>colorSchemeSeed</code>)</td></tr>
+<tr><td>As letras do cardápio (título, texto, legenda)</td><td>O <code>textTheme</code></td></tr>
+<tr><td>"Etiquetas sempre com cantos redondos"</td><td>Os temas de componente: <code>cardTheme</code>, <code>filledButtonTheme</code>…</td></tr>
+<tr><td>Consultar o manual</td><td><code>Theme.of(context)</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>1. O app sem tema</h2>
+<p>Para ver o que o tema muda, primeiro uma "vitrine" com os componentes mais comuns, <strong>sem</strong> tema nenhum:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: VitrinePage(),
+    );
+  }
+}
+
+class VitrinePage extends StatelessWidget {
+  const VitrinePage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          const Card(
+            child: ListTile(
+              leading: Icon(Icons.cake),
+              title: Text('Bolo de cenoura'),
+              subtitle: Text('40 min · fácil'),
+            ),
+          ),
+          const SizedBox(height: 16),
+          FilledButton(onPressed: () {}, child: const Text('Ver receita')),
+          const SizedBox(height: 8),
+          OutlinedButton(onPressed: () {}, child: const Text('Favoritar')),
+          const SizedBox(height: 16),
+          const Switch(value: true, onChanged: null),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {},
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+</pre>
+
+<figure class="tela"><img src="assets/telas/temas-1.png" alt="Vitrine com fundo rosado bem claro: título 'Receitas da Ana', um cartão 'Bolo de cenoura, 40 min · fácil', um botão roxo cheio 'Ver receita', um botão contornado 'Favoritar' com texto roxo, um interruptor cinza e um botão flutuante lilás com um + no canto de baixo" width="390" height="844" loading="lazy"><figcaption>A vitrine sem tema: as cores padrão do Material 3, puxadas para o roxo.</figcaption></figure>
+
+<p>Sem tema, o Flutter usa a paleta padrão do Material 3, gerada de um <strong>roxo</strong>: o botão "Ver receita" é roxo, o texto do "Favoritar" é roxo, o botão flutuante (o <code>+</code> no canto) é lilás e até o fundo da tela tem um leve tom rosado. O interruptor está cinza porque está <strong>desligado para toques</strong> (<code>onChanged: null</code>): um componente desativado usa tons neutros, com qualquer tema.</p>
+
+<hr>
+
+<h2>2. Uma cor para o app inteiro: <code>colorSchemeSeed</code></h2>
+<p>Agora, uma linha no <code>MaterialApp</code>. A <code>VitrinePage</code> não muda nada:</p>
+
+<pre class="file" data-file="lib/main.dart">    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.green),
+      home: const VitrinePage(),
+    );
+</pre>
+
+<figure class="tela"><img src="assets/telas/temas-2.png" alt="A mesma vitrine em verde: fundo esverdeado bem claro, botão 'Ver receita' verde-escuro, texto de 'Favoritar' verde, interruptor ainda cinza e botão flutuante verde-claro" width="390" height="844" loading="lazy"><figcaption>A mesma vitrine com <code>colorSchemeSeed: Colors.green</code>.</figcaption></figure>
+
+<dl class="anatomy">
+  <dt>theme:</dt><dd>O parâmetro do <code>MaterialApp</code> que recebe o tema. Tudo o que estiver abaixo do <code>MaterialApp</code> (todas as telas) usa esse tema.</dd>
+  <dt>ThemeData(...)</dt><dd>O "manual": um objeto com dezenas de parâmetros (cores, textos, temas de cada componente). Você só preenche o que quer mudar; o resto fica no padrão do Material 3.</dd>
+  <dt>colorSchemeSeed: Colors.green</dt><dd>A <strong>cor-semente</strong>. A partir de uma cor só, o Flutter calcula uma <strong>paleta inteira</strong> que combina: o verde principal dos botões, um verde clarinho para fundos de destaque, o fundo levemente esverdeado, a cor do texto sobre cada fundo. É por isso que o botão cheio, o texto do botão contornado, o botão flutuante, o fundo do cartão e até o fundo da tela mudaram juntos.</dd>
+</dl>
+
+<p>Compare com a foto anterior: o "Ver receita" virou um verde-escuro, o "Favoritar" ganhou texto verde, o botão flutuante ficou verde-claro e o fundo da tela e do cartão ganharam um tom esverdeado bem leve. A <code>AppBar</code> continua com a cor do fundo: no Material 3, a barra de cima é discreta por padrão (a seção 4 mostra como pintá-la). Repare também que o verde do botão não é o <code>Colors.green</code> vivo da semente: o Flutter <strong>ajusta</strong> o tom para o texto branco ficar legível em cima dele.</p>
+
+<div class="tryflutter" data-goal="src:colorSchemeSeed:\s*Colors\.(?!green)\w+">
+<p class="try-task"><strong>Missão:</strong> experimente outra cor-semente: troque o <code>Colors.green</code> por <code>Colors.purple</code>, <code>Colors.teal</code> ou a sua cor favorita, e veja a vitrine inteira mudar.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.green),
+      home: const VitrinePage(),
+    );
+  }
+}
+
+class VitrinePage extends StatelessWidget {
+  const VitrinePage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          const Card(
+            child: ListTile(
+              leading: Icon(Icons.cake),
+              title: Text('Bolo de cenoura'),
+              subtitle: Text('40 min · fácil'),
+            ),
+          ),
+          const SizedBox(height: 16),
+          FilledButton(onPressed: () {}, child: const Text('Ver receita')),
+          const SizedBox(height: 8),
+          OutlinedButton(onPressed: () {}, child: const Text('Favoritar')),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {},
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.purple),
+      home: const VitrinePage(),
+    );
+  }
+}
+
+class VitrinePage extends StatelessWidget {
+  const VitrinePage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          const Card(
+            child: ListTile(
+              leading: Icon(Icons.cake),
+              title: Text('Bolo de cenoura'),
+              subtitle: Text('40 min · fácil'),
+            ),
+          ),
+          const SizedBox(height: 16),
+          FilledButton(onPressed: () {}, child: const Text('Ver receita')),
+          const SizedBox(height: 8),
+          OutlinedButton(onPressed: () {}, child: const Text('Favoritar')),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {},
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>3. Lendo o tema: <code>Theme.of(context)</code></h2>
+<p>Os componentes do Material já consultam o tema sozinhos. Os <strong>seus</strong> widgets também podem: em vez de escrever uma cor ou um tamanho de letra à mão, peça ao tema. Assim, quando o tema mudar, eles mudam junto:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.green),
+      home: const ReceitaPage(),
+    );
+  }
+}
+
+class ReceitaPage extends StatelessWidget {
+  const ReceitaPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Bolo de cenoura', style: tema.textTheme.headlineMedium),
+            Text('40 minutos · rende 12 fatias', style: tema.textTheme.bodySmall),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              color: tema.colorScheme.primaryContainer,
+              child: Text(
+                'Dica: use cenouras bem laranjas.',
+                style: TextStyle(color: tema.colorScheme.onPrimaryContainer),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<figure class="tela"><img src="assets/telas/temas-3.png" alt="Tela com 'Bolo de cenoura' em letras grandes, embaixo '40 minutos · rende 12 fatias' em letras pequenas, e uma caixa verde-clara com o texto 'Dica: use cenouras bem laranjas.' em verde-escuro" width="390" height="844" loading="lazy"><figcaption>Título, legenda e caixa de dica, todos com cores e letras tiradas do tema.</figcaption></figure>
+
+<dl class="anatomy">
+  <dt>final tema = Theme.of(context);</dt><dd>"Me dê o tema que vale aqui." O <code>Theme.of</code> sobe pela árvore a partir do <code>context</code> até achar o tema (o do <code>MaterialApp</code>, ou um mais próximo, seção 5). Guardar numa variável evita repetir <code>Theme.of(context)</code> a cada linha.</dd>
+  <dt>tema.textTheme.headlineMedium</dt><dd>Um dos estilos de texto prontos do tema. O Material 3 tem 15, em cinco grupos de três tamanhos (<code>Large</code>, <code>Medium</code>, <code>Small</code>): <code>display</code> (enormes), <code>headline</code> (títulos de tela), <code>title</code> (títulos de seção), <code>body</code> (texto corrido) e <code>label</code> (botões e etiquetas).</dd>
+  <dt>tema.colorScheme.primaryContainer</dt><dd>Uma cor da paleta: um tom claro da cor principal, para fundos de destaque.</dd>
+  <dt>tema.colorScheme.onPrimaryContainer</dt><dd>A cor para escrever <strong>sobre</strong> o <code>primaryContainer</code>. No Material 3, cada cor de fundo tem a sua cor "on" ("sobre"), já escolhida para ter contraste. Usando o par, o texto sempre fica legível, até no modo escuro.</dd>
+</dl>
+
+<div class="tip">
+<strong>E o <code>TextStyle</code> com <code>fontSize</code>?</strong>
+<p>Na aula <a href="text-style.html">Estilos de Texto</a>, a Ana escrevia <code>TextStyle(fontSize: 28, fontWeight: FontWeight.bold)</code>. Funciona, mas cada tela acaba com um tamanho diferente. Com os estilos do tema, todo título de tela é <code>headlineMedium</code>, e mudar o tamanho de todos é mudar <strong>um</strong> lugar. Quando precisar ajustar só um detalhe, junte os dois: <code>tema.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)</code> (o <code>?.</code> está explicado em <a href="#errado">Quando dá errado</a>).</p>
+</div>
+
+<hr>
+
+<h2>4. O jeito de cada componente</h2>
+<p>A Ana quer, no app todo: a <code>AppBar</code> verde com letras brancas e o título no meio; os botões cheios com cantos menos redondos; e os cartões com borda fina em vez de sombra. Cada tipo de componente tem o seu "subtema" dentro do <code>ThemeData</code>:</p>
+
+<pre class="file" data-file="lib/main.dart">    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorSchemeSeed: Colors.green,
+        appBarTheme: const AppBarThemeData(
+          backgroundColor: Colors.green,
+          foregroundColor: Colors.white,
+          centerTitle: true,
+        ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        ),
+        cardTheme: CardThemeData(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            side: const BorderSide(color: Colors.black26),
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+      home: const VitrinePage(),
+    );
+</pre>
+
+<figure class="tela"><img src="assets/telas/temas-4.png" alt="Vitrine com a barra de cima verde viva e o título 'Receitas da Ana' branco e centralizado; o cartão sem sombra e com borda fina cinza; o botão 'Ver receita' com cantos pouco arredondados" width="390" height="844" loading="lazy"><figcaption>A vitrine com os temas de componente: barra verde, botão de cantos retos e cartão com borda.</figcaption></figure>
+
+<dl class="anatomy">
+  <dt>appBarTheme: AppBarThemeData(...)</dt><dd>O jeito de <strong>todas</strong> as <code>AppBar</code> do app: <code>backgroundColor</code> (fundo), <code>foregroundColor</code> (título e ícones) e <code>centerTitle</code> (título no meio). No Material 3, a barra é clara por padrão; quem quer a barra colorida pede aqui.</dd>
+  <dt>filledButtonTheme: FilledButtonThemeData(style: ...)</dt><dd>O estilo de todos os <code>FilledButton</code>. O <code>FilledButton.styleFrom(...)</code> é o mesmo que você usaria num botão só (aula <a href="botoes.html">Botões</a>), agora valendo para todos. Cada tipo de botão tem o seu: <code>elevatedButtonTheme</code>, <code>outlinedButtonTheme</code>, <code>textButtonTheme</code>.</dd>
+  <dt>cardTheme: CardThemeData(...)</dt><dd>Todos os <code>Card</code>: sem sombra (<code>elevation: 0</code>) e com borda fina.</dd>
+</dl>
+
+<div class="note">
+<strong><code>AppBarTheme</code> ou <code>AppBarThemeData</code>?</strong>
+<p>Em tutoriais mais antigos você vai ver <code>appBarTheme: AppBarTheme(...)</code> e <code>cardTheme: CardTheme(...)</code>. Nas versões recentes do Flutter, o que vai dentro do <code>ThemeData</code> são as classes terminadas em <strong><code>Data</code></strong> (<code>AppBarThemeData</code>, <code>CardThemeData</code>); os nomes sem <code>Data</code> agora são widgets que aplicam um subtema a um pedaço da árvore. No Flutter 3.47 do laboratório, o <code>cardTheme</code> só aceita <code>CardThemeData</code>.</p>
+</div>
+
+<hr>
+
+<h2>5. Um tema só para um pedaço: <code>Theme</code> e <code>copyWith</code></h2>
+<p>Na tela de receitas, a Ana quer que só a área de "Receitas de Natal" fique vermelha, sem mexer no resto do app. O widget <code>Theme</code> troca o tema <strong>para os filhos dele</strong>:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.green),
+      home: const ReceitasPage(),
+    );
+  }
+}
+
+class ReceitasPage extends StatelessWidget {
+  const ReceitasPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            FilledButton(onPressed: () {}, child: const Text('Receitas do dia a dia')),
+            const SizedBox(height: 16),
+            Theme(
+              data: ThemeData(colorSchemeSeed: Colors.red),
+              child: FilledButton(
+                onPressed: () {},
+                child: const Text('Receitas de Natal'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<figure class="tela"><img src="assets/telas/temas-5.png" alt="Dois botões largos um sob o outro: 'Receitas do dia a dia' verde-escuro e 'Receitas de Natal' vermelho-tijolo" width="390" height="844" loading="lazy"><figcaption>Dois botões iguais; o de baixo, dentro de um <code>Theme</code> com semente vermelha.</figcaption></figure>
+
+<dl class="anatomy">
+  <dt>Theme(data: ..., child: ...)</dt><dd>Um tema que vale só para o <code>child</code> e tudo abaixo dele. O <code>Theme.of(context)</code> de quem está lá dentro acha este tema primeiro, porque ele está mais perto.</dd>
+  <dt>data: ThemeData(colorSchemeSeed: Colors.red)</dt><dd>Um tema novo, do zero. Cuidado: "do zero" quer dizer que tudo o que o tema do app tinha de especial (o <code>cardTheme</code>, o <code>appBarTheme</code>…) <strong>não</strong> vale aqui dentro.</dd>
+</dl>
+
+<p>Para herdar o tema do app e mudar só um detalhe, use o <code>copyWith</code> ("cópia com"): ele copia o tema atual e troca só o que você pedir:</p>
+
+<pre class="file" data-file="lib/main.dart">Theme(
+  data: Theme.of(context).copyWith(
+    colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),
+  ),
+  child: FilledButton(onPressed: () {}, child: const Text('Receitas de Natal')),
+),
+</pre>
+
+<p>Aqui, o botão de Natal fica vermelho, mas continua com o formato definido no <code>filledButtonTheme</code> do app.</p>
+
+<hr>
+
+<h2>Formas diferentes de fazer</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Jeito</th><th>Quando usar</th></tr>
+<tr><td>Cor escrita no widget: <code>FilledButton.styleFrom(backgroundColor: Colors.green)</code></td><td>Uma exceção, num lugar só. Se você se pegar repetindo, é hora de ir para o tema</td></tr>
+<tr><td><code>ThemeData(colorSchemeSeed: ...)</code></td><td>O começo de todo app: uma cor e o Flutter faz a paleta</td></tr>
+<tr><td><code>ThemeData(colorScheme: ColorScheme.fromSeed(...))</code></td><td>O mesmo, com mais controle sobre a paleta (aula <a href="material3.html">Material 3 e ColorScheme</a>)</td></tr>
+<tr><td>Temas de componente (<code>appBarTheme</code>, <code>cardTheme</code>…)</td><td>Mudar o jeito de um tipo de componente no app todo</td></tr>
+<tr><td><code>Theme(data: Theme.of(context).copyWith(...))</code></td><td>Um pedaço da tela diferente do resto, herdando o tema</td></tr>
+</table>
+</div>
+
+<div class="tip">
+<strong>Organize o tema num arquivo próprio</strong>
+<p>Quando o <code>ThemeData</code> cresce, ele toma conta do <code>MaterialApp</code>. Um costume comum é tirá-lo para uma função ou variável num arquivo <code>lib/tema.dart</code>: <code>final temaClaro = ThemeData(...);</code>, e no app, <code>theme: temaClaro</code>. Fica mais fácil de achar e, na aula <a href="tema-escuro.html">Tema Escuro</a>, de ter um irmão: o <code>temaEscuro</code>.</p>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>O <code>Theme.of</code> que lê o tema errado</strong>
+<pre class="file" data-file="lib/main.dart">class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final verde = Theme.of(context).colorScheme.primary;
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.green),
+      home: Scaffold(
+        body: Center(
+          child: Text('Receitas da Ana',
+              style: TextStyle(fontSize: 28, color: verde)),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<figure class="tela"><img src="assets/telas/temas-erro1.png" alt="Tela sem barra, com fundo esverdeado claro e o texto 'Receitas da Ana' em roxo, no meio" width="390" height="844" loading="lazy"><figcaption>O título saiu roxo, a cor do tema padrão, e não verde.</figcaption></figure>
+<p>Nenhuma mensagem de erro, e o fundo da tela até saiu esverdeado (ele é desenhado pelo <code>Scaffold</code>, que fica <strong>dentro</strong> do <code>MaterialApp</code>). Mas o título saiu <strong>roxo</strong>. O <code>Theme.of(context)</code> foi chamado com o <code>context</code> do <code>ReceitasApp</code>, que fica <strong>acima</strong> do <code>MaterialApp</code>: ali, o tema verde ainda não existe, e o <code>Theme.of</code> devolve o tema padrão do Flutter, com o roxo do Material 3.</p>
+<p><strong>Como consertar:</strong> leia o tema <strong>abaixo</strong> do <code>MaterialApp</code>: dentro do <code>build</code> de uma tela (como a <code>VitrinePage</code>), ou num <code>Builder</code>. É a mesma regra do <code>Scaffold.of</code> da aula <a href="drawer.html">Drawer</a>: o <code>.of(context)</code> procura <strong>para cima</strong>.</p>
+</div>
+
+<div class="cenario">
+<strong>O estilo de texto que pode ser <code>null</code></strong>
+<pre class="file" data-file="lib/main.dart">Text(
+  'Bolo de cenoura',
+  style: Theme.of(context).textTheme.headlineMedium.copyWith(color: Colors.brown),
+),
+</pre>
+<pre class="term">lib/main.dart:33:65: Error: Method 'copyWith' cannot be called on 'TextStyle?' because it is potentially null.
+ - 'TextStyle' is from 'package:flutter/src/painting/text_style.dart'.     « o caminho do arquivo dentro do Flutter foi cortado
+Try calling using ?. instead.
+              style: Theme.of(context).textTheme.headlineMedium.copyWith(color: Colors.brown),
+                                                                ^^^^^^^^
+</pre>
+<p>Este é um erro de <strong>compilação</strong>: o app nem chega a abrir. Linha por linha:</p>
+<dl class="anatomy">
+  <dt>lib/main.dart:33:65:</dt><dd>O arquivo, a linha e a coluna do problema (no app completo do laboratório, que é o da seção 3 com esta troca, o <code>Text</code> ficou na linha 33). A coluna 65 aponta o começo do <code>copyWith</code>.</dd>
+  <dt>Method 'copyWith' cannot be called on 'TextStyle?' because it is potentially null.</dt><dd>"O método <code>copyWith</code> não pode ser chamado num <code>TextStyle?</code>, porque ele pode ser nulo." Os estilos do <code>textTheme</code> são do tipo <code>TextStyle?</code> (com o <code>?</code>: "um <code>TextStyle</code> ou <code>null</code>"), e o Dart não deixa chamar um método em algo que pode não existir (a <em>segurança contra nulos</em> do Dart).</dd>
+  <dt>Try calling using ?. instead.</dt><dd>"Tente chamar com <code>?.</code>": a própria mensagem dá o conserto.</dd>
+  <dt>As duas últimas linhas</dt><dd>O trecho do código, com os <code>^^^^^^^^</code> embaixo do <code>copyWith</code>.</dd>
+</dl>
+<p><strong>Como consertar:</strong> use o <code>?.</code> ("se não for nulo"): <code>headlineMedium?.copyWith(color: Colors.brown)</code>. Se o estilo for <code>null</code>, o resultado também é <code>null</code>, e o <code>Text</code> aceita <code>style: null</code> (usa o estilo padrão). Com um <code>ThemeData</code> normal, os 15 estilos sempre vêm preenchidos, então na prática o texto sai marrom.</p>
+</div>
+
+<div class="cenario">
+<strong>Mudei o tema e nada aconteceu</strong>
+<p>A Ana pôs <code>colorSchemeSeed: Colors.green</code> e o botão continuou de outra cor. Três suspeitos, nenhum com mensagem de erro:</p>
+<ul>
+  <li><strong>Uma cor escrita no próprio widget</strong> (<code>style: FilledButton.styleFrom(backgroundColor: Colors.blue)</code>) vence o tema. O tema é o padrão; o widget pode sempre mandar mais.</li>
+  <li><strong>Um <code>Theme</code> no meio do caminho</strong> com outro <code>data</code> (seção 5): o mais perto vence.</li>
+  <li><strong>A recarga a quente</strong>: mudanças no <code>main()</code> ou em variáveis globais às vezes pedem o <em>hot restart</em> (aula <a href="hot-reload.html">Hot Reload e Hot Restart</a>).</li>
+</ul>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>MaterialApp(theme: ThemeData(...))</code></td><td>O tema do app inteiro</td></tr>
+<tr><td><code>ThemeData(colorSchemeSeed: Colors.green)</code></td><td>Gera a paleta toda a partir de uma cor</td></tr>
+<tr><td><code>Theme.of(context)</code></td><td>Lê o tema que vale naquele ponto da árvore</td></tr>
+<tr><td><code>Theme.of(context).colorScheme.primary</code> / <code>.onPrimary</code> / <code>.primaryContainer</code></td><td>Cores da paleta (e a cor "sobre" cada uma)</td></tr>
+<tr><td><code>Theme.of(context).textTheme.headlineMedium</code> (e <code>display</code>, <code>title</code>, <code>body</code>, <code>label</code> × <code>Large/Medium/Small</code>)</td><td>Estilos de texto do tema (podem ser <code>null</code>: use <code>?.</code>)</td></tr>
+<tr><td><code>appBarTheme: AppBarThemeData(...)</code></td><td>Todas as <code>AppBar</code></td></tr>
+<tr><td><code>filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(...))</code></td><td>Todos os <code>FilledButton</code></td></tr>
+<tr><td><code>cardTheme: CardThemeData(...)</code></td><td>Todos os <code>Card</code></td></tr>
+<tr><td><code>Theme(data: ..., child: ...)</code></td><td>Tema só para um pedaço da árvore</td></tr>
+<tr><td><code>Theme.of(context).copyWith(...)</code></td><td>Cópia do tema com alguns detalhes trocados</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Onde mora o tema</h3>
+<p>Complete o parâmetro do <code>MaterialApp</code>:</p>
+<div class="ex-code">MaterialApp(<input data-answer="theme" aria-label="parâmetro">: ThemeData(colorSchemeSeed: Colors.green), ...)</div>
+</div>
+
+<div class="exercise">
+<h3>2. A cor-semente</h3>
+<p>Complete o parâmetro do <code>ThemeData</code> que gera a paleta a partir de uma cor:</p>
+<div class="ex-code">ThemeData(<input data-answer="colorSchemeSeed" aria-label="parâmetro">: Colors.teal)</div>
+</div>
+
+<div class="exercise">
+<h3>3. Lendo o tema</h3>
+<p>Complete para pegar o tema dentro de um <code>build</code>:</p>
+<div class="ex-code">final tema = Theme.<input data-answer="of" aria-label="método">(context);</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. Um <code>FilledButton</code> com <code>style: FilledButton.styleFrom(backgroundColor: Colors.blue)</code> num app com <code>colorSchemeSeed: Colors.green</code>. De que cor ele fica?</p>
+<label><input type="radio" name="q4"> Verde: o tema sempre vence</label>
+<label><input type="radio" name="q4"> Uma mistura de verde e azul</label>
+<label><input type="radio" name="q4"> Azul: o que está no widget vence o tema</label>
+<label><input type="radio" name="q4"> Dá erro</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">5. Qual a cor certa para um texto escrito sobre um fundo <code>primaryContainer</code>?</p>
+<label><input type="radio" name="q5"> <code>primary</code></label>
+<label><input type="radio" name="q5"> <code>onPrimaryContainer</code></label>
+<label><input type="radio" name="q5"> <code>Colors.black</code>, sempre</label>
+<label><input type="radio" name="q5"> <code>primaryContainer</code></label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">6. Para um pedaço da tela herdar o tema do app e trocar só a cor, qual é o melhor?</p>
+<label><input type="radio" name="q6"> <code>Theme(data: ThemeData(colorSchemeSeed: Colors.red))</code></label>
+<label><input type="radio" name="q6"> Um segundo <code>MaterialApp</code></label>
+<label><input type="radio" name="q6"> Mudar o <code>theme:</code> do <code>MaterialApp</code></label>
+<label><input type="radio" name="q6"> <code>Theme(data: Theme.of(context).copyWith(colorScheme: ...))</code></label>
+</div>
+
+<h3>Missão final: o tema da Ana</h3>
+
+<div class="tryflutter" data-goal="src:colorSchemeSeed:\s*Colors\.green;;src:appBarTheme:\s*(const\s+)?AppBarThemeData\(;;src:centerTitle:\s*true;;src:textTheme\.headlineMedium">
+<p class="try-task"><strong>Missão:</strong> monte o tema do app de receitas: semente verde, <code>AppBar</code> com o título centralizado (<code>appBarTheme</code> com <code>centerTitle: true</code>), e o nome da receita usando o estilo <code>headlineMedium</code> do tema em vez do <code>fontSize: 28</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: ReceitaPage(),
+    );
+  }
+}
+
+class ReceitaPage extends StatelessWidget {
+  const ReceitaPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: const Center(
+        child: Text('Bolo de cenoura', style: TextStyle(fontSize: 28)),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorSchemeSeed: Colors.green,
+        appBarTheme: const AppBarThemeData(centerTitle: true),
+      ),
+      home: const ReceitaPage(),
+    );
+  }
+}
+
+class ReceitaPage extends StatelessWidget {
+  const ReceitaPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: Center(
+        child: Text('Bolo de cenoura',
+            style: Theme.of(context).textTheme.headlineMedium),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O tema é o "manual de estilo" do app: <code>MaterialApp(theme: ThemeData(...))</code>. Todos os widgets abaixo seguem.</li>
+  <li><code>colorSchemeSeed</code> gera uma paleta inteira a partir de uma cor: botões, interruptores, fundos e textos mudam juntos.</li>
+  <li>Os seus widgets leem o tema com <code>Theme.of(context)</code>: <code>.colorScheme.primary</code> (e o par <code>on...</code> para o texto) e <code>.textTheme.headlineMedium</code> (e os outros 14 estilos).</li>
+  <li>Temas de componente (<code>appBarTheme: AppBarThemeData(...)</code>, <code>filledButtonTheme</code>, <code>cardTheme: CardThemeData(...)</code>) mudam todos os componentes de um tipo.</li>
+  <li><code>Theme(data: ..., child: ...)</code> muda o tema de um pedaço; com <code>Theme.of(context).copyWith(...)</code>, herdando o resto.</li>
+  <li>O que está escrito no widget vence o tema; o tema mais perto vence o de longe; o <code>Theme.of</code> só enxerga temas <strong>acima</strong> do <code>context</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
