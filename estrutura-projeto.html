@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>As Pastas de um Projeto — o que o flutter create criou | Guia Flutter</title>
+<meta name="description" content="As pastas e arquivos de um projeto Flutter, com a árvore real do flutter create no Flutter 3.47.7: lib/main.dart (onde você trabalha), pubspec.yaml (nome, versão e pacotes), pubspec.lock, test/, analysis_options.yaml, as pastas das plataformas (android, ios, web, linux, macos, windows), as pastas escondidas e o erro real de um pubspec.yaml com a indentação errada.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>As Pastas de um <span class="hl">Projeto</span></h1>
+
+<p class="intro">Na aula <a href="criar-projeto.html">Criando um Projeto</a>, o <code>flutter create</code> escreveu 131 arquivos. Parece muito, mas a boa notícia é que, no dia a dia, você mexe em <strong>dois</strong>: o <code>lib/main.dart</code> (o código do app) e o <code>pubspec.yaml</code> (a ficha do projeto). Esta aula é um passeio pela casa: o que é cada pasta, o que você edita, o que você só olha e o que nunca deve tocar.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A árvore de pastas de um projeto novo, com as pastas escondidas.</li>
+  <li>A pasta <code>lib</code>, onde mora o seu código.</li>
+  <li>O <code>pubspec.yaml</code>, linha por linha: nome, versão, SDK e pacotes.</li>
+  <li>O <code>pubspec.lock</code>, a pasta <code>test</code> e o <code>analysis_options.yaml</code>.</li>
+  <li>As pastas das plataformas: <code>android</code>, <code>ios</code>, <code>web</code>, <code>linux</code>, <code>macos</code>, <code>windows</code>.</li>
+  <li>O que vai para o Git e o que não vai.</li>
+  <li>O erro real de um <code>pubspec.yaml</code> com um espaço a menos.</li>
+</ul>
+</div>
+
+<p>Tudo foi conferido na máquina da Ana, no projeto <code>receitas_da_ana</code> recém-criado com o Flutter 3.47.7.</p>
+
+<hr>
+
+<h2>A ideia: a casa e os cômodos</h2>
+<p>Numa casa, você passa o dia na sala e na cozinha. A caixa de luz e o encanamento estão lá, são importantes, mas você só mexe neles quando precisa, e com cuidado. E tem o quartinho de bagunça, que se arruma sozinho.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Na casa</th><th>No projeto</th></tr>
+<tr><td>A sala e a cozinha (onde você vive)</td><td><code>lib/</code>, com o <code>main.dart</code></td></tr>
+<tr><td>A ficha da casa no cartório</td><td><code>pubspec.yaml</code></td></tr>
+<tr><td>A caixa de luz e o encanamento</td><td>As pastas das plataformas: <code>android/</code>, <code>ios/</code>...</td></tr>
+<tr><td>O quartinho de bagunça</td><td><code>.dart_tool/</code> e <code>build/</code>: gerados sozinhos</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>1. A árvore</h2>
+<p>O comando <code>tree</code> desenha as pastas. Com <code>-L 1</code> (só o primeiro nível), <code>-a</code> (mostrar também os escondidos, que começam com ponto) e <code>--dirsfirst</code> (pastas primeiro):</p>
+
+<pre class="term">$ cd receitas_da_ana
+$ tree -L 1 -a --dirsfirst
+.
+├── android
+├── .dart_tool
+├── .idea
+├── ios
+├── lib
+├── linux
+├── macos
+├── test
+├── web
+├── windows
+├── analysis_options.yaml
+├── .gitignore
+├── .metadata
+├── pubspec.lock
+├── pubspec.yaml
+├── README.md
+└── receitas_da_ana.iml
+
+11 directories, 7 files
+</pre>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Item</th><th>O que é</th><th>Você mexe?</th></tr>
+<tr><td><code>lib/</code></td><td>O código Dart do app</td><td><strong>Sempre</strong></td></tr>
+<tr><td><code>pubspec.yaml</code></td><td>A ficha do projeto: nome, versão, pacotes, imagens e fontes</td><td><strong>Sim</strong>, com frequência</td></tr>
+<tr><td><code>test/</code></td><td>Os testes automáticos</td><td>Sim (aula <a href="testes-widget.html">Testes de Widget</a>)</td></tr>
+<tr><td><code>analysis_options.yaml</code></td><td>As regras do analisador de código</td><td>De vez em quando</td></tr>
+<tr><td><code>README.md</code></td><td>Um texto de apresentação do projeto</td><td>Se quiser</td></tr>
+<tr><td><code>android/</code>, <code>ios/</code>, <code>web/</code>, <code>linux/</code>, <code>macos/</code>, <code>windows/</code></td><td>O projeto "nativo" de cada plataforma</td><td>Raramente: ícone, nome, permissões</td></tr>
+<tr><td><code>pubspec.lock</code></td><td>As versões exatas dos pacotes baixados</td><td><strong>Não</strong>: é gerado</td></tr>
+<tr><td><code>.dart_tool/</code></td><td>Arquivos internos das ferramentas do Dart</td><td><strong>Não</strong>: é gerado</td></tr>
+<tr><td><code>.metadata</code></td><td>Anotações do Flutter sobre o projeto (versão usada na criação)</td><td><strong>Não</strong></td></tr>
+<tr><td><code>.gitignore</code></td><td>A lista do que o Git deve ignorar</td><td>Raramente</td></tr>
+<tr><td><code>.idea/</code> e <code>receitas_da_ana.iml</code></td><td>Configurações do Android Studio / IntelliJ</td><td>Não</td></tr>
+</table>
+</div>
+
+<p>Uma pasta que ainda não existe, mas vai aparecer: <code>build/</code>, criada na primeira vez que o app for compilado (aula <a href="flutter-run.html">Rodando o App</a>). Ela guarda o app compilado e pode ser apagada sem medo: <code>flutter clean</code> faz isso.</p>
+
+<hr>
+
+<h2>2. <code>lib/</code>: onde você trabalha</h2>
+
+<pre class="term">$ tree lib test
+lib
+└── main.dart
+test
+└── widget_test.dart
+
+2 directories, 2 files
+</pre>
+
+<p>No começo, a pasta <code>lib</code> (de <em>library</em>, "biblioteca") tem um arquivo só: o <code>main.dart</code>, com a função <code>main</code>, por onde o app começa. Conforme o app cresce, você cria mais arquivos e subpastas dentro de <code>lib</code>: uma tela por arquivo, por exemplo <code>lib/telas/receita.dart</code>. A organização de um app grande é assunto da aula <a href="arquitetura.html">Organizando um App Maior</a>.</p>
+
+<div class="warning">
+<strong>Todo código Dart do app fica em <code>lib/</code></strong>
+<p>Um arquivo <code>.dart</code> fora de <code>lib</code> (na raiz do projeto, por exemplo) não entra no app. E não mude o nome do <code>main.dart</code>: o <code>flutter run</code> procura justamente o <code>lib/main.dart</code>.</p>
+</div>
+
+<div class="tryflutter" data-goal="src:Text\('Lista de compras da Ana'\)">
+<p class="try-task"><strong>Missão:</strong> este é o <code>lib/main.dart</code> de um projeto criado com <code>flutter create --empty</code>. Troque o <code>'Hello World!'</code> por <code>'Lista de compras da Ana'</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MainApp());
+}
+
+class MainApp extends StatelessWidget {
+  const MainApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      home: Scaffold(body: Center(child: Text('Hello World!'))),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MainApp());
+}
+
+class MainApp extends StatelessWidget {
+  const MainApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      home: Scaffold(body: Center(child: Text('Lista de compras da Ana'))),
+    );
+  }
+}
+</pre>
+</div>
+
+<figure class="tela"><img src="assets/telas/estrutura-projeto-1.png" alt="O resultado esperado: tela clara com o texto 'Lista de compras da Ana' no meio e a faixa DEBUG no canto" width="390" height="844" loading="lazy"><figcaption>O resultado esperado da missão.</figcaption></figure>
+
+<hr>
+
+<h2>3. <code>pubspec.yaml</code>: a ficha do projeto</h2>
+<p>O <code>pubspec.yaml</code> vem cheio de comentários (as linhas que começam com <code>#</code>) explicando cada parte. Sem eles, é isto:</p>
+
+<pre class="term">$ grep -v "^ *#" pubspec.yaml | cat -s
+name: receitas_da_ana
+description: "A new Flutter project."
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+
+flutter:
+
+  uses-material-design: true
+</pre>
+
+<p>(O <code>grep -v "^ *#"</code> mostra só as linhas que <strong>não</strong> são comentário, e o <code>cat -s</code> junta as linhas em branco repetidas.)</p>
+
+<dl class="anatomy">
+  <dt>name: receitas_da_ana</dt><dd>O nome do projeto (o nome do pacote Dart), o mesmo do <code>flutter create</code>. É ele que aparece nos <code>import 'package:receitas_da_ana/...'</code>.</dd>
+  <dt>description</dt><dd>Uma frase sobre o projeto. Troque à vontade.</dd>
+  <dt>publish_to: 'none'</dt><dd>"Não publicar": impede que o app seja mandado por engano para o <code>pub.dev</code>, o site de pacotes do Dart. O comentário diz: "remova esta linha se quiser publicar no pub.dev" (não é o caso de um app).</dd>
+  <dt>version: 1.0.0+1</dt><dd>A versão do app. Antes do <code>+</code>, a versão que o usuário vê (<code>1.0.0</code>); depois, o <strong>número de build</strong> (<code>1</code>), que precisa aumentar a cada envio para a loja (aula <a href="publicar.html">Publicando nas Lojas</a>).</dd>
+  <dt>environment: sdk: ^3.13.5</dt><dd>As versões do Dart com que o projeto funciona. O <code>^</code> quer dizer "esta ou mais nova, sem mudar o primeiro número": de 3.13.5 até antes da 4.0.0.</dd>
+  <dt>dependencies:</dt><dd>Os <strong>pacotes</strong> que o app usa. O <code>flutter</code> (o próprio framework) e o <code>cupertino_icons</code> (os ícones no estilo iPhone) vêm de fábrica. Os pacotes que você acrescentar (aula <a href="pacotes.html">Pacotes do pub.dev</a>) entram aqui.</dd>
+  <dt>dev_dependencies:</dt><dd>Pacotes usados só <strong>durante o desenvolvimento</strong>, que não vão dentro do app: o <code>flutter_test</code> (para os testes) e o <code>flutter_lints</code> (as regras de boas práticas que o analisador confere).</dd>
+  <dt>flutter: uses-material-design: true</dt><dd>Configurações do Flutter. Esta linha inclui no app a fonte de ícones do Material (os <code>Icons.add</code>, <code>Icons.home</code>...). É também nesta seção que entram as imagens e as fontes do app (aulas <a href="assets.html">Assets (Imagens e Arquivos do App)</a> e <a href="fontes.html">Fontes Personalizadas</a>).</dd>
+</dl>
+
+<div class="warning">
+<strong>YAML: os espaços mandam</strong>
+<p>O <code>.yaml</code> é um formato de texto em que a <strong>indentação</strong> (os espaços no começo da linha) diz quem está dentro de quem. O <code>sdk: flutter</code> tem 4 espaços porque está dentro do <code>flutter:</code>, que tem 2 porque está dentro do <code>dependencies:</code>. Um espaço a mais ou a menos muda o sentido, ou quebra o arquivo inteiro (veja em <a href="#errado">Quando dá errado</a>). Use espaços, nunca TAB.</p>
+</div>
+
+<p>Depois de mudar o <code>pubspec.yaml</code>, rode <code>flutter pub get</code> para o Flutter baixar o que mudou (os editores fazem isso sozinhos ao salvar).</p>
+
+<hr>
+
+<h2>4. Os outros arquivos da raiz</h2>
+
+<h3><code>pubspec.lock</code></h3>
+<p>Enquanto o <code>pubspec.yaml</code> diz "quero o <code>cupertino_icons</code> 1.0.8 ou mais novo", o <code>pubspec.lock</code> ("trava") anota a versão <strong>exata</strong> que foi baixada, e a de cada pacote que esses pacotes usam. Assim, quem baixar o projeto em outro computador recebe as mesmas versões. É gerado pelo <code>pub get</code>: não edite à mão.</p>
+
+<h3><code>test/widget_test.dart</code></h3>
+<p>Um teste automático que vem pronto: ele abre o app contador, toca no <strong>+</strong> e confere se o número virou 1. Na máquina da Ana:</p>
+
+<pre class="term">$ flutter test
+00:00 +0: loading /home/ana/receitas_da_ana/test/widget_test.dart
+00:00 +0: Counter increments smoke test
+00:01 +1: All tests passed!
+</pre>
+
+<p>"Carregando o arquivo de teste; rodando o teste <em>Counter increments smoke test</em> ("o contador aumenta"); +1: todos os testes passaram!". O <code>+1</code> é o número de testes que passaram. Se você trocar o contador por outro app, esse teste vai falhar (ele procura o <code>0</code> e o botão <strong>+</strong>); apague-o ou reescreva-o (aula <a href="testes-widget.html">Testes de Widget</a>).</p>
+
+<h3><code>analysis_options.yaml</code></h3>
+
+<pre class="term">$ grep -v "^ *#" analysis_options.yaml | cat -s
+
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**
+
+linter:
+  rules:
+</pre>
+
+<dl class="anatomy">
+  <dt>include: package:flutter_lints/flutter.yaml</dt><dd>Liga o conjunto de regras recomendadas para Flutter (o pacote <code>flutter_lints</code> do <code>pubspec.yaml</code>). São elas que fazem o editor sublinhar, por exemplo, um <code>print</code> esquecido no código.</dd>
+  <dt>analyzer: exclude:</dt><dd>Pastas que o analisador não confere: o <code>build</code> e as pastas das plataformas.</dd>
+  <dt>linter: rules:</dt><dd>Aqui você liga ou desliga regras uma a uma. Vem vazio.</dd>
+</dl>
+
+<h3><code>.gitignore</code></h3>
+<p>Se você guarda o projeto no Git (e deveria), este arquivo lista o que <strong>não</strong> vai para o repositório: tudo o que é gerado, como <code>build/</code> e <code>.dart_tool/</code>. Assim, o repositório guarda só o que você escreveu.</p>
+
+<hr>
+
+<h2>5. As pastas das plataformas</h2>
+<p>Cada pasta é um projeto "nativo" completo daquela plataforma, que o Flutter usa para empacotar o app. Por dentro:</p>
+
+<pre class="term">$ ls android ios web
+android:
+app
+build.gradle.kts
+gradle
+gradle.properties
+gradlew
+gradlew.bat
+local.properties
+receitas_da_ana_android.iml
+settings.gradle.kts
+
+ios:
+Flutter
+Runner
+Runner.xcodeproj
+Runner.xcworkspace
+RunnerTests
+
+web:
+favicon.png
+icons
+index.html
+manifest.json
+</pre>
+
+<dl class="anatomy">
+  <dt>android/</dt><dd>Um projeto Android, com o <strong>Gradle</strong> (a ferramenta de compilação do Android: os arquivos <code>.gradle.kts</code> e o <code>gradlew</code>). Em <code>android/app/</code> ficam a identidade do app (o <code>applicationId</code>), o ícone e o arquivo de permissões (<code>AndroidManifest.xml</code>).</dd>
+  <dt>ios/</dt><dd>Um projeto do Xcode: o app de iPhone se chama <strong>Runner</strong> ("o que roda") por dentro. Só abre num Mac.</dd>
+  <dt>web/</dt><dd>A página que carrega o app na web (<code>index.html</code>), o ícone da aba (<code>favicon.png</code>) e o <code>manifest.json</code>, para o site virar "app instalável".</dd>
+  <dt>linux/, macos/, windows/</dt><dd>Os projetos de desktop, cada um com as ferramentas do seu sistema.</dd>
+</dl>
+
+<p>Você vai entrar nessas pastas só para coisas específicas da plataforma: trocar o ícone, o nome que aparece no celular, pedir permissão de câmera ou de internet. As aulas de build (<a href="build-android.html">Gerando o APK e o App Bundle</a>) e de plataforma (<a href="plataforma.html">Recursos do Aparelho</a>) mostram como.</p>
+
+<div class="note">
+<strong>Não usa uma plataforma?</strong>
+<p>Pode apagar a pasta dela (por exemplo, <code>windows/</code>). Se um dia precisar de volta, <code>flutter create --platforms windows .</code> dentro do projeto recria só ela (aula <a href="criar-projeto.html">Criando um Projeto</a>).</p>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Um espaço a menos no <code>pubspec.yaml</code></strong>
+<p>A Ana apagou sem querer um dos dois espaços antes do <code>cupertino_icons</code>:</p>
+<pre class="file" data-file="pubspec.yaml (trecho)">dependencies:
+  flutter:
+    sdk: flutter
+
+  # The following adds the Cupertino Icons font to your application.
+  # Use with the CupertinoIcons class for iOS style icons.
+ cupertino_icons: ^1.0.8
+</pre>
+<pre class="term">$ flutter pub get
+Unhandled exception:
+Error on line 36, column 2: Expected a key while parsing a block mapping.
+   ╷
+36 │  cupertino_icons: ^1.0.8
+   │  ^
+   ╵
+#0      Parser._parseBlockMappingKey (package:yaml/src/parser.dart:454:5)
+#1      Parser._stateMachine (package:yaml/src/parser.dart:100:16)
+#2      Parser.parse (package:yaml/src/parser.dart:61:19)
+«  ... mais 19 linhas de rastro, #3 a #21, de dentro do flutter_tools
+#21     main (package:flutter_tools/executable.dart:103:3)
+&lt;asynchronous suspension&gt;
+</pre>
+<p>Parece assustador, mas só as primeiras linhas interessam:</p>
+<dl class="anatomy">
+  <dt>Unhandled exception:</dt><dd>"Exceção não tratada": o próprio comando <code>flutter</code> quebrou ao ler o arquivo.</dd>
+  <dt>Error on line 36, column 2:</dt><dd>O lugar do erro no <code>pubspec.yaml</code>: linha 36, coluna 2 (as linhas de comentário contam).</dd>
+  <dt>Expected a key while parsing a block mapping.</dt><dd>"Esperava uma chave ao ler um bloco de mapeamento." Tradução livre: "esta linha não está alinhada com nenhum bloco". Com 1 espaço, o <code>cupertino_icons</code> não ficou nem dentro do <code>dependencies</code> (que pede 2) nem fora dele (0).</dd>
+  <dt>a linha 36 e o ^</dt><dd>A linha problemática, com o <code>^</code> embaixo da coluna 2.</dd>
+  <dt>#0, #1, #2...</dt><dd>O <strong>rastro</strong> (<em>stack trace</em>): o caminho que o código do <code>flutter</code> fez até o erro. É útil para quem programa o Flutter, não para você. Pode ignorar.</dd>
+</dl>
+<p><strong>Como consertar:</strong> volte a indentação para 2 espaços, alinhada com o <code>flutter:</code> de cima, e rode <code>flutter pub get</code> de novo.</p>
+</div>
+
+<div class="cenario">
+<strong>Código fora da <code>lib</code></strong>
+<p>Um arquivo <code>receita.dart</code> salvo na raiz do projeto não pode ser importado pelo app com <code>package:receitas_da_ana/receita.dart</code>: esse caminho sempre começa na pasta <code>lib</code>. <strong>Como consertar:</strong> mova o arquivo para dentro de <code>lib/</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Apagou o <code>pubspec.lock</code> ou o <code>.dart_tool</code></strong>
+<p>Sem problema: são gerados. Um <code>flutter pub get</code> cria tudo de novo.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Caminho</th><th>Para quê</th></tr>
+<tr><td><code>lib/main.dart</code></td><td>Onde o app começa (<code>main</code>); o seu código</td></tr>
+<tr><td><code>pubspec.yaml</code></td><td>Nome, versão, SDK, pacotes, imagens e fontes</td></tr>
+<tr><td><code>pubspec.lock</code></td><td>Versões exatas dos pacotes (gerado)</td></tr>
+<tr><td><code>test/</code></td><td>Testes (<code>flutter test</code>)</td></tr>
+<tr><td><code>analysis_options.yaml</code></td><td>Regras do analisador (<code>flutter analyze</code>)</td></tr>
+<tr><td><code>android/</code>, <code>ios/</code>, <code>web/</code>, <code>linux/</code>, <code>macos/</code>, <code>windows/</code></td><td>Os projetos nativos de cada plataforma</td></tr>
+<tr><td><code>build/</code>, <code>.dart_tool/</code></td><td>Gerados; <code>flutter clean</code> apaga</td></tr>
+<tr><td><code>.gitignore</code></td><td>O que não vai para o Git</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. A pasta do código</h3>
+<p>Em que pasta fica todo o código Dart do app?</p>
+<div class="ex-code"><input data-answer="lib" aria-label="pasta">/</div>
+</div>
+
+<div class="exercise">
+<h3>2. Depois de mexer na ficha</h3>
+<p>Complete o comando que baixa os pacotes depois de mudar o <code>pubspec.yaml</code>:</p>
+<div class="ex-code">$ flutter pub <input data-answer="get" aria-label="subcomando"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. Em <code>version: 1.0.0+1</code>, o que é o <code>1</code> depois do <code>+</code>?</p>
+<label><input type="radio" name="q3"> A versão do Dart</label>
+<label><input type="radio" name="q3"> O número de build, que aumenta a cada envio para a loja</label>
+<label><input type="radio" name="q3"> A quantidade de telas do app</label>
+<label><input type="radio" name="q3"> A versão do Flutter</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. Qual destes você <strong>não</strong> deve editar à mão?</p>
+<label><input type="radio" name="q4"> <code>lib/main.dart</code></label>
+<label><input type="radio" name="q4"> <code>pubspec.yaml</code></label>
+<label><input type="radio" name="q4"> <code>README.md</code></label>
+<label><input type="radio" name="q4"> <code>pubspec.lock</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. O <code>flutter pub get</code> respondeu <code>Expected a key while parsing a block mapping</code>. Qual é o suspeito número um?</p>
+<label><input type="radio" name="q5"> Os espaços no começo de alguma linha do <code>pubspec.yaml</code></label>
+<label><input type="radio" name="q5"> Um erro no <code>main.dart</code></label>
+<label><input type="radio" name="q5"> A internet</label>
+<label><input type="radio" name="q5"> Falta o Android Studio</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>No dia a dia, você mexe em <code>lib/</code> (o código, começando no <code>main.dart</code>) e no <code>pubspec.yaml</code> (a ficha).</li>
+  <li>O <code>pubspec.yaml</code> tem o nome, a versão (<code>1.0.0+1</code>), a versão do Dart e os pacotes (<code>dependencies</code> e <code>dev_dependencies</code>). Depois de mudar, <code>flutter pub get</code>.</li>
+  <li>No YAML, a indentação manda: um espaço a menos quebra o arquivo.</li>
+  <li><code>pubspec.lock</code>, <code>.dart_tool/</code> e <code>build/</code> são gerados; não edite.</li>
+  <li><code>test/</code> guarda os testes; o <code>analysis_options.yaml</code>, as regras do analisador.</li>
+  <li><code>android/</code>, <code>ios/</code>, <code>web/</code> e as de desktop são os projetos nativos: você entra nelas só para ícone, nome e permissões.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
