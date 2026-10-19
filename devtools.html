@@ -145,7 +145,7 @@ Serving DevTools at http://127.0.0.1:9100.
 
 <div class="tip">
 <strong>Meça em modo profile</strong>
-<p>Em modo <strong>debug</strong> o app é bem mais lento de propósito (ele guarda informações para o <em>hot reload</em> e faz verificações extras). Para medir desempenho, rode <code>flutter run --profile</code> num <strong>aparelho de verdade</strong>: é quase tão rápido quanto o app da loja e ainda abre o canal para o DevTools. O modo profile não roda no emulador nem no navegador do jeito certo; a documentação recomenda o celular físico.</p>
+<p>Em modo <strong>debug</strong> o app é bem mais lento de propósito (ele guarda informações para o <em>hot reload</em> e faz verificações extras). Para medir desempenho, rode <code>flutter run --profile</code> num <strong>aparelho de verdade</strong>: é quase tão rápido quanto o app da loja e ainda abre o canal para o DevTools. O modo profile não funciona em emuladores e simuladores, e os números de lá não refletem o celular real: a documentação recomenda o aparelho físico.</p>
 </div>
 
 <h3>3.3 Debugger: parar numa linha</h3>
@@ -186,9 +186,8 @@ Item adicionado: Feijão (total: 2)
 <p>O <code>flutter analyze</code> reclama de <code>print</code> no código de <code>lib/</code> (a regra <code>avoid_print</code>), justamente para você não esquecer recados no app que vai para a loja. Use, descubra o problema e apague.</p>
 </div>
 
-<div class="tryflutter" data-goal="src:debugPrint\(">
+<div class="tryflutter" data-goal="src:debugPrint\(" data-foto="assets/telas/devtools-1.png" data-foto-alt="O app Compras da Ana com Arroz e Feijão na lista e a frase 2 itens na lista. A tela não muda com o debugPrint: o recado vai para o console">
 <p class="try-task"><strong>Missão:</strong> acrescente um <code>debugPrint</code> no <code>_adicionar</code>, logo depois do <code>setState</code>, mostrando o item e o total, como o da Ana. Clique em ▶ Rodar, espere o app aparecer no DartPad, logo abaixo, adicione dois itens e olhe o console do DartPad (a área embaixo do app, na aba Output): os recados aparecem lá.</p>
-<figure class="tela"><img src="assets/telas/devtools-1.png" alt="O app de compras com 'Arroz' e 'Feijão' na lista e a frase '2 itens na lista'" width="390" height="844" loading="lazy"><figcaption>A tela não muda com o <code>debugPrint</code>: o recado vai para o console.</figcaption></figure>
 <pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
 
 void main() =&gt; runApp(const AppCompras());
