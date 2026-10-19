@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tutorial Flutter — aprenda a criar apps do zero, como numa escola | Guia Flutter</title>
+<meta name="description" content="Curso de Flutter em português para quem já sabe o básico de Dart e nunca fez um app: widgets, layout, Row e Column, estado com setState, listas, formulários, navegação, temas, internet, Provider, Riverpod, testes e publicação, com o app rodando na página (DartPad), missões, projetos e exercícios. Telas e mensagens de erro reais.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="hero">
+<h1>Tutorial Flutter</h1>
+<p>Aprenda a <strong>criar apps do zero</strong> com Flutter, como numa escola: cada widget é explicado pedaço por pedaço, você vê a <strong>tela de verdade</strong> que o código desenha e pratica aqui mesmo na página, com o app rodando ao lado do código. Com um código só, o mesmo app roda no <strong>Android</strong>, no <strong>iPhone</strong>, na <strong>web</strong> e no computador. Para começar, basta saber o básico de Dart (variáveis, funções e classes); se ainda não sabe, passe antes pelo <a href="https://wallysondevs.github.io/guia-dart/">Guia Dart</a>.</p>
+<a class="btn btn-lg" href="introducao.html">Comece pelo Nível 1 &#10095;</a>
+</div>
+
+<div class="pager"></div>
+
+<h2>Experimente agora</h2>
+<p>A caixa abaixo é o editor <strong>Experimente</strong> do guia. Em cima fica o código de um app completo, a lista de compras da Ana. Clique em <strong>▶ Rodar</strong>: o código vai para o <strong>DartPad</strong>, a ferramenta oficial do Flutter feita pelo Google, que compila o app nos servidores dele e mostra a tela logo abaixo, em alguns segundos (precisa de internet). Pode mexer à vontade: nada que você fizer aqui estraga o guia.</p>
+
+<div class="tryflutter" data-goal="src:['&quot;]café['&quot;]\s*,\s*['&quot;]manteiga['&quot;]" data-foto="assets/telas/index-1.png" data-foto-alt="O app com o título 'Compras da Ana' no topo, a faixa DEBUG no canto e quatro linhas, cada uma com um carrinho de compras à esquerda: pão, leite, café e manteiga">
+<p class="try-task"><strong>Missão:</strong> rode o app como está e veja a lista. Depois, a Ana lembrou que acabou a manteiga: acrescente <code>'manteiga'</code> na lista <code>compras</code> (depois de <code>'café'</code>, com uma vírgula antes) e rode de novo.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ListaDaAna());
+
+class ListaDaAna extends StatelessWidget {
+  const ListaDaAna({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    const compras = ['pão', 'leite', 'café'];
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Compras da Ana')),
+        body: ListView(
+          children: [
+            for (final item in compras)
+              ListTile(
+                leading: const Icon(Icons.shopping_cart),
+                title: Text(item),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ListaDaAna());
+
+class ListaDaAna extends StatelessWidget {
+  const ListaDaAna({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    const compras = ['pão', 'leite', 'café', 'manteiga'];
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Compras da Ana')),
+        body: ListView(
+          children: [
+            for (final item in compras)
+              ListTile(
+                leading: const Icon(Icons.shopping_cart),
+                title: Text(item),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<p>O que aconteceu: você escreveu a <strong>descrição de uma tela</strong>. Lido em voz alta, o código diz: "o app é um <code>MaterialApp</code>; a tela tem uma barra no topo com o título 'Compras da Ana' e, no corpo, uma lista; <strong>para cada</strong> item de <code>compras</code>, uma linha com um carrinho e o nome do item". Você não desenhou a linha nova: acrescentou um item na lista, e o Flutter montou a tela de novo, com uma linha a mais. Cada peça da tela (a barra, a lista, cada linha, o ícone, o texto) é um <strong>widget</strong>, e montar telas encaixando widgets é o que este guia ensina.</p>
+
+<p>E se você esqueceu a vírgula? O app rodou, mas a última linha virou <strong>cafémanteiga</strong>: no Dart, dois textos escritos lado a lado, sem nada entre eles, viram um texto só. Por isso a missão pede a vírgula. Já se você esqueceu de fechar as aspas de <code>'manteiga</code>, o DartPad não mostrou o app: mostrou mensagens em inglês, como <code>Unterminated string literal.</code> ("texto não terminado"), com a linha e a coluna, e no console <code>Error: String starting with ' must end with '.</code> ("um texto que começa com ' precisa terminar com '"). O compilador não adivinha: ele diz onde não entendeu. Errar e ler a mensagem é metade do aprendizado, e todas as aulas mostram os erros mais comuns, com a mensagem real e o jeito de consertar.</p>
+
+<h3>Um app que responde ao toque</h3>
+<p>Telas também <strong>mudam</strong>. Rode a caixa e clique no botão <strong>+</strong> do canto: o número sobe a cada toque. Esse é o famoso contador, o app que o Flutter cria quando você começa um projeto novo; o segredo dele, o <code>setState</code>, tem uma aula só para ele.</p>
+
+<div class="tryflutter" data-altura="560">
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Contador()));
+
+class Contador extends StatefulWidget {
+  const Contador({super.key});
+
+  @override
+  State&lt;Contador&gt; createState() =&gt; _ContadorState();
+}
+
+class _ContadorState extends State&lt;Contador&gt; {
+  int _cafes = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Cafés de hoje')),
+      body: Center(
+        child: Text('$_cafes', style: const TextStyle(fontSize: 64)),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () =&gt; setState(() =&gt; _cafes++),
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>O que é este guia</h2>
+<p>Um app é um programa com <strong>telas</strong>: botões, listas, campos para digitar, imagens. O <strong>Flutter</strong> é o kit do Google para construir essas telas com a linguagem <strong>Dart</strong>. Em vez de desenhar a tela arrastando peças, você <strong>descreve</strong> a tela em código, encaixando widgets uns dentro dos outros, como blocos de montar: uma coluna com um título, uma foto e um botão; dentro do botão, um texto. A aula <a href="introducao.html">O que é Flutter</a> conta essa história.</p>
+
+<p>Quem aprende Flutter consegue:</p>
+<ul>
+  <li>montar telas bonitas e organizadas, que se ajustam ao celular, ao tablet e ao computador;</li>
+  <li>fazer a tela reagir: contar toques, marcar tarefas como feitas, validar um formulário;</li>
+  <li>criar apps com várias telas, menu lateral, abas e barra de navegação;</li>
+  <li>buscar dados na internet, guardar informações no aparelho e organizar o estado de um app maior (Provider, Riverpod);</li>
+  <li>testar, gerar o APK e publicar o app nas lojas.</li>
+</ul>
+
+<p>O guia é para quem já fez o básico de Dart mas <strong>nunca fez um app</strong>. Cada aula ensina <strong>um assunto só</strong> (um widget ou uma ideia), com calma. O Flutter das aulas é o <strong>3.47</strong>, com o <strong>Material 3</strong>, o visual padrão dos apps Android de hoje.</p>
+
+<hr>
+
+<h2>Como as aulas funcionam</h2>
+<p>Nenhum código aparece "seco". Toda aula segue o mesmo caminho:</p>
+<ol class="passo">
+  <li><strong>A ideia primeiro.</strong> Antes do código, uma comparação do dia a dia: blocos de montar, caixas dentro de caixas, a vitrine de uma loja.</li>
+  <li><strong>Anatomia.</strong> Cada parte de um widget novo é separada e explicada: o widget, os parâmetros, o <code>child</code> (filho) e os <code>children</code> (filhos).</li>
+  <li><strong>A tela real.</strong> Depois de cada exemplo, a foto da tela que o código desenha, tirada de um Flutter de verdade. Nenhuma tela foi inventada.</li>
+  <li><strong>Experimente.</strong> Caixas para você mudar o código e ver o app rodando, muitas com uma <strong>missão</strong> que confere se você acertou.</li>
+  <li><strong>Várias formas de fazer.</strong> Quase sempre há mais de um widget para o mesmo resultado, e uma tabela "qual usar" mostra quando escolher cada um.</li>
+  <li><strong>Quando dá errado.</strong> O código com erro e o que acontece de verdade: as listras amarelas e pretas do overflow, a tela vermelha de erro, a mensagem do console, traduzida e explicada.</li>
+  <li><strong>Exercícios e resumo.</strong> Perguntas com a resposta na hora e uma lista curta do que levar da aula.</li>
+</ol>
+
+<h3>Exemplo: a anatomia de um app</h3>
+<p>Veja como as aulas desmontam um código. Este é o app da lista de compras, o da primeira caixa:</p>
+
+<dl class="anatomy">
+  <dt>import 'package:flutter/material.dart';</dt><dd>Traz para o arquivo os widgets do <strong>Material</strong>, o conjunto de peças visuais do Google (barras, botões, listas, ícones). Todo app das aulas começa assim.</dd>
+  <dt>void main() =&gt; runApp(const ListaDaAna());</dt><dd>O ponto de partida, como em todo programa Dart. O <code>runApp</code> recebe o widget principal e o coloca na tela (aula <a href="primeiro-app.html">Seu Primeiro App</a>).</dd>
+  <dt>class ListaDaAna extends StatelessWidget</dt><dd>O seu próprio widget. <em>Stateless</em> quer dizer "sem estado": a tela não muda sozinha depois de desenhada (aula <a href="stateless.html">StatelessWidget</a>).</dd>
+  <dt>Widget build(BuildContext context)</dt><dd>O método que <strong>descreve</strong> a tela. O Flutter chama o <code>build</code> e desenha o que ele devolve.</dd>
+  <dt>MaterialApp → Scaffold → AppBar e ListView</dt><dd>Widgets dentro de widgets: o app (<a href="material-app.html">MaterialApp</a>) tem uma tela (<a href="scaffold.html">Scaffold</a>) com uma barra no topo e, no corpo, uma lista (<a href="listview.html">ListView</a>) de linhas (<a href="card.html">ListTile</a>).</dd>
+  <dt>for (final item in compras) ListTile(…)</dt><dd>O <code>for</code> do Dart dentro da lista de filhos: uma linha para cada item. Mudou a lista, mudou a tela.</dd>
+</dl>
+
+<p>A árvore de widgets, a "planta" da tela, fica assim:</p>
+<pre>MaterialApp
+└── Scaffold
+    ├── AppBar
+    │   └── Text('Compras da Ana')
+    └── ListView
+        ├── ListTile (pão)
+        ├── ListTile (leite)
+        └── ListTile (café)</pre>
+
+<p>Além do editor, as aulas mostram o <strong>terminal</strong> da máquina das aulas: um computador chamado <code>notebook</code>, da usuária <code>ana</code>, onde ela cria projetos com <code>flutter create</code> e roda os apps com <code>flutter run</code> (aulas <a href="criar-projeto.html">Criando um Projeto</a> e <a href="flutter-run.html">Rodando o App</a>). A aula <a href="simulador.html">O Editor do Guia</a> mostra como as caixas Experimente funcionam, e <a href="instalar.html">Instalar o Flutter</a> ensina a pôr o Flutter no seu computador.</p>
+
+<hr>
+
+<h2>Escolha sua trilha</h2>
+<p>O guia tem três níveis, uma seção de projetos e uma de referência. Os níveis foram pensados para serem feitos em ordem: cada aula usa o que as anteriores ensinaram.</p>
+<div class="trilhas">
+  <div class="trilha n1">
+    <h3>Nível 1 · Iniciante</h3>
+    <p>Flutter do zero.</p>
+    <ul>
+      <li><a href="introducao.html">Começando</a>: o que é Flutter, o Dart que você precisa, instalar, <code>flutter doctor</code>, criar e rodar um projeto, hot reload</li>
+      <li><a href="widgets.html">Widgets: o básico</a>: <code>runApp</code>, <code>MaterialApp</code>, <code>Scaffold</code>, <code>Text</code>, ícones, imagens e botões</li>
+      <li><a href="container.html">Layout</a>: <code>Container</code>, <code>Padding</code>, <code>Row</code> e <code>Column</code>, <code>Expanded</code>, <code>Stack</code>, <code>Card</code> e o famoso erro de overflow</li>
+    </ul>
+    <a class="btn" href="introducao.html">Começar &#10095;</a>
+  </div>
+  <div class="trilha n2">
+    <h3>Nível 2 · Intermediário</h3>
+    <p>Estado, listas, navegação e aparência.</p>
+    <ul>
+      <li><a href="stateful.html">Estado</a>: <code>StatefulWidget</code>, <code>setState</code>, ciclo de vida e keys</li>
+      <li><a href="listview.html">Listas e grades</a>: <code>ListView</code>, <code>ListView.builder</code>, <code>GridView</code> e arrastar para apagar</li>
+      <li><a href="textfield.html">Entrada do usuário</a>: campos de texto, formulários, checkbox, gestos e diálogos</li>
+      <li><a href="navegacao.html">Navegação</a>: <code>Navigator</code>, rotas, menu lateral, abas e <code>go_router</code></li>
+      <li><a href="temas.html">Aparência</a>: temas, Material 3, tema escuro, fontes, assets e telas de vários tamanhos</li>
+    </ul>
+    <a class="btn" href="stateful.html">Começar &#10095;</a>
+  </div>
+  <div class="trilha n3">
+    <h3>Nível 3 · Avançado</h3>
+    <p>Dados, arquitetura e publicação.</p>
+    <ul>
+      <li><a href="futurebuilder.html">Dados e internet</a>: <code>FutureBuilder</code>, <code>StreamBuilder</code>, <code>http</code>, JSON, <code>shared_preferences</code> e banco local</li>
+      <li><a href="gerencia-estado.html">Gerência de estado</a>: <code>InheritedWidget</code>, Provider, Riverpod e uma olhada no BLoC</li>
+      <li><a href="animacoes-implicitas.html">Animação e detalhes</a>: animações, <code>Hero</code> e <code>CustomPaint</code></li>
+      <li><a href="pacotes.html">Qualidade e publicação</a>: pacotes, recursos do aparelho, testes, DevTools, APK e lojas</li>
+    </ul>
+    <a class="btn" href="futurebuilder.html">Começar &#10095;</a>
+  </div>
+  <div class="trilha proj">
+    <h3>Projetos</h3>
+    <p>Apps completos, construídos passo a passo.</p>
+    <ul>
+      <li><a href="projeto-contador.html">Contador turbinado</a> e <a href="projeto-perfil.html">cartão de perfil</a></li>
+      <li><a href="projeto-tarefas.html">Lista de tarefas</a> e <a href="projeto-receitas.html">app de receitas</a> (com navegação)</li>
+      <li><a href="projeto-clima.html">Previsão do tempo</a> (dados da internet) e <a href="projeto-quiz.html">quiz</a></li>
+    </ul>
+    <a class="btn" href="projeto-contador.html">Ver projetos &#10095;</a>
+  </div>
+  <div class="trilha ref">
+    <h3>Referência</h3>
+    <p>Consulta rápida para quando você já sabe o que procura.</p>
+    <ul>
+      <li><a href="ref-widgets.html">Widgets mais usados</a> e <a href="ref-layout.html">widgets de layout</a></li>
+      <li><a href="ref-cli.html">Comandos <code>flutter</code></a></li>
+      <li><a href="ref-erros.html">Mensagens de erro comuns</a>, traduzidas</li>
+    </ul>
+    <a class="btn" href="ref-widgets.html">Consultar &#10095;</a>
+  </div>
+</div>
+
+<hr>
+
+<h2>Como estudar</h2>
+<p>Fazer apps se aprende fazendo apps. Para cada aula, siga estes quatro passos:</p>
+<ol class="passo">
+  <li><strong>Leia com calma.</strong> Leia a ideia, a anatomia e olhe a foto da tela. Não pule a parte "Quando dá errado": quem reconhece as listras do overflow conserta o layout em segundos.</li>
+  <li><strong>Mexa nos exemplos.</strong> Em toda caixa Experimente, mude uma cor, troque um texto, tire um widget de propósito e veja o que acontece. Não tem como estragar nada: o ↺ Restaurar volta tudo ao começo.</li>
+  <li><strong>Faça as missões.</strong> As caixas com <strong>Missão</strong> conferem se o seu código tem o que foi pedido. Tente de verdade antes de abrir a solução; se abrir, digite a solução você mesmo em vez de só olhar.</li>
+  <li><strong>Repita no seu computador.</strong> Quando chegar à aula <a href="instalar.html">Instalar o Flutter</a>, instale-o e refaça os apps num projeto de verdade, rodando no celular ou no emulador. Algumas coisas (vários arquivos, pacotes do pub.dev, câmera, gerar o APK) só existem lá.</li>
+</ol>
+
+<div class="tip">
+<strong>A regra de ouro</strong>
+<p>Ler não basta: digite cada app. Copiar e colar ensina pouco; digitar faz você reparar em cada vírgula, cada parêntese e cada <code>const</code>. Comece pela aula <a href="introducao.html">O que é Flutter</a> e, antes de ir longe, dê uma olhada em <a href="simulador.html">O Editor do Guia</a>.</p>
+</div>
+
+<hr>
+
+<h2>Como ler este guia</h2>
+<div class="table-wrap">
+<table class="ref">
+<thead><tr><th>Elemento</th><th>O que significa</th></tr></thead>
+<tbody>
+<tr><td>Caixa com <code>lib/main.dart</code> no canto</td><td>Um código para ler. O nome no canto é o arquivo dentro do projeto (o app começa no <code>lib/main.dart</code>).</td></tr>
+<tr><td>Foto de um celular</td><td>A tela que o código desenha, tirada de um Flutter de verdade.</td></tr>
+<tr><td>Caixa <strong>Experimente</strong></td><td>Um app para você mudar e rodar no DartPad (precisa de internet). As com <strong>Missão</strong> conferem a sua resposta.</td></tr>
+<tr><td>Caixa <strong>Quando dá errado</strong></td><td>Um código com um erro colocado de propósito, com a tela ou a mensagem real e a explicação.</td></tr>
+<tr><td><code>ana@notebook:~$</code></td><td>O prompt do terminal: usuária <code>ana</code>, no computador <code>notebook</code>, na pasta pessoal (<code>~</code>). O que vem depois é o comando digitado.</td></tr>
+<tr><td>Linhas sem prompt</td><td>A resposta do computador.</td></tr>
+<tr><td>Árvore com <code>├──</code> e <code>└──</code></td><td>A árvore de widgets: quem está dentro de quem.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="note">
+<strong>Versão de referência: Flutter 3.47 (Dart 3.13)</strong>
+<p>O guia ensina o <strong>Flutter 3.47</strong> (a versão estável em outubro de 2026), com o <strong>Material 3</strong>. O DartPad das caixas Experimente roda a mesma versão. As mensagens do Flutter saem em inglês, exatamente como ele as escreve, e as aulas as explicam em português. Se o seu Flutter for mais novo, quase tudo funciona igual; as mudanças importantes aparecem em notas e na aula <a href="novidades.html">Novidades do Flutter</a>.</p>
+</div>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
