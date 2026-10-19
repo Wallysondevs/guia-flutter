@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter tema escuro — darkTheme, themeMode e o botão de trocar | Guia Flutter</title>
+<meta name="description" content="Tema escuro no Flutter para quem nunca fez um app: o darkTheme do MaterialApp, a paleta escura com brightness: Brightness.dark, o themeMode (system, light, dark), um interruptor para a pessoa escolher, como saber se o tema atual é escuro, e os erros reais: cor escrita à mão que some no escuro, darkTheme esquecido.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Tema Escuro</span></h1>
+
+<p class="intro">A Ana cozinha à noite com o celular apoiado no balcão, e a tela branca do app de receitas ofusca. O celular dela está no <strong>modo escuro</strong>, e os outros apps já obedecem: fundo escuro, letras claras. O dela, não. No Flutter, o modo escuro é um <strong>segundo tema</strong>: você descreve o tema claro no <code>theme</code>, o escuro no <code>darkTheme</code>, e o app escolhe sozinho qual usar, seguindo o celular.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A dar ao app um tema escuro com <code>darkTheme</code> e a paleta escura com <code>brightness: Brightness.dark</code>.</li>
+  <li>A escolher quem manda, com <code>themeMode</code>: o sistema, sempre claro ou sempre escuro.</li>
+  <li>A fazer um interruptor "Modo escuro" dentro do app.</li>
+  <li>A saber, num widget, se o tema atual é claro ou escuro.</li>
+  <li>Por que cores escritas à mão estragam o modo escuro, e como evitar.</li>
+</ul>
+</div>
+
+<p>Tudo nesta aula foi compilado com o <strong>Flutter <span class="versao">3.47</span></strong> no laboratório do guia. Cada app foi fotografado duas vezes: com o navegador pedindo o modo <strong>claro</strong> e pedindo o modo <strong>escuro</strong>, como faria um celular. Antes, leia <a href="temas.html">Temas</a> e <a href="material3.html">Material 3 e ColorScheme</a>.</p>
+
+<hr>
+
+<h2>A ideia: a roupa de dia e a roupa de noite</h2>
+<p>A Ana tem o uniforme de cozinha branco para o dia e um avental escuro para a noite. É a mesma cozinheira, com o mesmo jeito de trabalhar; só muda a roupa. E quem decide qual roupa usar pode ser o relógio ("já escureceu?") ou ela mesma.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Na cozinha</th><th>No Flutter</th></tr>
+<tr><td>O uniforme branco</td><td><code>theme:</code> (o tema claro)</td></tr>
+<tr><td>O avental escuro</td><td><code>darkTheme:</code> (o tema escuro)</td></tr>
+<tr><td>"Olhe o relógio" / "sempre o branco" / "sempre o escuro"</td><td><code>themeMode: ThemeMode.system</code> / <code>.light</code> / <code>.dark</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>1. O segundo tema: <code>darkTheme</code></h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.green),
+      darkTheme: ThemeData(
+        colorSchemeSeed: Colors.green,
+        brightness: Brightness.dark,
+      ),
+      home: const VitrinePage(),
+    );
+  }
+}
+
+class VitrinePage extends StatelessWidget {
+  const VitrinePage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          const Card(
+            child: ListTile(
+              leading: Icon(Icons.cake),
+              title: Text('Bolo de cenoura'),
+              subtitle: Text('40 min · fácil'),
+            ),
+          ),
+          const SizedBox(height: 16),
+          FilledButton(onPressed: () {}, child: const Text('Ver receita')),
+          const SizedBox(height: 8),
+          OutlinedButton(onPressed: () {}, child: const Text('Favoritar')),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {},
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+</pre>
+
+<p>O mesmo app, com o aparelho no modo claro e no modo escuro:</p>
+
+<figure class="tela"><img src="assets/telas/tema-escuro-1.png" alt="Vitrine clara: fundo esverdeado bem claro, cartão 'Bolo de cenoura', botão 'Ver receita' verde-escuro com letra branca, botão 'Favoritar' contornado e botão flutuante verde-claro com um +" width="390" height="844" loading="lazy"><figcaption>Modo claro: o app usa o <code>theme</code>.</figcaption></figure>
+
+<figure class="tela"><img src="assets/telas/tema-escuro-2.png" alt="A mesma vitrine no escuro: fundo quase preto, título e cartão com letras claras, botão 'Ver receita' verde-claro com letra escura, 'Favoritar' com texto verde-claro e botão flutuante verde-escuro com um + claro" width="390" height="844" loading="lazy"><figcaption>Modo escuro: o mesmo código, agora com o <code>darkTheme</code>.</figcaption></figure>
+
+<dl class="anatomy">
+  <dt>darkTheme:</dt><dd>O tema que o <code>MaterialApp</code> usa quando o modo escuro está valendo. Sem ele, o app fica claro sempre, mesmo com o celular no escuro.</dd>
+  <dt>colorSchemeSeed: Colors.green</dt><dd>A <strong>mesma</strong> semente do tema claro. Assim os dois temas são da mesma "família": o verde do botão escuro é o irmão do verde do botão claro.</dd>
+  <dt>brightness: Brightness.dark</dt><dd>O "brilho" do tema. Com <code>Brightness.dark</code>, a paleta é calculada para fundo escuro: <code>surface</code> quase preto, <code>onSurface</code> quase branco, e as cores de destaque mais claras, para continuarem visíveis.</dd>
+</dl>
+
+<p>Compare as duas fotos. No escuro, o fundo virou um quase-preto esverdeado e os textos ficaram claros. As cores de destaque <strong>se inverteram</strong>: o "Ver receita", que era verde-escuro com letra branca, virou verde-claro com letra escura; o botão flutuante, que era verde-claro, virou verde-escuro. Não é um "negativo" da foto clara: a paleta escura é calculada de novo, para cada cor ter contraste sobre o fundo escuro.</p>
+
+<p>Repare que a <code>VitrinePage</code> não tem nenhuma cor escrita à mão: todos os componentes tiram as cores do tema, e por isso todos trocaram. É o que faz o modo escuro "funcionar de graça" (e o que dá errado quando você escreve cores à mão; veja <a href="#errado">Quando dá errado</a>).</p>
+
+<div class="tip">
+<strong>Com <code>ColorScheme.fromSeed</code></strong>
+<p>Se o seu tema usa o jeito completo da aula <a href="material3.html">Material 3</a>, o brilho vai dentro do <code>fromSeed</code>: <code>darkTheme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.green, brightness: Brightness.dark))</code>.</p>
+</div>
+
+<hr>
+
+<h2>2. Quem manda: <code>themeMode</code></h2>
+<p>O <code>MaterialApp</code> tem um terceiro parâmetro, <code>themeMode</code> ("modo do tema"), que decide qual dos dois temas usar:</p>
+
+<pre class="file" data-file="lib/main.dart">return MaterialApp(
+  theme: ThemeData(colorSchemeSeed: Colors.green),
+  darkTheme: ThemeData(colorSchemeSeed: Colors.green, brightness: Brightness.dark),
+  themeMode: ThemeMode.dark,
+  home: const VitrinePage(),
+);
+</pre>
+
+<dl class="anatomy">
+  <dt>ThemeMode.system</dt><dd>O padrão (se você não escrever <code>themeMode</code>, é este). Segue o aparelho: celular no escuro, app no escuro.</dd>
+  <dt>ThemeMode.light</dt><dd>Sempre o <code>theme</code>, ignorando o aparelho.</dd>
+  <dt>ThemeMode.dark</dt><dd>Sempre o <code>darkTheme</code>, ignorando o aparelho.</dd>
+</dl>
+
+<p>Com <code>ThemeMode.dark</code>, mesmo com o aparelho no modo <strong>claro</strong>, o app sai escuro:</p>
+
+<figure class="tela"><img src="assets/telas/tema-escuro-3.png" alt="A vitrine no tema escuro, igual à foto anterior, embora o navegador tenha pedido o modo claro" width="390" height="844" loading="lazy"><figcaption><code>themeMode: ThemeMode.dark</code> com o aparelho no modo claro: vale o escuro.</figcaption></figure>
+
+<hr>
+
+<h2>3. O interruptor "Modo escuro"</h2>
+<p>Muita gente gosta de escolher dentro do app. Como o <code>themeMode</code> fica no <code>MaterialApp</code>, quem guarda a escolha é o widget do <strong>app</strong>, que passa a ser um <a href="stateful.html"><code>StatefulWidget</code></a>, e a tela recebe uma função para avisar a troca (a ideia de <a href="elevar-estado.html">Elevando o Estado</a>):</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatefulWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  State&lt;ReceitasApp&gt; createState() =&gt; _ReceitasAppState();
+}
+
+class _ReceitasAppState extends State&lt;ReceitasApp&gt; {
+  bool _escuro = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.green),
+      darkTheme: ThemeData(
+        colorSchemeSeed: Colors.green,
+        brightness: Brightness.dark,
+      ),
+      themeMode: _escuro ? ThemeMode.dark : ThemeMode.light,
+      home: ConfigPage(
+        escuro: _escuro,
+        aoMudar: (valor) =&gt; setState(() =&gt; _escuro = valor),
+      ),
+    );
+  }
+}
+
+class ConfigPage extends StatelessWidget {
+  const ConfigPage({super.key, required this.escuro, required this.aoMudar});
+
+  final bool escuro;
+  final ValueChanged&lt;bool&gt; aoMudar;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Configurações')),
+      body: ListView(
+        children: [
+          SwitchListTile(
+            title: const Text('Modo escuro'),
+            secondary: const Icon(Icons.dark_mode),
+            value: escuro,
+            onChanged: aoMudar,
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>bool _escuro = false;</dt><dd>A escolha da Ana, guardada no estado do app.</dd>
+  <dt>themeMode: _escuro ? ThemeMode.dark : ThemeMode.light</dt><dd>O <code>MaterialApp</code> lê a escolha. Quando o <code>setState</code> muda o <code>_escuro</code>, o <code>MaterialApp</code> é reconstruído e troca de tema com uma animação suave.</dd>
+  <dt>aoMudar: (valor) =&gt; setState(...)</dt><dd>A função que a tela chama quando o interruptor muda. O tipo <code>ValueChanged&lt;bool&gt;</code> é só um nome curto para "função que recebe um <code>bool</code> e não devolve nada".</dd>
+  <dt>SwitchListTile</dt><dd>Uma linha com texto, ícone e interruptor juntos (aula <a href="checkbox-switch.html">Checkbox, Switch e Radio</a>).</dd>
+</dl>
+
+<p>Antes e depois do toque no interruptor:</p>
+
+<figure class="tela"><img src="assets/telas/tema-escuro-4.png" alt="Tela 'Configurações' clara com uma linha: ícone de lua, o texto 'Modo escuro' e um interruptor desligado à direita" width="390" height="844" loading="lazy"><figcaption>A tela de configurações com o interruptor desligado.</figcaption></figure>
+
+<figure class="tela"><img src="assets/telas/tema-escuro-5.png" alt="A mesma tela no tema escuro: fundo quase preto, texto claro e o interruptor ligado, verde-claro com a bolinha verde-escura" width="390" height="844" loading="lazy"><figcaption>Depois do toque: o app inteiro no tema escuro.</figcaption></figure>
+
+<div class="note">
+<strong>E quando o app fecha?</strong>
+<p>O <code>_escuro</code> mora na memória: fechou o app, a escolha se perde e ele volta claro. Para lembrar, é preciso gravar a escolha no aparelho, assunto da aula <a href="shared-preferences.html">Guardando Preferências</a>. Um app caprichado ainda oferece as <strong>três</strong> opções (Sistema, Claro, Escuro), guardando um <code>ThemeMode</code> em vez de um <code>bool</code>.</p>
+</div>
+
+<div class="tryflutter" data-goal="src:darkTheme:\s*ThemeData\([\s\S]*brightness:\s*Brightness\.dark;;src:themeMode:\s*ThemeMode\.dark">
+<p class="try-task"><strong>Missão:</strong> o app só tem o tema claro. Acrescente um <code>darkTheme</code> com a mesma semente e <code>brightness: Brightness.dark</code>, e force o escuro com <code>themeMode: ThemeMode.dark</code> para conferir.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.green),
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: Center(
+          child: FilledButton(onPressed: () {}, child: const Text('Ver receita')),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.green),
+      darkTheme: ThemeData(
+        colorSchemeSeed: Colors.green,
+        brightness: Brightness.dark,
+      ),
+      themeMode: ThemeMode.dark,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: Center(
+          child: FilledButton(onPressed: () {}, child: const Text('Ver receita')),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>4. Este widget está no escuro?</h2>
+<p>Às vezes um widget seu precisa saber: uma ilustração clara para o dia e outra para a noite, por exemplo. Há duas perguntas diferentes:</p>
+
+<pre class="file" data-file="lib/main.dart">final temaEscuro = Theme.of(context).brightness == Brightness.dark;
+final aparelhoEscuro = MediaQuery.platformBrightnessOf(context) == Brightness.dark;
+</pre>
+
+<dl class="anatomy">
+  <dt>Theme.of(context).brightness</dt><dd>O brilho do <strong>tema que está valendo</strong>. É quase sempre esta a pergunta certa: ela respeita o <code>themeMode</code> e o interruptor do app.</dd>
+  <dt>MediaQuery.platformBrightnessOf(context)</dt><dd>O que o <strong>aparelho</strong> pediu, sem olhar a escolha feita no app. Com <code>themeMode: ThemeMode.dark</code> num celular claro, a primeira diz <code>dark</code> e esta diz <code>light</code>.</dd>
+</dl>
+
+<p>Para uma cor que só existe no seu app (e não na paleta), o jeito simples é escolher pelo brilho: <code>color: temaEscuro ? Colors.amber.shade200 : Colors.amber.shade800</code>. Mas, antes, veja se algum papel do <code>ColorScheme</code> já serve: ele troca sozinho.</p>
+
+<hr>
+
+<h2>Formas diferentes de fazer</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Jeito</th><th>Quando usar</th></tr>
+<tr><td>Só <code>theme</code> + <code>darkTheme</code> (sem <code>themeMode</code>)</td><td>O mínimo que todo app deveria ter: segue o aparelho</td></tr>
+<tr><td><code>themeMode</code> fixo (<code>.light</code> ou <code>.dark</code>)</td><td>Um app que tem identidade só clara ou só escura (um leitor noturno, um jogo)</td></tr>
+<tr><td><code>themeMode</code> guardado no estado do app</td><td>Quando a pessoa escolhe dentro do app (de preferência com Sistema/Claro/Escuro)</td></tr>
+<tr><td>Um <code>ThemeData</code> escuro escrito à mão (cores uma a uma)</td><td>Só com um manual de marca que define o escuro; senão, a semente faz melhor</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>A cor escrita à mão que some no escuro</strong>
+<pre class="file" data-file="lib/main.dart">body: const Center(
+  child: Text(
+    'Bolo de cenoura',
+    style: TextStyle(fontSize: 24, color: Colors.black87),
+  ),
+),
+</pre>
+<figure class="tela"><img src="assets/telas/tema-escuro-erro1.png" alt="Tela escura com a barra 'Receitas da Ana' em letras claras e, no meio, 'Bolo de cenoura' em letras pretas quase invisíveis sobre o fundo escuro" width="390" height="844" loading="lazy"><figcaption>No modo escuro, o texto com <code>Colors.black87</code> quase desaparece.</figcaption></figure>
+<p>No modo claro, tudo certo. No escuro, o fundo fica quase preto e o texto continua quase preto: na foto, dá para adivinhá-lo, mas num celular, com a tela menos brilhante, ele some. E nenhuma mensagem de erro avisa. O <code>Colors.black87</code> é uma cor fixa; ela não sabe que o tema mudou. <strong>Como consertar:</strong> não escreva a cor (o <code>Text</code> já usa o <code>onSurface</code> do tema) ou use um papel da paleta: <code>color: Theme.of(context).colorScheme.onSurface</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Pus <code>ThemeMode.dark</code> e o app continua claro</strong>
+<pre class="file" data-file="lib/main.dart">return MaterialApp(
+  theme: ThemeData(colorSchemeSeed: Colors.green),
+  themeMode: ThemeMode.dark,
+  home: const VitrinePage(),
+);
+</pre>
+<p>Sem <code>darkTheme</code>, não há tema escuro para escolher, e o <code>MaterialApp</code> usa o <code>theme</code> mesmo com <code>ThemeMode.dark</code>. Também não há mensagem de erro. <strong>Como consertar:</strong> dê o <code>darkTheme</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>O tema escuro com outra cara</strong>
+<pre class="file" data-file="lib/main.dart">theme: ThemeData(
+  colorSchemeSeed: Colors.green,
+  appBarTheme: const AppBarThemeData(centerTitle: true),
+),
+darkTheme: ThemeData(colorSchemeSeed: Colors.green, brightness: Brightness.dark),
+</pre>
+<p>No claro, o título fica no meio; no escuro, volta para a esquerda. O <code>darkTheme</code> é um tema <strong>separado</strong>: o que você personalizou no <code>theme</code> não passa para ele. <strong>Como consertar:</strong> monte os dois temas com uma função que recebe o brilho, assim tudo o que não é cor fica igual nos dois:</p>
+<pre class="file" data-file="lib/tema.dart">ThemeData criarTema(Brightness brilho) {
+  return ThemeData(
+    colorSchemeSeed: Colors.green,
+    brightness: brilho,
+    appBarTheme: const AppBarThemeData(centerTitle: true),
+  );
+}
+</pre>
+<p>E no app: <code>theme: criarTema(Brightness.light), darkTheme: criarTema(Brightness.dark)</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>darkTheme: ThemeData(colorSchemeSeed: cor, brightness: Brightness.dark)</code></td><td>O tema escuro, da mesma família do claro</td></tr>
+<tr><td><code>ColorScheme.fromSeed(seedColor: cor, brightness: Brightness.dark)</code></td><td>A paleta escura, no jeito completo</td></tr>
+<tr><td><code>themeMode: ThemeMode.system</code></td><td>Segue o aparelho (o padrão)</td></tr>
+<tr><td><code>themeMode: ThemeMode.light</code> / <code>.dark</code></td><td>Sempre claro / sempre escuro</td></tr>
+<tr><td><code>Theme.of(context).brightness == Brightness.dark</code></td><td>O tema que vale agora é escuro?</td></tr>
+<tr><td><code>MediaQuery.platformBrightnessOf(context)</code></td><td>O que o aparelho pediu</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. O segundo tema</h3>
+<p>Complete o parâmetro do <code>MaterialApp</code> para o tema escuro:</p>
+<div class="ex-code">MaterialApp(theme: ..., <input data-answer="darkTheme" aria-label="parâmetro">: ThemeData(...))</div>
+</div>
+
+<div class="exercise">
+<h3>2. O brilho</h3>
+<p>Complete para a paleta sair escura:</p>
+<div class="ex-code">ThemeData(colorSchemeSeed: Colors.green, brightness: Brightness.<input data-answer="dark" aria-label="valor">)</div>
+</div>
+
+<div class="exercise">
+<h3>3. Seguir o aparelho</h3>
+<p>Qual valor do <code>ThemeMode</code> segue o modo do celular?</p>
+<div class="ex-code">themeMode: ThemeMode.<input data-answer="system" aria-label="valor"></div>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. Um app tem <code>theme</code> e <code>darkTheme</code>, sem <code>themeMode</code>. O celular está no modo escuro. Qual tema vale?</p>
+<label><input type="radio" name="q4"> O <code>theme</code>, sempre</label>
+<label><input type="radio" name="q4"> Nenhum: dá erro</label>
+<label><input type="radio" name="q4"> Um sorteio</label>
+<label><input type="radio" name="q4"> O <code>darkTheme</code>, porque o padrão é <code>ThemeMode.system</code></label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">5. Por que um <code>Text</code> com <code>color: Colors.black</code> some no modo escuro?</p>
+<label><input type="radio" name="q5"> Porque o Flutter apaga as cores pretas no escuro</label>
+<label><input type="radio" name="q5"> Porque a cor é fixa e o fundo do tema escuro também é escuro</label>
+<label><input type="radio" name="q5"> Porque falta o <code>const</code></label>
+<label><input type="radio" name="q5"> Porque o <code>Text</code> não funciona no escuro</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">6. Com <code>themeMode: ThemeMode.dark</code> num celular no modo claro, o que diz <code>Theme.of(context).brightness</code>?</p>
+<label><input type="radio" name="q6"> <code>Brightness.dark</code></label>
+<label><input type="radio" name="q6"> <code>Brightness.light</code></label>
+<label><input type="radio" name="q6"> <code>null</code></label>
+<label><input type="radio" name="q6"> Dá erro</label>
+</div>
+
+<h3>Missão final: o texto que respeita o tema</h3>
+
+<div class="tryflutter" data-goal="src:colorScheme\.onSurface">
+<p class="try-task"><strong>Missão:</strong> o app está em <code>ThemeMode.dark</code> e o nome da receita sumiu. Troque o <code>Colors.black87</code> pela cor do tema para texto sobre o fundo, <code>Theme.of(context).colorScheme.onSurface</code>. (Como o <code>style</code> vai usar o <code>context</code>, tire o <code>const</code> da frente do <code>Text</code>.)</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.green),
+      darkTheme: ThemeData(
+        colorSchemeSeed: Colors.green,
+        brightness: Brightness.dark,
+      ),
+      themeMode: ThemeMode.dark,
+      home: const ReceitaPage(),
+    );
+  }
+}
+
+class ReceitaPage extends StatelessWidget {
+  const ReceitaPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: const Center(
+        child: Text(
+          'Bolo de cenoura',
+          style: TextStyle(fontSize: 24, color: Colors.black87),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ReceitasApp());
+
+class ReceitasApp extends StatelessWidget {
+  const ReceitasApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.green),
+      darkTheme: ThemeData(
+        colorSchemeSeed: Colors.green,
+        brightness: Brightness.dark,
+      ),
+      themeMode: ThemeMode.dark,
+      home: const ReceitaPage(),
+    );
+  }
+}
+
+class ReceitaPage extends StatelessWidget {
+  const ReceitaPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: Center(
+        child: Text(
+          'Bolo de cenoura',
+          style: TextStyle(
+            fontSize: 24,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O modo escuro é um segundo tema: <code>darkTheme: ThemeData(colorSchemeSeed: cor, brightness: Brightness.dark)</code>, com a mesma semente do claro.</li>
+  <li><code>themeMode</code> decide: <code>system</code> (padrão, segue o aparelho), <code>light</code> ou <code>dark</code>.</li>
+  <li>Para a pessoa escolher, guarde a escolha no estado do widget do app e passe ao <code>themeMode</code>.</li>
+  <li><code>Theme.of(context).brightness</code> diz se o tema atual é escuro; <code>MediaQuery.platformBrightnessOf</code>, o que o aparelho pediu.</li>
+  <li>Cores escritas à mão não trocam com o tema: use os papéis do <code>ColorScheme</code>. E monte os dois temas com uma função, para não perder personalizações no escuro.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
