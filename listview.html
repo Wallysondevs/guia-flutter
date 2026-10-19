@@ -87,7 +87,7 @@ class MeuApp extends StatelessWidget {
 
 <p>Na primeira foto, o último item visível é o Sabonete; o 14º, Alface, está fora da tela, e <strong>não há listras</strong>: a <code>ListView</code> sabe que tem mais conteúdo e espera o usuário rolar. Na segunda, depois de arrastar a lista para cima, a Alface aparece e o Ovos sai pelo topo. A barra do título ganhou um tom acinzentado: é o Material 3 avisando que tem conteúdo rolado por baixo dela.</p>
 
-<div class="tryflutter" data-goal="src:title:\s*Text\(\s*'Queijo'\s*\)">
+<div class="tryflutter" data-goal="src:title:\s*Text\(\s*['&quot;]Queijo['&quot;]\s*\)">
 <p class="try-task"><strong>Missão:</strong> a Ana esqueceu o queijo. Acrescente no fim da lista um <code>ListTile</code> com o ícone <code>Icons.lunch_dining</code>, o título <code>'Queijo'</code> e o subtítulo <code>'300 g'</code>. Depois role a lista até o fim para ver o item novo.</p>
 <pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
 
@@ -261,13 +261,13 @@ The relevant error-causing widget was:
 ════════════════════════════════════════════════════════════════════════════════════════════════════
 Another exception was thrown: Assertion failed: file:///home/ana/flutter/packages/flutter/lib/src/rendering/box.dart:2251:12
 « … e mais 16 linhas "Another exception was thrown" (17 ao todo)</pre>
-<p>A tela ficou em branco embaixo do título, sem nem o "Faltam 3 itens". No console, linha por linha:</p>
+<p>A tela ficou em branco embaixo da barra do título (o <code>AppBar</code>), sem nem o "Faltam 3 itens". No console, linha por linha:</p>
 <dl class="anatomy">
   <dt>Vertical viewport was given unbounded height.</dt><dd>"Uma janela de rolagem vertical recebeu uma altura ilimitada." A <em>viewport</em> é a "janela" da <code>ListView</code>.</dd>
   <dt>Viewports expand in the scrolling direction to fill their container.</dt><dd>"Janelas de rolagem crescem na direção da rolagem até encher o espaço." A <code>ListView</code> quer ocupar toda a altura que recebe. Mas a <code>Column</code> deixa cada filho ser tão alto quanto quiser, e "toda a altura do infinito" não é um tamanho.</dd>
   <dt>This situation typically happens when a scrollable widget is nested inside another scrollable widget.</dt><dd>"Costuma acontecer quando um widget que rola está dentro de outro que rola." Ou dentro de uma <code>Column</code>, como aqui.</dd>
   <dt>The relevant error-causing widget was: ListView … main.dart:19:13</dt><dd>O culpado: a <code>ListView</code> da linha 19.</dd>
-  <dt>Another exception was thrown: …</dt><dd>Os outros erros são consequência do primeiro: os widgets de cima ficaram sem tamanho e não puderam ser desenhados (por isso a tela inteira sumiu). Leia sempre o <strong>primeiro</strong> erro.</dd>
+  <dt>Another exception was thrown: …</dt><dd>Os outros erros são consequência do primeiro: os widgets de cima ficaram sem tamanho e não puderam ser desenhados (por isso o corpo inteiro da tela sumiu). Leia sempre o <strong>primeiro</strong> erro.</dd>
 </dl>
 <p><strong>Como consertar:</strong> diga à <code>ListView</code> quanto espaço ela tem. O jeito mais comum é o <code>Expanded</code> (veja <a href="expanded.html">Expanded e Flexible</a>): "ocupe o que sobrou da coluna":</p>
 <pre class="file" data-file="lib/main.dart">        body: Column(
