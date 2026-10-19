@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Novidades — o que mudou no Flutter 3.47 | Guia Flutter</title>
+<meta name="description" content="As novidades do Flutter 3.47 (Dart 3.13) para quem está começando: como ver a sua versão, o ritmo de lançamentos (estável a cada trimestre e as correções 3.47.x), os pacotes material_ui e cupertino_ui, o Impeller no desktop, Android com API 36 e minSdk 24, iOS 15, Wasm na web, Widget Previews estável e o atalho de ponto do Dart (.center, .fromSeed).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Novidades</span></h1>
+
+<p class="intro">O Flutter muda rápido: uma versão estável nova sai a cada três meses, mais ou menos, e no meio do caminho saem correções. Esta aula mostra <strong>como descobrir</strong> que versão você tem, <strong>onde ler</strong> o que mudou e <strong>o que mudou</strong> na versão usada neste guia, o <strong>Flutter 3.47</strong>, com o Dart 3.13. Você não precisa decorar nada daqui: a ideia é saber que essas coisas existem e onde procurar quando um tutorial antigo não bater com o que você vê.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como ver a versão do Flutter, do Dart e do DevTools com <code>flutter --version</code>.</li>
+  <li>Como ler um número de versão (3.47.7) e o ritmo de lançamentos: estável trimestral + correções.</li>
+  <li>Onde ficam as notas oficiais: o blog, as <em>release notes</em>, as <em>breaking changes</em> e o <code>CHANGELOG.md</code>.</li>
+  <li>As novidades do 3.47 que mais afetam quem está começando.</li>
+  <li>O atalho de ponto do Dart (<code>.center</code>, <code>.fromSeed</code>), que já aparece no projeto que o <code>flutter create</code> gera.</li>
+</ul>
+</div>
+
+<div class="warning">
+<strong>De onde vêm as informações</strong>
+<p>A saída do <code>flutter --version</code>, os números do Android e o código gerado pelo <code>flutter create</code> foram conferidos no Flutter 3.47.7 da máquina da Ana. A lista de novidades resume o anúncio oficial <a href="https://flutter.dev/blog/whats-new-in-flutter-3-47" target="_blank" rel="noopener">What's new in Flutter 3.47</a> (12 de agosto de 2026) e o <code>CHANGELOG.md</code> do próprio Flutter. Quando sair uma versão nova, confira lá: esta página fala do 3.47.</p>
+</div>
+
+<hr>
+
+<h2>A ideia: o celular que recebe atualização</h2>
+<p>O seu celular recebe, de vez em quando, uma <strong>atualização grande</strong> (Android 15, 16…) com novidades, e, no meio do caminho, <strong>atualizações pequenas</strong> de segurança que só consertam coisas. O Flutter funciona igual: a versão "grande" muda o segundo número (3.44 → 3.47), e as correções mudam o terceiro (3.47.0 → 3.47.7).</p>
+
+<h2>1. Que versão eu tenho?</h2>
+<pre class="term">$ flutter --version
+Flutter 3.47.7 • channel stable • https://github.com/flutter/flutter.git
+Framework • revision abaf9c5237 (11 days ago) • 2026-10-08 09:51:21 -0700
+Engine • hash d8a2d6c768c334d53e16277f837970ffa1e2de81 (revision deb287481e) (12 days ago) • 2026-10-07 17:09:12.000Z
+Tools • Dart 3.13.5 • DevTools 2.60.0
+</pre>
+
+<dl class="anatomy">
+  <dt>Flutter 3.47.7</dt><dd>A versão. <strong>3</strong> é a geração (o Flutter 3 saiu em 2022 e todo este guia é sobre ele); <strong>47</strong> é a versão estável; <strong>7</strong> é a sétima correção dela.</dd>
+  <dt>channel stable</dt><dd>O <strong>canal</strong>: <code>stable</code> ("estável") é o que você deve usar. Existe também o <code>beta</code>, para quem quer testar as novidades antes.</dd>
+  <dt>Framework • revision … • 2026-10-08</dt><dd>A versão exata do código do <em>framework</em> (os widgets), com a data.</dd>
+  <dt>Engine • hash …</dt><dd>A versão exata do motor (o C++ que desenha na tela).</dd>
+  <dt>Tools • Dart 3.13.5 • DevTools 2.60.0</dt><dd>O Flutter vem com o Dart e o <a href="devtools.html">DevTools</a> dentro. Você não instala o Dart separado: ele vem junto, na versão certa.</dd>
+</dl>
+
+<p>Para atualizar, <code>flutter upgrade</code> baixa a versão mais nova do seu canal. Antes de atualizar um projeto importante, leia as notas da versão (a próxima seção).</p>
+
+<hr>
+
+<h2>2. Onde ler o que mudou</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Fonte</th><th>O que tem</th><th>Quando ler</th></tr>
+<tr><td><strong>Blog</strong> "What's new in Flutter 3.47"</td><td>As novidades principais, explicadas, com imagens</td><td>Logo que sai uma versão estável</td></tr>
+<tr><td><strong>Release notes</strong> (docs.flutter.dev/release/release-notes)</td><td>A lista completa do que entrou</td><td>Quando procura algo específico</td></tr>
+<tr><td><strong>Breaking changes</strong> (docs.flutter.dev/release/breaking-changes)</td><td>O que <strong>quebra</strong> código antigo, e como migrar</td><td><strong>Antes</strong> de atualizar um projeto</td></tr>
+<tr><td><code>CHANGELOG.md</code> (no repositório do Flutter)</td><td>As correções de cada 3.47.x</td><td>Quando um bug some ou aparece depois de um <code>flutter upgrade</code></td></tr>
+</table>
+</div>
+
+<p>O <code>CHANGELOG.md</code> vem dentro da pasta onde o Flutter foi instalado. O começo da parte do 3.47, na máquina da Ana:</p>
+<pre class="file" data-file="CHANGELOG.md (trecho)">## Flutter 3.47 Changes
+
+### [3.47.7](https://github.com/flutter/flutter/releases/tag/3.47.7)
+- [flutter/182604](https://github.com/flutter/flutter/issues/182604) When an OverlayPortal is displayed on iOS, accessibility frames are shrunk by the device pixel ratio and anchored to the top-left, so VoiceOver focus and XCUITest taps miss the visible controls.
+- [flutter/100946](https://github.com/flutter/flutter/issues/100946) When using VoiceOver on iOS with a ReorderableListView, Semantics focus is incorrectly shifted to the top left of the screen.
+
+### [3.47.6](https://github.com/flutter/flutter/releases/tag/3.47.6)
+- [flutter/192513](https://github.com/flutter/flutter/issues/192513) Fixed an issue that caused Windows production apps to hang.
+</pre>
+<p>Cada linha é um defeito consertado, com o número do <em>issue</em> (o pedido no GitHub). Por exemplo, o 3.47.7 corrigiu o leitor de tela do iPhone (VoiceOver), que tocava no lugar errado em certas telas; o 3.47.6 corrigiu apps de Windows que travavam. Viu? Correções, nenhuma novidade grande: é para isso que servem os números do fim.</p>
+
+<hr>
+
+<h2>3. O que mudou no Flutter 3.47</h2>
+<p>Segundo o anúncio oficial, as novidades que mais tocam quem está começando são estas:</p>
+
+<h3>3.1 Material e Cupertino como pacotes separados</h3>
+<p>Os widgets do Material (os que você usa neste guia: <code>Scaffold</code>, <code>AppBar</code>, <code>ElevatedButton</code>…) e os do Cupertino (o visual de iPhone) ganharam versões 1.0 como pacotes à parte no pub.dev: <code>material_ui</code> e <code>cupertino_ui</code>. A vantagem: eles podem receber correções e componentes novos toda semana, sem esperar uma versão nova do Flutter. A adoção é <strong>opcional</strong> no 3.47: o <code>import 'package:flutter/material.dart';</code> que você usa continua funcionando. O anúncio diz que as bibliotecas de design embutidas devem ser marcadas como obsoletas (<em>deprecated</em>) na versão estável de novembro, e oferece uma migração automática com <code>dart fix --apply --code=migrate_design_widgets</code>.</p>
+<div class="tip">
+<strong>E este guia?</strong>
+<p>Os exemplos usam <code>package:flutter/material.dart</code>, que é o que o <code>flutter create</code> do 3.47 ainda gera. Quando a troca virar o padrão, o código dos widgets continua o mesmo; muda o <code>import</code> e o <code>pubspec.yaml</code>.</p>
+</div>
+
+<h3>3.2 Android: API 36 e mínimo Android 7</h3>
+<p>Os valores padrão do projeto subiram: <code>compileSdkVersion</code> e <code>targetSdkVersion</code> 36, e <code>minSdkVersion</code> 24 (Android 7.0). Na máquina da Ana, o Flutter 3.47.7 traz exatamente <code>compileSdkVersion: Int = 36</code>, <code>minSdkVersion: Int = 24</code> e <code>targetSdkVersion: Int = 36</code>, e o projeto novo vem com Gradle 9.3.1 e Kotlin 2.4.0. As ferramentas pedem Java 17 ou mais novo. Detalhes em <a href="build-android.html">Gerando o APK</a>.</p>
+
+<h3>3.3 iPhone e Mac: iOS 15 e macOS 12</h3>
+<p>Para se preparar para o Xcode 27, o mínimo subiu de iOS 13 para <strong>iOS 15</strong>, e de macOS 10.15 para <strong>macOS 12</strong>. Apps compilados com o Xcode 27 precisam adotar o <code>UIScene</code>; a ferramenta do Flutter migra a maioria dos projetos sozinha. O Swift Package Manager substitui aos poucos o CocoaPods (que entrou em modo de manutenção). Mais em <a href="build-ios-web-desktop.html">iOS, Web e Desktop</a>.</p>
+
+<h3>3.4 Desktop: Impeller por padrão</h3>
+<p>O <strong>Impeller</strong>, o motor gráfico novo do Flutter, virou o padrão também no Windows, no macOS e no Linux, com texto desenhado de um jeito mais nítido (SDF). Quando a Ana rodou o app no Linux, o próprio terminal avisou:</p>
+<pre class="term">$ flutter run -d linux
+…
+[IMPORTANT:flutter/shell/platform/embedder/embedder_surface_gl_impeller.cc(126)] Using the Impeller rendering backend (OpenGLESSDF).
+</pre>
+<p>"Usando o motor de desenho Impeller (OpenGLES com SDF)." O desktop também ganhou janelas múltiplas experimentais e <em>flavors</em> (<code>--flavor</code>) no Windows e no Linux.</p>
+
+<h3>3.5 Web: WebAssembly</h3>
+<p>A web pode ser compilada para <strong>WebAssembly</strong> (Wasm), que costuma rodar mais rápido: <code>flutter build web --release --wasm</code>. Para isso o app (e os pacotes) precisam usar o <code>package:web</code> no lugar do antigo <code>dart:html</code>.</p>
+
+<h3>3.6 Widget Previews estável</h3>
+<p>As <strong>prévias de widget</strong> (<em>Widget Previews</em>) saíram do modo experimental: você marca um widget e vê como ele fica, no editor, sem rodar o app inteiro.</p>
+
+<h3>3.7 Pequenas melhorias nos widgets</h3>
+<ul>
+  <li><code>ImageIcon</code> ganhou <code>useOriginalColors</code> (mostrar o ícone com as cores originais da imagem).</li>
+  <li><code>AnimatedCrossFade</code> ganhou controle de recorte (<em>clip</em>).</li>
+  <li>No Android, o app percebe sozinho o <strong>alto contraste</strong> e as <strong>cores invertidas</strong> das opções de acessibilidade (<code>MediaQueryData.highContrast</code> e <code>invertColors</code>).</li>
+</ul>
+
+<hr>
+
+<h2>4. O atalho de ponto do Dart</h2>
+<p>Esta não é do Flutter 3.47, é do Dart (os <em>dot shorthands</em> chegaram no Dart 3.10), mas você vai topar com ela logo no primeiro projeto: o <code>main.dart</code> que o <code>flutter create</code> do 3.47.7 gera já usa. Olhe o tema do app de exemplo, como saiu do <code>flutter create</code>:</p>
+
+<pre class="file" data-file="lib/main.dart (trecho gerado pelo flutter create)">      theme: ThemeData(
+        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+      ),
+</pre>
+
+<p>Onde foi parar o <code>ColorScheme</code>? Quando o Dart já <strong>sabe o tipo</strong> esperado (o parâmetro <code>colorScheme</code> é um <code>ColorScheme</code>), você pode começar direto pelo ponto. As duas linhas abaixo são a mesma coisa:</p>
+
+<pre class="file" data-file="duas formas">colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),   // forma completa
+colorScheme: .fromSeed(seedColor: Colors.teal),               // atalho de ponto
+</pre>
+
+<p>Vale para valores de <em>enum</em> também: <code>mainAxisAlignment: MainAxisAlignment.center</code> pode virar <code>mainAxisAlignment: .center</code>. O app de receitas da Ana, escrito com atalhos:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const AppReceitas());
+
+class AppReceitas extends StatelessWidget {
+  const AppReceitas({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      theme: ThemeData(
+        colorScheme: .fromSeed(seedColor: Colors.teal),
+      ),
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Column(
+          mainAxisAlignment: .center,
+          crossAxisAlignment: .stretch,
+          children: [
+            Card(child: ListTile(title: Text('Bolo de cenoura'))),
+            Card(child: ListTile(title: Text('Pão de queijo'))),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<figure class="tela"><img src="assets/telas/novidades-1.png" alt="Tela com o título 'Receitas da Ana' no topo e, no meio da tela, dois cartões que ocupam a largura toda: 'Bolo de cenoura' e 'Pão de queijo', com fundo em tom verde-azulado bem claro" width="390" height="844" loading="lazy"><figcaption>O app com atalhos de ponto: os cartões no centro (<code>.center</code>), esticados na largura (<code>.stretch</code>), e as cores tiradas do verde-azulado (<code>.fromSeed</code> com <code>Colors.teal</code>). Flutter 3.47.7, modo debug.</figcaption></figure>
+
+<p><strong>Qual usar?</strong> Os dois funcionam e o resultado é idêntico. A forma completa é mais clara para quem está aprendendo (você vê de onde vem o <code>.center</code>), e por isso a maioria das aulas deste guia a usa. O atalho é mais curto e aparece cada vez mais em código novo; agora você sabe ler.</p>
+
+<div class="tryflutter" data-goal="src:mainAxisAlignment:\s*\.end">
+<p class="try-task"><strong>Missão:</strong> usando o atalho de ponto, troque o <code>mainAxisAlignment</code> da <code>Column</code> para <code>.end</code> e veja os cartões irem para o pé da tela.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const AppReceitas());
+
+class AppReceitas extends StatelessWidget {
+  const AppReceitas({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      theme: ThemeData(
+        colorScheme: .fromSeed(seedColor: Colors.teal),
+      ),
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Column(
+          mainAxisAlignment: .center,
+          crossAxisAlignment: .stretch,
+          children: [
+            Card(child: ListTile(title: Text('Bolo de cenoura'))),
+            Card(child: ListTile(title: Text('Pão de queijo'))),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const AppReceitas());
+
+class AppReceitas extends StatelessWidget {
+  const AppReceitas({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      theme: ThemeData(
+        colorScheme: .fromSeed(seedColor: Colors.teal),
+      ),
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Column(
+          mainAxisAlignment: .end,
+          crossAxisAlignment: .stretch,
+          children: [
+            Card(child: ListTile(title: Text('Bolo de cenoura'))),
+            Card(child: ListTile(title: Text('Pão de queijo'))),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>O tutorial antigo não bate com o seu Flutter</strong>
+<p>Você copia um exemplo de um vídeo de 2021 e aparecem avisos de coisa obsoleta (<em>deprecated</em>), ou erros de parâmetro que não existe. Quase sempre o tutorial é de uma versão velha. <strong>Como resolver:</strong> confira a versão com <code>flutter --version</code>, procure o nome do widget ou parâmetro na página de <em>breaking changes</em> e use o <code>dart fix --apply</code>, que conserta automaticamente muitas dessas mudanças.</p>
+</div>
+
+<div class="cenario">
+<strong>Atualizei o Flutter e o projeto Android parou de compilar</strong>
+<p>Versões novas sobem as exigências (no 3.47: Gradle 9, Kotlin 2.4, Java 17, <code>minSdk</code> 24). Um projeto criado com um Flutter antigo pode trazer números velhos nos arquivos da pasta <code>android/</code>. <strong>Como resolver:</strong> leia a mensagem (ela costuma dizer a versão mínima), confira as <em>breaking changes</em> da versão e, num projeto pequeno, compare com um projeto novo de <code>flutter create</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>O atalho de ponto não compila</strong>
+<p>O <code>.center</code> só funciona onde o Dart <strong>sabe o tipo esperado</strong>, como num parâmetro. Numa variável sem tipo (<code>var alinhamento = .center;</code>) ele não tem como adivinhar de qual classe é o <code>center</code>. E projetos com SDK do Dart anterior ao 3.10 no <code>pubspec.yaml</code> não aceitam o atalho. <strong>Como resolver:</strong> escreva a forma completa, <code>MainAxisAlignment.center</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando / lugar</th><th>Para que serve</th></tr>
+<tr><td><code>flutter --version</code></td><td>Versão do Flutter, do Dart e do DevTools</td></tr>
+<tr><td><code>flutter upgrade</code></td><td>Atualiza para a versão mais nova do canal</td></tr>
+<tr><td><code>flutter channel</code></td><td>Mostra ou troca o canal (<code>stable</code>, <code>beta</code>)</td></tr>
+<tr><td><code>dart fix --apply</code></td><td>Aplica as migrações automáticas no projeto</td></tr>
+<tr><td>docs.flutter.dev/release/release-notes</td><td>Notas de cada versão</td></tr>
+<tr><td>docs.flutter.dev/release/breaking-changes</td><td>O que quebra e como migrar</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Lendo a versão</h3>
+<p>Na versão <code>3.47.7</code>, qual número conta as correções? Responda com o número.</p>
+<div class="ex-code">O número das correções é <input data-answer="7" aria-label="número"></div>
+</div>
+
+<div class="exercise">
+<h3>2. O comando</h3>
+<p>Complete o comando que mostra a versão instalada:</p>
+<div class="ex-code">$ flutter <input data-answer="--version" aria-label="opção"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. Qual linha é o mesmo que <code>mainAxisAlignment: MainAxisAlignment.center</code>?</p>
+<label><input type="radio" name="q3"> <code>mainAxisAlignment: center</code></label>
+<label><input type="radio" name="q3"> <code>mainAxisAlignment: .center</code></label>
+<label><input type="radio" name="q3"> <code>mainAxisAlignment: 'center'</code></label>
+<label><input type="radio" name="q3"> <code>.mainAxisAlignment: center</code></label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. Antes de atualizar o Flutter de um projeto importante, que página oficial você lê para saber o que pode quebrar?</p>
+<label><input type="radio" name="q4"> O <code>pubspec.yaml</code></label>
+<label><input type="radio" name="q4"> O README do projeto</label>
+<label><input type="radio" name="q4"> A saída do <code>flutter doctor</code></label>
+<label><input type="radio" name="q4"> <em>Breaking changes</em>, na documentação do Flutter</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. No Flutter 3.47, qual é o <code>minSdkVersion</code> padrão de um projeto Android novo?</p>
+<label><input type="radio" name="q5"> 24 (Android 7.0)</label>
+<label><input type="radio" name="q5"> 16</label>
+<label><input type="radio" name="q5"> 36</label>
+<label><input type="radio" name="q5"> 13</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>flutter --version</code> mostra a versão (3.47.7), o canal (<code>stable</code>), o Dart (3.13.5) e o DevTools.</li>
+  <li>O segundo número é a versão estável (sai a cada trimestre, mais ou menos); o terceiro conta as correções.</li>
+  <li>Leia o blog para as novidades, as <em>breaking changes</em> antes de atualizar e o <code>CHANGELOG.md</code> para as correções.</li>
+  <li>No 3.47: Material e Cupertino como pacotes opcionais, Android com API 36 e <code>minSdk</code> 24, iOS 15, Impeller no desktop, Wasm na web, Widget Previews estável.</li>
+  <li>O atalho de ponto (<code>.center</code>, <code>.fromSeed</code>) é o mesmo que a forma completa, quando o tipo é conhecido.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
