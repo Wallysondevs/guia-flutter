@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter BoxDecoration — cores, bordas, cantos, sombras e degradês | Guia Flutter</title>
+<meta name="description" content="BoxDecoration no Flutter para quem nunca fez um app: a decoration do Container, cor, cantos arredondados (borderRadius), bordas (Border.all e um lado só), sombras (boxShadow), degradês (LinearGradient e RadialGradient) e o círculo (BoxShape.circle), e os erros reais (color e decoration juntos, círculo com borderRadius), com as telas fotografadas no Flutter de verdade.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Cores, Bordas e Sombras</span> (BoxDecoration)</h1>
+
+<p class="intro">O <code>color:</code> do <a href="container.html">Container</a> pinta uma caixa retangular, de cantos retos. Para deixar a caixa com cara de app moderno, com <strong>cantos arredondados</strong>, uma <strong>borda</strong>, uma <strong>sombra</strong> embaixo ou um <strong>degradê</strong> de cores, o <code>Container</code> tem o parâmetro <code>decoration:</code> ("decoração"), que recebe um <code>BoxDecoration</code> ("decoração de caixa"). Tudo o que é visual na caixa vai dentro dele.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como trocar o <code>color:</code> do <code>Container</code> por um <code>decoration: BoxDecoration(…)</code>.</li>
+  <li>Cantos arredondados com <code>borderRadius</code>, e bordas com <code>Border.all</code> e <code>Border(bottom: …)</code>.</li>
+  <li>Sombras com <code>boxShadow</code>, e degradês com <code>LinearGradient</code> e <code>RadialGradient</code>.</li>
+  <li>Caixas redondas com <code>shape: BoxShape.circle</code>.</li>
+  <li>Os erros reais: <code>color</code> e <code>decoration</code> juntos, e o círculo com <code>borderRadius</code>.</li>
+</ul>
+</div>
+
+<p>Todos os apps desta aula são um <code>lib/main.dart</code> completo, compilados pelo Flutter <span class="versao">Flutter 3.47</span> do laboratório para a web e fotografados no navegador, em tamanho de celular (390 × 844).</p>
+
+<hr>
+
+<h2>A ideia: embrulhar um presente</h2>
+<p>O <code>Container</code> é a caixa do presente. O <code>BoxDecoration</code> é tudo o que você faz com o papel de embrulho: a cor do papel, a fita em volta (a borda), as pontas dobradas para ficarem redondinhas (os cantos), a sombra que a caixa faz na mesa. O conteúdo de dentro (o <code>child</code>) não muda; muda só o embrulho.</p>
+
+<hr>
+
+<h2>1. Cor e cantos arredondados</h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: Center(
+          child: Container(
+            width: 300,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.orange.shade200,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Text('Bolo de cenoura', style: TextStyle(fontSize: 24)),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>decoration: BoxDecoration(…)</dt><dd>O "embrulho" da caixa. Quando você usa <code>decoration</code>, a cor vai <strong>dentro</strong> dele, e não no <code>color:</code> do <code>Container</code> (veja <a href="#errado">Quando dá errado</a>).</dd>
+  <dt>color: Colors.orange.shade200</dt><dd>A cor de fundo, agora dentro do <code>BoxDecoration</code>.</dd>
+  <dt>borderRadius: BorderRadius.circular(20)</dt><dd>Arredonda os quatro cantos com raio 20: quanto maior o número, mais redondo o canto.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/decoration-1.png" alt="No meio da tela, uma caixa laranja-clara de cantos arredondados com o texto Bolo de cenoura" width="390" height="844" loading="lazy"><figcaption>Uma caixa laranja de cantos arredondados, no meio da tela.</figcaption></figure>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>Cantos arredondados</th></tr>
+<tr><td><code>BorderRadius.circular(20)</code></td><td>Os quatro, com raio 20</td></tr>
+<tr><td><code>BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20))</code></td><td>Só os dois de cima</td></tr>
+<tr><td><code>BorderRadius.vertical(top: Radius.circular(20))</code></td><td>Os dois de cima (atalho)</td></tr>
+<tr><td><code>BorderRadius.horizontal(left: Radius.circular(20))</code></td><td>Os dois da esquerda</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>2. Bordas</h2>
+<p>A <code>border</code> ("borda") é a fita em volta da caixa. <code>Border.all</code> põe a mesma borda nos quatro lados; <code>Border(…)</code> deixa escolher lado por lado:</p>
+
+<pre class="file" data-file="lib/main.dart (só o body)">        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            spacing: 16,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.deepPurple, width: 3),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text('Border.all', style: TextStyle(fontSize: 20)),
+              ),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: const BoxDecoration(
+                  border: Border(bottom: BorderSide(color: Colors.teal, width: 4)),
+                ),
+                child: const Text('Só embaixo', style: TextStyle(fontSize: 20)),
+              ),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFFF3E0),
+                  border: Border(left: BorderSide(color: Colors.deepOrange, width: 8)),
+                ),
+                child: const Text('Aviso com faixa à esquerda', style: TextStyle(fontSize: 20)),
+              ),
+            ],
+          ),
+        ),
+</pre>
+
+<dl class="anatomy">
+  <dt>Border.all(color: …, width: 3)</dt><dd>Uma borda de 3 de grossura nos quatro lados. Junto com o <code>borderRadius</code>, a borda acompanha os cantos redondos.</dd>
+  <dt>Border(bottom: BorderSide(…))</dt><dd>Só a borda de baixo, como um sublinhado. Cada lado (<code>top</code>, <code>bottom</code>, <code>left</code>, <code>right</code>) é um <code>BorderSide</code> ("lado da borda") com cor e grossura.</dd>
+  <dt>Color(0xFFFFF3E0)</dt><dd>Uma cor escrita em número: <code>0xFF</code> (totalmente opaca) seguido do código da cor em hexadecimal, o mesmo dos sites (<code>#FFF3E0</code>, um creme). Útil quando a cor exata vem de um desenho.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/decoration-2.png" alt="Três caixas centralizadas, do tamanho dos textos: Border.all com contorno roxo e cantos redondos; Só embaixo com uma linha verde-azulada embaixo do texto; e uma caixa creme com uma faixa laranja grossa à esquerda e o texto Aviso com faixa à esquerda" width="390" height="844" loading="lazy"><figcaption>Três bordas: em volta toda (com cantos redondos), só embaixo, e uma faixa grossa à esquerda. As caixas ficaram do tamanho dos textos e centralizadas, como na aula <a href="alinhamento.html#nada-muda">Alinhamento</a>.</figcaption></figure>
+
+<hr>
+
+<h2>3. Sombras</h2>
+<p>A <code>boxShadow</code> é uma <strong>lista</strong> de sombras (dá para empilhar várias). Cada sombra é um <code>BoxShadow</code>:</p>
+
+<pre class="file" data-file="lib/main.dart (só o body)">        body: Center(
+          child: Container(
+            width: 280,
+            height: 160,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 16,
+                  offset: Offset(0, 8),
+                ),
+              ],
+            ),
+            child: const Text('Pudim de leite', style: TextStyle(fontSize: 24)),
+          ),
+        ),
+</pre>
+
+<dl class="anatomy">
+  <dt>color: Colors.black26</dt><dd>A cor da sombra: um preto bem transparente (26% de opacidade). Sombras de verdade nunca são pretas sólidas.</dd>
+  <dt>blurRadius: 16</dt><dd>O quanto a sombra é "borrada": 0 é uma sombra de contorno duro; números maiores espalham e suavizam.</dd>
+  <dt>offset: Offset(0, 8)</dt><dd>O deslocamento da sombra: 0 para o lado e 8 para baixo, como se a luz viesse de cima.</dd>
+  <dt>spreadRadius</dt><dd>(não usado aqui) Aumenta ou diminui o tamanho da sombra antes de borrar.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/decoration-3.png" alt="No meio da tela, um cartão branco de cantos arredondados com o texto Pudim de leite e uma sombra cinza suave, mais forte embaixo" width="390" height="844" loading="lazy"><figcaption>Um cartão branco com sombra suave embaixo.</figcaption></figure>
+
+<div class="tryflutter" data-goal="src:blurRadius:\s*(2\d|[3-9]\d)\b;;src:offset:\s*Offset\(\s*0,\s*(1[2-9]|[2-9]\d)\s*\)">
+<p class="try-task"><strong>Missão:</strong> o cartão parece "colado" na tela. Faça ele "flutuar" mais: aumente o <code>blurRadius</code> para 20 ou mais e o deslocamento para baixo (<code>Offset(0, …)</code>) para 12 ou mais.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: Center(
+          child: Container(
+            width: 280,
+            height: 160,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: const [
+                BoxShadow(color: Colors.black26, blurRadius: 2, offset: Offset(0, 1)),
+              ],
+            ),
+            child: const Text('Pudim de leite', style: TextStyle(fontSize: 24)),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: Center(
+          child: Container(
+            width: 280,
+            height: 160,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: const [
+                BoxShadow(color: Colors.black26, blurRadius: 24, offset: Offset(0, 12)),
+              ],
+            ),
+            child: const Text('Pudim de leite', style: TextStyle(fontSize: 24)),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>4. Degradês</h2>
+<p>No lugar de uma cor só, o fundo pode ser um <strong>degradê</strong> (em inglês, <em>gradient</em>): uma cor que vai virando outra.</p>
+
+<pre class="file" data-file="lib/main.dart (só o body)">        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            spacing: 16,
+            children: [
+              Container(
+                height: 140,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: const LinearGradient(
+                    colors: [Colors.orange, Colors.pink],
+                  ),
+                ),
+              ),
+              Container(
+                height: 140,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.lightBlue, Colors.indigo],
+                  ),
+                ),
+              ),
+              Container(
+                height: 140,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: const RadialGradient(
+                    colors: [Colors.yellow, Colors.deepOrange],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+</pre>
+
+<dl class="anatomy">
+  <dt>LinearGradient(colors: [a, b])</dt><dd>Degradê em linha reta. Sem <code>begin</code>/<code>end</code>, vai da esquerda (<code>centerLeft</code>) para a direita (<code>centerRight</code>).</dd>
+  <dt>begin: Alignment.topCenter, end: Alignment.bottomCenter</dt><dd>De cima para baixo. Os pontos são os mesmos <code>Alignment</code> da aula <a href="center-align.html">Center e Align</a>; <code>topLeft</code> → <code>bottomRight</code> faz um degradê na diagonal.</dd>
+  <dt>RadialGradient(colors: [a, b])</dt><dd>Degradê em círculo: a primeira cor no centro, a segunda nas bordas.</dd>
+  <dt>colors: [ … ]</dt><dd>Uma lista: dá para usar três, quatro cores ou mais.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/decoration-4.png" alt="Três faixas de cantos arredondados: a primeira indo de laranja, à esquerda, a rosa, à direita; a segunda de azul-claro, em cima, a azul-escuro, embaixo; a terceira laranja-escura com um círculo amarelo brilhante no meio que se espalha até o laranja" width="390" height="844" loading="lazy"><figcaption>Degradê da esquerda para a direita, de cima para baixo, e em círculo. No radial, o círculo tem o tamanho da menor medida da caixa (a altura); fora dele fica a última cor.</figcaption></figure>
+
+<hr>
+
+<h2>5. Caixas redondas: <code>BoxShape.circle</code></h2>
+
+<pre class="file" data-file="lib/main.dart (só o body)">        body: Center(
+          child: Container(
+            width: 120,
+            height: 120,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.deepPurple.shade100,
+              border: Border.all(color: Colors.deepPurple, width: 4),
+            ),
+            child: const Text('A', style: TextStyle(fontSize: 56)),
+          ),
+        ),
+</pre>
+
+<dl class="anatomy">
+  <dt>shape: BoxShape.circle</dt><dd>Em vez de retângulo, um círculo que cabe dentro da caixa. Com largura e altura iguais, um círculo perfeito; a borda acompanha a forma.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/decoration-5.png" alt="No meio da tela, um círculo lilás com contorno roxo e uma letra A grande no centro" width="390" height="844" loading="lazy"><figcaption>Um círculo lilás com borda roxa e a letra A no meio: o "avatar" da Ana.</figcaption></figure>
+
+<p>(Para fotos de perfil redondas, o Material tem um widget pronto, o <code>CircleAvatar</code>, que você vai ver na aula <a href="image.html">Imagens</a>.)</p>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Quero…</th><th>Use</th></tr>
+<tr><td>Só uma cor de fundo</td><td><code>Container(color: …)</code> ou <code>ColoredBox</code></td></tr>
+<tr><td>Cor + cantos, borda, sombra ou degradê</td><td><code>Container(decoration: BoxDecoration(…))</code></td></tr>
+<tr><td>Um cartão com o visual pronto do Material</td><td><code>Card</code> (aula <a href="card.html">Card e ListTile</a>)</td></tr>
+<tr><td>Cortar uma <strong>imagem</strong> com cantos redondos</td><td><code>ClipRRect(borderRadius: …, child: Image…)</code></td></tr>
+<tr><td>A decoração sem o resto do <code>Container</code></td><td><code>DecoratedBox(decoration: BoxDecoration(…), child: …)</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>color</code> e <code>decoration</code> ao mesmo tempo</strong>
+<pre class="file" data-file="lib/main.dart (só o body)">        body: Container(
+          color: Colors.orange,
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(20)),
+          child: const Text('Bolo de cenoura'),
+        ),
+</pre>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following assertion was thrown building MeuApp(dirty):
+Assertion failed:
+file:///home/ana/flutter/packages/flutter/lib/src/widgets/container.dart:277:10
+color == null || decoration == null
+"Cannot provide both a color and a decoration.\nThe color argument is just a shorthand for
+\"decoration: BoxDecoration(color: color)\".\nTo use both a color and other decoration properties,
+set the color in the BoxDecoration instead."
+
+The relevant error-causing widget was:
+  MeuApp MeuApp:file:///home/ana/app/lib/main.dart:3:29
+«  (a pilha)
+</pre>
+<dl class="anatomy">
+  <dt>Assertion failed: …container.dart:277:10</dt><dd>Uma conferência do <code>Container</code>, no código do Flutter (arquivo <code>container.dart</code>, linha 277), falhou.</dd>
+  <dt>color == null || decoration == null</dt><dd>A conferência: "ou o <code>color</code> é vazio, ou o <code>decoration</code> é vazio". Os dois preenchidos não pode.</dd>
+  <dt>"Cannot provide both a color and a decoration. …"</dt><dd>"Não dá para passar uma cor e uma decoração. O argumento <code>color</code> é só um atalho para <code>decoration: BoxDecoration(color: color)</code>. Para usar uma cor junto com outras propriedades de decoração, ponha a cor dentro do <code>BoxDecoration</code>." (O <code>\n</code> é a quebra de linha da mensagem original.)</dd>
+  <dt>The relevant error-causing widget was: MeuApp … main.dart:3:29</dt><dd>O erro aconteceu ao montar o <code>MeuApp</code> (é dentro do <code>build</code> dele que o <code>Container</code> é criado).</dd>
+</dl>
+<p>No modo de depuração, a tela inteira fica vermelha com essa mensagem. <strong>Como consertar:</strong> mova a cor para dentro: <code>decoration: BoxDecoration(color: Colors.orange, borderRadius: BorderRadius.circular(20))</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Círculo com <code>borderRadius</code></strong>
+<pre class="file" data-file="lib/main.dart (só o body)">        body: Container(
+          width: 100,
+          height: 100,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.orange,
+            borderRadius: BorderRadius.circular(20),
+          ),
+        ),
+</pre>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following assertion was thrown building MeuApp(dirty):
+Assertion failed:
+file:///home/ana/flutter/packages/flutter/lib/src/painting/box_decoration.dart:135:7
+shape != BoxShape.circle || borderRadius == null
+"A circle cannot have a border radius. Remove either the shape or the borderRadius argument."
+
+The relevant error-causing widget was:
+  MeuApp MeuApp:file:///home/ana/app/lib/main.dart:3:29
+«  (a pilha)
+</pre>
+<p>A conferência que falhou foi <code>shape != BoxShape.circle || borderRadius == null</code> ("ou não é círculo, ou não tem <code>borderRadius</code>"), e a mensagem entre aspas é clara: "Um círculo não pode ter raio de borda. Tire o <code>shape</code> ou o <code>borderRadius</code>." Um círculo já é redondo por inteiro; não há cantos para arredondar. No modo de depuração, a tela fica vermelha com essa mensagem. <strong>Como consertar:</strong> escolha um dos dois.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th><code>BoxDecoration(…)</code></th><th>O que faz</th></tr>
+<tr><td><code>color:</code></td><td>Cor de fundo</td></tr>
+<tr><td><code>borderRadius: BorderRadius.circular(r)</code></td><td>Cantos arredondados</td></tr>
+<tr><td><code>border: Border.all(color:, width:)</code></td><td>Borda nos quatro lados</td></tr>
+<tr><td><code>border: Border(bottom: BorderSide(…))</code></td><td>Borda só num lado</td></tr>
+<tr><td><code>boxShadow: [BoxShadow(color:, blurRadius:, offset:)]</code></td><td>Sombra (uma lista)</td></tr>
+<tr><td><code>gradient: LinearGradient(colors: […])</code> / <code>RadialGradient</code></td><td>Degradê em linha / em círculo</td></tr>
+<tr><td><code>shape: BoxShape.circle</code></td><td>Caixa redonda (sem <code>borderRadius</code>)</td></tr>
+<tr><td><code>image: DecorationImage(image: …, fit: BoxFit.cover)</code></td><td>Imagem de fundo (aula <a href="image.html">Imagens</a>)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">1. Você quer cantos arredondados <strong>e</strong> uma cor de fundo. Onde vai a cor?</p>
+<label><input type="radio" name="q1"> No <code>color:</code> do <code>Container</code></label>
+<label><input type="radio" name="q1"> No <code>color:</code> do <code>BoxDecoration</code></label>
+<label><input type="radio" name="q1"> Nos dois</label>
+<label><input type="radio" name="q1"> No <code>borderRadius</code></label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">2. O que <code>offset: Offset(0, 8)</code> faz numa sombra?</p>
+<label><input type="radio" name="q2"> Deixa a sombra 8 vezes mais escura</label>
+<label><input type="radio" name="q2"> Borra a sombra em 8</label>
+<label><input type="radio" name="q2"> Desloca a sombra 8 para a direita</label>
+<label><input type="radio" name="q2"> Desloca a sombra 8 para baixo</label>
+</div>
+
+<div class="exercise">
+<h3>3. Complete</h3>
+<p>Complete para a caixa ter cantos de raio 12 e borda vermelha de grossura 2:</p>
+<div class="ex-code">BoxDecoration(<br>&nbsp;&nbsp;borderRadius: BorderRadius.<input data-answer="circular" aria-label="construtor">(12),<br>&nbsp;&nbsp;border: Border.<input data-answer="all" aria-label="construtor da borda">(color: Colors.red, width: 2),<br>)</div>
+</div>
+
+<h3>Missão final: o selo de favorito</h3>
+
+<div class="tryflutter" data-goal="src:shape:\s*BoxShape\.circle">
+<p class="try-task"><strong>Missão:</strong> o selo amarelo com a estrela está quadrado. Deixe-o <strong>redondo</strong> com <code>shape: BoxShape.circle</code> (e tire o <code>borderRadius</code>, que não combina com o círculo).</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: Center(
+          child: Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              color: Colors.amber,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.star, size: 56, color: Colors.white),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: Center(
+          child: Container(
+            width: 100,
+            height: 100,
+            decoration: const BoxDecoration(
+              color: Colors.amber,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.star, size: 56, color: Colors.white),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<figure class="tela"><img src="assets/telas/decoration-6.png" alt="No meio da tela, um círculo amarelo com uma estrela branca no centro" width="390" height="844" loading="lazy"><figcaption>O resultado esperado: o selo redondo com a estrela.</figcaption></figure>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>Container(decoration: BoxDecoration(…))</code> é o "embrulho" da caixa: cor, cantos, borda, sombra, degradê, forma.</li>
+  <li>Com <code>decoration</code>, a cor vai <strong>dentro</strong> do <code>BoxDecoration</code>; os dois <code>color</code> juntos dão erro.</li>
+  <li><code>borderRadius</code> arredonda os cantos; <code>border</code> põe a fita; <code>boxShadow</code> é uma lista de sombras (cor transparente, <code>blurRadius</code>, <code>offset</code>).</li>
+  <li><code>LinearGradient</code> e <code>RadialGradient</code> fazem degradês; <code>begin</code>/<code>end</code> usam os pontos do <code>Alignment</code>.</li>
+  <li><code>shape: BoxShape.circle</code> deixa a caixa redonda, e não combina com <code>borderRadius</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
