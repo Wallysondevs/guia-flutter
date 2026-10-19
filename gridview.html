@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter GridView — itens em grade que rola | Guia Flutter</title>
+<meta name="description" content="GridView do Flutter para iniciantes: GridView.count com crossAxisCount, espaçamentos e padding, childAspectRatio (o formato das células), GridView.builder com SliverGridDelegateWithMaxCrossAxisExtent (3 colunas no celular, 7 numa tela larga, fotos reais) e o overflow real dentro das células.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">GridView</span></h1>
+
+<p class="intro">A galeria de fotos do celular, a vitrine de uma loja virtual, o teclado de emojis: tudo isso é uma <strong>grade</strong>, itens em linhas e colunas. No Flutter, a peça é a <code>GridView</code> ("visão em grade"). Ela é uma prima da <a href="listview.html">ListView</a>: também rola e também tem uma versão <code>builder</code> para muitos itens. A diferença é que põe vários itens lado a lado em cada linha.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como montar uma grade com <code>GridView.count</code> e o número de colunas (<code>crossAxisCount</code>).</li>
+  <li>Os espaçamentos: <code>mainAxisSpacing</code>, <code>crossAxisSpacing</code> e <code>padding</code>.</li>
+  <li>O formato de cada célula: <code>childAspectRatio</code>.</li>
+  <li>A <code>GridView.builder</code> com colunas que se ajustam à largura da tela (fotos no celular e numa tela larga).</li>
+  <li>O overflow real dentro das células, e como resolver.</li>
+</ul>
+</div>
+
+<p>As telas e o console desta aula vieram de um Flutter de verdade, no laboratório da Ana, em tamanho de celular (e, numa delas, de uma tela larga).</p>
+
+<hr>
+
+<h2>A ideia: a caixa de ovos</h2>
+<p>Uma caixa de ovos tem um número fixo de <strong>colunas</strong> (2, numa caixa de meia dúzia) e as linhas vêm uma atrás da outra. Todos os buracos têm o mesmo tamanho. A <code>GridView</code> é uma caixa de ovos que pode ser tão comprida quanto quiser e que rola: você diz quantas colunas, e ela arruma os itens linha por linha, da esquerda para a direita.</p>
+
+<hr>
+
+<h2>1. A vitrine da lojinha: <code>GridView.count</code></h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lojinha da Ana')),
+        body: GridView.count(
+          crossAxisCount: 2,
+          padding: const EdgeInsets.all(12),
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          children: const [
+            Produto(icone: Icons.coffee, nome: 'Café'),
+            Produto(icone: Icons.bakery_dining, nome: 'Pão'),
+            Produto(icone: Icons.egg, nome: 'Ovos'),
+            Produto(icone: Icons.local_drink, nome: 'Leite'),
+            Produto(icone: Icons.icecream, nome: 'Sorvete'),
+            Produto(icone: Icons.apple, nome: 'Maçã'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class Produto extends StatelessWidget {
+  const Produto({super.key, required this.icone, required this.nome});
+
+  final IconData icone;
+  final String nome;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icone, size: 64),
+          const SizedBox(height: 8),
+          Text(nome, style: const TextStyle(fontSize: 20)),
+        ],
+      ),
+    );
+  }
+}</pre>
+
+<dl class="anatomy">
+  <dt>GridView.count(…)</dt><dd>Uma grade com um número <strong>fixo</strong> ("count", contagem) de colunas.</dd>
+  <dt>crossAxisCount: 2</dt><dd>Quantos itens em cada linha. Na grade vertical, o eixo cruzado (<em>cross axis</em>) é o horizontal: são as colunas.</dd>
+  <dt>padding: const EdgeInsets.all(12)</dt><dd>Um respiro de 12 pixels em volta da grade, dentro da área que rola.</dd>
+  <dt>mainAxisSpacing: 12</dt><dd>O espaço entre uma linha e a de baixo (o eixo principal, o da rolagem).</dd>
+  <dt>crossAxisSpacing: 12</dt><dd>O espaço entre as colunas.</dd>
+  <dt>children: const [Produto(…), …]</dt><dd>Os itens, na ordem em que vão preenchendo a grade: o 1º e o 2º na primeira linha, o 3º e o 4º na segunda…</dd>
+  <dt>class Produto</dt><dd>Um widget pequeno para cada célula: um <code>Card</code> com o ícone e o nome numa <code>Column</code> centralizada.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/gridview-1.png" alt="Tela 'Lojinha da Ana' com uma grade de 2 colunas e 3 linhas de cartões quadrados cinza-claro: Café, Pão, Ovos, Leite, Sorvete e Maçã, cada um com um ícone grande em cima do nome" width="390" height="844" loading="lazy"><figcaption>Seis produtos em 2 colunas.</figcaption></figure>
+
+<p>Os seis cartões ficaram <strong>quadrados</strong>: por padrão, cada célula é tão alta quanto larga. A largura vem da conta: a tela (390) menos o <code>padding</code> das duas pontas (12 + 12) e o espaço entre as colunas (12), dividida por 2 colunas, dá 177 pixels por cartão.</p>
+
+<div class="tryflutter" data-goal="src:crossAxisCount:\s*3">
+<p class="try-task"><strong>Missão:</strong> a Ana quer ver mais produtos de uma vez. Mude a grade para <strong>3 colunas</strong> e veja os cartões ficarem menores.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lojinha da Ana')),
+        body: GridView.count(
+          crossAxisCount: 2,
+          padding: const EdgeInsets.all(12),
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          children: const [
+            Produto(icone: Icons.coffee, nome: 'Café'),
+            Produto(icone: Icons.bakery_dining, nome: 'Pão'),
+            Produto(icone: Icons.egg, nome: 'Ovos'),
+            Produto(icone: Icons.local_drink, nome: 'Leite'),
+            Produto(icone: Icons.icecream, nome: 'Sorvete'),
+            Produto(icone: Icons.apple, nome: 'Maçã'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class Produto extends StatelessWidget {
+  const Produto({super.key, required this.icone, required this.nome});
+
+  final IconData icone;
+  final String nome;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icone, size: 64),
+          const SizedBox(height: 8),
+          Text(nome, style: const TextStyle(fontSize: 20)),
+        ],
+      ),
+    );
+  }
+}</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lojinha da Ana')),
+        body: GridView.count(
+          crossAxisCount: 3,
+          padding: const EdgeInsets.all(12),
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          children: const [
+            Produto(icone: Icons.coffee, nome: 'Café'),
+            Produto(icone: Icons.bakery_dining, nome: 'Pão'),
+            Produto(icone: Icons.egg, nome: 'Ovos'),
+            Produto(icone: Icons.local_drink, nome: 'Leite'),
+            Produto(icone: Icons.icecream, nome: 'Sorvete'),
+            Produto(icone: Icons.apple, nome: 'Maçã'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class Produto extends StatelessWidget {
+  const Produto({super.key, required this.icone, required this.nome});
+
+  final IconData icone;
+  final String nome;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icone, size: 64),
+          const SizedBox(height: 8),
+          Text(nome, style: const TextStyle(fontSize: 20)),
+        ],
+      ),
+    );
+  }
+}</pre>
+</div>
+
+<hr>
+
+<h2>2. O formato das células: <code>childAspectRatio</code></h2>
+<p>Para cartões mais altos que largos (o formato de um cartão de produto com foto), use o <code>childAspectRatio</code>, a proporção <strong>largura ÷ altura</strong> de cada célula. O padrão é <code>1.0</code> (quadrado). Com <code>0.8</code>, a célula fica com a altura = largura ÷ 0,8, ou seja, mais alta:</p>
+
+<pre class="file" data-file="lib/main.dart">        body: GridView.count(
+          crossAxisCount: 2,
+          padding: const EdgeInsets.all(12),
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          childAspectRatio: 0.8,
+          children: const [ … os mesmos seis produtos … ],
+        ),</pre>
+
+<figure class="tela"><img src="assets/telas/gridview-5.png" alt="A mesma vitrine com os seis cartões mais altos que largos, ocupando quase a tela toda" width="390" height="844" loading="lazy"><figcaption><code>childAspectRatio: 0.8</code>: cartões em pé.</figcaption></figure>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th><code>childAspectRatio</code></th><th>Formato da célula</th></tr>
+<tr><td><code>1.0</code> (padrão)</td><td>Quadrada</td></tr>
+<tr><td>Menor que 1 (<code>0.8</code>, <code>0.6</code>)</td><td>Em pé: mais alta que larga</td></tr>
+<tr><td>Maior que 1 (<code>1.5</code>, <code>2</code>)</td><td>Deitada: mais larga que alta (veja o cenário em <a href="#errado">Quando dá errado</a>)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>3. Muitos itens e colunas que se ajustam: <code>GridView.builder</code></h2>
+<p>Como na <a href="listview-builder.html">ListView.builder</a>, a <code>GridView.builder</code> monta só as células que aparecem. E com o <code>SliverGridDelegateWithMaxCrossAxisExtent</code>, você não diz quantas colunas: diz a <strong>largura máxima</strong> de cada célula, e o Flutter calcula quantas colunas cabem. A galeria de fotos de receitas da Ana (aqui, quadrados coloridos numerados no lugar das fotos):</p>
+
+<pre class="file" data-file="lib/main.dart">        body: GridView.builder(
+          padding: const EdgeInsets.all(8),
+          itemCount: fotos.length,
+          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: 120,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+          ),
+          itemBuilder: (context, index) {
+            return Container(
+              color: Colors.primaries[index % Colors.primaries.length].shade200,
+              alignment: Alignment.center,
+              child: Text('${fotos[index]}', style: const TextStyle(fontSize: 22)),
+            );
+          },
+        ),</pre>
+
+<dl class="anatomy">
+  <dt>GridView.builder(itemCount:, itemBuilder:, gridDelegate:)</dt><dd>O <code>itemCount</code> e o <code>itemBuilder</code> funcionam como na <code>ListView.builder</code>. O que é novo é o <code>gridDelegate</code>.</dd>
+  <dt>gridDelegate:</dt><dd>O "encarregado da grade" (<em>delegate</em>): o objeto que decide o tamanho e a posição das células.</dd>
+  <dt>SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: 120, …)</dt><dd>"Células com no máximo 120 pixels de largura." O Flutter põe quantas colunas couberem e estica as células um pouco para encher a linha.</dd>
+  <dt>Colors.primaries[index % Colors.primaries.length].shade200</dt><dd>Uma cor clarinha da paleta do Material para cada célula; o <code>%</code> (resto da divisão) faz as cores recomeçarem quando acabam.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/gridview-2.png" alt="Tela 'Galeria de receitas' em celular com uma grade de 3 colunas de quadrados coloridos numerados de 1 a 18 e o começo da linha seguinte cortado no pé da tela" width="390" height="844" loading="lazy"><figcaption>No celular (390 pixels de largura): 3 colunas.</figcaption></figure>
+<figure class="tela"><img src="assets/telas/gridview-3.png" alt="A mesma galeria numa janela larga de 800 por 600 pixels, com 7 colunas de quadrados coloridos numerados de 1 a 35" width="800" height="600" loading="lazy"><figcaption>Numa tela larga (800 pixels): 7 colunas, o mesmo código.</figcaption></figure>
+
+<p>No celular, o Flutter escolheu <strong>3</strong> colunas: é o menor número de colunas em que nenhuma célula passa de 120 pixels (com 2 colunas, cada uma teria uns 183 pixels; com 3, uns 119). Na tela larga, o mesmo código fez <strong>7</strong> colunas. É um jeito simples de um app ficar bom no celular e no tablet; o assunto continua em <a href="responsivo.html">Telas de Vários Tamanhos</a>.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Forma</th><th>Use quando</th></tr>
+<tr><td><code>GridView.count(crossAxisCount: 2, children: [...])</code></td><td>Poucos itens, número fixo de colunas</td></tr>
+<tr><td><code>GridView.extent(maxCrossAxisExtent: 150, children: [...])</code></td><td>Poucos itens, colunas pela largura máxima</td></tr>
+<tr><td><code>GridView.builder(gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2), …)</code></td><td>Muitos itens, número fixo de colunas</td></tr>
+<tr><td><code>GridView.builder(gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: 120), …)</code></td><td>Muitos itens, colunas que se ajustam à tela</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Células baixas demais para o conteúdo</strong>
+<p>A Ana quis cartões deitados e pôs <code>childAspectRatio: 2</code> na vitrine da seção 1 (largura = 2 × altura):</p>
+<pre class="file" data-file="lib/main.dart">          crossAxisSpacing: 12,
+          childAspectRatio: 2,</pre>
+<figure class="tela"><img src="assets/telas/gridview-4.png" alt="A vitrine com cartões baixos: em cada um, o ícone ocupa quase tudo, e na borda de baixo há uma faixa fina de listras amarelas e pretas com 'BOTTOM OVERFLOWED BY 21 PIXELS'; os nomes Café, Pão, Ovos, Leite, Sorvete e Maçã aparecem por baixo, saindo do cartão" width="390" height="844" loading="lazy"><figcaption>Seis cartões, seis faixas de listras.</figcaption></figure>
+<pre class="term">══╡ EXCEPTION CAUGHT BY RENDERING LIBRARY ╞═════════════════════════════════════════════════════════
+The following assertion was thrown during layout:
+A RenderFlex overflowed by 21 pixels on the bottom.
+
+The relevant error-causing widget was:
+  Column Column:file:///home/ana/app/lib/main.dart:42:14
+
+The overflowing RenderFlex has an orientation of Axis.vertical.
+« … o resto da mensagem, igual à da aula de overflow …
+════════════════════════════════════════════════════════════════════════════════════════════════════
+Another exception was thrown: A RenderFlex overflowed by 21 pixels on the bottom.
+Another exception was thrown: A RenderFlex overflowed by 21 pixels on the bottom.
+Another exception was thrown: A RenderFlex overflowed by 21 pixels on the bottom.
+Another exception was thrown: A RenderFlex overflowed by 21 pixels on the bottom.
+Another exception was thrown: A RenderFlex overflowed by 21 pixels on the bottom.</pre>
+<p>Cada cartão tem agora só 88 pixels de altura (177 ÷ 2), mas o ícone (64), o espaço (8) e o nome pedem mais. A <code>Column</code> dentro do cartão transbordou 21 pixels embaixo, e a mensagem é a mesma da aula <a href="overflow.html">O Famoso Erro de Overflow</a>, agora apontando a <code>Column</code> da linha 42 (a do <code>Produto</code>). O primeiro erro vem completo; os outros cinco cartões aparecem como <code>Another exception was thrown</code>, numa linha só. <strong>Como consertar:</strong> numa grade, a célula tem tamanho <strong>fixo</strong>, e o conteúdo tem de caber nela. Ajuste o <code>childAspectRatio</code> ao conteúdo (o padrão, <code>1.0</code>, já cabia), ou diminua o conteúdo (um ícone menor).</p>
+</div>
+
+<div class="cenario">
+<strong><code>GridView</code> dentro de uma <code>Column</code></strong>
+<p>Como a <code>ListView</code>, a <code>GridView</code> quer toda a altura que recebe: dentro de uma <code>Column</code>, dá o mesmo <code>Vertical viewport was given unbounded height</code>. A solução é a mesma: <code>Expanded(child: GridView.count(…))</code>. Veja <a href="listview.html#errado">ListView: Quando dá errado</a>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Parâmetro</th><th>O que faz</th></tr>
+<tr><td><code>crossAxisCount: 2</code></td><td>Número de colunas (<code>GridView.count</code>, <code>…FixedCrossAxisCount</code>)</td></tr>
+<tr><td><code>maxCrossAxisExtent: 120</code></td><td>Largura máxima da célula; as colunas se ajustam (<code>GridView.extent</code>, <code>…MaxCrossAxisExtent</code>)</td></tr>
+<tr><td><code>mainAxisSpacing: 12</code></td><td>Espaço entre as linhas</td></tr>
+<tr><td><code>crossAxisSpacing: 12</code></td><td>Espaço entre as colunas</td></tr>
+<tr><td><code>childAspectRatio: 0.8</code></td><td>Largura ÷ altura de cada célula (padrão 1.0)</td></tr>
+<tr><td><code>padding: EdgeInsets.all(12)</code></td><td>Respiro em volta, dentro da área que rola</td></tr>
+<tr><td><code>scrollDirection: Axis.horizontal</code></td><td>Grade que rola de lado</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete</h3>
+<p>Complete para uma grade de 4 colunas com 8 pixels entre as colunas:</p>
+<div class="ex-code">GridView.count(<br>&nbsp;&nbsp;<input data-answer="crossAxisCount" aria-label="parâmetro do número de colunas">: 4,<br>&nbsp;&nbsp;<input data-answer="crossAxisSpacing" aria-label="parâmetro do espaço entre colunas">: 8,<br>&nbsp;&nbsp;children: [...],<br>)</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">2. Com <code>childAspectRatio: 0.5</code>, como fica a célula?</p>
+<label><input type="radio" name="q2"> Quadrada</label>
+<label><input type="radio" name="q2"> Duas vezes mais larga que alta</label>
+<label><input type="radio" name="q2"> Duas vezes mais alta que larga</label>
+<label><input type="radio" name="q2"> Com metade do número de colunas</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. Você quer uma galeria com mais colunas no tablet do que no celular, sem escrever <code>if</code>. O que usar?</p>
+<label><input type="radio" name="q3"> <code>crossAxisCount: 3</code></label>
+<label><input type="radio" name="q3"> <code>SliverGridDelegateWithMaxCrossAxisExtent</code> (ou <code>GridView.extent</code>)</label>
+<label><input type="radio" name="q3"> <code>childAspectRatio: 2</code></label>
+<label><input type="radio" name="q3"> Uma <code>ListView</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. Todas as células de uma grade mostram listras com <code>BOTTOM OVERFLOWED</code>. Qual é a causa mais provável?</p>
+<label><input type="radio" name="q4"> As células são baixas demais para o conteúdo (o <code>childAspectRatio</code> está grande)</label>
+<label><input type="radio" name="q4"> Faltou o <code>itemCount</code></label>
+<label><input type="radio" name="q4"> Há colunas demais</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>GridView</code> põe itens em linhas e colunas e rola, como uma caixa de ovos comprida.</li>
+  <li><code>GridView.count(crossAxisCount: n)</code>: número fixo de colunas; espaços com <code>mainAxisSpacing</code> e <code>crossAxisSpacing</code>.</li>
+  <li>As células têm tamanho fixo: quadradas por padrão; o <code>childAspectRatio</code> (largura ÷ altura) muda o formato. Conteúdo maior que a célula dá overflow.</li>
+  <li><code>GridView.builder</code> monta só o que aparece; com <code>SliverGridDelegateWithMaxCrossAxisExtent</code>, as colunas se ajustam à largura (3 no celular, 7 na tela larga, no lab).</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
