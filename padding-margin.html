@@ -96,7 +96,7 @@ class MeuApp extends StatelessWidget {
 
 <figure class="tela"><img src="assets/telas/padding-margin-2.png" alt="A mesma tela, agora com o texto do bolo de cenoura afastado da borda esquerda, da direita e da barra do título, quebrado em três linhas" width="390" height="844" loading="lazy"><figcaption>Com <code>EdgeInsets.all(24)</code>: o texto ganhou respiro dos dois lados e embaixo da barra.</figcaption></figure>
 
-<div class="tryflutter" data-goal="src:EdgeInsets\.all\(40\)">
+<div class="tryflutter" data-goal="src:EdgeInsets\.all\(40\)" data-foto="assets/telas/padding-margin-7.png" data-foto-alt="O texto do bolo de cenoura bem afastado das bordas e da barra, numa coluna mais estreita, em três linhas">
 <p class="try-task"><strong>Missão:</strong> aumente o respiro para <strong>40</strong> em todos os lados e veja o texto ficar mais estreito (ele tem menos largura para ocupar, então quebra em mais linhas).</p>
 <pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
 
@@ -297,7 +297,7 @@ class MeuApp extends StatelessWidget {
 <p>Compare o verde com o azul: os dois têm "20 de espaço", mas no verde a <strong>cor cresceu</strong> em volta do texto (padding) e no azul a <strong>caixa se afastou</strong> das bordas da tela e dos vizinhos, com a cor só atrás do texto (margem). Essa é a diferença inteira entre os dois.</p>
 <p>(Repare também que as caixas ficaram centralizadas umas em relação às outras, e não na tela: a <code>Column</code> ficou com a largura da caixa mais larga, a amarela. Isso é assunto da aula <a href="alinhamento.html#nada-muda">Alinhamento</a>.)</p>
 
-<div class="tryflutter" data-goal="src:margin:\s*const\s+EdgeInsets\.symmetric\(\s*horizontal:\s*16">
+<div class="tryflutter" data-goal="src:margin:\s*const\s+EdgeInsets\.symmetric\(\s*horizontal:\s*16" data-foto="assets/telas/padding-margin-8.png" data-foto-alt="Um cartão laranja-claro com a receita do pudim em três linhas, afastado das duas laterais da tela, logo abaixo da barra">
 <p class="try-task"><strong>Missão:</strong> o cartão da receita está colado nas laterais da tela. Dê a ele uma <strong>margem</strong> de 16 só nas laterais, com <code>EdgeInsets.symmetric(horizontal: 16)</code>, sem mexer no padding.</p>
 <pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
 

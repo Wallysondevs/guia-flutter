@@ -136,7 +136,7 @@ Center    ── põe o filho no meio dos seus 200 × 200</pre>
 
 <p>Agora o vermelho tem os 50 × 50 que pediu, no meio de uma área invisível de 200 × 200 (por isso ele aparece a 75 da borda esquerda: (200 − 50) ÷ 2 = 75). A área do <code>SizedBox</code> continua lá, só que transparente: quem a ocupa é o <code>Center</code>.</p>
 
-<div class="tryflutter" data-goal="src:(Center|Align)\(">
+<div class="tryflutter" data-goal="src:(Center|Align)\(" data-foto="assets/telas/constraints-6.png" data-foto-alt="Abaixo da barra Restrições, um quadrado verde de 80 × 80 no meio de uma área invisível de 300 × 150, afastado da borda esquerda e do topo">
 <p class="try-task"><strong>Missão:</strong> o selo deveria ter 80 × 80, mas está esticado até 300 × 150 por causa do <code>SizedBox</code>. Ponha um <code>Center</code> entre o <code>SizedBox</code> e o <code>Container</code> para afrouxar a restrição.</p>
 <pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
 
@@ -401,7 +401,7 @@ Another exception was thrown: Assertion failed: file:///home/ana/flutter/package
 
 <h3>Missão final: a lista que não aparecia</h3>
 
-<div class="tryflutter" data-goal="src:Expanded\(\s*child:\s*ListView">
+<div class="tryflutter" data-goal="src:Expanded\(\s*child:\s*ListView" data-foto="assets/telas/constraints-7.png" data-foto-alt="O título Minhas receitas centralizado e, embaixo, a lista com Bolo de cenoura, Pudim de leite e Torta de limão, sem erro">
 <p class="try-task"><strong>Missão:</strong> este app mostra a tela vermelha de erro (altura infinita). Embrulhe a <code>ListView</code> num <code>Expanded</code>, para ela ocupar só a sobra da coluna.</p>
 <pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
 
