@@ -35,7 +35,7 @@
 
 <div class="warning">
 <strong>Esta aula usa um pacote de fora</strong>
-<p>O <code>go_router</code> não vem com o Flutter: ele é baixado do <a href="https://pub.dev/packages/go_router">pub.dev</a>, o "repositório de pacotes" do Dart e do Flutter. No seu projeto, você precisa instalá-lo (seção 1). Nas caixas "Experimente" desta aula não precisa: o DartPad, que roda os apps do <a href="simulador.html">editor do guia</a>, já traz o <code>go_router</code> entre os pacotes dele. A versão usada aqui é a <strong>go_router 18.1.0</strong>, com o <strong>Flutter <span class="versao">3.47</span></strong>. O laboratório de fotos do guia compila um arquivo só, sem pacotes; por isso esta aula descreve as telas em vez de mostrar fotos, e você confere cada uma rodando as caixas.</p>
+<p>O <code>go_router</code> não vem com o Flutter: ele é baixado do <a href="https://pub.dev/packages/go_router">pub.dev</a>, o "repositório de pacotes" do Dart e do Flutter. No seu projeto, você precisa instalá-lo (seção 1). Nas caixas "Experimente" desta aula não precisa: o DartPad, que roda os apps do <a href="simulador.html">editor do guia</a>, já traz o <code>go_router</code> entre os pacotes dele. A versão usada aqui é a <strong>go_router 18.1.0</strong>, com o <strong>Flutter <span class="versao">3.47</span></strong>. As fotos desta aula são do laboratório do guia, com o <code>go_router</code> instalado.</p>
 </div>
 
 <hr>
@@ -170,11 +170,19 @@ class SobreTela extends StatelessWidget {
   <dt>context.go('/sobre')</dt><dd>"Vá para o endereço <code>/sobre</code>". O <code>go</code> é um método que o pacote acrescenta ao <code>context</code> (uma <strong>extensão</strong>, aula <a href="dart-para-flutter.html">O Dart que Você Precisa</a>).</dd>
 </dl>
 
-<p>O que você deve ver ao rodar (na caixa "Experimente" logo abaixo, ou no seu computador): a tela "Receitas da Ana" com o botão "Sobre o app" no meio; no toque, a tela troca para "Sobre", com o texto "Feito pela Ana, com carinho.". Na versão web, a barra de endereço do navegador muda para <code>/sobre</code> (ou <code>#/sobre</code>, conforme a configuração de URLs do app).</p>
+<p>No laboratório, o app abriu no endereço <code>/</code>, com o botão "Sobre o app" no meio:</p>
+
+<figure class="tela"><img src="assets/telas/go-router-1.png" alt="Tela com a barra 'Receitas da Ana' no topo e, no meio, o botão marrom alaranjado 'Sobre o app'" width="390" height="844" loading="lazy"><figcaption>A rota <code>/</code>: a <code>InicioTela</code>.</figcaption></figure>
+
+<p>Depois do toque no botão, o <code>context.go('/sobre')</code> trocou a tela:</p>
+
+<figure class="tela"><img src="assets/telas/go-router-2.png" alt="Tela com a barra 'Sobre', sem seta de voltar, e o texto 'Feito pela Ana, com carinho.' no meio" width="390" height="844" loading="lazy"><figcaption>A rota <code>/sobre</code>. Repare: a barra não tem a seta de voltar.</figcaption></figure>
+
+<p>Na versão web, a barra de endereço do navegador também muda para <code>/sobre</code> (ou <code>#/sobre</code>, conforme a configuração de URLs do app).</p>
 
 <div class="note">
 <strong>Cadê a seta de voltar?</strong>
-<p>Rodando o exemplo, a tela "Sobre" abre <strong>sem</strong> a seta de voltar na <code>AppBar</code>. Não é defeito: o <code>go</code> troca o endereço, e o endereço <code>/sobre</code>, do jeito que o mapa foi escrito, não está "dentro" de <code>/</code>. Para o <code>go_router</code>, a pilha é calculada a partir do endereço, e a pilha de <code>/sobre</code> tem uma tela só. As duas saídas, <code>push</code> e as sub-rotas, estão nas seções 3 e 5.</p>
+<p>Como a segunda foto mostra, a tela "Sobre" abre <strong>sem</strong> a seta de voltar na <code>AppBar</code>. Não é defeito: o <code>go</code> troca o endereço, e o endereço <code>/sobre</code>, do jeito que o mapa foi escrito, não está "dentro" de <code>/</code>. Para o <code>go_router</code>, a pilha é calculada a partir do endereço, e a pilha de <code>/sobre</code> tem uma tela só. As duas saídas, <code>push</code> e as sub-rotas, estão nas seções 3 e 5.</p>
 </div>
 
 <div class="tryflutter" data-goal="src:GoRoute\(\s*path:\s*'/compras';;src:context\.go\(\s*'/compras'\s*\)">
@@ -443,7 +451,7 @@ final _rotas = GoRouter(
 <hr>
 
 <h2 id="errado">Quando dá errado</h2>
-<div class="note"><strong>Ilustrativo</strong><p>as mensagens desta seção foram tiradas do código-fonte do <code>go_router</code> 18.1.0 e do Flutter 3.47, não de um app rodado no laboratório (ele não tem pacotes). Rode o erro numa caixa "Experimente" para vê-lo no console do DartPad.</p></div>
+<div class="note"><strong>Ilustrativo</strong><p>as mensagens desta seção foram tiradas do código-fonte do <code>go_router</code> 18.1.0 e do Flutter 3.47, não de um app rodado no laboratório. Rode o erro numa caixa "Experimente" para vê-lo no console do DartPad.</p></div>
 
 <div class="cenario">
 <strong>Endereço escrito errado: <code>no routes for location</code></strong>
