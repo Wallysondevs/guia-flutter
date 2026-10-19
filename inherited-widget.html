@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter InheritedWidget — entregando dados para a árvore toda | Guia Flutter</title>
+<meta name="description" content="O InheritedWidget do Flutter para quem está começando: como entregar um dado a qualquer widget abaixo sem passar por construtores, o método of(context) com dependOnInheritedWidgetOfExactType, updateShouldNotify, um carrinho de compras completo, o Theme.of e o MediaQuery.of que você já usa, e o erro real de chamar of(context) acima do widget.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">InheritedWidget</span></h1>
+
+<p class="intro">Na aula <a href="gerencia-estado.html">Por que Gerenciar o Estado</a>, o carrinho da lojinha precisou "descer" pela árvore de widgets, passando de construtor em construtor, até chegar ao botão que o usava. O Flutter tem um jeito próprio de evitar isso: o <code>InheritedWidget</code> ("widget herdado"). Ele fica lá em cima, guardando um dado, e <strong>qualquer</strong> widget abaixo dele pode pedir esse dado direto, sem que ninguém no meio precise repassar. Você já usou isso sem saber: <code>Theme.of(context)</code> e <code>MediaQuery.sizeOf(context)</code> funcionam assim.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A ideia do <code>InheritedWidget</code>: um dado que os widgets de baixo "herdam".</li>
+  <li>Como escrever um: os campos, o método <code>of(context)</code> e o <code>updateShouldNotify</code>.</li>
+  <li>Como juntá-lo a um <code>StatefulWidget</code> para o dado poder <strong>mudar</strong>.</li>
+  <li>Um carrinho de compras completo, sem repassar nada pelos construtores.</li>
+  <li>O erro real de pedir o dado num lugar que fica <strong>acima</strong> do <code>InheritedWidget</code>.</li>
+  <li>Por que, no dia a dia, quase todo mundo usa um pacote em cima dele (o Provider).</li>
+</ul>
+</div>
+
+<p>Os exemplos rodaram no laboratório do guia (<span class="versao">Flutter 3.47</span>), com as fotos tiradas depois dos toques indicados.</p>
+
+<hr>
+
+<h2>A ideia: o quadro de avisos do prédio</h2>
+<p>No prédio da Ana, o síndico não sobe andar por andar entregando o aviso "a água vai faltar amanhã" (passando de mão em mão, de construtor em construtor). Ele cola o aviso no <strong>quadro do térreo</strong>. Quem mora no prédio, em qualquer andar, olha o quadro quando precisa. E quem <strong>olhou</strong> fica avisado quando o síndico troca o aviso.</p>
+<p>O <code>InheritedWidget</code> é o quadro de avisos. Ele fica num ponto da árvore, e todos os widgets <strong>abaixo</strong> dele (os moradores do prédio) podem lê-lo com <code>of(context)</code>. Quem leu passa a <strong>depender</strong> dele: quando o dado muda, o Flutter reconstrói só esses widgets. Quem está fora do prédio (acima ou ao lado na árvore) não enxerga o quadro.</p>
+
+<hr>
+
+<h2>1. O carrinho com <code>InheritedWidget</code></h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+const produtos = ['Bolo de cenoura', 'Pão de queijo', 'Brigadeiro'];
+
+// 1. O "quadro de avisos": guarda o dado e o entrega a quem estiver abaixo.
+class CarrinhoScope extends InheritedWidget {
+  const CarrinhoScope({
+    super.key,
+    required this.quantidade,
+    required this.adicionar,
+    required super.child,
+  });
+
+  final int quantidade;
+  final VoidCallback adicionar;
+
+  static CarrinhoScope of(BuildContext context) {
+    final scope = context.dependOnInheritedWidgetOfExactType&lt;CarrinhoScope&gt;();
+    if (scope == null) {
+      throw FlutterError('Nenhum CarrinhoScope acima deste widget.');
+    }
+    return scope;
+  }
+
+  @override
+  bool updateShouldNotify(CarrinhoScope oldWidget) {
+    return quantidade != oldWidget.quantidade;
+  }
+}
+
+// 2. Quem guarda o estado de verdade (e chama setState).
+class Carrinho extends StatefulWidget {
+  const Carrinho({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  State&lt;Carrinho&gt; createState() =&gt; _CarrinhoState();
+}
+
+class _CarrinhoState extends State&lt;Carrinho&gt; {
+  int _quantidade = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return CarrinhoScope(
+      quantidade: _quantidade,
+      adicionar: () =&gt; setState(() =&gt; _quantidade++),
+      child: widget.child,
+    );
+  }
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Carrinho(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: TelaLoja(),
+      ),
+    );
+  }
+}
+
+class TelaLoja extends StatelessWidget {
+  const TelaLoja({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const TituloCarrinho()),
+      body: ListView(
+        children: [
+          for (final nome in produtos) CartaoProduto(nome: nome),
+        ],
+      ),
+    );
+  }
+}
+
+// 3. Lá embaixo, quem precisa pede direto ao quadro de avisos.
+class TituloCarrinho extends StatelessWidget {
+  const TituloCarrinho({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final quantidade = CarrinhoScope.of(context).quantidade;
+    return Text('Lojinha · Carrinho: $quantidade');
+  }
+}
+
+class CartaoProduto extends StatelessWidget {
+  const CartaoProduto({super.key, required this.nome});
+
+  final String nome;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: const Icon(Icons.cake),
+      title: Text(nome),
+      trailing: IconButton(
+        tooltip: 'Adicionar $nome',
+        icon: const Icon(Icons.add_shopping_cart),
+        onPressed: CarrinhoScope.of(context).adicionar,
+      ),
+    );
+  }
+}
+</pre>
+
+<p>O código tem três partes, marcadas com 1, 2 e 3 nos comentários.</p>
+
+<h3>Parte 1: o quadro de avisos (<code>CarrinhoScope</code>)</h3>
+<dl class="anatomy">
+  <dt>class CarrinhoScope extends InheritedWidget</dt><dd>O nosso <code>InheritedWidget</code>. O sufixo <em>Scope</em> ("alcance") é um costume da comunidade para esses widgets.</dd>
+  <dt>final int quantidade; final VoidCallback adicionar;</dt><dd>O que ele entrega: o número de itens e uma função para somar um. Campos <code>final</code>: um <code>InheritedWidget</code> não muda; quando o dado muda, um <strong>novo</strong> <code>CarrinhoScope</code> é criado no lugar dele.</dd>
+  <dt>required super.child</dt><dd>O filho: a parte da árvore que vai poder ler o carrinho (aqui, o app inteiro).</dd>
+  <dt>static CarrinhoScope of(BuildContext context)</dt><dd>O jeito de ler, por convenção chamado <code>of</code> (como <code>Theme.of</code>). Quem chama escreve <code>CarrinhoScope.of(context).quantidade</code>.</dd>
+  <dt>context.dependOnInheritedWidgetOfExactType&lt;CarrinhoScope&gt;()</dt><dd>O coração do mecanismo: "suba pela árvore a partir de mim, ache o <code>CarrinhoScope</code> mais próximo e me <strong>registre</strong> como dependente dele". Devolve <code>null</code> se não achar nenhum.</dd>
+  <dt>if (scope == null) { throw FlutterError('Nenhum CarrinhoScope acima deste widget.'); }</dt><dd>Se ninguém achou o carrinho, em vez de deixar um <code>null</code> seguir adiante (e quebrar num lugar estranho), o <code>of</code> lança um erro com uma mensagem que diz o porquê (veja <a href="#errado">Quando dá errado</a>). O <code>FlutterError</code> é a classe de erro que o próprio Flutter usa nas mensagens dele. Muitos códigos usam um <code>assert</code> no lugar, que só roda no modo debug.</dd>
+  <dt>bool updateShouldNotify(CarrinhoScope oldWidget)</dt><dd>Quando um <code>CarrinhoScope</code> novo substitui o velho, o Flutter pergunta: "devo avisar os dependentes?". Aqui: só se a <code>quantidade</code> mudou.</dd>
+</dl>
+
+<h3>Parte 2: quem guarda o estado (<code>Carrinho</code>)</h3>
+<p>O <code>InheritedWidget</code> só <strong>entrega</strong>; ele não guarda nada que mude. Quem guarda é um <code>StatefulWidget</code> comum, o <code>Carrinho</code>, que tem o <code>_quantidade</code> e chama <code>setState</code>. A cada <code>setState</code>, o <code>build</code> dele cria um <code>CarrinhoScope</code> novo com o número novo; o Flutter compara com o velho (<code>updateShouldNotify</code>) e reconstrói quem leu o carrinho. No <code>MeuApp</code>, o <code>Carrinho</code> envolve o <code>MaterialApp</code>: assim, todas as telas ficam "dentro do prédio".</p>
+
+<h3>Parte 3: quem lê (<code>TituloCarrinho</code> e <code>CartaoProduto</code>)</h3>
+<p>Repare na <code>TelaLoja</code>: ela não recebe nem repassa nada. O <code>TituloCarrinho</code> (na barra) e o <code>CartaoProduto</code> (na lista) pedem direto ao quadro: <code>CarrinhoScope.of(context).quantidade</code> e <code>CarrinhoScope.of(context).adicionar</code>. Acabou o "cano" da aula anterior.</p>
+
+<pre class="file" data-file="a árvore de widgets">Carrinho                       ← guarda _quantidade (setState)
+└── CarrinhoScope              ← o quadro de avisos
+    └── MaterialApp
+        └── TelaLoja           ← não sabe de carrinho nenhum
+            ├── AppBar
+            │   └── TituloCarrinho   ← CarrinhoScope.of(context).quantidade
+            └── ListView
+                └── CartaoProduto (×3) ← CarrinhoScope.of(context).adicionar
+</pre>
+
+<figure class="tela"><img src="assets/telas/inherited-widget-1.png" alt="App com o título Lojinha · Carrinho: 3 e a lista Bolo de cenoura, Pão de queijo e Brigadeiro, cada um com o botão de carrinho à direita" width="390" height="844" loading="lazy"><figcaption>Um toque em cada produto: o título, lá na barra, mostra 3, e nenhum construtor recebeu o carrinho.</figcaption></figure>
+
+<div class="tryflutter" data-goal="src:subtitle:\s*Text\([^\n]*CarrinhoScope\.of\(context\)\.quantidade" data-foto="assets/telas/inherited-widget-3.png" data-foto-alt="Depois de dois toques no brigadeiro: o título diz Lojinha · Carrinho: 2 e os três cartões mostram, embaixo do nome, No carrinho: 2">
+<p class="try-task"><strong>Missão:</strong> o cartão também quer mostrar o total do carrinho. No <code>CartaoProduto</code>, logo abaixo do <code>title</code>, acrescente <code>subtitle: Text('No carrinho: ${CarrinhoScope.of(context).quantidade}'),</code>. Nenhum construtor muda: o cartão pede direto ao quadro.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+const produtos = ['Bolo de cenoura', 'Pão de queijo', 'Brigadeiro'];
+
+// 1. O "quadro de avisos": guarda o dado e o entrega a quem estiver abaixo.
+class CarrinhoScope extends InheritedWidget {
+  const CarrinhoScope({
+    super.key,
+    required this.quantidade,
+    required this.adicionar,
+    required super.child,
+  });
+
+  final int quantidade;
+  final VoidCallback adicionar;
+
+  static CarrinhoScope of(BuildContext context) {
+    final scope = context.dependOnInheritedWidgetOfExactType&lt;CarrinhoScope&gt;();
+    if (scope == null) {
+      throw FlutterError('Nenhum CarrinhoScope acima deste widget.');
+    }
+    return scope;
+  }
+
+  @override
+  bool updateShouldNotify(CarrinhoScope oldWidget) {
+    return quantidade != oldWidget.quantidade;
+  }
+}
+
+// 2. Quem guarda o estado de verdade (e chama setState).
+class Carrinho extends StatefulWidget {
+  const Carrinho({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  State&lt;Carrinho&gt; createState() =&gt; _CarrinhoState();
+}
+
+class _CarrinhoState extends State&lt;Carrinho&gt; {
+  int _quantidade = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return CarrinhoScope(
+      quantidade: _quantidade,
+      adicionar: () =&gt; setState(() =&gt; _quantidade++),
+      child: widget.child,
+    );
+  }
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Carrinho(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: TelaLoja(),
+      ),
+    );
+  }
+}
+
+class TelaLoja extends StatelessWidget {
+  const TelaLoja({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const TituloCarrinho()),
+      body: ListView(
+        children: [
+          for (final nome in produtos) CartaoProduto(nome: nome),
+        ],
+      ),
+    );
+  }
+}
+
+// 3. Lá embaixo, quem precisa pede direto ao quadro de avisos.
+class TituloCarrinho extends StatelessWidget {
+  const TituloCarrinho({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final quantidade = CarrinhoScope.of(context).quantidade;
+    return Text('Lojinha · Carrinho: $quantidade');
+  }
+}
+
+class CartaoProduto extends StatelessWidget {
+  const CartaoProduto({super.key, required this.nome});
+
+  final String nome;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: const Icon(Icons.cake),
+      title: Text(nome),
+      trailing: IconButton(
+        tooltip: 'Adicionar $nome',
+        icon: const Icon(Icons.add_shopping_cart),
+        onPressed: CarrinhoScope.of(context).adicionar,
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+const produtos = ['Bolo de cenoura', 'Pão de queijo', 'Brigadeiro'];
+
+// 1. O "quadro de avisos": guarda o dado e o entrega a quem estiver abaixo.
+class CarrinhoScope extends InheritedWidget {
+  const CarrinhoScope({
+    super.key,
+    required this.quantidade,
+    required this.adicionar,
+    required super.child,
+  });
+
+  final int quantidade;
+  final VoidCallback adicionar;
+
+  static CarrinhoScope of(BuildContext context) {
+    final scope = context.dependOnInheritedWidgetOfExactType&lt;CarrinhoScope&gt;();
+    if (scope == null) {
+      throw FlutterError('Nenhum CarrinhoScope acima deste widget.');
+    }
+    return scope;
+  }
+
+  @override
+  bool updateShouldNotify(CarrinhoScope oldWidget) {
+    return quantidade != oldWidget.quantidade;
+  }
+}
+
+// 2. Quem guarda o estado de verdade (e chama setState).
+class Carrinho extends StatefulWidget {
+  const Carrinho({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  State&lt;Carrinho&gt; createState() =&gt; _CarrinhoState();
+}
+
+class _CarrinhoState extends State&lt;Carrinho&gt; {
+  int _quantidade = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return CarrinhoScope(
+      quantidade: _quantidade,
+      adicionar: () =&gt; setState(() =&gt; _quantidade++),
+      child: widget.child,
+    );
+  }
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Carrinho(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: TelaLoja(),
+      ),
+    );
+  }
+}
+
+class TelaLoja extends StatelessWidget {
+  const TelaLoja({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const TituloCarrinho()),
+      body: ListView(
+        children: [
+          for (final nome in produtos) CartaoProduto(nome: nome),
+        ],
+      ),
+    );
+  }
+}
+
+// 3. Lá embaixo, quem precisa pede direto ao quadro de avisos.
+class TituloCarrinho extends StatelessWidget {
+  const TituloCarrinho({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final quantidade = CarrinhoScope.of(context).quantidade;
+    return Text('Lojinha · Carrinho: $quantidade');
+  }
+}
+
+class CartaoProduto extends StatelessWidget {
+  const CartaoProduto({super.key, required this.nome});
+
+  final String nome;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: const Icon(Icons.cake),
+      title: Text(nome),
+      subtitle: Text('No carrinho: ${CarrinhoScope.of(context).quantidade}'),
+      trailing: IconButton(
+        tooltip: 'Adicionar $nome',
+        icon: const Icon(Icons.add_shopping_cart),
+        onPressed: CarrinhoScope.of(context).adicionar,
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>2. Você já usa <code>InheritedWidget</code>s</h2>
+<p>Vários <code>X.of(context)</code> do Flutter são <code>InheritedWidget</code>s que o <code>MaterialApp</code> (e o próprio <code>runApp</code>) põem lá em cima da árvore:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Você escreve</th><th>O que vem de cima</th></tr>
+<tr><td><code>Theme.of(context)</code></td><td>O tema (cores, fontes) do <code>MaterialApp</code> (aula <a href="temas.html">Temas</a>)</td></tr>
+<tr><td><code>MediaQuery.sizeOf(context)</code></td><td>O tamanho da tela e outras informações do aparelho (aula <a href="responsivo.html">Telas de Vários Tamanhos</a>)</td></tr>
+<tr><td><code>Navigator.of(context)</code></td><td>O navegador de telas (aula <a href="navegacao.html">Navigator</a>)</td></tr>
+<tr><td><code>ScaffoldMessenger.of(context)</code></td><td>Quem mostra as <code>SnackBar</code>s (aula <a href="dialogos.html">Diálogos e SnackBar</a>)</td></tr>
+</table>
+</div>
+<p>É por isso que trocar o tema do <code>MaterialApp</code> muda as cores do app inteiro: todo widget que leu o <code>Theme.of(context)</code> depende dele e é reconstruído. (O <code>Navigator</code> e o <code>ScaffoldMessenger</code> usam o mesmo "subir pela árvore" para achar o widget, mesmo que não sejam exatamente um <code>InheritedWidget</code> por dentro.)</p>
+
+<hr>
+
+<h2>3. Outras formas de fazer</h2>
+
+<h3><code>InheritedNotifier</code>: o quadro que avisa sozinho</h3>
+<p>Se o estado já está num <code>ValueNotifier</code> (ou <code>ChangeNotifier</code>), o Flutter tem um <code>InheritedWidget</code> pronto que avisa os dependentes quando ele muda, sem <code>updateShouldNotify</code> nem <code>StatefulWidget</code> por fora (conferido no laboratório: dois toques num botão com <code>CarrinhoScope.of(context).value++</code> deixaram a barra em <code>Carrinho: 2</code>):</p>
+<pre class="file" data-file="trecho">class CarrinhoScope extends InheritedNotifier&lt;ValueNotifier&lt;int&gt;&gt; {
+  const CarrinhoScope({super.key, required super.notifier, required super.child});
+
+  static ValueNotifier&lt;int&gt; of(BuildContext context) {
+    return context.dependOnInheritedWidgetOfExactType&lt;CarrinhoScope&gt;()!.notifier!;
+  }
+}
+// uso: CarrinhoScope.of(context).value++
+</pre>
+
+<h3>Provider: o mesmo, com menos código</h3>
+<p>Escrever <code>of</code>, <code>updateShouldNotify</code> e o <code>StatefulWidget</code> para cada dado cansa. O pacote <strong>Provider</strong> é, por dentro, um <code>InheritedWidget</code> com tudo isso pronto: você escreve <code>ChangeNotifierProvider(create: …)</code> lá em cima e <code>context.watch&lt;Carrinho&gt;()</code> lá embaixo. É a próxima aula, <a href="provider.html">Provider</a>.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Qual usar</th></tr>
+<tr><td>Entender como o Flutter entrega dados (e ler o código do Provider, do tema…)</td><td><code>InheritedWidget</code> escrito à mão, como nesta aula</td></tr>
+<tr><td>Um dado simples, sem pacote</td><td><code>InheritedNotifier</code> com um <code>ValueNotifier</code></td></tr>
+<tr><td>App de verdade, vários dados compartilhados</td><td><a href="provider.html">Provider</a> ou <a href="riverpod.html">Riverpod</a></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Pediu o dado acima do <code>InheritedWidget</code></strong>
+<p>A Ana quis mostrar o total no console já no <code>MeuApp</code>, e chamou <code>CarrinhoScope.of(context)</code> no <code>build</code> dele:</p>
+<pre class="file" data-file="lib/main.dart (o MeuApp mudou)">class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final quantidade = CarrinhoScope.of(context).quantidade; // ERRADO: o CarrinhoScope está ABAIXO daqui
+    debugPrint('Carrinho: $quantidade');
+    return const Carrinho(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: TelaLoja(),
+      ),
+    );
+  }
+}
+</pre>
+<figure class="tela"><img src="assets/telas/inherited-widget-2.png" alt="A tela inteira vermelho-escura com o texto amarelo Nenhum CarrinhoScope acima deste widget. e See also: https://docs.flutter.dev/testing/errors" width="390" height="844" loading="lazy"><figcaption>A nossa mensagem, na tela vermelha de erro.</figcaption></figure>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following assertion was thrown building MeuApp(dirty):
+Nenhum CarrinhoScope acima deste widget.
+
+The relevant error-causing widget was:
+  MeuApp MeuApp:file:///home/ana/app/lib/main.dart:3:29
+
+When the exception was thrown, this was the stack:
+package:app/main.dart 22:7                                                   of
+package:app/main.dart 61:50                                                  build
+…
+════════════════════════════════════════════════════════════════════════════════════════════════════
+</pre>
+<p>"Durante a construção do <code>MeuApp</code>, aconteceu: Nenhum CarrinhoScope acima deste widget." É a mensagem do nosso <code>throw FlutterError(…)</code> (o Flutter chama de <em>assertion</em> os erros do tipo <code>FlutterError</code>). A pilha mostra o caminho: o <code>build</code> do <code>MeuApp</code> (linha 61) chamou o <code>of</code> (linha 22), que lançou o erro. O motivo: o <code>context</code> do <code>MeuApp</code> é o lugar <strong>dele</strong> na árvore, e o <code>Carrinho</code> (com o <code>CarrinhoScope</code>) é criado <strong>dentro</strong> do <code>build</code> dele, ou seja, <strong>abaixo</strong>. O <code>dependOnInheritedWidgetOfExactType</code> só procura para cima, e lá não há nenhum. Sem o nosso <code>if</code>, o <code>null</code> seguiria adiante e o erro seria um <code>Null check operator used on a null value</code>, bem menos claro. <strong>Como consertar:</strong> leia o carrinho só em widgets que ficam abaixo do <code>Carrinho</code> (como o <code>TituloCarrinho</code>).</p>
+</div>
+
+<div class="cenario">
+<strong>Esqueceu de comparar no <code>updateShouldNotify</code></strong>
+<p>Se o <code>updateShouldNotify</code> devolver sempre <code>false</code>, o carrinho muda, mas ninguém é avisado: a barra continua com o número velho. Se devolver sempre <code>true</code>, funciona, mas todo dependente é reconstruído a cada <code>setState</code>, mesmo sem mudança. <strong>Como fazer:</strong> compare os campos que importam: <code>return quantidade != oldWidget.quantidade;</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Leu o dado no <code>initState</code></strong>
+<p>No laboratório, o <code>TituloCarrinho</code> virou um <code>StatefulWidget</code> que guardava a quantidade inicial lendo <code>CarrinhoScope.of(context)</code> no <code>initState</code>. O console:</p>
+<pre class="term">The following assertion was thrown building DefaultTextStyle(…):
+dependOnInheritedWidgetOfExactType&lt;CarrinhoScope&gt;() or dependOnInheritedElement() was called before
+_TituloCarrinhoState.initState() completed.
+When an inherited widget changes, for example if the value of Theme.of() changes, its dependent
+widgets are rebuilt. If the dependent widget's reference to the inherited widget is in a constructor
+or an initState() method, then the rebuilt dependent widget will not reflect the changes in the
+inherited widget.
+Typically references to inherited widgets should occur in widget build() methods. Alternatively,
+initialization based on inherited widgets can be placed in the didChangeDependencies method, which
+is called after initState and whenever the dependencies change thereafter.
+…
+</pre>
+<p>A própria mensagem explica: "o <code>dependOnInheritedWidgetOfExactType&lt;CarrinhoScope&gt;()</code> foi chamado antes de o <code>initState()</code> terminar. Quando um <code>InheritedWidget</code> muda, os dependentes são reconstruídos; se a leitura está no construtor ou no <code>initState</code>, o widget não vai refletir a mudança. Leia nos métodos <code>build()</code>, ou ponha a preparação no <code>didChangeDependencies</code>, que roda depois do <code>initState</code> e de novo sempre que as dependências mudam". <strong>Como fazer:</strong> leia no <code>build</code> (ou no <code>didChangeDependencies</code>, veja <a href="ciclo-de-vida.html">Ciclo de Vida</a>).</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>class X extends InheritedWidget</code></td><td>Um widget que entrega dados para baixo</td></tr>
+<tr><td><code>required super.child</code></td><td>A parte da árvore que pode ler o dado</td></tr>
+<tr><td><code>context.dependOnInheritedWidgetOfExactType&lt;X&gt;()</code></td><td>Acha o <code>X</code> mais próximo acima e registra a dependência (ou <code>null</code>)</td></tr>
+<tr><td><code>static X of(BuildContext context)</code></td><td>Convenção para ler: <code>X.of(context)</code></td></tr>
+<tr><td><code>bool updateShouldNotify(X oldWidget)</code></td><td>Diz se os dependentes devem ser reconstruídos</td></tr>
+<tr><td><code>InheritedNotifier&lt;T extends Listenable&gt;</code></td><td>Versão que avisa sozinha quando o <code>notifier</code> muda</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o <code>of</code></h3>
+<div class="ex-code">static CarrinhoScope of(BuildContext context) {<br>&nbsp;&nbsp;return context.<input data-answer="dependOnInheritedWidgetOfExactType" aria-label="método que acha o widget">&lt;CarrinhoScope&gt;()!;<br>}</div>
+</div>
+
+<div class="exercise">
+<h3>2. Quem avisa?</h3>
+<p>Qual método do <code>InheritedWidget</code> decide se os dependentes são reconstruídos?</p>
+<div class="ex-code"><input data-answer="updateShouldNotify" aria-label="nome do método"></div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. Quais widgets conseguem ler um <code>InheritedWidget</code> com <code>of(context)</code>?</p>
+<label><input type="radio" name="q3"> Todos os widgets do app</label>
+<label><input type="radio" name="q3"> Só os filhos diretos dele</label>
+<label><input type="radio" name="q3"> Todos os que estão <strong>abaixo</strong> dele na árvore</label>
+<label><input type="radio" name="q3"> Só os que estão acima dele</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. Onde fica o <code>setState</code> no carrinho desta aula?</p>
+<label><input type="radio" name="q4"> No <code>CarrinhoScope</code></label>
+<label><input type="radio" name="q4"> No <code>StatefulWidget</code> <code>Carrinho</code>, que cria um <code>CarrinhoScope</code> novo a cada mudança</label>
+<label><input type="radio" name="q4"> No <code>CartaoProduto</code></label>
+<label><input type="radio" name="q4"> Não há <code>setState</code></label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">5. Qual destes <strong>não</strong> é lido "de cima" pela árvore com <code>context</code>?</p>
+<label><input type="radio" name="q5"> <code>Theme.of(context)</code></label>
+<label><input type="radio" name="q5"> <code>MediaQuery.sizeOf(context)</code></label>
+<label><input type="radio" name="q5"> <code>Navigator.of(context)</code></label>
+<label><input type="radio" name="q5"> <code>const Text('Oi')</code></label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Um <code>InheritedWidget</code> guarda dados lá em cima da árvore; qualquer widget abaixo lê com <code>X.of(context)</code>, sem passar por construtores.</li>
+  <li>O <code>of</code> usa <code>context.dependOnInheritedWidgetOfExactType&lt;X&gt;()</code>, que acha o mais próximo acima e registra a dependência.</li>
+  <li>Para o dado mudar, um <code>StatefulWidget</code> por cima guarda o estado e, a cada <code>setState</code>, cria um <code>InheritedWidget</code> novo; o <code>updateShouldNotify</code> decide quem é reconstruído.</li>
+  <li>Só quem está <strong>abaixo</strong> enxerga. Chamado acima, o <code>of</code> não acha nada.</li>
+  <li><code>Theme.of</code> e <code>MediaQuery.sizeOf</code> funcionam assim; o Provider é um <code>InheritedWidget</code> com o trabalho pronto.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
