@@ -1,0 +1,638 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Responsivo — telas de vários tamanhos com MediaQuery e LayoutBuilder | Guia Flutter</title>
+<meta name="description" content="Como um app Flutter se adapta ao celular, ao tablet e ao computador: MediaQuery.sizeOf para saber o tamanho da tela, LayoutBuilder para decidir o layout pelo espaço disponível, pontos de quebra (600), lista e detalhe lado a lado, GridView que muda o número de colunas, e o overflow que aparece quando o layout não se adapta.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Responsivo</span></h1>
+
+<p class="intro">O mesmo app Flutter roda num celular de 6 polegadas, num tablet e na janela do computador. Se a tela foi pensada só para o celular, no computador ela vira uma lista esticada de ponta a ponta, com um mar de espaço vazio; se foi pensada só para o computador, no celular ela não cabe e aparecem as listras amarelas e pretas do <a href="overflow.html">overflow</a>. Um app <strong>responsivo</strong> é o que <strong>responde</strong> ao tamanho da tela: mostra uma coluna no celular e duas no tablet, mais cartões por linha quando sobra espaço. Nesta aula você aprende as duas ferramentas para isso: <code>MediaQuery</code> e <code>LayoutBuilder</code>.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como saber o tamanho da tela com <code>MediaQuery.sizeOf(context)</code> e a orientação com <code>MediaQuery.orientationOf(context)</code>.</li>
+  <li>O que são <strong>pixels lógicos</strong> e por que a "largura" de um celular é 390, e não 1170.</li>
+  <li>Como escolher entre dois layouts com <code>LayoutBuilder</code> e um <strong>ponto de quebra</strong> (600).</li>
+  <li>Como fazer uma grade que muda sozinha o número de colunas (<code>SliverGridDelegateWithMaxCrossAxisExtent</code>).</li>
+  <li>Qual usar: <code>MediaQuery</code> ou <code>LayoutBuilder</code>.</li>
+  <li>O erro de overflow que aparece quando o layout não se adapta, e como consertar.</li>
+</ul>
+</div>
+
+<p>As telas desta aula foram fotografadas no laboratório do guia, com o Flutter <span class="versao">Flutter 3.47</span>, em dois tamanhos: <strong>390 de largura</strong> (um celular comum) e <strong>1024 de largura</strong> (um tablet deitado ou uma janela de computador).</p>
+
+<hr>
+
+<h2>A ideia: a mesma loja em dois balcões</h2>
+<p>A Ana vende bolos numa feira. Quando ganha uma barraca pequena, ela empilha os bolos numa prateleira só, um embaixo do outro. Quando ganha uma barraca grande, ela não empilha do mesmo jeito deixando metade da mesa vazia: põe os bolos de um lado e uma plaquinha com a receita do outro. <strong>Os bolos são os mesmos; o arranjo muda conforme o espaço.</strong></p>
+<p>No Flutter é igual. Os widgets (as peças da tela) são os mesmos; o que muda é <strong>como você os arruma</strong>. Para isso, o app precisa responder a uma pergunta: <em>quanto espaço eu tenho?</em> Há duas formas de perguntar:</p>
+<ul>
+  <li><code>MediaQuery</code>: "qual é o tamanho da <strong>tela inteira</strong> (da janela)?"</li>
+  <li><code>LayoutBuilder</code>: "qual é o espaço que <strong>o meu pai me deu</strong>, aqui neste pedaço da tela?"</li>
+</ul>
+
+<hr>
+
+<h2>1. Quanto mede a tela: <code>MediaQuery.sizeOf</code></h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaTamanho(),
+    );
+  }
+}
+
+class TelaTamanho extends StatelessWidget {
+  const TelaTamanho({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final tamanho = MediaQuery.sizeOf(context);
+    final largura = tamanho.width.toStringAsFixed(0);
+    final altura = tamanho.height.toStringAsFixed(0);
+    final deitado = MediaQuery.orientationOf(context) == Orientation.landscape;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: Center(
+        child: Text(
+          'Largura: $largura\nAltura: $altura\n${deitado ? 'Deitado' : 'Em pé'}',
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 28),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>MediaQuery.sizeOf(context)</dt><dd>Devolve um <code>Size</code> com a largura (<code>width</code>) e a altura (<code>height</code>) da tela, em <strong>pixels lógicos</strong> (veja abaixo). O <code>context</code> é o "endereço" do widget na árvore: é por ele que o Flutter acha a informação do aparelho, guardada lá em cima, perto do <code>MaterialApp</code>.</dd>
+  <dt>tamanho.width.toStringAsFixed(0)</dt><dd>A largura é um <code>double</code> (pode ter casas decimais, como 392.7). O <code>toStringAsFixed(0)</code> do Dart mostra sem casas decimais.</dd>
+  <dt>MediaQuery.orientationOf(context)</dt><dd>Devolve <code>Orientation.portrait</code> ("retrato", em pé: mais alto que largo) ou <code>Orientation.landscape</code> ("paisagem", deitado: mais largo que alto).</dd>
+  <dt>final deitado = … == Orientation.landscape</dt><dd>Um <code>bool</code> que o texto usa para escrever "Deitado" ou "Em pé".</dd>
+</dl>
+
+<p>A mesma tela, em dois tamanhos:</p>
+
+<figure class="tela"><img src="assets/telas/responsivo-1.png" alt="App Receitas da Ana com 390 de largura: no meio da tela, em letras grandes, Largura: 390, Altura: 844 e Em pé" width="390" height="844" loading="lazy"><figcaption>Com 390 de largura (celular em pé).</figcaption></figure>
+
+<figure class="tela"><img src="assets/telas/responsivo-2.png" alt="O mesmo app com 1024 de largura: no meio, Largura: 1024, Altura: 768 e Deitado" width="1024" height="768" loading="lazy"><figcaption>Com 1024 de largura (tablet deitado ou janela de computador).</figcaption></figure>
+
+<h3>Pixels lógicos: por que 390, e não 1170?</h3>
+<p>Um iPhone 14 tem 1170 pontinhos de luz (pixels físicos) na largura, mas o Flutter diz que ele tem <strong>390</strong> de largura. É que o Flutter mede em <strong>pixels lógicos</strong>: uma unidade que tem mais ou menos o mesmo tamanho físico em qualquer aparelho (cerca de 38 por centímetro). A tela do iPhone tem 3 pixels físicos para cada pixel lógico (<code>MediaQuery.devicePixelRatioOf(context)</code> devolve <code>3.0</code>). Graças a isso, um botão de 48 de altura tem o mesmo tamanho no dedo num celular barato e num caríssimo. <strong>Todas as medidas do Flutter</strong> (<code>width: 200</code>, <code>EdgeInsets.all(8)</code>, <code>fontSize: 28</code>) são em pixels lógicos.</p>
+
+<div class="tip">
+<strong><code>sizeOf</code> ou <code>of(context).size</code>?</strong>
+<p>Em códigos mais antigos você vai ver <code>MediaQuery.of(context).size</code>. Funciona, mas tem um custo escondido: o widget passa a ser reconstruído quando <strong>qualquer</strong> informação do <code>MediaQuery</code> muda (o teclado abrindo, o brilho, o tamanho da fonte do sistema…). O <code>MediaQuery.sizeOf(context)</code> (desde o Flutter 3.10) só reconstrói quando o <strong>tamanho</strong> muda. Prefira os métodos específicos: <code>sizeOf</code>, <code>orientationOf</code>, <code>paddingOf</code>, <code>textScalerOf</code>.</p>
+</div>
+
+<hr>
+
+<h2>2. Escolher o layout pelo espaço: <code>LayoutBuilder</code></h2>
+<p>Agora o app de receitas de verdade. No celular, ele mostra só a lista. Com 600 ou mais de largura, mostra a <strong>lista à esquerda e a receita à direita</strong> (esse arranjo se chama <em>lista e detalhe</em>, e é o que o app de e-mail do tablet faz).</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+const receitas = ['Bolo de cenoura', 'Feijoada', 'Pão de queijo', 'Brigadeiro', 'Lasanha'];
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaReceitas(),
+    );
+  }
+}
+
+class TelaReceitas extends StatelessWidget {
+  const TelaReceitas({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth &lt; 600) {
+            return const ListaReceitas();
+          }
+          return const Row(
+            children: [
+              SizedBox(width: 300, child: ListaReceitas()),
+              VerticalDivider(width: 1),
+              Expanded(child: DetalheReceita()),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class ListaReceitas extends StatelessWidget {
+  const ListaReceitas({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      children: [
+        for (final nome in receitas)
+          ListTile(
+            leading: const Icon(Icons.restaurant_menu),
+            title: Text(nome),
+          ),
+      ],
+    );
+  }
+}
+
+class DetalheReceita extends StatelessWidget {
+  const DetalheReceita({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.cake, size: 96, color: Colors.brown),
+          SizedBox(height: 16),
+          Text('Bolo de cenoura', style: TextStyle(fontSize: 32)),
+          Text('3 cenouras, 3 ovos, 2 xícaras de farinha'),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>LayoutBuilder(builder: (context, constraints) { … })</dt><dd>Um widget que <strong>espera saber o espaço</strong> antes de decidir o que desenhar. O Flutter chama o <code>builder</code> passando as <code>constraints</code> (as "restrições": a largura e a altura mínimas e máximas que o pai permite; veja <a href="constraints.html">Como o Flutter Calcula Tamanhos</a>). Se o espaço mudar (a janela foi redimensionada, o celular girou), o <code>builder</code> roda de novo.</dd>
+  <dt>constraints.maxWidth &lt; 600</dt><dd>A largura máxima disponível <strong>para este widget</strong>. O 600 é o <strong>ponto de quebra</strong> (em inglês, <em>breakpoint</em>): abaixo dele, layout de celular; a partir dele, layout de tablet. O Material 3 usa 600 como a fronteira entre "compacto" (celular) e "médio" (tablet pequeno, celular dobrável aberto).</dd>
+  <dt>return const ListaReceitas()</dt><dd>No celular, só a lista, ocupando a tela inteira.</dd>
+  <dt>Row(children: [SizedBox(width: 300, …), VerticalDivider(width: 1), Expanded(…)])</dt><dd>No tablet: a lista com 300 de largura fixa, uma linha vertical fininha separando, e a receita ocupando <strong>todo o resto</strong> com o <a href="expanded.html">Expanded</a>.</dd>
+  <dt>ListaReceitas e DetalheReceita</dt><dd>Widgets pequenos, cada um com a sua parte. Repare que a <code>ListaReceitas</code> é <strong>a mesma</strong> nos dois layouts: só muda onde ela fica. Separar em widgets é o que torna isso fácil.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/responsivo-3.png" alt="Com 390 de largura, a lista de receitas ocupa a tela toda: Bolo de cenoura, Feijoada, Pão de queijo, Brigadeiro e Lasanha, cada uma com um ícone de garfo e colher" width="390" height="844" loading="lazy"><figcaption>Com 390 de largura: <code>maxWidth</code> é 390, menor que 600, então só a lista.</figcaption></figure>
+
+<figure class="tela"><img src="assets/telas/responsivo-4.png" alt="Com 1024 de largura, a lista de receitas fica numa coluna estreita à esquerda, separada por uma linha vertical; à direita, um ícone de bolo marrom, o título Bolo de cenoura e a linha 3 cenouras, 3 ovos, 2 xícaras de farinha" width="1024" height="768" loading="lazy"><figcaption>Com 1024 de largura: lista à esquerda, receita à direita.</figcaption></figure>
+
+<div class="tryflutter" data-goal="src:maxWidth\s*&lt;\s*800">
+<p class="try-task"><strong>Missão:</strong> a Ana achou que, com 600 de largura, a receita fica espremida. Mude o ponto de quebra para <strong>800</strong>: abaixo de 800, só a lista.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+const receitas = ['Bolo de cenoura', 'Feijoada', 'Pão de queijo', 'Brigadeiro', 'Lasanha'];
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaReceitas(),
+    );
+  }
+}
+
+class TelaReceitas extends StatelessWidget {
+  const TelaReceitas({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth &lt; 600) {
+            return const ListaReceitas();
+          }
+          return const Row(
+            children: [
+              SizedBox(width: 300, child: ListaReceitas()),
+              VerticalDivider(width: 1),
+              Expanded(child: DetalheReceita()),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class ListaReceitas extends StatelessWidget {
+  const ListaReceitas({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      children: [
+        for (final nome in receitas)
+          ListTile(
+            leading: const Icon(Icons.restaurant_menu),
+            title: Text(nome),
+          ),
+      ],
+    );
+  }
+}
+
+class DetalheReceita extends StatelessWidget {
+  const DetalheReceita({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.cake, size: 96, color: Colors.brown),
+          SizedBox(height: 16),
+          Text('Bolo de cenoura', style: TextStyle(fontSize: 32)),
+          Text('3 cenouras, 3 ovos, 2 xícaras de farinha'),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+const receitas = ['Bolo de cenoura', 'Feijoada', 'Pão de queijo', 'Brigadeiro', 'Lasanha'];
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaReceitas(),
+    );
+  }
+}
+
+class TelaReceitas extends StatelessWidget {
+  const TelaReceitas({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth &lt; 800) {
+            return const ListaReceitas();
+          }
+          return const Row(
+            children: [
+              SizedBox(width: 300, child: ListaReceitas()),
+              VerticalDivider(width: 1),
+              Expanded(child: DetalheReceita()),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class ListaReceitas extends StatelessWidget {
+  const ListaReceitas({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      children: [
+        for (final nome in receitas)
+          ListTile(
+            leading: const Icon(Icons.restaurant_menu),
+            title: Text(nome),
+          ),
+      ],
+    );
+  }
+}
+
+class DetalheReceita extends StatelessWidget {
+  const DetalheReceita({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.cake, size: 96, color: Colors.brown),
+          SizedBox(height: 16),
+          Text('Bolo de cenoura', style: TextStyle(fontSize: 32)),
+          Text('3 cenouras, 3 ovos, 2 xícaras de farinha'),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>3. Uma grade que muda de colunas sozinha</h2>
+<p>Nem sempre você precisa de um <code>if</code>. Alguns widgets já sabem se adaptar. A <a href="gridview.html">GridView</a> com <code>SliverGridDelegateWithMaxCrossAxisExtent</code> recebe a <strong>largura máxima de cada cartão</strong> e calcula quantas colunas cabem:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+const receitas = ['Bolo de cenoura', 'Feijoada', 'Pão de queijo', 'Brigadeiro', 'Lasanha', 'Pudim', 'Coxinha', 'Quindim'];
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: GridView(
+          padding: const EdgeInsets.all(8),
+          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: 200,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+          ),
+          children: [
+            for (final nome in receitas)
+              Card(
+                child: Center(
+                  child: Text(nome, textAlign: TextAlign.center),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>SliverGridDelegateWithMaxCrossAxisExtent</dt><dd>O "delegado" (quem decide o tamanho das casas da grade). O nome é comprido, mas a ideia é simples: "cada casa tem <strong>no máximo</strong> <code>maxCrossAxisExtent</code> de largura; ponha quantas colunas couberem".</dd>
+  <dt>maxCrossAxisExtent: 200</dt><dd>No máximo 200 de largura por cartão. O Flutter faz a conta <code>espaço ÷ (200 + crossAxisSpacing)</code> e arredonda <strong>para cima</strong>: com 390 de tela (374 tirando o <code>padding</code>), 374 ÷ 208 dá 1,8, ou seja, <strong>2 colunas</strong>; com 1024 (1008 sem o <code>padding</code>), 1008 ÷ 208 dá 4,8, ou seja, <strong>5 colunas</strong>. Depois, divide o espaço por igual entre elas, e cada cartão fica um pouco menor que 200.</dd>
+  <dt>mainAxisSpacing e crossAxisSpacing</dt><dd>O espaço entre as linhas e entre as colunas.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/responsivo-5.png" alt="Com 390 de largura, uma grade de 2 colunas de cartões quadrados: Bolo de cenoura, Feijoada, Pão de queijo, Brigadeiro, Lasanha, Pudim, Coxinha e Quindim" width="390" height="844" loading="lazy"><figcaption>390 de largura: 2 colunas.</figcaption></figure>
+
+<figure class="tela"><img src="assets/telas/responsivo-6.png" alt="Com 1024 de largura, a mesma grade com 5 colunas: Bolo de cenoura, Feijoada, Pão de queijo, Brigadeiro e Lasanha na primeira linha; Pudim, Coxinha e Quindim na segunda" width="1024" height="768" loading="lazy"><figcaption>1024 de largura: 5 colunas, com o mesmo código.</figcaption></figure>
+
+<p>Outros widgets que se adaptam sozinhos: o <code>Wrap</code> (põe os filhos lado a lado e <strong>quebra a linha</strong> quando não cabe mais) e o <a href="expanded.html">Expanded/Flexible</a> (divide o espaço em proporções, e não em medidas fixas).</p>
+
+<hr>
+
+<h2>Formas diferentes de fazer, e qual usar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Ferramenta</th><th>Pergunta que ela responde</th><th>Quando usar</th></tr>
+<tr><td><code>MediaQuery.sizeOf(context)</code></td><td>Qual o tamanho da <strong>tela (janela) inteira</strong>?</td><td>Decisões da tela toda: mostrar um <a href="drawer.html">Drawer</a> no celular e um menu fixo no tablet; esconder algo em telas baixas.</td></tr>
+<tr><td><code>LayoutBuilder</code></td><td>Qual o espaço que <strong>este widget</strong> recebeu do pai?</td><td>Um pedaço da tela que muda de arranjo. Funciona mesmo quando o widget está dentro de um painel estreito numa tela larga, porque mede o espaço <strong>dele</strong>.</td></tr>
+<tr><td><code>MediaQuery.orientationOf(context)</code> ou <code>OrientationBuilder</code></td><td>A tela está em pé ou deitada?</td><td>Quando o que importa é a proporção (por exemplo, 2 colunas em pé e 4 deitado).</td></tr>
+<tr><td><code>GridView</code> com <code>MaxCrossAxisExtent</code>, <code>Wrap</code>, <code>Expanded</code></td><td>(nenhuma: se adaptam sozinhos)</td><td>Sempre que der. Menos <code>if</code> no código, menos coisa para dar errado.</td></tr>
+</table>
+</div>
+
+<div class="tip">
+<strong>Regra prática</strong>
+<p>Comece com widgets que se adaptam sozinhos (<code>Expanded</code>, <code>Wrap</code>, grades com largura máxima). Quando precisar trocar o arranjo inteiro, use <code>LayoutBuilder</code>. Guarde o <code>MediaQuery</code> para decisões que valem para a tela toda.</p>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Larguras fixas que não cabem no celular</strong>
+<p>A Ana fez a tela no computador, com três cartões de 200 de largura lado a lado. No computador, ficou ótimo. No celular:</p>
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Row(
+          children: [
+            SizedBox(width: 200, child: Card(child: Center(child: Text('Bolo')))),
+            SizedBox(width: 200, child: Card(child: Center(child: Text('Feijoada')))),
+            SizedBox(width: 200, child: Card(child: Center(child: Text('Pudim')))),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<figure class="tela"><img src="assets/telas/responsivo-7.png" alt="Com 390 de largura, aparecem só os cartões Bolo e Feijoada, altos; o terceiro não cabe e, no lugar dele, uma faixa de listras amarelas e pretas com o texto RIGHT OVERFLOWED BY 210 PIXELS escrito em pé" width="390" height="844" loading="lazy"><figcaption>Com 390 de largura, os três cartões não cabem.</figcaption></figure>
+<p>No console (o terminal onde você rodou o <code>flutter run</code>; no laboratório, o console do navegador), aparece a explicação:</p>
+<pre class="term">══╡ EXCEPTION CAUGHT BY RENDERING LIBRARY ╞═════════════════════════════════════════════════════════
+The following assertion was thrown during layout:
+A RenderFlex overflowed by 210 pixels on the right.
+The overflowing RenderFlex has an orientation of Axis.horizontal.
+The edge of the RenderFlex that is overflowing has been marked in the rendering with a yellow and
+black striped pattern. This is usually caused by the contents being too big for the RenderFlex.
+Consider applying a flex factor (e.g. using an Expanded widget) to force the children of the
+RenderFlex to fit within the available space instead of being sized to their natural size.
+…
+  constraints: BoxConstraints(0.0&lt;=w&lt;=390.0, 0.0&lt;=h&lt;=788.0)
+  size: Size(390.0, 788.0)
+  direction: horizontal
+…
+◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤
+════════════════════════════════════════════════════════════════════════════════════════════════════
+</pre>
+<p>Linha por linha: <code>EXCEPTION CAUGHT BY RENDERING LIBRARY</code> é "exceção pega pela biblioteca de desenho"; <code>A RenderFlex overflowed by 210 pixels on the right</code> diz que um <code>RenderFlex</code> (a peça por trás do <code>Row</code> e do <code>Column</code>) <strong>estourou 210 pixels para a direita</strong>: três cartões de 200 somam 600, e a tela tem 390 (600 − 390 = 210). O parágrafo seguinte explica que a borda que estourou foi marcada com as listras e sugere um <code>Expanded</code>. A linha <code>constraints: BoxConstraints(0.0&lt;=w&lt;=390.0, …)</code> mostra o espaço que o <code>Row</code> recebeu: no máximo 390 de largura. (Cortamos as linhas marcadas com <code>…</code>. No seu <code>flutter run</code>, aparece também <code>The relevant error-causing widget was: Row</code>, com o arquivo e a linha do <code>Row</code>.) <strong>Como consertar:</strong> não use larguras fixas que somam mais que a menor tela. Troque os <code>SizedBox(width: 200, …)</code> por <code>Expanded(child: …)</code> (os três dividem o espaço que houver), use um <code>Wrap</code> (o terceiro cartão desce para a linha de baixo) ou um <code>LayoutBuilder</code> que mostra os cartões em coluna no celular.</p>
+</div>
+
+<div class="cenario">
+<strong>Usou o <code>MediaQuery</code> quando o certo era o <code>LayoutBuilder</code></strong>
+<p>Na tela de lista e detalhe do tablet, a Ana pôs dentro do painel de detalhe (que tem uns 700 de largura) um teste <code>if (MediaQuery.sizeOf(context).width &gt; 1000)</code> para mostrar duas colunas de ingredientes. Num tablet de 1024, o teste dá verdadeiro, mas o painel tem só 723 de largura: as duas colunas ficam espremidas. O <code>MediaQuery</code> mede a <strong>tela</strong>; o painel é menor que ela. <strong>Como consertar:</strong> dentro de um pedaço da tela, pergunte o espaço <strong>daquele pedaço</strong> com <code>LayoutBuilder</code> e <code>constraints.maxWidth</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Testou só no seu aparelho</strong>
+<p>O erro mais comum não aparece no seu celular: aparece no da sua tia, que tem uma tela menor ou a fonte do sistema no tamanho grande. <strong>Como evitar:</strong> rode o app no navegador (<code>flutter run -d chrome</code>, veja <a href="flutter-run.html">Rodando o App</a>) e arraste a borda da janela, do estreito ao largo; procure as listras de overflow.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>MediaQuery.sizeOf(context)</code></td><td><code>Size</code> da tela, em pixels lógicos (<code>.width</code>, <code>.height</code>)</td></tr>
+<tr><td><code>MediaQuery.orientationOf(context)</code></td><td><code>Orientation.portrait</code> (em pé) ou <code>Orientation.landscape</code> (deitado)</td></tr>
+<tr><td><code>MediaQuery.paddingOf(context)</code></td><td>As bordas ocupadas pelo sistema (barra de status, "entalhe" da câmera)</td></tr>
+<tr><td><code>MediaQuery.devicePixelRatioOf(context)</code></td><td>Quantos pixels físicos há em cada pixel lógico</td></tr>
+<tr><td><code>LayoutBuilder(builder: (context, constraints) =&gt; …)</code></td><td>Constrói conforme o espaço que o pai deu (<code>constraints.maxWidth</code>, <code>maxHeight</code>)</td></tr>
+<tr><td><code>OrientationBuilder(builder: (context, orientation) =&gt; …)</code></td><td>Constrói conforme a orientação</td></tr>
+<tr><td><code>SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: 200)</code></td><td>Grade com quantas colunas couberem, cada uma com no máximo 200</td></tr>
+<tr><td>600 / 840</td><td>Pontos de quebra do Material 3: abaixo de 600, compacto (celular); de 600 a 839, médio; a partir de 840, expandido</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o teste</h3>
+<p>Complete para mostrar só a lista quando o espaço disponível for menor que 600:</p>
+<div class="ex-code">LayoutBuilder(<br>&nbsp;&nbsp;builder: (context, <input data-answer="constraints" aria-label="nome do segundo parâmetro">) {<br>&nbsp;&nbsp;&nbsp;&nbsp;if (constraints.<input data-answer="maxWidth" aria-label="propriedade da largura máxima"> &lt; 600) {<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return const ListaReceitas();<br>&nbsp;&nbsp;&nbsp;&nbsp;}<br>&nbsp;&nbsp;&nbsp;&nbsp;…</div>
+</div>
+
+<div class="exercise">
+<h3>2. Quantas colunas?</h3>
+<p>Uma <code>GridView</code> com <code>SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: 150)</code>, sem espaçamento nem <code>padding</code>, numa tela de 600 de largura. Quantas colunas aparecem?</p>
+<div class="ex-code">Aparecem <input data-answer="4" aria-label="número de colunas"> colunas.</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. Um widget está dentro de um painel de 300 de largura, numa tela de 1024. O que o <code>constraints.maxWidth</code> de um <code>LayoutBuilder</code> dentro dele devolve?</p>
+<label><input type="radio" name="q3"> 1024</label>
+<label><input type="radio" name="q3"> 300 (ou menos, se o painel tiver padding)</label>
+<label><input type="radio" name="q3"> 600</label>
+<label><input type="radio" name="q3"> Depende da orientação</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. Por que preferir <code>MediaQuery.sizeOf(context)</code> a <code>MediaQuery.of(context).size</code>?</p>
+<label><input type="radio" name="q4"> Porque o <code>of(context).size</code> devolve pixels físicos</label>
+<label><input type="radio" name="q4"> Porque o <code>of(context)</code> não funciona no Material 3</label>
+<label><input type="radio" name="q4"> Porque o <code>sizeOf</code> só reconstrói o widget quando o tamanho muda, e não a cada mudança do <code>MediaQuery</code></label>
+<label><input type="radio" name="q4"> Não há diferença nenhuma</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. Três cartões com <code>SizedBox(width: 200)</code> num <code>Row</code>, numa tela de 390. O que acontece?</p>
+<label><input type="radio" name="q5"> Overflow: as listras amarelas e pretas na borda direita</label>
+<label><input type="radio" name="q5"> O terceiro cartão desce para a linha de baixo</label>
+<label><input type="radio" name="q5"> Os cartões encolhem para caber</label>
+<label><input type="radio" name="q5"> O app fecha</label>
+</div>
+
+<h3>Missão final: cartões que se ajeitam</h3>
+
+<div class="tryflutter" data-goal="src:Expanded\(child: Card">
+<p class="try-task"><strong>Missão:</strong> conserte a tela dos três cartões para ela caber em qualquer largura: troque cada <code>SizedBox(width: 200, child: …)</code> por <code>Expanded(child: …)</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Row(
+          children: [
+            SizedBox(width: 200, child: Card(child: Center(child: Text('Bolo')))),
+            SizedBox(width: 200, child: Card(child: Center(child: Text('Feijoada')))),
+            SizedBox(width: 200, child: Card(child: Center(child: Text('Pudim')))),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Row(
+          children: [
+            Expanded(child: Card(child: Center(child: Text('Bolo')))),
+            Expanded(child: Card(child: Center(child: Text('Feijoada')))),
+            Expanded(child: Card(child: Center(child: Text('Pudim')))),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Um app responsivo muda o <strong>arranjo</strong> dos widgets conforme o espaço; os widgets em si continuam os mesmos.</li>
+  <li>O Flutter mede tudo em <strong>pixels lógicos</strong>: um celular comum tem cerca de 390 de largura.</li>
+  <li><code>MediaQuery.sizeOf(context)</code> dá o tamanho da tela inteira; <code>MediaQuery.orientationOf(context)</code>, a orientação.</li>
+  <li><code>LayoutBuilder</code> dá o espaço que <strong>aquele widget</strong> recebeu (<code>constraints.maxWidth</code>) e roda de novo quando ele muda.</li>
+  <li>Use um ponto de quebra (600 é o do Material 3) para trocar de layout: lista no celular, lista e detalhe no tablet.</li>
+  <li>Prefira o que se adapta sozinho: <code>Expanded</code>, <code>Wrap</code>, grades com <code>maxCrossAxisExtent</code>. Larguras fixas somando mais que a tela dão overflow.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
