@@ -1,0 +1,738 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter setState — mudar o estado e redesenhar a tela | Guia Flutter</title>
+<meta name="description" content="setState do Flutter para quem está começando: o que ele faz (muda o valor e pede um novo build), o build rodando de novo a cada toque no console, o erro clássico de esquecer o setState (o valor muda mas a tela não), setState com espera (Future.delayed) e o erro real 'setState() callback argument returned a Future'.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">setState</span></h1>
+
+<p class="intro">Na aula <a href="stateful.html">StatefulWidget</a> você viu que o estado mora numa classe <code>State</code> e que, para mudar a tela, a gente escreve <code>setState(() { … })</code>. Nesta aula você vai ver <strong>o que acontece de verdade</strong> quando o <code>setState</code> roda, olhando o console a cada toque, e o erro mais comum de quem está começando: mudar o valor e <strong>esquecer</strong> o <code>setState</code>.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>As duas coisas que o <code>setState</code> faz: muda o valor e <strong>avisa</strong> o Flutter para chamar o <code>build</code> de novo.</li>
+  <li>Como ver o <code>build</code> rodando a cada toque, com <code>debugPrint</code> no console.</li>
+  <li>O que acontece quando você esquece o <code>setState</code>: o valor muda, a tela não.</li>
+  <li>Como mudar vários valores de uma vez e onde pôr a lógica (um método como <code>_colocar</code>).</li>
+  <li>Como usar o <code>setState</code> com uma espera (<code>async</code>/<code>await</code>) e o erro real de pôr o <code>async</code> no lugar errado.</li>
+</ul>
+</div>
+
+<p>As telas e as mensagens de console desta aula vieram de um Flutter de verdade, no laboratório da Ana, em tamanho de celular, com fotos <strong>antes</strong> e <strong>depois</strong> dos toques.</p>
+
+<hr>
+
+<h2>A ideia: mudar o número e tocar a campainha</h2>
+<p>Na padaria, a atendente muda o número do quadro de "Senha atendida". Mas os clientes estão olhando o celular: ninguém percebe a mudança. Por isso ela também <strong>toca a campainha</strong>, e aí todo mundo olha o quadro de novo.</p>
+<p>O <code>setState</code> faz as duas coisas juntas:</p>
+<ol class="passo">
+  <li><strong>Muda o número</strong>: roda o código que você pôs dentro dele (<code>_itens++</code>).</li>
+  <li><strong>Toca a campainha</strong>: marca o widget como "sujo" (<em>dirty</em>, "precisa redesenhar"). No próximo quadro da tela, o Flutter chama o <code>build</code> de novo, e o <code>build</code> lê o valor novo.</li>
+</ol>
+<p>Mudar o número sem tocar a campainha é o erro clássico da seção 2.</p>
+
+<hr>
+
+<h2>1. A sacola de compras</h2>
+<p>A Ana quer um contador de itens para a lista de compras. Desta vez, a mudança fica num <strong>método</strong> próprio, o <code>_colocar</code>, e o <code>build</code> escreve uma linha no console cada vez que roda:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lista de compras')),
+        body: const Center(child: Sacola()),
+      ),
+    );
+  }
+}
+
+class Sacola extends StatefulWidget {
+  const Sacola({super.key});
+
+  @override
+  State&lt;Sacola&gt; createState() =&gt; _SacolaState();
+}
+
+class _SacolaState extends State&lt;Sacola&gt; {
+  int _itens = 0;
+
+  void _colocar() {
+    setState(() {
+      _itens++;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    debugPrint('build: _itens = $_itens');
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('Itens na sacola: $_itens', style: const TextStyle(fontSize: 26)),
+        const SizedBox(height: 16),
+        FilledButton.icon(
+          onPressed: _colocar,
+          icon: const Icon(Icons.add),
+          label: const Text('Colocar na sacola'),
+        ),
+      ],
+    );
+  }
+}</pre>
+
+<dl class="anatomy">
+  <dt>void _colocar() { setState(() { _itens++; }); }</dt><dd>Um método do <code>State</code> com a ação do botão. O nome começa com <code>_</code> porque só este estado usa. Separar a ação num método deixa o <code>build</code> mais limpo, e o mesmo método pode servir a dois botões.</dd>
+  <dt>setState(() { … })</dt><dd>O <code>setState</code> recebe uma <strong>função</strong> sem parâmetros (o <code>() { … }</code>), roda essa função na hora e depois agenda um novo <code>build</code>. Dentro dela vai só a <strong>mudança</strong> do estado.</dd>
+  <dt>debugPrint('build: _itens = $_itens');</dt><dd>Escreve uma linha no console (o terminal do <code>flutter run</code>, ou o <em>Debug Console</em> do VS Code). É o <code>print</code> recomendado no Flutter: ele não perde linhas quando são muitas de uma vez. Aqui ele serve de "dedo-duro": mostra quando o <code>build</code> roda.</dd>
+  <dt>onPressed: _colocar</dt><dd>O botão recebe o <strong>próprio método</strong>, sem parênteses: "quando tocar, chame o <code>_colocar</code>". Com parênteses (<code>_colocar()</code>), ele seria chamado na hora do <code>build</code>, e não no toque.</dd>
+  <dt>FilledButton.icon(icon: …, label: …)</dt><dd>Um botão cheio com ícone e texto (veja <a href="botoes.html">Botões</a>).</dd>
+</dl>
+
+<p>Antes e depois de a Ana tocar <strong>três vezes</strong> em "Colocar na sacola":</p>
+
+<figure class="tela"><img src="assets/telas/setstate-1.png" alt="Tela 'Lista de compras' com o texto 'Itens na sacola: 0' no meio e o botão roxo '+ Colocar na sacola' embaixo" width="390" height="844" loading="lazy"><figcaption>Antes: 0 itens.</figcaption></figure>
+<figure class="tela"><img src="assets/telas/setstate-2.png" alt="A mesma tela com o texto 'Itens na sacola: 3'" width="390" height="844" loading="lazy"><figcaption>Depois de três toques: 3 itens.</figcaption></figure>
+
+<p>E o console, durante tudo isso:</p>
+
+<pre class="term">build: _itens = 0
+build: _itens = 1
+build: _itens = 2
+build: _itens = 3
+</pre>
+
+<p>Leia de cima para baixo: o <code>build</code> rodou uma vez quando o app abriu (<code>0</code>) e <strong>mais uma vez a cada toque</strong>, sempre já com o valor novo. É isso que o <code>setState</code> provoca: um <code>build</code> novo, que monta um <code>Text</code> novo, com o número novo.</p>
+
+<div class="tryflutter" data-goal="src:_tirar|OutlinedButton|Icons\.remove;;src:_itens--|_itens\s*-=\s*1|_itens\s*=\s*_itens\s*-\s*1">
+<p class="try-task"><strong>Missão:</strong> acrescente um botão <strong>"Tirar da sacola"</strong>. Crie um método <code>_tirar</code> que diminui o <code>_itens</code> dentro de um <code>setState</code>, mas só se ele for maior que zero (<code>if (_itens &gt; 0) _itens--;</code>), e um <code>OutlinedButton.icon</code> com <code>Icons.remove</code> embaixo do primeiro botão. Toque nos dois e veja o número subir e descer.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lista de compras')),
+        body: const Center(child: Sacola()),
+      ),
+    );
+  }
+}
+
+class Sacola extends StatefulWidget {
+  const Sacola({super.key});
+
+  @override
+  State&lt;Sacola&gt; createState() =&gt; _SacolaState();
+}
+
+class _SacolaState extends State&lt;Sacola&gt; {
+  int _itens = 0;
+
+  void _colocar() {
+    setState(() {
+      _itens++;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    debugPrint('build: _itens = $_itens');
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('Itens na sacola: $_itens', style: const TextStyle(fontSize: 26)),
+        const SizedBox(height: 16),
+        FilledButton.icon(
+          onPressed: _colocar,
+          icon: const Icon(Icons.add),
+          label: const Text('Colocar na sacola'),
+        ),
+      ],
+    );
+  }
+}</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lista de compras')),
+        body: const Center(child: Sacola()),
+      ),
+    );
+  }
+}
+
+class Sacola extends StatefulWidget {
+  const Sacola({super.key});
+
+  @override
+  State&lt;Sacola&gt; createState() =&gt; _SacolaState();
+}
+
+class _SacolaState extends State&lt;Sacola&gt; {
+  int _itens = 0;
+
+  void _colocar() {
+    setState(() {
+      _itens++;
+    });
+  }
+
+  void _tirar() {
+    setState(() {
+      if (_itens &gt; 0) _itens--;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    debugPrint('build: _itens = $_itens');
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('Itens na sacola: $_itens', style: const TextStyle(fontSize: 26)),
+        const SizedBox(height: 16),
+        FilledButton.icon(
+          onPressed: _colocar,
+          icon: const Icon(Icons.add),
+          label: const Text('Colocar na sacola'),
+        ),
+        OutlinedButton.icon(
+          onPressed: _tirar,
+          icon: const Icon(Icons.remove),
+          label: const Text('Tirar da sacola'),
+        ),
+      ],
+    );
+  }
+}</pre>
+</div>
+
+<figure class="tela"><img src="assets/telas/setstate-4.png" alt="Tela 'Lista de compras' com 'Itens na sacola: 1', o botão roxo '+ Colocar na sacola' e, logo abaixo, o botão vazado '− Tirar da sacola'" width="390" height="844" loading="lazy"><figcaption>A solução no lab, depois de dois toques em "Colocar" e um em "Tirar": 1 item.</figcaption></figure>
+
+<hr>
+
+<h2>2. Esqueceu o <code>setState</code>: o valor muda, a tela não</h2>
+<p>Este é o erro número um de quem está começando. A Ana tirou o <code>setState</code> e deixou só o <code>_itens++</code> (e um <code>debugPrint</code> para espiar o valor):</p>
+
+<pre class="file" data-file="lib/main.dart">class _SacolaState extends State&lt;Sacola&gt; {
+  int _itens = 0;
+
+  void _colocar() {
+    _itens++;
+    debugPrint('_colocar: _itens = $_itens');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    debugPrint('build: _itens = $_itens');
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('Itens na sacola: $_itens', style: const TextStyle(fontSize: 26)),
+        const SizedBox(height: 16),
+        FilledButton.icon(
+          onPressed: _colocar,
+          icon: const Icon(Icons.add),
+          label: const Text('Colocar na sacola'),
+        ),
+      ],
+    );
+  }
+}</pre>
+
+<p>Ela tocou três vezes no botão. A tela:</p>
+
+<figure class="tela"><img src="assets/telas/setstate-3.png" alt="Tela 'Lista de compras' ainda mostrando 'Itens na sacola: 0' depois de três toques no botão" width="390" height="844" loading="lazy"><figcaption>Três toques depois: a tela continua mostrando 0.</figcaption></figure>
+
+<p>E o console:</p>
+
+<pre class="term">build: _itens = 0
+_colocar: _itens = 1
+_colocar: _itens = 2
+_colocar: _itens = 3
+</pre>
+
+<p>O console conta a história toda: o valor <strong>mudou</strong> (1, 2, 3), mas o <code>build</code> rodou <strong>uma vez só</strong>, quando o app abriu. Ninguém tocou a campainha, então o Flutter não tinha motivo para redesenhar, e o <code>Text</code> na tela continua sendo aquele montado com <code>0</code>. Não aparece erro nenhum: o app simplesmente "não funciona".</p>
+
+<div class="tip">
+<strong>Dica para achar esse erro</strong>
+<p>Quando um toque "não faz nada", ponha um <code>debugPrint</code> no método do botão e outro no <code>build</code>. Se o do método aparece e o do <code>build</code> não, faltou o <code>setState</code>.</p>
+</div>
+
+<div class="tryflutter" data-goal="src:setState\(">
+<p class="try-task"><strong>Missão:</strong> este é o app com o erro. Rode, toque no botão e veja que a tela não muda. Depois conserte: ponha o <code>_itens++</code> dentro de um <code>setState(() { … });</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lista de compras')),
+        body: const Center(child: Sacola()),
+      ),
+    );
+  }
+}
+
+class Sacola extends StatefulWidget {
+  const Sacola({super.key});
+
+  @override
+  State&lt;Sacola&gt; createState() =&gt; _SacolaState();
+}
+
+class _SacolaState extends State&lt;Sacola&gt; {
+  int _itens = 0;
+
+  void _colocar() {
+    _itens++;
+    debugPrint('_colocar: _itens = $_itens');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    debugPrint('build: _itens = $_itens');
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('Itens na sacola: $_itens', style: const TextStyle(fontSize: 26)),
+        const SizedBox(height: 16),
+        FilledButton.icon(
+          onPressed: _colocar,
+          icon: const Icon(Icons.add),
+          label: const Text('Colocar na sacola'),
+        ),
+      ],
+    );
+  }
+}</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lista de compras')),
+        body: const Center(child: Sacola()),
+      ),
+    );
+  }
+}
+
+class Sacola extends StatefulWidget {
+  const Sacola({super.key});
+
+  @override
+  State&lt;Sacola&gt; createState() =&gt; _SacolaState();
+}
+
+class _SacolaState extends State&lt;Sacola&gt; {
+  int _itens = 0;
+
+  void _colocar() {
+    setState(() {
+      _itens++;
+    });
+    debugPrint('_colocar: _itens = $_itens');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    debugPrint('build: _itens = $_itens');
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('Itens na sacola: $_itens', style: const TextStyle(fontSize: 26)),
+        const SizedBox(height: 16),
+        FilledButton.icon(
+          onPressed: _colocar,
+          icon: const Icon(Icons.add),
+          label: const Text('Colocar na sacola'),
+        ),
+      ],
+    );
+  }
+}</pre>
+</div>
+
+<hr>
+
+<h2>3. Formas diferentes de escrever</h2>
+<p>As três formas abaixo fazem a mesma coisa:</p>
+
+<pre class="file" data-file="lib/main.dart">// 1. A mudança dentro do setState (a forma recomendada)
+void _colocar() {
+  setState(() {
+    _itens++;
+  });
+}
+
+// 2. A versão curta, com =&gt; (só para uma linha)
+void _colocar() =&gt; setState(() =&gt; _itens++);
+
+// 3. Mudar antes e chamar o setState vazio
+void _colocar() {
+  _itens++;
+  setState(() {});
+}
+</pre>
+
+<p>A forma 3 funciona porque o que redesenha a tela é a <strong>chamada</strong> do <code>setState</code>, não o que está dentro dele. Mesmo assim, prefira a forma 1: quem lê o código vê na hora <strong>o que</strong> mudou. Também dá para mudar <strong>vários</strong> valores num <code>setState</code> só, e o Flutter redesenha uma vez:</p>
+
+<pre class="file" data-file="lib/main.dart">setState(() {
+  _itens = 0;
+  _total = 0.0;
+  _cupom = null;
+});
+</pre>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Como escrever</th></tr>
+<tr><td>Uma mudança simples</td><td><code>setState(() { _itens++; });</code></td></tr>
+<tr><td>Várias mudanças juntas</td><td>Todas dentro do mesmo <code>setState</code></td></tr>
+<tr><td>Lógica comprida (contas, ifs)</td><td>Faça as contas antes e ponha no <code>setState</code> só as atribuições</td></tr>
+<tr><td>Trabalho demorado (internet, espera)</td><td>Espere <strong>fora</strong> do <code>setState</code>; chame o <code>setState</code> depois (seção 4)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>4. <code>setState</code> com espera: "Buscando…"</h2>
+<p>A Ana quer um botão que busca o preço do café. A busca demora (aqui, uma espera de 2 segundos com <code>Future.delayed</code> faz o papel da internet). Enquanto espera, a tela deve mostrar "Buscando..." e o botão deve ficar desligado:</p>
+
+<pre class="file" data-file="lib/main.dart">class _PrecoState extends State&lt;Preco&gt; {
+  String _texto = 'Toque para ver o preço do café';
+  bool _buscando = false;
+
+  Future&lt;void&gt; _buscar() async {
+    setState(() {
+      _buscando = true;
+      _texto = 'Buscando...';
+    });
+    await Future.delayed(const Duration(seconds: 2));
+    setState(() {
+      _buscando = false;
+      _texto = 'Café 500 g: R\$ 18,90';
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(_texto, style: const TextStyle(fontSize: 22)),
+        const SizedBox(height: 16),
+        FilledButton(
+          onPressed: _buscando ? null : _buscar,
+          child: const Text('Ver preço'),
+        ),
+      ],
+    );
+  }
+}</pre>
+
+<dl class="anatomy">
+  <dt>Future&lt;void&gt; _buscar() async</dt><dd>O método é <code>async</code>: pode usar <code>await</code> para esperar (veja <a href="dart-para-flutter.html">O Dart que Você Precisa</a>).</dd>
+  <dt>o 1º setState</dt><dd>Antes de esperar: liga o <code>_buscando</code> e troca o texto. A tela mostra "Buscando..." na hora.</dd>
+  <dt>await Future.delayed(const Duration(seconds: 2));</dt><dd>A espera, <strong>fora</strong> de qualquer <code>setState</code>. O app continua respondendo enquanto isso.</dd>
+  <dt>o 2º setState</dt><dd>Depois da espera: desliga o <code>_buscando</code> e põe o preço.</dd>
+  <dt>onPressed: _buscando ? null : _buscar</dt><dd>Com <code>onPressed: null</code>, o botão fica <strong>desligado</strong> (cinza, não responde). Assim ninguém dispara duas buscas ao mesmo tempo.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/setstate-6.png" alt="Tela 'Lista de compras' com o texto 'Buscando...' e o botão 'Ver preço' cinza, desligado" width="390" height="844" loading="lazy"><figcaption>Logo depois do toque: "Buscando..." e o botão desligado.</figcaption></figure>
+<figure class="tela"><img src="assets/telas/setstate-7.png" alt="A mesma tela com o texto 'Café 500 g: R$ 18,90' e o botão 'Ver preço' roxo de novo" width="390" height="844" loading="lazy"><figcaption>Dois segundos depois: o preço, e o botão ligado de novo.</figcaption></figure>
+
+<p>Dois <code>setState</code>, dois redesenhos: um antes da espera e outro depois. Buscar dados de verdade na internet tem aula própria: <a href="http.html">Buscando Dados na Internet</a> (e, para telas que dependem de uma busca, o <a href="futurebuilder.html">FutureBuilder</a>).</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Esqueceu o <code>setState</code></strong>
+<p>Visto na seção 2: o valor muda (o <code>debugPrint</code> mostra), mas a tela não, e não aparece erro nenhum. <strong>Como consertar:</strong> faça a mudança dentro de <code>setState(() { … })</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Pôs o <code>async</code> dentro do <code>setState</code></strong>
+<p>Parece uma boa ideia esperar dentro do próprio <code>setState</code>:</p>
+<pre class="file" data-file="lib/main.dart">  void _buscar() {
+    setState(() async {
+      _texto = 'Buscando...';
+      await Future.delayed(const Duration(seconds: 2));
+      _texto = 'Café 500 g: R\$ 18,90';
+    });
+  }</pre>
+<p>No toque, o console mostrou:</p>
+<pre class="term">[erro na página] setState() callback argument returned a Future.
+The setState() method on _PrecoState#827d0 was called with a closure or method that returned a Future. Maybe it is marked as "async".
+Instead of performing asynchronous work inside a call to setState(), first execute the work (without updating the widget state), and then synchronously update the state inside a call to setState().
+[erro na página] Unexpected null value.</pre>
+<figure class="tela"><img src="assets/telas/setstate-8.png" alt="Tela 'Lista de compras' ainda com o texto 'Toque para ver o preço do café', dois segundos e meio depois do toque em 'Ver preço'" width="390" height="844" loading="lazy"><figcaption>Dois segundos e meio depois do toque: a tela nem chegou a mostrar "Buscando...".</figcaption></figure>
+<p>Linha por linha: <code>setState() callback argument returned a Future</code> é "a função passada ao <code>setState</code> devolveu um <code>Future</code>" (toda função <code>async</code> devolve um <code>Future</code>). A segunda linha confirma: <code>Maybe it is marked as "async"</code>, "talvez ela esteja marcada como <code>async</code>". A terceira dá a solução: "em vez de fazer trabalho assíncrono dentro do <code>setState</code>, faça o trabalho primeiro (sem mexer no estado) e depois atualize o estado <strong>de forma síncrona</strong> dentro de um <code>setState</code>". O <code>[erro na página]</code> no começo é a marca que o console do navegador do lab põe nos erros que ninguém tratou, e o <code>Unexpected null value.</code> é um efeito colateral desse primeiro erro no Flutter web. <strong>Como consertar:</strong> o <code>setState</code> tem de ser rápido e síncrono: espere <strong>fora</strong> dele, como na seção 4.</p>
+</div>
+
+<div class="cenario">
+<strong>Chamou o método em vez de passá-lo</strong>
+<pre class="file" data-file="lib/main.dart">          onPressed: _colocar(),</pre>\n<pre class="term">lib/main.dart:44:22: Error: This expression has type 'void' and can't be used.\n          onPressed: _colocar(),\n                     ^\n</pre>\n<p>"Esta expressão tem o tipo <code>void</code> e não pode ser usada." Com os parênteses, o Dart entende que você quer <strong>chamar</strong> o <code>_colocar</code> ali mesmo e usar o <strong>resultado</strong> como a ação do botão. Só que o método é <code>void</code> (não devolve nada), então não há resultado para usar, e o app nem compila. O <code>^</code> aponta a coluna 22 da linha 44, o começo do <code>_colocar()</code>. <strong>Como consertar:</strong> passe o método sem parênteses (<code>onPressed: _colocar</code>) ou embrulhe numa função (<code>onPressed: () =&gt; _colocar()</code>).</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>setState(() { _x++; });</code></td><td>Roda a mudança e agenda um novo <code>build</code></td></tr>
+<tr><td><code>setState(() =&gt; _x++);</code></td><td>O mesmo, na forma curta</td></tr>
+<tr><td><code>debugPrint('…')</code></td><td>Escreve no console; bom para ver quando o <code>build</code> roda</td></tr>
+<tr><td><code>onPressed: _metodo</code></td><td>Passa o método para o botão chamar no toque</td></tr>
+<tr><td><code>onPressed: null</code></td><td>Botão desligado</td></tr>
+<tr><td><code>await …;</code> e depois <code>setState(…)</code></td><td>Espera fora, atualiza a tela depois</td></tr>
+</table>
+</div>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Sintoma</th><th>Causa provável</th></tr>
+<tr><td>O toque não muda a tela, sem erro nenhum</td><td>Faltou o <code>setState</code></td></tr>
+<tr><td><code>setState() callback argument returned a Future.</code></td><td><code>async</code> na função de dentro do <code>setState</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete</h3>
+<p>Complete o método para a tela mostrar o novo valor:</p>
+<div class="ex-code">void _somar() {<br>&nbsp;&nbsp;<input data-answer="setState" aria-label="método que avisa o Flutter">(() {<br>&nbsp;&nbsp;&nbsp;&nbsp;_pontos = _pontos + 10;<br>&nbsp;&nbsp;});<br>}</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. O console mostra <code>_colocar: _itens = 5</code>, mas a tela continua em 0. O que aconteceu?</p>
+<label><input type="radio" name="q2"> O <code>_itens</code> não mudou</label>
+<label><input type="radio" name="q2"> O valor mudou, mas faltou o <code>setState</code>, e o <code>build</code> não rodou de novo</label>
+<label><input type="radio" name="q2"> O <code>Text</code> está com erro</label>
+<label><input type="radio" name="q2"> O botão está desligado</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. Quantas vezes o <code>build</code> roda se o app abre e a pessoa toca 4 vezes num botão com <code>setState</code>?</p>
+<label><input type="radio" name="q3"> 1</label>
+<label><input type="radio" name="q3"> 4</label>
+<label><input type="radio" name="q3"> 5</label>
+<label><input type="radio" name="q3"> Nenhuma</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. Onde deve ficar o <code>await</code> de uma busca demorada?</p>
+<label><input type="radio" name="q4"> Fora do <code>setState</code>; o <code>setState</code> vem depois, só com as atribuições</label>
+<label><input type="radio" name="q4"> Dentro do <code>setState</code>, com <code>setState(() async { … })</code></label>
+<label><input type="radio" name="q4"> No <code>build</code></label>
+</div>
+
+<h3>Missão final: o placar do jogo</h3>
+
+<div class="tryflutter" data-goal="src:void _zerar\(\)\s*\{\s*setState;;src:^\s+_ana\s*=\s*0\b;;src:^\s+_bia\s*=\s*0\b">
+<p class="try-task"><strong>Missão:</strong> o placar da Ana contra a Bia já tem os botões de ponto. Falta o botão <strong>Zerar</strong>: complete o método <code>_zerar</code> para pôr os dois placares em 0, num <code>setState</code> só.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Placar')),
+        body: const Center(child: Placar()),
+      ),
+    );
+  }
+}
+
+class Placar extends StatefulWidget {
+  const Placar({super.key});
+
+  @override
+  State&lt;Placar&gt; createState() =&gt; _PlacarState();
+}
+
+class _PlacarState extends State&lt;Placar&gt; {
+  int _ana = 0;
+  int _bia = 0;
+
+  void _zerar() {
+    // complete aqui: os dois placares voltam a 0, num setState só
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('Ana $_ana × $_bia Bia', style: const TextStyle(fontSize: 32)),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FilledButton(
+              onPressed: () =&gt; setState(() =&gt; _ana++),
+              child: const Text('Ponto da Ana'),
+            ),
+            const SizedBox(width: 8),
+            FilledButton(
+              onPressed: () =&gt; setState(() =&gt; _bia++),
+              child: const Text('Ponto da Bia'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton(
+          onPressed: _zerar,
+          child: const Text('Zerar'),
+        ),
+      ],
+    );
+  }
+}</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Placar')),
+        body: const Center(child: Placar()),
+      ),
+    );
+  }
+}
+
+class Placar extends StatefulWidget {
+  const Placar({super.key});
+
+  @override
+  State&lt;Placar&gt; createState() =&gt; _PlacarState();
+}
+
+class _PlacarState extends State&lt;Placar&gt; {
+  int _ana = 0;
+  int _bia = 0;
+
+  void _zerar() {
+    setState(() {
+      _ana = 0;
+      _bia = 0;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('Ana $_ana × $_bia Bia', style: const TextStyle(fontSize: 32)),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FilledButton(
+              onPressed: () =&gt; setState(() =&gt; _ana++),
+              child: const Text('Ponto da Ana'),
+            ),
+            const SizedBox(width: 8),
+            FilledButton(
+              onPressed: () =&gt; setState(() =&gt; _bia++),
+              child: const Text('Ponto da Bia'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton(
+          onPressed: _zerar,
+          child: const Text('Zerar'),
+        ),
+      ],
+    );
+  }
+}</pre>
+</div>
+
+<figure class="tela"><img src="assets/telas/setstate-9.png" alt="Tela Placar com Ana 2 × 1 Bia em letras grandes, os botões roxos Ponto da Ana e Ponto da Bia lado a lado e o botão vazado Zerar embaixo" width="390" height="844" loading="lazy"><figcaption>A solução no lab: dois pontos da Ana e um da Bia…</figcaption></figure>
+<figure class="tela"><img src="assets/telas/setstate-10.png" alt="A mesma tela com o placar Ana 0 × 0 Bia" width="390" height="844" loading="lazy"><figcaption>…e depois de um toque em Zerar.</figcaption></figure>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>setState(() { … })</code> faz duas coisas: roda a mudança e agenda um novo <code>build</code>. É o <code>build</code> novo que mostra o valor novo.</li>
+  <li>Sem o <code>setState</code>, o valor muda na memória, mas a tela fica igual, e sem erro nenhum. Um <code>debugPrint</code> no método e outro no <code>build</code> denunciam o problema.</li>
+  <li>Ponha a ação num método (<code>_colocar</code>) e passe-o ao botão sem parênteses: <code>onPressed: _colocar</code>.</li>
+  <li>Várias mudanças podem ir num <code>setState</code> só.</li>
+  <li>Esperas (<code>await</code>) ficam <strong>fora</strong> do <code>setState</code>; uma função <code>async</code> dentro dele dá <code>setState() callback argument returned a Future</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
