@@ -1,0 +1,642 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Slider e Dropdown — escolher um número arrastando e uma opção numa lista | Guia Flutter</title>
+<meta name="description" content="Slider, RangeSlider, DropdownMenu e DropdownButton no Flutter para quem nunca fez um app: o valor double do Slider, min, max, divisions e label, a faixa de preço com RangeSlider, a lista suspensa do Material 3 (DropdownMenu e DropdownMenuEntry), o DropdownButton clássico e o erro real do valor que não está nos itens.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Slider e Dropdown</span></h1>
+
+<p class="intro">Mais duas formas de a pessoa responder sem digitar. O <code>Slider</code> ("controle deslizante") serve para escolher um <strong>número</strong> arrastando uma bolinha numa trilha: o volume, o brilho, quantas porções da receita. O <strong>dropdown</strong> ("lista suspensa") serve para escolher <strong>uma opção</strong> numa lista que só abre quando se toca: o sabor da pizza, o estado, a categoria.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como usar o <code>Slider</code>: <code>value</code> (um <code>double</code>), <code>min</code>, <code>max</code>, <code>divisions</code> e <code>label</code>.</li>
+  <li>Como escolher uma faixa (de R$ 20 a R$ 50) com o <code>RangeSlider</code>.</li>
+  <li>A lista suspensa do Material 3: <code>DropdownMenu</code> com <code>DropdownMenuEntry</code>.</li>
+  <li>O <code>DropdownButton</code> clássico, que você vai encontrar em muito código por aí.</li>
+  <li>O erro real mais comum: o valor escolhido que não existe na lista de itens.</li>
+</ul>
+</div>
+
+<p>Os dois funcionam como os controles da aula <a href="checkbox-switch.html">Checkbox, Switch e Radio</a>: o valor mora no seu estado, e o widget só <strong>avisa</strong> (pelo <code>onChanged</code> ou <code>onSelected</code>) quando a pessoa quer trocá-lo.</p>
+
+<hr>
+
+<h2>A ideia: o botão de volume e o cardápio</h2>
+<p>O <code>Slider</code> é o botão de volume do rádio: você não digita "37", você gira até achar. Serve quando o número exato importa menos do que "mais ou menos isso", e quando o intervalo é conhecido (de 0 a 100, de 1 a 12).</p>
+<p>O dropdown é o cardápio que o garçom traz <strong>só quando você pede</strong>: fechado, ele mostra apenas o prato escolhido e ocupa pouco espaço; aberto, mostra todas as opções. Serve quando há opções demais para mostrar todas na tela (com 3 ou 4, os botões de opção da aula anterior são mais rápidos).</p>
+
+<hr>
+
+<h2>1. O <code>Slider</code></h2>
+<p>A Ana quer que a receita de bolo se ajuste ao número de porções:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Receita()));
+
+class Receita extends StatefulWidget {
+  const Receita({super.key});
+
+  @override
+  State&lt;Receita&gt; createState() =&gt; _ReceitaState();
+}
+
+class _ReceitaState extends State&lt;Receita&gt; {
+  double porcoes = 4;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Bolo de cenoura')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Text('Porções: ${porcoes.round()}', style: const TextStyle(fontSize: 20)),
+            Slider(
+              value: porcoes,
+              min: 1,
+              max: 12,
+              divisions: 11,
+              label: '${porcoes.round()}',
+              onChanged: (novo) {
+                setState(() {
+                  porcoes = novo;
+                });
+              },
+            ),
+            Text('Farinha: ${(porcoes * 60).round()} g'),
+            Text('Ovos: ${(porcoes * 0.75).ceil()}'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>double porcoes = 4;</dt><dd>O valor, no estado. É <strong><code>double</code></strong> (número com vírgula), mesmo que você só queira inteiros: o <code>Slider</code> trabalha sempre com <code>double</code>. O <code>4</code> vira <code>4.0</code> sozinho.</dd>
+  <dt>value: porcoes</dt><dd>Onde a bolinha está. Tem de ficar entre <code>min</code> e <code>max</code>.</dd>
+  <dt>min: 1, max: 12</dt><dd>As pontas da trilha. O padrão é de <code>0.0</code> a <code>1.0</code>: sem eles, o <code>4</code> estaria fora da trilha (veja <a href="#errado">Quando dá errado</a>).</dd>
+  <dt>divisions: 11</dt><dd>Divide a trilha em 11 pedaços iguais: a bolinha só para em 1, 2, 3… 12 (12 pontos, 11 espaços entre eles). Sem <code>divisions</code>, ela anda livre e o valor pode ser <code>4.3728…</code>.</dd>
+  <dt>label: '${porcoes.round()}'</dt><dd>O balãozinho com o número que aparece em cima da bolinha <strong>enquanto</strong> ela é arrastada. Por padrão, só aparece quando há <code>divisions</code>.</dd>
+  <dt>onChanged: (novo) { … }</dt><dd>Chamado <strong>muitas vezes</strong> durante o arrasto, a cada posição nova, com um <code>double</code>. Se você só quer saber o valor final (para salvar, por exemplo), existe também o <code>onChangeEnd</code>, chamado uma vez quando o dedo solta.</dd>
+  <dt>porcoes.round()</dt><dd>Arredonda para inteiro, para mostrar "4" e não "4.0".</dd>
+</dl>
+
+<p>À esquerda, o app ao abrir. À direita, depois que a Ana levou a bolinha duas casas para a direita (no navegador do laboratório, com as setas do teclado: o <code>Slider</code> também aceita <kbd>→</kbd> e <kbd>←</kbd> quando está com o foco). Repare no balãozinho do <code>label</code> e nas contas que mudaram junto:</p>
+<div class="table-wrap"><table class="ref"><tr><td><figure class="tela"><img src="assets/telas/slider-dropdown-1.png" alt="Tela &#39;Bolo de cenoura&#39;: &#39;Porções: 4&#39; em letra grande, a trilha do slider com pontinhos marcando as paradas e a bolinha roxa no quarto ponto; embaixo, &#39;Farinha: 240 g&#39; e &#39;Ovos: 3&#39;" width="390" height="844" loading="lazy"><figcaption>Ao abrir: 4 porções.</figcaption></figure></td><td><figure class="tela"><img src="assets/telas/slider-dropdown-2.png" alt="A mesma tela com a bolinha mais à direita e um balão roxo com o número 6 em cima dela; &#39;Farinha: 360 g&#39; e &#39;Ovos: 5&#39;" width="390" height="844" loading="lazy"><figcaption>Duas casas depois: 6 porções.</figcaption></figure></td></tr></table></div>
+
+<div class="tryflutter" data-goal="src:max:\s*20">
+<p class="try-task"><strong>Missão:</strong> a Ana vai fazer o bolo para uma festa. Aumente o máximo do <code>Slider</code> para <strong>20</strong> porções e ajuste o <code>divisions</code> para a bolinha continuar parando só nos inteiros (de 1 a 20 são quantos espaços?).</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Receita()));
+
+class Receita extends StatefulWidget {
+  const Receita({super.key});
+
+  @override
+  State&lt;Receita&gt; createState() =&gt; _ReceitaState();
+}
+
+class _ReceitaState extends State&lt;Receita&gt; {
+  double porcoes = 4;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Bolo de cenoura')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Text('Porções: ${porcoes.round()}', style: const TextStyle(fontSize: 20)),
+            Slider(
+              value: porcoes,
+              min: 1,
+              max: 12,
+              divisions: 11,
+              label: '${porcoes.round()}',
+              onChanged: (novo) {
+                setState(() {
+                  porcoes = novo;
+                });
+              },
+            ),
+            Text('Farinha: ${(porcoes * 60).round()} g'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Receita()));
+
+class Receita extends StatefulWidget {
+  const Receita({super.key});
+
+  @override
+  State&lt;Receita&gt; createState() =&gt; _ReceitaState();
+}
+
+class _ReceitaState extends State&lt;Receita&gt; {
+  double porcoes = 4;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Bolo de cenoura')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Text('Porções: ${porcoes.round()}', style: const TextStyle(fontSize: 20)),
+            Slider(
+              value: porcoes,
+              min: 1,
+              max: 20,
+              divisions: 19,
+              label: '${porcoes.round()}',
+              onChanged: (novo) {
+                setState(() {
+                  porcoes = novo;
+                });
+              },
+            ),
+            Text('Farinha: ${(porcoes * 60).round()} g'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<h3>Uma faixa: <code>RangeSlider</code></h3>
+<p>Na busca da lojinha, a Ana quer filtrar "de R$ 20 a R$ 50". São <strong>duas</strong> bolinhas na mesma trilha. O <code>RangeSlider</code> funciona igual, mas o valor é um <code>RangeValues</code> (um par: começo e fim):</p>
+<pre class="file" data-file="lib/main.dart (trecho)">RangeValues faixa = const RangeValues(20, 50);
+
+// no build:
+RangeSlider(
+  values: faixa,
+  min: 0,
+  max: 100,
+  divisions: 20,
+  labels: RangeLabels('R\$ ${faixa.start.round()}', 'R\$ ${faixa.end.round()}'),
+  onChanged: (nova) {
+    setState(() {
+      faixa = nova;
+    });
+  },
+)
+</pre>
+<p><code>faixa.start</code> é o começo e <code>faixa.end</code>, o fim. Repare no <code>\$</code>: dentro de um texto do Dart, o <code>$</code> sozinho começa uma interpolação; para escrever o cifrão de verdade, use <code>\$</code>.</p>
+
+<hr>
+
+<h2>2. A lista suspensa do Material 3: <code>DropdownMenu</code></h2>
+<p>O sabor da pizza, numa lista que abre quando a pessoa toca:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Pedido()));
+
+class Pedido extends StatefulWidget {
+  const Pedido({super.key});
+
+  @override
+  State&lt;Pedido&gt; createState() =&gt; _PedidoState();
+}
+
+class _PedidoState extends State&lt;Pedido&gt; {
+  String? sabor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Pizzaria da Ana')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            DropdownMenu&lt;String&gt;(
+              label: const Text('Sabor'),
+              width: 300,
+              onSelected: (escolhido) {
+                setState(() {
+                  sabor = escolhido;
+                });
+              },
+              dropdownMenuEntries: const [
+                DropdownMenuEntry(value: 'mussarela', label: 'Mussarela'),
+                DropdownMenuEntry(value: 'calabresa', label: 'Calabresa'),
+                DropdownMenuEntry(value: 'margherita', label: 'Margherita'),
+                DropdownMenuEntry(value: 'portuguesa', label: 'Portuguesa'),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Text(sabor == null ? 'Escolha um sabor' : 'Sabor: $sabor'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>String? sabor;</dt><dd>O escolhido, no estado. Começa <code>null</code>: nada escolhido.</dd>
+  <dt>DropdownMenu&lt;String&gt;(…)</dt><dd>A lista suspensa. O <code>&lt;String&gt;</code> diz o tipo dos <strong>valores</strong> das opções (podia ser um <code>enum</code>, um <code>int</code>…).</dd>
+  <dt>label: const Text('Sabor')</dt><dd>O rótulo, que se comporta como o do <code>TextField</code>: dentro da caixa quando vazia, na borda quando tem valor.</dd>
+  <dt>width: 300</dt><dd>A largura da caixa, em pixels lógicos. Sem ela, a caixa fica da largura da opção mais comprida.</dd>
+  <dt>onSelected: (escolhido) { … }</dt><dd>Chamado quando a pessoa escolhe uma opção, com o <strong><code>value</code></strong> dela (<code>'calabresa'</code>, não <code>'Calabresa'</code>). O tipo é <code>String?</code>.</dd>
+  <dt>dropdownMenuEntries: [DropdownMenuEntry(value: …, label: …)]</dt><dd>As opções. Cada uma tem um <code>value</code> (o que o código usa, e que tem de ser <strong>único</strong> na lista) e um <code>label</code> (o texto que a pessoa vê).</dd>
+</dl>
+
+<p>Fechado, o menu é só uma caixa com o rótulo e uma setinha. A Ana tocou na caixa, e a lista abriu logo abaixo; ela tocou em Calabresa:</p>
+<div class="table-wrap"><table class="ref"><tr><td><figure class="tela"><img src="assets/telas/slider-dropdown-3.png" alt="Tela &#39;Pizzaria da Ana&#39; com uma caixa de borda cinza escrita &#39;Sabor&#39; e uma setinha para baixo à direita; embaixo, &#39;Escolha um sabor&#39;" width="390" height="844" loading="lazy"><figcaption>Fechado.</figcaption></figure></td><td><figure class="tela"><img src="assets/telas/slider-dropdown-4.png" alt="A caixa &#39;Sabor&#39; com a borda roxa e o rótulo no alto; logo abaixo, uma lista flutuante com Mussarela, Calabresa, Margherita e Portuguesa" width="390" height="844" loading="lazy"><figcaption>Aberto.</figcaption></figure></td><td><figure class="tela"><img src="assets/telas/slider-dropdown-5.png" alt="A caixa agora mostra &#39;Calabresa&#39;, com o rótulo &#39;Sabor&#39; no alto da borda; embaixo, &#39;Sabor: calabresa&#39;, em minúsculas" width="390" height="844" loading="lazy"><figcaption>Depois de escolher.</figcaption></figure></td></tr></table></div>
+<p>Repare na última foto: a caixa mostra o <code>label</code> (<code>Calabresa</code>), mas o texto de baixo mostra o <code>value</code> (<code>calabresa</code>), que é o que chega no <code>onSelected</code>.</p>
+
+<p>Para o menu já abrir com uma opção escolhida, passe <code>initialSelection: 'mussarela'</code>. E com <code>enableFilter: true</code>, a pessoa pode <strong>digitar</strong> na caixa para filtrar as opções: ótimo para listas longas, como os 27 estados do Brasil.</p>
+
+<div class="tryflutter" data-goal="src:value:\s*'frango'">
+<p class="try-task"><strong>Missão:</strong> a pizzaria lançou um sabor novo. Acrescente a opção de valor <code>'frango'</code> e texto <code>'Frango com catupiry'</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Pedido()));
+
+class Pedido extends StatefulWidget {
+  const Pedido({super.key});
+
+  @override
+  State&lt;Pedido&gt; createState() =&gt; _PedidoState();
+}
+
+class _PedidoState extends State&lt;Pedido&gt; {
+  String? sabor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Pizzaria da Ana')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            DropdownMenu&lt;String&gt;(
+              label: const Text('Sabor'),
+              width: 300,
+              onSelected: (escolhido) {
+                setState(() {
+                  sabor = escolhido;
+                });
+              },
+              dropdownMenuEntries: const [
+                DropdownMenuEntry(value: 'mussarela', label: 'Mussarela'),
+                DropdownMenuEntry(value: 'calabresa', label: 'Calabresa'),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Text(sabor == null ? 'Escolha um sabor' : 'Sabor: $sabor'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Pedido()));
+
+class Pedido extends StatefulWidget {
+  const Pedido({super.key});
+
+  @override
+  State&lt;Pedido&gt; createState() =&gt; _PedidoState();
+}
+
+class _PedidoState extends State&lt;Pedido&gt; {
+  String? sabor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Pizzaria da Ana')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            DropdownMenu&lt;String&gt;(
+              label: const Text('Sabor'),
+              width: 300,
+              onSelected: (escolhido) {
+                setState(() {
+                  sabor = escolhido;
+                });
+              },
+              dropdownMenuEntries: const [
+                DropdownMenuEntry(value: 'mussarela', label: 'Mussarela'),
+                DropdownMenuEntry(value: 'calabresa', label: 'Calabresa'),
+                DropdownMenuEntry(value: 'frango', label: 'Frango com catupiry'),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Text(sabor == null ? 'Escolha um sabor' : 'Sabor: $sabor'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>3. O clássico: <code>DropdownButton</code></h2>
+<p>Antes do <code>DropdownMenu</code>, o jeito era o <code>DropdownButton</code>. Ele continua no Flutter e aparece em muito tutorial, então vale reconhecer:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Pedido()));
+
+class Pedido extends StatefulWidget {
+  const Pedido({super.key});
+
+  @override
+  State&lt;Pedido&gt; createState() =&gt; _PedidoState();
+}
+
+class _PedidoState extends State&lt;Pedido&gt; {
+  String sabor = 'mussarela';
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Pizzaria da Ana')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: DropdownButton&lt;String&gt;(
+          value: sabor,
+          onChanged: (escolhido) {
+            setState(() {
+              sabor = escolhido!;
+            });
+          },
+          items: const [
+            DropdownMenuItem(value: 'mussarela', child: Text('Mussarela')),
+            DropdownMenuItem(value: 'calabresa', child: Text('Calabresa')),
+            DropdownMenuItem(value: 'margherita', child: Text('Margherita')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>value: sabor</dt><dd>A opção mostrada. Diferente do <code>DropdownMenu</code>, aqui <strong>você</strong> diz qual está escolhida a cada <code>build</code> (é um controle controlado, como o <code>Checkbox</code>).</dd>
+  <dt>onChanged: (escolhido) { … }</dt><dd>Recebe o <code>value</code> da opção tocada (<code>String?</code>; daí o <code>!</code>). Com <code>onChanged: null</code>, o botão fica desativado.</dd>
+  <dt>items: [DropdownMenuItem(value: …, child: …)]</dt><dd>As opções. O <code>child</code> é um widget (pode ter ícone, cor…), não só um texto.</dd>
+</dl>
+
+<p>O <code>DropdownButton</code> é mais simples: sem borda nem rótulo, só o texto escolhido com uma setinha e uma linha embaixo. Tocado, ele abre a lista <strong>por cima</strong> do botão, com a opção atual destacada:</p>
+<div class="table-wrap"><table class="ref"><tr><td><figure class="tela"><img src="assets/telas/slider-dropdown-6.png" alt="Tela &#39;Pizzaria da Ana&#39; com, no alto à esquerda, &#39;Mussarela&#39; seguido de uma setinha e sublinhado por uma linha fina" width="390" height="844" loading="lazy"><figcaption>Fechado.</figcaption></figure></td><td><figure class="tela"><img src="assets/telas/slider-dropdown-7.png" alt="Uma lista flutuante sobre o botão, com Mussarela (destacada em cinza), Calabresa e Margherita" width="390" height="844" loading="lazy"><figcaption>Aberto: a opção atual fica no lugar do botão, destacada.</figcaption></figure></td></tr></table></div>
+
+<hr>
+
+<h2 id="formas">Qual usar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>O que usar</th></tr>
+<tr><td>Um número num intervalo, sem precisar ser exato</td><td><code>Slider</code> (com <code>divisions</code> para inteiros)</td></tr>
+<tr><td>Um intervalo (de… até…)</td><td><code>RangeSlider</code></td></tr>
+<tr><td>Um número exato (CPF, quantidade de 1 a 999)</td><td><code>TextField</code> com <code>keyboardType: TextInputType.number</code> (aula <a href="textfield.html">TextField</a>)</td></tr>
+<tr><td>Uma opção entre muitas (mais de 5)</td><td><code>DropdownMenu</code> (com <code>enableFilter</code> se a lista for longa)</td></tr>
+<tr><td>Uma opção entre poucas, todas à vista</td><td><code>RadioGroup</code> (aula <a href="checkbox-switch.html">Checkbox, Switch e Radio</a>)</td></tr>
+<tr><td>Código antigo, ou dentro de um <code>Form</code></td><td><code>DropdownButton</code> / <code>DropdownButtonFormField</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>O valor do <code>DropdownButton</code> não está nos itens</strong>
+<p>A Ana escreveu o valor inicial com letra maiúscula: <code>String sabor = 'Mussarela';</code>, mas os <code>value</code> dos itens estão em minúsculas (<code>'mussarela'</code>). A tela não abre, e o console mostra (de um teste da Ana que só abre a tela):</p>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following assertion was thrown building Pedido(dirty, state: _PedidoState#aee88):
+There should be exactly one item with [DropdownButton]'s value: Mussarela.
+Either zero or 2 or more [DropdownMenuItem]s were detected with the same value
+'package:flutter/src/material/dropdown.dart':
+Failed assertion: line 1028 pos 10: 'items == null ||
+             items.isEmpty ||
+             value == null ||
+             items.where((DropdownMenuItem&lt;T&gt; item) {
+                   return item.value == value;
+                 }).length ==
+                 1'
+</pre>
+<dl class="anatomy">
+  <dt>There should be exactly one item with [DropdownButton]'s value: Mussarela.</dt><dd>"Deveria haver exatamente <strong>um</strong> item com o valor do DropdownButton: Mussarela."</dd>
+  <dt>Either zero or 2 or more [DropdownMenuItem]s were detected…</dt><dd>"Foram encontrados zero, ou dois ou mais, itens com esse valor." Aqui foram <strong>zero</strong>: <code>'Mussarela'</code> ≠ <code>'mussarela'</code> (o Dart diferencia maiúsculas). O outro caso é ter dois itens com o mesmo <code>value</code>.</dd>
+  <dt>Failed assertion: … .length == 1</dt><dd>A conferência que o Flutter fez: conta os itens com aquele valor e exige que seja exatamente 1.</dd>
+</dl>
+<p><strong>Como consertar:</strong> o <code>value</code> tem de ser igual ao de <strong>um</strong> dos itens, ou <code>null</code>. Usar um <code>enum</code> em vez de <code>String</code> evita o erro de digitação: o Dart nem compila se a opção não existir.</p>
+</div>
+
+<div class="cenario">
+<strong>O <code>Slider</code> com o valor fora da trilha</strong>
+<p>O app da seção 1 sem as linhas <code>min: 1,</code>, <code>max: 12,</code> e <code>divisions: 11,</code>. O valor inicial continua <code>4</code>, mas a trilha agora vai do padrão, 0 a 1:</p>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following assertion was thrown building Receita(dirty, state: _ReceitaState#f2df1):
+Value 4.0 is not between minimum 0.0 and maximum 1.0
+'package:flutter/src/material/slider.dart':
+Failed assertion: line 202 pos 10: 'value &gt;= min &amp;&amp; value &lt;= max'
+</pre>
+<p>"O valor 4.0 não está entre o mínimo 0.0 e o máximo 1.0." Repare que o Flutter mostra <code>4.0</code>: o <code>4</code> virou <code>double</code>. <strong>Como consertar:</strong> dê o <code>min</code> e o <code>max</code> certos, e garanta que o valor inicial (e qualquer valor que você puser no estado pelo código) fique dentro deles; se precisar, use <code>valor.clamp(min, max)</code>, que "prende" o número no intervalo.</p>
+</div>
+
+<div class="cenario">
+<strong>A bolinha não anda</strong>
+<p>Sem erro nenhum: a pessoa arrasta e a bolinha volta. É o mesmo caso da caixa que não marca: faltou o <code>setState</code> no <code>onChanged</code>, ou o <code>value</code> é fixo (<code>value: 4</code>) em vez de vir do estado. <strong>Como consertar:</strong> guarde o valor no <code>State</code> e troque com <code>setState</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Widget</th><th>Peças principais</th></tr>
+<tr><td><code>Slider</code></td><td><code>value</code> (double), <code>min</code>, <code>max</code>, <code>divisions</code>, <code>label</code>, <code>onChanged</code>, <code>onChangeEnd</code></td></tr>
+<tr><td><code>RangeSlider</code></td><td><code>values: RangeValues(a, b)</code>, <code>labels: RangeLabels(…)</code>, <code>min</code>, <code>max</code>, <code>divisions</code>, <code>onChanged</code></td></tr>
+<tr><td><code>DropdownMenu&lt;T&gt;</code></td><td><code>dropdownMenuEntries</code>, <code>label</code>, <code>initialSelection</code>, <code>onSelected</code>, <code>width</code>, <code>enableFilter</code></td></tr>
+<tr><td><code>DropdownMenuEntry</code></td><td><code>value</code> (único), <code>label</code> (texto), <code>leadingIcon</code></td></tr>
+<tr><td><code>DropdownButton&lt;T&gt;</code></td><td><code>value</code>, <code>items</code>, <code>onChanged</code></td></tr>
+<tr><td><code>DropdownMenuItem</code></td><td><code>value</code>, <code>child</code> (widget)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o Slider</h3>
+<p>Um volume de 0 a 10, só inteiros:</p>
+<div class="ex-code">Slider(<br>&nbsp;&nbsp;value: volume,<br>&nbsp;&nbsp;min: 0,<br>&nbsp;&nbsp;<input data-answer="max" aria-label="parâmetro do máximo">: 10,<br>&nbsp;&nbsp;divisions: <input data-answer="10" aria-label="número de divisões">,<br>&nbsp;&nbsp;onChanged: (novo) =&gt; setState(() =&gt; volume = novo),<br>)</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. Qual é o tipo do <code>value</code> do <code>Slider</code>?</p>
+<label><input type="radio" name="q2"> <code>int</code></label>
+<label><input type="radio" name="q2"> <code>double</code></label>
+<label><input type="radio" name="q2"> <code>String</code></label>
+<label><input type="radio" name="q2"> <code>num?</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">3. No <code>DropdownMenuEntry(value: 'sp', label: 'São Paulo')</code>, o que chega no <code>onSelected</code> quando a pessoa escolhe essa opção?</p>
+<label><input type="radio" name="q3"> <code>'sp'</code></label>
+<label><input type="radio" name="q3"> <code>'São Paulo'</code></label>
+<label><input type="radio" name="q3"> O índice da opção</label>
+<label><input type="radio" name="q3"> O widget <code>DropdownMenuEntry</code></label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. O <code>label</code> do <code>Slider</code> (o balãozinho) não aparece, e as outras configurações estão no padrão. O que falta?</p>
+<label><input type="radio" name="q4"> <code>min</code></label>
+<label><input type="radio" name="q4"> <code>onChangeEnd</code></label>
+<label><input type="radio" name="q4"> Um <code>Text</code> em volta</label>
+<label><input type="radio" name="q4"> <code>divisions</code></label>
+</div>
+
+<h3>Missão final: a gorjeta</h3>
+<div class="tryflutter" data-goal="src:Slider\(;;src:gorjeta">
+<p class="try-task"><strong>Missão:</strong> a conta do restaurante deu R$ 120. Acrescente um <code>Slider</code> de gorjeta de 0 a 20 (por cento), de 5 em 5 (<code>divisions: 4</code>), ligado à variável <code>gorjeta</code>, e veja o total mudar.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Conta()));
+
+class Conta extends StatefulWidget {
+  const Conta({super.key});
+
+  @override
+  State&lt;Conta&gt; createState() =&gt; _ContaState();
+}
+
+class _ContaState extends State&lt;Conta&gt; {
+  double gorjeta = 10;
+
+  @override
+  Widget build(BuildContext context) {
+    final total = 120 * (1 + gorjeta / 100);
+    return Scaffold(
+      appBar: AppBar(title: const Text('Conta')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Text('Gorjeta: ${gorjeta.round()}%'),
+            // o Slider vai aqui
+            Text('Total: R\$ ${total.toStringAsFixed(2)}',
+                style: const TextStyle(fontSize: 24)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Conta()));
+
+class Conta extends StatefulWidget {
+  const Conta({super.key});
+
+  @override
+  State&lt;Conta&gt; createState() =&gt; _ContaState();
+}
+
+class _ContaState extends State&lt;Conta&gt; {
+  double gorjeta = 10;
+
+  @override
+  Widget build(BuildContext context) {
+    final total = 120 * (1 + gorjeta / 100);
+    return Scaffold(
+      appBar: AppBar(title: const Text('Conta')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Text('Gorjeta: ${gorjeta.round()}%'),
+            Slider(
+              value: gorjeta,
+              min: 0,
+              max: 20,
+              divisions: 4,
+              label: '${gorjeta.round()}%',
+              onChanged: (novo) {
+                setState(() {
+                  gorjeta = novo;
+                });
+              },
+            ),
+            Text('Total: R\$ ${total.toStringAsFixed(2)}',
+                style: const TextStyle(fontSize: 24)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>Slider</code>: <code>value</code> é <code>double</code>, entre <code>min</code> e <code>max</code>; <code>divisions</code> faz a bolinha parar em pontos certos e liga o <code>label</code>.</li>
+  <li><code>RangeSlider</code> escolhe uma faixa, com <code>RangeValues(começo, fim)</code>.</li>
+  <li><code>DropdownMenu</code> é a lista suspensa do Material 3: opções em <code>DropdownMenuEntry(value, label)</code> e a escolha no <code>onSelected</code>.</li>
+  <li><code>DropdownButton</code> é o jeito clássico: o <code>value</code> tem de existir em exatamente um item, senão o Flutter acusa o erro.</li>
+  <li>Como em todo controle, o valor mora no estado e muda com <code>setState</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
