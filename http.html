@@ -1,0 +1,585 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter http — buscando dados na internet | Guia Flutter</title>
+<meta name="description" content="Como um app Flutter busca dados na internet com o pacote http: flutter pub add http, Uri.parse, http.get, statusCode e body, jsonDecode, as telas de carregando, sucesso e erro com FutureBuilder, o botão Tentar de novo, a permissão de internet do Android e os erros reais (404, endereço que não existe, import esquecido).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">http</span></h1>
+
+<p class="intro">A lista de receitas, a previsão do tempo, o catálogo da loja: quase nenhum app guarda tudo dentro dele. Os dados ficam num <strong>servidor</strong>, e o app vai buscar pela internet. Nesta aula, a Ana faz o app da lojinha dela mostrar a lista de clientes que está num servidor de verdade, usando o pacote <code>http</code>, o jeito mais simples e oficial de fazer pedidos pela internet no Flutter.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como acrescentar o pacote <code>http</code> ao projeto (<code>flutter pub add http</code>).</li>
+  <li>Como fazer um pedido <code>GET</code>: <code>Uri.parse</code>, <code>http.get</code>, <code>statusCode</code> e <code>body</code>.</li>
+  <li>Como transformar a resposta (texto JSON) em dados do Dart com <code>jsonDecode</code>.</li>
+  <li>Como mostrar as três telas: <strong>carregando</strong>, <strong>sucesso</strong> e <strong>erro</strong>, com um botão "Tentar de novo".</li>
+  <li>A permissão de internet do Android.</li>
+  <li>Os erros reais: o endereço errado (404), o servidor que não existe e o <code>import</code> esquecido.</li>
+</ul>
+</div>
+
+<p>Esta aula usa o <a href="futurebuilder.html">FutureBuilder</a>; se você pulou a aula dele, volte lá antes. Os exemplos rodaram no laboratório do guia, com o <span class="versao">Flutter 3.47</span> e o pacote <code>http</code> 1.6, buscando dados de verdade na internet.</p>
+
+<hr>
+
+<h2>A ideia: pedir pelo balcão</h2>
+<p>Pense numa lanchonete com balcão. Você (o app) faz um <strong>pedido</strong> dizendo o que quer ("um suco de laranja"); o atendente (o servidor) vai lá dentro e volta com uma <strong>resposta</strong>: o suco, ou um "acabou a laranja". Na internet é igual:</p>
+<ul>
+  <li>O <strong>pedido</strong> (em inglês, <em>request</em>) vai para um <strong>endereço</strong> (a URL), como <code>https://jsonplaceholder.typicode.com/users</code>. O tipo de pedido mais comum é o <code>GET</code>: "me <strong>dá</strong> isso aqui".</li>
+  <li>A <strong>resposta</strong> (<em>response</em>) volta com um <strong>código de situação</strong> (o <em>status code</em>: <code>200</code> quer dizer "deu certo", <code>404</code> quer dizer "não achei isso") e um <strong>corpo</strong> (o <em>body</em>), que costuma ser um texto no formato JSON.</li>
+</ul>
+<p>Nesta aula, o servidor é o <strong>JSONPlaceholder</strong>: um serviço público e gratuito, feito para quem está aprendendo, que responde com dados de mentira (10 usuários, posts, tarefas) sem pedir cadastro nem chave. É o mesmo tipo de serviço que a documentação oficial do Flutter usa nos exemplos.</p>
+
+<hr>
+
+<h2>1. Acrescentar o pacote <code>http</code></h2>
+<p>O <code>http</code> não vem junto com o Flutter: é um pacote do <a href="https://pub.dev/packages/http">pub.dev</a>, mantido pela equipe do Dart. Na pasta do projeto, rode:</p>
+
+<pre class="term">$ cd lojinha
+$ flutter pub add http
+Resolving dependencies...
+Downloading packages...
++ async 2.13.1
++ boolean_selector 2.1.2
+…                                « (a lista continua, em ordem alfabética)
++ http 1.6.0
++ http_parser 4.1.2
+…
++ web 1.1.1
+Changed 31 dependencies!
+3 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+</pre>
+<p>"Resolvendo as dependências… baixando os pacotes…". Cada linha com <code>+</code> é um pacote que entrou no projeto: o <code>http 1.6.0</code> e os pacotes de que ele precisa (como o <code>http_parser</code>). No laboratório, o projeto foi preparado do zero (sem o arquivo <code>pubspec.lock</code>), por isso a lista inclui também os pacotes que o próprio Flutter usa; no seu projeto, ela pode ser bem mais curta. As duas últimas linhas só avisam que existem versões mais novas de alguns pacotes que não combinam com as regras atuais: não é erro.</p>
+
+<p>O comando acrescentou uma linha no <code>pubspec.yaml</code>, na seção <code>dependencies</code>, e baixou o pacote:</p>
+<pre class="file" data-file="pubspec.yaml (trecho)">dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.6.0
+</pre>
+<p>Na aula <a href="pacotes.html">Pacotes do pub.dev</a> você vê com calma o que é o <code>^</code> e como escolher pacotes.</p>
+
+<div class="warning">
+<strong>Android: a permissão de internet</strong>
+<p>Enquanto você testa com <code>flutter run</code>, o app já pode usar a internet. Mas o app <strong>publicado</strong> no Android só acessa a internet se pedir permissão no arquivo <code>android/app/src/main/AndroidManifest.xml</code>, logo dentro da tag <code>&lt;manifest&gt;</code>:</p>
+<pre class="file" data-file="android/app/src/main/AndroidManifest.xml (trecho)">&lt;manifest xmlns:android="http://schemas.android.com/apk/res/android"&gt;
+    &lt;uses-permission android:name="android.permission.INTERNET" /&gt;
+    &lt;application …
+</pre>
+<p>Esquecer essa linha é o erro clássico do "no meu celular funciona, no APK não". (No macOS existe algo parecido: a permissão <code>com.apple.security.network.client</code>. As duas estão na receita oficial <a href="https://docs.flutter.dev/cookbook/networking/fetch-data">Fetch data from the internet</a>, do docs.flutter.dev.)</p>
+</div>
+
+<hr>
+
+<h2>2. Buscar e mostrar: as três telas</h2>
+
+<pre class="file" data-file="lib/main.dart">import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaClientes(),
+    );
+  }
+}
+
+Future&lt;List&lt;String&gt;&gt; buscarClientes() async {
+  final url = Uri.parse('https://jsonplaceholder.typicode.com/users');
+  final resposta = await http.get(url);
+  if (resposta.statusCode != 200) {
+    throw Exception('Erro ${resposta.statusCode} ao buscar os clientes');
+  }
+  final lista = jsonDecode(resposta.body) as List&lt;dynamic&gt;;
+  return [for (final cliente in lista) cliente['name'] as String];
+}
+
+class TelaClientes extends StatefulWidget {
+  const TelaClientes({super.key});
+
+  @override
+  State&lt;TelaClientes&gt; createState() =&gt; _TelaClientesState();
+}
+
+class _TelaClientesState extends State&lt;TelaClientes&gt; {
+  late Future&lt;List&lt;String&gt;&gt; _clientes;
+
+  @override
+  void initState() {
+    super.initState();
+    _clientes = buscarClientes();
+  }
+
+  void _tentarDeNovo() {
+    setState(() {
+      _clientes = buscarClientes();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Clientes da Lojinha'),
+        actions: [
+          IconButton(
+            tooltip: 'Atualizar',
+            onPressed: _tentarDeNovo,
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
+      ),
+      body: FutureBuilder&lt;List&lt;String&gt;&gt;(
+        future: _clientes,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.wifi_off, size: 64),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text('${snapshot.error}', textAlign: TextAlign.center),
+                  ),
+                  FilledButton(
+                    onPressed: _tentarDeNovo,
+                    child: const Text('Tentar de novo'),
+                  ),
+                ],
+              ),
+            );
+          }
+          final clientes = snapshot.data!;
+          return ListView(
+            children: [
+              for (final nome in clientes)
+                ListTile(
+                  leading: const Icon(Icons.person),
+                  title: Text(nome),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>import 'dart:convert';</dt><dd>A biblioteca do Dart que tem o <code>jsonDecode</code>.</dd>
+  <dt>import 'package:http/http.dart' as http;</dt><dd>Importa o pacote com um <strong>apelido</strong>: daqui para baixo, tudo dele se escreve <code>http.alguma_coisa</code> (<code>http.get</code>, <code>http.post</code>). O apelido evita confusão com nomes iguais de outros lugares; é o jeito que a documentação do pacote recomenda.</dd>
+  <dt>Uri.parse('https://…/users')</dt><dd>O <code>http.get</code> não recebe um texto, e sim um <code>Uri</code> (um endereço já "entendido" pelo Dart). O <code>Uri.parse</code> faz essa conversão.</dd>
+  <dt>final resposta = await http.get(url);</dt><dd>Faz o pedido <code>GET</code> e <strong>espera</strong> a resposta, sem travar a tela. A <code>resposta</code> é um <code>http.Response</code>.</dd>
+  <dt>resposta.statusCode != 200</dt><dd>O código de situação. Qualquer coisa diferente de 200 aqui vira um erro com <code>throw</code>, e o <code>FutureBuilder</code> mostra a tela de erro.</dd>
+  <dt>jsonDecode(resposta.body) as List&lt;dynamic&gt;</dt><dd>O <code>body</code> é um <code>String</code> com o JSON. O <code>jsonDecode</code> o transforma em listas e mapas do Dart. Como este endereço devolve uma lista (<code>[ {…}, {…} ]</code>), dizemos ao Dart que é uma <code>List</code> com o <code>as</code>.</dd>
+  <dt>[for (final cliente in lista) cliente['name'] as String]</dt><dd>Cada cliente é um mapa (<code>{"id": 1, "name": "Leanne Graham", …}</code>); pegamos só o <code>name</code>. Na próxima aula, <a href="json-modelos.html">JSON e Classes de Modelo</a>, você troca esses mapas por uma classe <code>Cliente</code>, bem mais segura.</dd>
+  <dt>late Future… _clientes (sem final) e _tentarDeNovo()</dt><dd>Aqui o campo não é <code>final</code>, porque o botão "Tentar de novo" troca o <code>Future</code> por um novo, dentro de um <code>setState</code>. O <code>FutureBuilder</code> percebe o <code>Future</code> novo e volta para a rodinha.</dd>
+  <dt>FilledButton(onPressed: _tentarDeNovo, …)</dt><dd>O botão da tela de erro (veja <a href="botoes.html">Botões</a>).</dd>
+</dl>
+
+<h3>As três telas, fotografadas</h3>
+
+<figure class="tela"><img src="assets/telas/http-1.png" alt="App Clientes da Lojinha com o botão de atualizar no canto da barra e, no meio da tela vazia, o começo da rodinha de carregando (um risquinho roxo)" width="390" height="844" loading="lazy"><figcaption>Carregando. Para a foto, a internet do navegador do laboratório foi deixada lenta de propósito (3 segundos de atraso), e a Ana tocou no botão de atualizar.</figcaption></figure>
+
+<figure class="tela"><img src="assets/telas/http-2.png" alt="App Clientes da Lojinha com a lista de 10 clientes, cada um com um ícone de pessoa: Leanne Graham, Ervin Howell, Clementine Bauch, Patricia Lebsack, Chelsey Dietrich, Mrs. Dennis Schulist, Kurtis Weissnat, Nicholas Runolfsdottir V, Glenna Reichert e Clementina DuBuque" width="390" height="844" loading="lazy"><figcaption>Sucesso: os 10 clientes que o JSONPlaceholder devolveu.</figcaption></figure>
+
+<figure class="tela"><img src="assets/telas/http-3.png" alt="App Clientes da Lojinha com, no meio, um ícone de wi-fi cortado, o texto Exception: Erro 404 ao buscar os clientes e um botão roxo Tentar de novo" width="390" height="844" loading="lazy"><figcaption>Erro: com o endereço errado (veja <a href="#errado">Quando dá errado</a>), o servidor respondeu 404.</figcaption></figure>
+
+<p>As três telas saem do mesmo <code>FutureBuilder</code>: a rodinha enquanto o <code>http.get</code> não volta; a lista quando volta com 200; e o ícone, a mensagem e o botão <strong>Tentar de novo</strong> quando dá erro. O botão chama <code>_tentarDeNovo</code>, que põe um <code>Future</code> novo no campo, e a rodinha volta.</p>
+
+<div class="tryflutter" data-goal="src:_limit=3" data-foto="assets/telas/http-5.png" data-foto-alt="A lista com só três clientes: Leanne Graham, Ervin Howell e Clementine Bauch">
+<p class="try-task"><strong>Missão:</strong> a lista ficou comprida. O JSONPlaceholder aceita um "filtro" no endereço: acrescente <code>?_limit=3</code> no fim da URL (<code>…/users?_limit=3</code>) para receber só os 3 primeiros clientes.</p>
+<pre class="script" data-file="main.dart">import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaClientes(),
+    );
+  }
+}
+
+Future&lt;List&lt;String&gt;&gt; buscarClientes() async {
+  final url = Uri.parse('https://jsonplaceholder.typicode.com/users');
+  final resposta = await http.get(url);
+  if (resposta.statusCode != 200) {
+    throw Exception('Erro ${resposta.statusCode} ao buscar os clientes');
+  }
+  final lista = jsonDecode(resposta.body) as List&lt;dynamic&gt;;
+  return [for (final cliente in lista) cliente['name'] as String];
+}
+
+class TelaClientes extends StatefulWidget {
+  const TelaClientes({super.key});
+
+  @override
+  State&lt;TelaClientes&gt; createState() =&gt; _TelaClientesState();
+}
+
+class _TelaClientesState extends State&lt;TelaClientes&gt; {
+  late Future&lt;List&lt;String&gt;&gt; _clientes;
+
+  @override
+  void initState() {
+    super.initState();
+    _clientes = buscarClientes();
+  }
+
+  void _tentarDeNovo() {
+    setState(() {
+      _clientes = buscarClientes();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Clientes da Lojinha'),
+        actions: [
+          IconButton(
+            tooltip: 'Atualizar',
+            onPressed: _tentarDeNovo,
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
+      ),
+      body: FutureBuilder&lt;List&lt;String&gt;&gt;(
+        future: _clientes,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.wifi_off, size: 64),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text('${snapshot.error}', textAlign: TextAlign.center),
+                  ),
+                  FilledButton(
+                    onPressed: _tentarDeNovo,
+                    child: const Text('Tentar de novo'),
+                  ),
+                ],
+              ),
+            );
+          }
+          final clientes = snapshot.data!;
+          return ListView(
+            children: [
+              for (final nome in clientes)
+                ListTile(
+                  leading: const Icon(Icons.person),
+                  title: Text(nome),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaClientes(),
+    );
+  }
+}
+
+Future&lt;List&lt;String&gt;&gt; buscarClientes() async {
+  final url = Uri.parse('https://jsonplaceholder.typicode.com/users?_limit=3');
+  final resposta = await http.get(url);
+  if (resposta.statusCode != 200) {
+    throw Exception('Erro ${resposta.statusCode} ao buscar os clientes');
+  }
+  final lista = jsonDecode(resposta.body) as List&lt;dynamic&gt;;
+  return [for (final cliente in lista) cliente['name'] as String];
+}
+
+class TelaClientes extends StatefulWidget {
+  const TelaClientes({super.key});
+
+  @override
+  State&lt;TelaClientes&gt; createState() =&gt; _TelaClientesState();
+}
+
+class _TelaClientesState extends State&lt;TelaClientes&gt; {
+  late Future&lt;List&lt;String&gt;&gt; _clientes;
+
+  @override
+  void initState() {
+    super.initState();
+    _clientes = buscarClientes();
+  }
+
+  void _tentarDeNovo() {
+    setState(() {
+      _clientes = buscarClientes();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Clientes da Lojinha'),
+        actions: [
+          IconButton(
+            tooltip: 'Atualizar',
+            onPressed: _tentarDeNovo,
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
+      ),
+      body: FutureBuilder&lt;List&lt;String&gt;&gt;(
+        future: _clientes,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.wifi_off, size: 64),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text('${snapshot.error}', textAlign: TextAlign.center),
+                  ),
+                  FilledButton(
+                    onPressed: _tentarDeNovo,
+                    child: const Text('Tentar de novo'),
+                  ),
+                ],
+              ),
+            );
+          }
+          final clientes = snapshot.data!;
+          return ListView(
+            children: [
+              for (final nome in clientes)
+                ListTile(
+                  leading: const Icon(Icons.person),
+                  title: Text(nome),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+
+
+<hr>
+
+<h2>3. Outras formas de fazer</h2>
+
+<h3>Montar o endereço com <code>Uri.https</code></h3>
+<p>Quando o endereço tem filtros (<code>?_limit=3&amp;…</code>), montar o texto na mão é fácil de errar (um <code>&amp;</code> esquecido, um espaço que não foi codificado). O <code>Uri.https</code> monta para você:</p>
+<pre class="file" data-file="trecho">final url = Uri.https('jsonplaceholder.typicode.com', '/users', {'_limit': '3'});
+</pre>
+
+<h3>Outros pedidos: <code>post</code>, <code>put</code>, <code>delete</code></h3>
+<p>Para <strong>mandar</strong> dados (cadastrar um cliente), o pedido é <code>POST</code>, com o corpo em JSON:</p>
+<pre class="file" data-file="trecho">final resposta = await http.post(
+  Uri.parse('https://jsonplaceholder.typicode.com/users'),
+  headers: {'Content-Type': 'application/json'},
+  body: jsonEncode({'name': 'Ana Souza'}),
+);
+</pre>
+<p>Os pedidos <code>put</code> (atualizar) e <code>delete</code> (apagar) seguem o mesmo jeito. O JSONPlaceholder finge que guardou: responde, mas não muda nada de verdade.</p>
+
+<h3>Um limite de tempo: <code>timeout</code></h3>
+<p>Numa internet ruim, o pedido pode demorar minutos. Dá para desistir antes, com o <code>timeout</code> do próprio <code>Future</code>: <code>await http.get(url).timeout(const Duration(seconds: 10))</code>. Se passar do tempo, sai um <code>TimeoutException</code>, que cai na tela de erro.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Qual usar</th></tr>
+<tr><td>Pedidos simples (o caso deste guia)</td><td>O pacote <code>http</code>, com <code>http.get</code> / <code>http.post</code></td></tr>
+<tr><td>Muitos pedidos ao mesmo servidor (abrir uma conexão só e reaproveitar)</td><td><code>final cliente = http.Client();</code> … <code>cliente.get(url)</code> … e, no fim, <code>cliente.close()</code></td></tr>
+<tr><td>Apps maiores: interceptar todos os pedidos, enviar arquivos com progresso</td><td>Pacotes como o <code>dio</code> (veja <a href="pacotes.html">Pacotes do pub.dev</a>)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Endereço errado: 404</strong>
+<p>A Ana escreveu <code>/usuarios</code> no lugar de <code>/users</code>. O servidor existe, recebeu o pedido, mas não tem nada nesse caminho:</p>
+<pre class="file" data-file="lib/main.dart (trecho)">  final url = Uri.parse('https://jsonplaceholder.typicode.com/usuarios');
+</pre>
+<p>O app mostrou a tela de erro da seção 2: <code>Exception: Erro 404 ao buscar os clientes</code>. Quem escreveu essa mensagem fomos nós, no <code>throw</code> do <code>if (resposta.statusCode != 200)</code>. E o console do navegador avisou: <code>Failed to load resource: the server responded with a status of 404 ()</code> ("falhou ao carregar: o servidor respondeu com a situação 404"). Repare: um 404 <strong>não</strong> é um erro para o pacote <code>http</code>; o pedido deu certo, a resposta é que diz "não achei". Se você não conferir o <code>statusCode</code>, o app tenta decodificar a página de erro como se fosse a lista. <strong>Como consertar:</strong> confira o endereço na documentação do serviço (<code>/users</code>).</p>
+</div>
+
+<div class="cenario">
+<strong>Servidor que não existe (ou sem internet)</strong>
+<pre class="file" data-file="lib/main.dart (trecho)">  final url = Uri.parse('https://jsonplaceholder.typicode.invalido/users');
+</pre>
+<figure class="tela"><img src="assets/telas/http-4.png" alt="App Clientes da Lojinha com o ícone de wi-fi cortado, o texto ClientException: Failed to fetch, uri=https://jsonplaceholder.typicode.invalido/users e o botão Tentar de novo" width="390" height="844" loading="lazy"><figcaption>O servidor não existe: o pedido nem chegou a lugar nenhum.</figcaption></figure>
+<p>Agora, sim, o próprio <code>http.get</code> lançou um erro: <code>ClientException: Failed to fetch, uri=…</code> ("exceção do cliente: falhou ao buscar"). O console do navegador explicou o motivo: <code>Failed to load resource: net::ERR_NAME_NOT_RESOLVED</code>, ou seja, o nome <code>jsonplaceholder.typicode.invalido</code> não existe na internet. Esse erro nem passa pelo nosso <code>if</code>: ele sai direto do <code>await http.get</code>, e o <code>FutureBuilder</code> o mostra em <code>snapshot.error</code>. Sem internet nenhuma, o efeito é parecido. (Essa é a mensagem do app rodando no navegador; num celular Android, o tipo do erro e o texto são outros, falando em <em>host lookup</em>, mas também caem no <code>snapshot.hasError</code>.)</p>
+<p><strong>Como consertar:</strong> confira o endereço. E, para o usuário, troque a mensagem técnica por uma amigável ("Sem conexão. Confira a internet e tente de novo.").</p>
+</div>
+
+<div class="cenario">
+<strong>Esqueceu o <code>import</code> do pacote</strong>
+<p>Sem a linha <code>import 'package:http/http.dart' as http;</code>, o Dart não sabe quem é <code>http</code>, e o app nem compila:</p>
+<pre class="term">lib/main.dart:21:26:
+Error: Undefined name 'http'.
+  final resposta = await http.get(url);
+                         ^^^^
+Error: Compilation failed.
+</pre>
+<p>"Nome não definido: <code>http</code>". O <code>lib/main.dart:21:26</code> é o arquivo, a linha 21 e a coluna 26, onde o <code>^^^^</code> aponta: o Dart chegou no <code>http.get</code> e não sabe quem é <code>http</code>, porque o apelido só existe graças ao <code>as http</code> do <code>import</code>. (Saída do laboratório, que compila para a web; o compilador do Dart é o mesmo no <code>flutter run</code> do celular.) <strong>Como consertar:</strong> ponha de volta <code>import 'package:http/http.dart' as http;</code> no topo do arquivo.</p>
+</div>
+
+<div class="cenario">
+<strong>Rodou sem o <code>flutter pub add http</code></strong>
+<p>Com o <code>import</code> certo, mas sem o pacote no <code>pubspec.yaml</code>, o laboratório compilou o app da seção 2 e recebeu:</p>
+<pre class="term">Error: Couldn't resolve the package 'http' in 'package:http/http.dart'.
+lib/main.dart:4:8: Error: Not found: 'package:http/http.dart'
+import 'package:http/http.dart' as http;
+       ^
+lib/main.dart:22:31: Error: Method not found: 'get'.
+  final resposta = await http.get(url);
+                              ^^^
+</pre>
+<p>"Não consegui encontrar o pacote <code>http</code>"; "não achei <code>package:http/http.dart</code>" (linha 4, o <code>import</code>); e, como consequência, "método não encontrado: <code>get</code>" na linha 22. Leia sempre o <strong>primeiro</strong> erro: os outros costumam ser efeito dele. <strong>Como consertar:</strong> rode <code>flutter pub add http</code> na pasta do projeto.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>flutter pub add http</code></td><td>Acrescenta o pacote ao <code>pubspec.yaml</code> e o baixa</td></tr>
+<tr><td><code>import 'package:http/http.dart' as http;</code></td><td>Importa o pacote com o apelido <code>http</code></td></tr>
+<tr><td><code>Uri.parse('https://…')</code> / <code>Uri.https(servidor, caminho, filtros)</code></td><td>Monta o endereço</td></tr>
+<tr><td><code>await http.get(url)</code></td><td>Pedido <code>GET</code>; devolve um <code>http.Response</code></td></tr>
+<tr><td><code>await http.post(url, headers: …, body: …)</code></td><td>Pedido <code>POST</code> (mandar dados)</td></tr>
+<tr><td><code>resposta.statusCode</code></td><td>200 = deu certo; 404 = não achou; 500 = erro no servidor</td></tr>
+<tr><td><code>resposta.body</code></td><td>O corpo da resposta, como texto</td></tr>
+<tr><td><code>jsonDecode(texto)</code> / <code>jsonEncode(objeto)</code></td><td>JSON → Dart / Dart → JSON (de <code>dart:convert</code>)</td></tr>
+<tr><td><code>.timeout(Duration(seconds: 10))</code></td><td>Desiste do pedido depois do tempo</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o pedido</h3>
+<div class="ex-code">final url = Uri.<input data-answer="parse" aria-label="método que converte o texto">('https://jsonplaceholder.typicode.com/users');<br>final resposta = <input data-answer="await" aria-label="palavra que espera"> http.<input data-answer="get" aria-label="tipo de pedido">(url);</div>
+</div>
+
+<div class="exercise">
+<h3>2. O código do sucesso</h3>
+<p>Qual <code>statusCode</code> quer dizer "deu certo"?</p>
+<div class="ex-code"><input data-answer="200" aria-label="código de situação"></div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. O que é <code>resposta.body</code>?</p>
+<label><input type="radio" name="q3"> Uma lista do Dart, pronta para usar</label>
+<label><input type="radio" name="q3"> Um <code>Map</code></label>
+<label><input type="radio" name="q3"> Um <code>String</code> com o texto da resposta (que você decodifica com <code>jsonDecode</code>)</label>
+<label><input type="radio" name="q3"> O código de situação</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. O app funciona no <code>flutter run</code>, mas o APK publicado não carrega nada da internet. O que falta?</p>
+<label><input type="radio" name="q4"> O <code>import 'dart:convert'</code></label>
+<label><input type="radio" name="q4"> A permissão <code>android.permission.INTERNET</code> no <code>AndroidManifest.xml</code></label>
+<label><input type="radio" name="q4"> Trocar <code>http.get</code> por <code>http.post</code></label>
+<label><input type="radio" name="q4"> Rodar <code>flutter doctor</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. Para o botão "Tentar de novo" refazer a busca, o que ele faz?</p>
+<label><input type="radio" name="q5"> Troca o <code>Future</code> do campo por um novo (<code>buscarClientes()</code>) dentro de um <code>setState</code></label>
+<label><input type="radio" name="q5"> Chama o <code>initState</code> de novo</label>
+<label><input type="radio" name="q5"> Chama <code>build(context)</code> direto</label>
+<label><input type="radio" name="q5"> Nada: o <code>FutureBuilder</code> refaz sozinho a cada segundo</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Acrescente o pacote com <code>flutter pub add http</code> e importe com <code>import 'package:http/http.dart' as http;</code>.</li>
+  <li><code>await http.get(Uri.parse(endereco))</code> faz o pedido; confira o <code>statusCode</code> (200 = deu certo) e decodifique o <code>body</code> com <code>jsonDecode</code>.</li>
+  <li>Mostre sempre as três telas com <code>FutureBuilder</code>: carregando, sucesso e erro (com um botão para tentar de novo).</li>
+  <li>Transforme status diferente de 200 em erro com <code>throw</code>; falhas de rede já chegam como erro sozinhas.</li>
+  <li>No Android publicado, peça a permissão <code>android.permission.INTERNET</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>

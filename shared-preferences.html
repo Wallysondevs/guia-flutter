@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter shared_preferences — guardando dados simples no aparelho | Guia Flutter</title>
+<meta name="description" content="Como guardar dados simples que continuam lá quando o app fecha, com o pacote shared_preferences do Flutter: flutter pub add, SharedPreferencesAsync, setInt e getInt, remove, os tipos aceitos, onde cada sistema guarda (Android, iOS, web), a API antiga getInstance, e os erros reais (o await esquecido).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">shared_preferences</span></h1>
+
+<p class="intro">Tudo o que você guardou até agora com <a href="setstate.html">setState</a> mora na <strong>memória</strong> do app: fechou o app, sumiu. A Ana conta os bolos que vende no dia num app; se o celular reinicia na hora do almoço, a conta volta a zero. Para coisas pequenas que precisam <strong>sobreviver</strong> ao fechamento do app (um número, o tema escolhido, o nome do usuário), o Flutter usa o pacote <code>shared_preferences</code> ("preferências compartilhadas").</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A diferença entre o estado na memória e um dado guardado no aparelho.</li>
+  <li>Como acrescentar o pacote (<code>flutter pub add shared_preferences</code>).</li>
+  <li>Como gravar, ler e apagar com <code>SharedPreferencesAsync</code>: <code>setInt</code>, <code>getInt</code>, <code>remove</code>.</li>
+  <li>Os tipos que ele guarda e onde cada sistema guarda.</li>
+  <li>A API antiga (<code>SharedPreferences.getInstance()</code>), que você vai ver em muitos tutoriais.</li>
+  <li>Os erros: o <code>await</code> esquecido e a chave escrita diferente.</li>
+</ul>
+</div>
+
+<p>Os exemplos rodaram no laboratório do guia (<span class="versao">Flutter 3.47</span>, <code>shared_preferences</code> 2.5), no navegador. No navegador, o pacote guarda os dados no <code>localStorage</code>; no celular, no lugar próprio de cada sistema (tabela mais abaixo). O código é o mesmo.</p>
+
+<hr>
+
+<h2>A ideia: o caderninho do caixa</h2>
+<p>A conta de cabeça (a memória) é rápida, mas se a Ana se distrai, perde. Por isso, a cada bolo vendido, ela também anota num <strong>caderninho</strong> que fica na gaveta do caixa. No dia seguinte, ou depois do almoço, é só abrir o caderninho e continuar de onde parou.</p>
+<p>O <code>shared_preferences</code> é esse caderninho: um lugar com pares <strong>chave → valor</strong> (<code>'bolos_vendidos'</code> → <code>3</code>), guardado num arquivo do aparelho, que continua lá depois que o app fecha. Ele é feito para coisas <strong>pequenas e simples</strong>. A própria página do pacote avisa: ele <strong>não</strong> deve guardar dados críticos (a gravação no disco pode não ter terminado quando o comando volta). Para listas grandes, o certo é um banco de dados (próxima aula, <a href="sqlite.html">sqflite</a>).</p>
+
+<hr>
+
+<h2>1. Acrescentar o pacote</h2>
+<pre class="term">$ cd lojinha
+$ flutter pub add shared_preferences
+Resolving dependencies...
+Downloading packages...
+…                                « (pacotes que o Flutter e o shared_preferences usam)
++ shared_preferences 2.5.6
++ shared_preferences_android 2.5.0
++ shared_preferences_foundation 2.6.0
++ shared_preferences_linux 2.4.1
++ shared_preferences_platform_interface 2.4.2
++ shared_preferences_web 2.4.3
++ shared_preferences_windows 2.4.1
+…
+Changed 57 dependencies!
+3 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+</pre>
+<p>Repare nos pacotes <code>shared_preferences_android</code>, <code>_foundation</code> (iOS e macOS), <code>_linux</code>, <code>_web</code> e <code>_windows</code>: o <code>shared_preferences</code> é um <strong>plugin</strong>, um pacote com uma parte escrita para cada sistema. Você usa sempre o mesmo código Dart, e cada sistema guarda do seu jeito. (No laboratório, o projeto foi preparado sem o <code>pubspec.lock</code>, por isso a lista completa tem 57 pacotes; no seu projeto ela pode ser mais curta.)</p>
+
+<hr>
+
+<h2>2. O contador de bolos que não esquece</h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaVendas(),
+    );
+  }
+}
+
+class TelaVendas extends StatefulWidget {
+  const TelaVendas({super.key});
+
+  @override
+  State&lt;TelaVendas&gt; createState() =&gt; _TelaVendasState();
+}
+
+class _TelaVendasState extends State&lt;TelaVendas&gt; {
+  final _prefs = SharedPreferencesAsync();
+  int _vendidos = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _carregar();
+  }
+
+  Future&lt;void&gt; _carregar() async {
+    final salvo = await _prefs.getInt('bolos_vendidos');
+    setState(() {
+      _vendidos = salvo ?? 0;
+    });
+  }
+
+  Future&lt;void&gt; _vender() async {
+    setState(() {
+      _vendidos++;
+    });
+    await _prefs.setInt('bolos_vendidos', _vendidos);
+  }
+
+  Future&lt;void&gt; _zerar() async {
+    await _prefs.remove('bolos_vendidos');
+    setState(() {
+      _vendidos = 0;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Bolos da Ana'),
+        actions: [
+          IconButton(
+            tooltip: 'Zerar',
+            onPressed: _zerar,
+            icon: const Icon(Icons.delete_outline),
+          ),
+        ],
+      ),
+      body: Center(
+        child: Text(
+          'Bolos vendidos: $_vendidos',
+          style: const TextStyle(fontSize: 28),
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _vender,
+        icon: const Icon(Icons.cake),
+        label: const Text('Vender bolo'),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>import 'package:shared_preferences/shared_preferences.dart';</dt><dd>Traz o pacote.</dd>
+  <dt>final _prefs = SharedPreferencesAsync();</dt><dd>O "caderninho". A página do pacote recomenda, para código novo, o <code>SharedPreferencesAsync</code> (ou o <code>SharedPreferencesWithCache</code>); a forma antiga aparece na seção 3. Como o nome diz, <strong>tudo</strong> nele é assíncrono: cada leitura e gravação devolve um <code>Future</code>.</dd>
+  <dt>_carregar() no initState</dt><dd>Quando a tela nasce, lê o que estava guardado. O <code>initState</code> não pode ser <code>async</code>, por isso a leitura fica numa função separada (<code>Future&lt;void&gt; _carregar() async</code>) que o <code>initState</code> só chama.</dd>
+  <dt>await _prefs.getInt('bolos_vendidos')</dt><dd>Lê o número guardado na chave <code>'bolos_vendidos'</code>. Devolve <code>int?</code>: <code>null</code> se nada foi guardado ainda (a primeira vez que o app abre).</dd>
+  <dt>salvo ?? 0</dt><dd>"Se for nulo, use 0". Depois, o <code>setState</code> redesenha a tela com o valor lido.</dd>
+  <dt>await _prefs.setInt('bolos_vendidos', _vendidos)</dt><dd>Grava o número novo, a cada venda. O <code>setState</code> vem antes: a tela muda na hora, e a gravação acontece logo depois.</dd>
+  <dt>await _prefs.remove('bolos_vendidos')</dt><dd>Apaga a chave (o botão de lixeira, <strong>Zerar</strong>). Depois disso, o <code>getInt</code> volta a devolver <code>null</code>.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/shared-preferences-1.png" alt="App Bolos da Ana com uma lixeira no canto da barra, o texto Bolos vendidos: 0 no meio e o botão Vender bolo, com um ícone de bolo, embaixo à direita" width="390" height="844" loading="lazy"><figcaption>A primeira vez que o app abre: nada guardado, <code>getInt</code> devolveu <code>null</code>, e a tela mostra 0.</figcaption></figure>
+
+<figure class="tela"><img src="assets/telas/shared-preferences-2.png" alt="O mesmo app mostrando Bolos vendidos: 3" width="390" height="844" loading="lazy"><figcaption>Depois de três toques em <strong>Vender bolo</strong>.</figcaption></figure>
+
+<h3>Provando que ficou guardado</h3>
+<p>Para mostrar no laboratório que o número sobrevive, sem desligar nada, pusemos a <code>TelaVendas</code> dentro de um widget que tem um botão <strong>Fechar e abrir a tela de novo</strong>. O botão troca a <a href="keys.html">key</a> da tela, e o Flutter <strong>joga fora</strong> o <code>State</code> antigo (com o <code>_vendidos</code> da memória) e cria um novo do zero, que roda o <code>initState</code> e lê o caderninho de novo. É o que acontece quando o app é fechado e aberto:</p>
+
+<pre class="file" data-file="lib/main.dart (o que muda: home: Reabrir() e esta classe no fim)">// Só para o laboratório: joga fora a TelaVendas e cria outra do zero,
+// como se o app tivesse sido fechado e aberto de novo.
+class Reabrir extends StatefulWidget {
+  const Reabrir({super.key});
+
+  @override
+  State&lt;Reabrir&gt; createState() =&gt; _ReabrirState();
+}
+
+class _ReabrirState extends State&lt;Reabrir&gt; {
+  int _vez = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Expanded(child: TelaVendas(key: ValueKey(_vez))),
+        Material(
+          child: TextButton(
+            onPressed: () =&gt; setState(() =&gt; _vez++),
+            child: const Text('Fechar e abrir a tela de novo'),
+          ),
+        ),
+      ],
+    );
+  }
+}
+</pre>
+
+<p>No laboratório: três vendas, depois <strong>Fechar e abrir a tela de novo</strong>:</p>
+<figure class="tela"><img src="assets/telas/shared-preferences-4.png" alt="App Bolos da Ana com Bolos vendidos: 3 no meio, o botão Vender bolo e, no rodapé, o botão de texto Fechar e abrir a tela de novo" width="390" height="844" loading="lazy"><figcaption>A tela nasceu de novo (o <code>_vendidos</code> da memória começou em 0), e o <code>initState</code> leu o 3 que estava guardado.</figcaption></figure>
+<p>E o contrário: depois de tocar na lixeira (<strong>Zerar</strong>, que faz o <code>remove</code>) e reabrir a tela, ela volta para <code>Bolos vendidos: 0</code>, porque a chave não existe mais e o <code>getInt</code> devolveu <code>null</code>:</p>
+<figure class="tela"><img src="assets/telas/shared-preferences-5.png" alt="App Bolos da Ana com Bolos vendidos: 0, o botão Vender bolo e o botão Fechar e abrir a tela de novo no rodapé" width="390" height="844" loading="lazy"><figcaption>Depois de Zerar e reabrir: nada guardado.</figcaption></figure>
+
+<div class="tryflutter" data-goal="src:_vendidos\s*\+=\s*2" data-foto="assets/telas/shared-preferences-6.png" data-foto-alt="Depois de dois toques em Vender bolo, a tela mostra Bolos vendidos: 4">
+<p class="try-task"><strong>Missão:</strong> a Ana passou a vender os bolos em pares. Faça cada toque em <strong>Vender bolo</strong> somar <strong>2</strong> (<code>_vendidos += 2;</code>). No DartPad, o pacote funciona na versão web (guarda no <code>localStorage</code> do navegador).</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaVendas(),
+    );
+  }
+}
+
+class TelaVendas extends StatefulWidget {
+  const TelaVendas({super.key});
+
+  @override
+  State&lt;TelaVendas&gt; createState() =&gt; _TelaVendasState();
+}
+
+class _TelaVendasState extends State&lt;TelaVendas&gt; {
+  final _prefs = SharedPreferencesAsync();
+  int _vendidos = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _carregar();
+  }
+
+  Future&lt;void&gt; _carregar() async {
+    final salvo = await _prefs.getInt('bolos_vendidos');
+    setState(() {
+      _vendidos = salvo ?? 0;
+    });
+  }
+
+  Future&lt;void&gt; _vender() async {
+    setState(() {
+      _vendidos++;
+    });
+    await _prefs.setInt('bolos_vendidos', _vendidos);
+  }
+
+  Future&lt;void&gt; _zerar() async {
+    await _prefs.remove('bolos_vendidos');
+    setState(() {
+      _vendidos = 0;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Bolos da Ana'),
+        actions: [
+          IconButton(
+            tooltip: 'Zerar',
+            onPressed: _zerar,
+            icon: const Icon(Icons.delete_outline),
+          ),
+        ],
+      ),
+      body: Center(
+        child: Text(
+          'Bolos vendidos: $_vendidos',
+          style: const TextStyle(fontSize: 28),
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _vender,
+        icon: const Icon(Icons.cake),
+        label: const Text('Vender bolo'),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaVendas(),
+    );
+  }
+}
+
+class TelaVendas extends StatefulWidget {
+  const TelaVendas({super.key});
+
+  @override
+  State&lt;TelaVendas&gt; createState() =&gt; _TelaVendasState();
+}
+
+class _TelaVendasState extends State&lt;TelaVendas&gt; {
+  final _prefs = SharedPreferencesAsync();
+  int _vendidos = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _carregar();
+  }
+
+  Future&lt;void&gt; _carregar() async {
+    final salvo = await _prefs.getInt('bolos_vendidos');
+    setState(() {
+      _vendidos = salvo ?? 0;
+    });
+  }
+
+  Future&lt;void&gt; _vender() async {
+    setState(() {
+      _vendidos += 2;
+    });
+    await _prefs.setInt('bolos_vendidos', _vendidos);
+  }
+
+  Future&lt;void&gt; _zerar() async {
+    await _prefs.remove('bolos_vendidos');
+    setState(() {
+      _vendidos = 0;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Bolos da Ana'),
+        actions: [
+          IconButton(
+            tooltip: 'Zerar',
+            onPressed: _zerar,
+            icon: const Icon(Icons.delete_outline),
+          ),
+        ],
+      ),
+      body: Center(
+        child: Text(
+          'Bolos vendidos: $_vendidos',
+          style: const TextStyle(fontSize: 28),
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _vender,
+        icon: const Icon(Icons.cake),
+        label: const Text('Vender bolo'),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>3. Outras formas e os detalhes</h2>
+
+<h3>Os tipos que ele guarda</h3>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Tipo</th><th>Gravar</th><th>Ler</th></tr>
+<tr><td><code>int</code></td><td><code>setInt(chave, 3)</code></td><td><code>getInt(chave)</code></td></tr>
+<tr><td><code>double</code></td><td><code>setDouble(chave, 4.5)</code></td><td><code>getDouble(chave)</code></td></tr>
+<tr><td><code>bool</code></td><td><code>setBool(chave, true)</code></td><td><code>getBool(chave)</code></td></tr>
+<tr><td><code>String</code></td><td><code>setString(chave, 'Ana')</code></td><td><code>getString(chave)</code></td></tr>
+<tr><td><code>List&lt;String&gt;</code></td><td><code>setStringList(chave, ['a', 'b'])</code></td><td><code>getStringList(chave)</code></td></tr>
+</table>
+</div>
+<p>Só esses. Para guardar um objeto (um <code>Cliente</code>), dá para transformar em texto com <code>jsonEncode(cliente.toJson())</code> e guardar como <code>String</code> (veja <a href="json-modelos.html">JSON e Classes de Modelo</a>); mas, se forem muitos, use um banco de dados.</p>
+
+<h3>Onde fica guardado</h3>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Plataforma</th><th>Onde (segundo a página do pacote)</th></tr>
+<tr><td>Android</td><td>DataStore Preferences ou SharedPreferences do Android</td></tr>
+<tr><td>iOS e macOS</td><td>NSUserDefaults</td></tr>
+<tr><td>Web</td><td>localStorage do navegador</td></tr>
+<tr><td>Windows</td><td>Uma pasta do usuário (Roaming AppData)</td></tr>
+<tr><td>Linux</td><td>A pasta <code>XDG_DATA_HOME</code></td></tr>
+</table>
+</div>
+
+<h3>A API antiga: <code>SharedPreferences.getInstance()</code></h3>
+<p>Em quase todos os tutoriais (e em muito código de verdade) você vai ver esta forma:</p>
+<pre class="file" data-file="trecho (forma antiga)">final prefs = await SharedPreferences.getInstance();
+final salvo = prefs.getInt('bolos_vendidos');   // sem await: lê de uma cópia na memória
+await prefs.setInt('bolos_vendidos', 4);
+</pre>
+<p>Ela funciona, mas a página do pacote avisa que será <strong>descontinuada</strong> no futuro e incentiva quem está começando a usar o <code>SharedPreferencesAsync</code> ou o <code>SharedPreferencesWithCache</code>. A diferença que você nota: na antiga, depois do <code>getInstance()</code>, as leituras (<code>getInt</code>) não precisam de <code>await</code>, porque ela mantém uma cópia na memória.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Qual usar</th></tr>
+<tr><td>Código novo, leituras de vez em quando</td><td><code>SharedPreferencesAsync</code></td></tr>
+<tr><td>Código novo, muitas leituras e você quer lê-las sem <code>await</code></td><td><code>SharedPreferencesWithCache</code></td></tr>
+<tr><td>Projeto que já usa a forma antiga</td><td><code>SharedPreferences.getInstance()</code> (funciona; migre quando puder)</td></tr>
+<tr><td>Listas grandes, buscas, ordenação</td><td>Banco de dados: <a href="sqlite.html">sqflite</a></td></tr>
+<tr><td>Senhas, tokens</td><td>Nenhum destes: use um pacote de armazenamento seguro (como o <code>flutter_secure_storage</code>)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Esqueceu o <code>await</code> na leitura</strong>
+<pre class="file" data-file="lib/main.dart (trecho)">  Future&lt;void&gt; _carregar() async {
+    final salvo = _prefs.getInt('bolos_vendidos');
+    setState(() {
+      _vendidos = salvo ?? 0;
+    });
+  }
+</pre>
+<pre class="term">lib/main.dart:38:25:
+Error: A value of type 'Object' can't be assigned to a variable of type 'int'.
+ - 'Object' is from 'dart:core'.
+      _vendidos = salvo ?? 0;
+                        ^
+Error: Compilation failed.
+</pre>
+<p>O app nem compila: "um valor do tipo <code>Object</code> não pode ser guardado numa variável do tipo <code>int</code>" (linha 38, coluna 25, onde o <code>^</code> aponta). A mensagem parece não ter nada a ver, mas faz sentido: sem o <code>await</code>, o <code>salvo</code> não é o número, e sim um <code>Future&lt;int?&gt;</code> (a senha, não o bolo; veja <a href="futurebuilder.html">FutureBuilder</a>). Um <code>Future</code> nunca é nulo, então o <code>salvo ?? 0</code> pode dar um <code>Future</code> ou um <code>int</code>, e o tipo comum entre os dois é <code>Object</code>. <strong>Como consertar:</strong> <code>final salvo = await _prefs.getInt('bolos_vendidos');</code>. No <code>setInt</code>, esquecer o <code>await</code> compila, mas aí o código seguinte pode rodar antes de a gravação terminar.</p>
+</div>
+
+<div class="cenario">
+<strong>A chave escrita de dois jeitos</strong>
+<p>A Ana grava com <code>setInt('bolos_vendidos', …)</code> e lê com <code>getInt('bolo_vendidos')</code> (sem o <code>s</code>). Não aparece erro nenhum: a leitura simplesmente devolve <code>null</code>, e o contador volta a 0 toda vez que o app abre. <strong>Como evitar:</strong> escreva a chave uma vez só, numa constante: <code>const chaveVendidos = 'bolos_vendidos';</code>, e use a constante nos dois lugares. Um erro de digitação no nome da constante o Dart pega na hora.</p>
+</div>
+
+<div class="cenario">
+<strong>Rodou com recarga a quente logo depois do <code>pub add</code> (ilustrativo)</strong>
+<p>Pacotes como este têm uma parte escrita para cada sistema (Kotlin no Android, Swift no iOS). Se você acrescentar o pacote com o app rodando e só apertar <kbd>r</kbd> (recarga a quente), essa parte não entra no app, e a primeira chamada falha com um erro <code>MissingPluginException</code> ("faltou a implementação do plugin"). <strong>Como consertar:</strong> pare o app e rode <code>flutter run</code> de novo depois de qualquer <code>flutter pub add</code> (veja <a href="hot-reload.html">Hot Reload e Hot Restart</a>).</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>flutter pub add shared_preferences</code></td><td>Acrescenta o pacote</td></tr>
+<tr><td><code>final prefs = SharedPreferencesAsync();</code></td><td>Cria o acesso ao armazenamento</td></tr>
+<tr><td><code>await prefs.setInt('chave', 3)</code></td><td>Grava (também <code>setString</code>, <code>setBool</code>, <code>setDouble</code>, <code>setStringList</code>)</td></tr>
+<tr><td><code>await prefs.getInt('chave')</code></td><td>Lê; <code>null</code> se não existe</td></tr>
+<tr><td><code>await prefs.remove('chave')</code></td><td>Apaga uma chave</td></tr>
+<tr><td><code>await prefs.clear()</code></td><td>Apaga todas as chaves do app</td></tr>
+<tr><td><code>await prefs.containsKey('chave')</code></td><td>Se a chave existe</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete a leitura</h3>
+<div class="ex-code">final nome = <input data-answer="await" aria-label="palavra que espera"> prefs.<input data-answer="getString" aria-label="método de ler texto">('nome_cliente');</div>
+</div>
+
+<div class="exercise">
+<h3>2. Nada guardado</h3>
+<p>O que <code>getInt</code> devolve quando a chave nunca foi gravada?</p>
+<div class="ex-code"><input data-answer="null" aria-label="valor devolvido"></div>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">3. Qual destes o <code>shared_preferences</code> <strong>não</strong> guarda direto?</p>
+<label><input type="radio" name="q3"> <code>bool</code></label>
+<label><input type="radio" name="q3"> <code>String</code></label>
+<label><input type="radio" name="q3"> <code>List&lt;String&gt;</code></label>
+<label><input type="radio" name="q3"> Um objeto <code>Cliente</code></label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. Onde ler o valor guardado quando a tela abre?</p>
+<label><input type="radio" name="q4"> No <code>build</code>, com <code>await</code></label>
+<label><input type="radio" name="q4"> Numa função <code>async</code> chamada pelo <code>initState</code>, com <code>setState</code> no fim</label>
+<label><input type="radio" name="q4"> No <code>dispose</code></label>
+<label><input type="radio" name="q4"> No <code>main</code>, sempre</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. A Ana quer guardar 5 mil produtos com preço e estoque. O que usar?</p>
+<label><input type="radio" name="q5"> Um banco de dados (<code>sqflite</code>)</label>
+<label><input type="radio" name="q5"> <code>shared_preferences</code> com 5 mil chaves</label>
+<label><input type="radio" name="q5"> Uma variável no <code>State</code></label>
+<label><input type="radio" name="q5"> <code>setStringList</code> com tudo junto</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O estado do <code>setState</code> vive na memória e some quando o app fecha; o <code>shared_preferences</code> guarda pares chave → valor no aparelho.</li>
+  <li>Para código novo: <code>SharedPreferencesAsync()</code>, com <code>await</code> em tudo: <code>setInt</code>/<code>getInt</code>, <code>setString</code>/<code>getString</code>, <code>remove</code>.</li>
+  <li>Leia no começo (função <code>async</code> chamada no <code>initState</code>) e grave a cada mudança.</li>
+  <li>Só tipos simples (<code>int</code>, <code>double</code>, <code>bool</code>, <code>String</code>, <code>List&lt;String&gt;</code>) e dados pequenos, nunca críticos nem senhas.</li>
+  <li>Guarde o nome da chave numa constante para não escrever de dois jeitos.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
