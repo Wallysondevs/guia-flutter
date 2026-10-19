@@ -11,8 +11,8 @@
 //   - cada caixa .tryflutter: contrato (um pre.script com data-file="main.dart", metas
 //     conhecidas, regex válidas), missão com pre.solucao, o código INICIAL NÃO cumpre a
 //     meta e a SOLUÇÃO cumpre — com as MESMAS funções do editor (assets/flutsim.js);
-//   - o código de cada caixa (inicial e solução) e de cada pre.file com "void main" e
-//     "import 'package:flutter" passa pelo analisador do Flutter real da VPS
+//   - o código de cada caixa (inicial e solução) e de cada pre.file "lib/main.dart" com
+//     "void main", "import 'package:flutter" e só pacotes do DartPad passa pelo analisador do Flutter real da VPS
 //     (dart analyze num projeto modelo): ERROR = FALHA, WARNING = aviso;
 //   - imports: só os pacotes que o DartPad aceita (FlutSim.PACOTES_DARTPAD; o modelo ganha
 //     esses pacotes com "flutter pub add") e nada de dart:io/ffi/isolate/mirrors;
@@ -142,8 +142,10 @@ function analisarHtml(html) {
 
   // código para ler que é um app completo: também passa pelo analisador
   const arquivos = pres.filter((p) => !p.naCaixa && p.cls.includes("file") && /\.dart$/.test(p.at["data-file"] || ""))
-    .map((p) => ({ linha: p.linha, base: linhaBase(p), txt: textoPre(p.cru) }))
-    .filter((f) => /\bvoid\s+main\s*\(/.test(f.txt) && /^import\s+'package:flutter\//m.test(f.txt));
+    .map((p) => ({ linha: p.linha, base: linhaBase(p), arq: p.at["data-file"], txt: textoPre(p.cru) }))
+    // só o app de um arquivo (lib/main.dart com os pacotes do DartPad); testes e arquivos de projeto ficam de fora
+    .filter((f) => /^(lib\/)?main\.dart$/.test(f.arq) && /\bvoid\s+main\s*\(/.test(f.txt) && /^import\s+'package:flutter\//m.test(f.txt) &&
+      FlutSim.importsDe(f.txt).pacotes.every((n) => FlutSim.PACOTES_DARTPAD.includes(n)));
 
   // fotos
   const fotos = [];
