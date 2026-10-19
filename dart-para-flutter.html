@@ -112,6 +112,8 @@ false
 <p>Repare na vírgula depois do último parâmetro (<code>maxLines: 1,</code>). O Dart aceita essa "vírgula sobrando", e no Flutter ela é costume: com ela, o formatador (<code>dart format</code>) põe cada parâmetro numa linha, e a árvore de widgets fica fácil de ler.</p>
 </div>
 
+<p><strong>No Guia Dart:</strong> <a href="https://wallysondevs.github.io/guia-dart/parametros-nomeados.html">Parâmetros Nomeados e required</a>, <a href="https://wallysondevs.github.io/guia-dart/construtores.html">Construtores</a> e <a href="https://wallysondevs.github.io/guia-dart/tostring-igualdade.html">toString, == e hashCode</a>.</p>
+
 <hr>
 
 <h2>2. <code>final</code> × <code>const</code></h2>
@@ -140,6 +142,8 @@ final-erro.dart:3:3: Error: Can't assign to the final variable 'nome'.
 <p>"Não dá para atribuir à variável final <code>nome</code>". O <code>3:3</code> é linha 3, coluna 3, e os <code>^^^^</code> apontam o nome que foi alterado. Como é erro de compilação, nada roda.</p>
 
 <p><strong>No Flutter</strong>, <code>const</code> aparece o tempo todo: <code>const Text('Oi')</code>, <code>const EdgeInsets.all(16)</code>, <code>const MeuApp()</code>. Um widget <code>const</code> é criado uma vez só, e o Flutter sabe que ele nunca muda; quando a tela é redesenhada, ele pula esse pedaço. É uma economia de graça.</p>
+
+<p><strong>No Guia Dart:</strong> <a href="https://wallysondevs.github.io/guia-dart/final-const.html">final e const</a>.</p>
 
 <hr>
 
@@ -179,6 +183,8 @@ nulo-erro.dart:2:17: Error: A value of type 'Null' can't be assigned to a variab
 </pre>
 
 <p><strong>No Flutter</strong>, os parâmetros opcionais dos widgets são quase todos tipos com <code>?</code>: o <code>appBar</code> de um <code>Scaffold</code> é um <code>PreferredSizeWidget?</code> (pode não ter barra), o <code>onPressed</code> de um botão é um <code>VoidCallback?</code> (com <code>null</code>, o botão fica <strong>desativado</strong>, cinza: aula <a href="botoes.html">Botões</a>).</p>
+
+<p><strong>No Guia Dart:</strong> <a href="https://wallysondevs.github.io/guia-dart/null-safety.html">Null Safety: o que é</a>, <a href="https://wallysondevs.github.io/guia-dart/tipos-anulaveis.html">Tipos Anuláveis (String?)</a> e <a href="https://wallysondevs.github.io/guia-dart/operadores-null.html">?. , ?? e ??=</a>.</p>
 
 <hr>
 
@@ -228,6 +234,8 @@ Receita apagada!
 
 <p>Um erro clássico é <strong>chamar</strong> a função em vez de passá-la: <code>onPressed: salvar()</code> roda o <code>salvar</code> na hora de montar a tela (e entrega o resultado, não a função). O certo é <code>onPressed: salvar</code>, sem parênteses, ou <code>onPressed: () =&gt; salvar()</code>.</p>
 
+<p><strong>No Guia Dart:</strong> <a href="https://wallysondevs.github.io/guia-dart/funcoes-anonimas.html">Funções Anônimas</a>, <a href="https://wallysondevs.github.io/guia-dart/arrow.html">Funções de Uma Linha (=&gt;)</a> e <a href="https://wallysondevs.github.io/guia-dart/funcoes-valores.html">Funções como Valores</a>.</p>
+
 <hr>
 
 <h2>5. Listas com <code>if</code>, <code>for</code> e <code>...</code></h2>
@@ -276,6 +284,8 @@ Receita apagada!
   ],
 )
 </pre>
+
+<p><strong>No Guia Dart:</strong> <a href="https://wallysondevs.github.io/guia-dart/collection-if-for.html">if e for Dentro de Coleções</a> e <a href="https://wallysondevs.github.io/guia-dart/spread.html">Espalhando Coleções (...)</a>.</p>
 
 <hr>
 
@@ -332,6 +342,8 @@ true
 
 <p>O <code>super.key</code> repassa a <code>key</code> (uma etiqueta opcional que identifica o widget: aula <a href="keys.html">Keys</a>) para o <code>StatelessWidget</code>, e o <code>build</code> com <code>@override</code> é o método que o Flutter chama para saber o que desenhar (aula <a href="stateless.html">StatelessWidget</a>).</p>
 
+<p><strong>No Guia Dart:</strong> <a href="https://wallysondevs.github.io/guia-dart/heranca.html">Herança (extends)</a> e <a href="https://wallysondevs.github.io/guia-dart/override.html">Sobrescrevendo (@override)</a>.</p>
+
 <hr>
 
 <h2>7. <code>async</code> e <code>await</code></h2>
@@ -355,6 +367,8 @@ Chegou: Bolo de cenoura   « um segundo depois
 </pre>
 
 <p><strong>No Flutter</strong>, você vai usar isso nas aulas de internet e dados (<a href="futurebuilder.html">FutureBuilder</a>, <a href="http.html">http</a>). Por enquanto, basta reconhecer o formato.</p>
+
+<p><strong>No Guia Dart:</strong> <a href="https://wallysondevs.github.io/guia-dart/future.html">Future</a> e <a href="https://wallysondevs.github.io/guia-dart/async-await.html">async e await</a>.</p>
 
 <hr>
 
@@ -598,6 +612,8 @@ void main() {
   <li>Todo widget seu tem <code>extends</code>, <code>super.key</code> e um <code>build</code> com <code>@override</code>.</li>
   <li>O erro mais comum do começo: <code>Required named parameter '...' must be provided</code>.</li>
 </ul>
+
+<p>Para ver tudo isso com calma, e como o Dart se encaixa no Flutter, leia a aula <a href="https://wallysondevs.github.io/guia-dart/flutter.html">Dart e Flutter</a> do <a href="https://wallysondevs.github.io/guia-dart/">Guia Dart</a>.</p>
 
 <div class="pager"></div>
 
