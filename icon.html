@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Icon — os ícones do Material | Guia Flutter</title>
+<meta name="description" content="O widget Icon do Flutter: os ícones prontos da classe Icons, tamanho (size) e cor (color), as variantes outlined, rounded e sharp, ícone ao lado de texto numa Row, o semanticLabel para leitores de tela, os ícones do iPhone (CupertinoIcons), e os erros reais de um ícone que não existe, com fotos da tela e missões no editor.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Icon</span>: ícones</h1>
+
+<p class="intro">Uma lupa para buscar, um coração para favoritar, um carrinho para a lojinha: os ícones dizem o que um botão faz sem precisar de palavras. O Flutter já vem com <strong>milhares</strong> de ícones do Material prontos, sem baixar nada. Basta o widget <code>Icon</code> e o nome do ícone.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A mostrar um ícone com <code>Icon(Icons.nome)</code>.</li>
+  <li>A mudar o tamanho (<code>size</code>) e a cor (<code>color</code>).</li>
+  <li>As variantes de cada ícone: preenchido, <code>_outlined</code>, <code>_rounded</code>, <code>_sharp</code>.</li>
+  <li>A pôr um ícone ao lado de um texto.</li>
+  <li>O <code>semanticLabel</code>, para quem usa leitor de tela.</li>
+  <li>Os erros reais: um ícone com nome que não existe e um nome entre aspas.</li>
+</ul>
+</div>
+
+<p>Todos os apps desta aula foram compilados com o Flutter 3.47.7 do laboratório e fotografados numa tela do tamanho de um celular.</p>
+
+<hr>
+
+<h2>A ideia: as placas de trânsito</h2>
+<p>Uma placa com um garfo e uma faca diz "restaurante" para qualquer pessoa, em qualquer língua, mesmo de longe. Os ícones são as placas do seu app. E, como as placas, eles funcionam melhor quando são os <strong>conhecidos</strong>: todo mundo sabe o que uma lixeira faz.</p>
+
+<p>No Flutter, o "catálogo de placas" é a classe <code>Icons</code>, e o widget que pendura a placa na tela é o <code>Icon</code>.</p>
+
+<hr>
+
+<h2>1. O primeiro ícone</h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Center(
+          child: Icon(Icons.cake),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>Icon( ... )</dt><dd>O widget que desenha um ícone.</dd>
+  <dt>Icons.cake</dt><dd>Qual ícone: o bolo. <code>Icons</code> é uma classe com uma constante para cada ícone do Material (<code>Icons.home</code>, <code>Icons.search</code>, <code>Icons.favorite</code>...). Os nomes são em inglês, em minúsculas, com <code>_</code> separando as palavras: <code>Icons.shopping_cart</code>.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/icon-1.png" alt="Tela com a barra 'Receitas da Ana' e, no meio, um pequeno ícone escuro de bolo com uma vela em cima" width="390" height="844" loading="lazy"><figcaption><code>Icon(Icons.cake)</code>: tamanho 24, cor do tema.</figcaption></figure>
+
+<div class="tip">
+<strong>Como achar o nome de um ícone</strong>
+<p>O catálogo completo, com busca, está em <a href="https://fonts.google.com/icons">fonts.google.com/icons</a> (os "Material Symbols"; a maioria tem o mesmo nome na classe <code>Icons</code>) e na documentação da classe <a href="https://api.flutter.dev/flutter/material/Icons-class.html">Icons</a>, que mostra o desenho de cada um. No VS Code, digite <code>Icons.</code> e comece a escrever em inglês: o editor sugere os nomes e mostra o desenho ao lado.</p>
+</div>
+
+<hr>
+
+<h2>2. Tamanho e cor</h2>
+
+<pre class="file" data-file="lib/main.dart">        body: const Center(
+          child: Icon(
+            Icons.cake,
+            size: 96,
+            color: Colors.pink,
+          ),
+        ),
+</pre>
+
+<dl class="anatomy">
+  <dt>size: 96</dt><dd>O tamanho do ícone, em pontos lógicos (a mesma medida do <code>fontSize</code>). O padrão é <strong>24</strong>. O ícone é desenhado como uma letra de uma fonte, por isso fica nítido em qualquer tamanho.</dd>
+  <dt>color: Colors.pink</dt><dd>A cor. Sem ela, o ícone usa a cor do tema (a mesma do texto, um cinza bem escuro).</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/icon-2.png" alt="O mesmo ícone de bolo com vela, agora grande e rosa-pink, no meio da tela" width="390" height="844" loading="lazy"><figcaption>Com <code>size: 96</code> e <code>color: Colors.pink</code>.</figcaption></figure>
+
+<div class="tryflutter" data-goal="src:Icons\.favorite\b;;src:color:\s*Colors\.red;;src:size:\s*64">
+<p class="try-task"><strong>Missão:</strong> troque o bolo por um coração (<code>Icons.favorite</code>) vermelho (<code>Colors.red</code>) de tamanho <code>64</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Center(
+          child: Icon(Icons.cake),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Center(
+          child: Icon(Icons.favorite, color: Colors.red, size: 64),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>3. As variantes: preenchido, contorno, arredondado</h2>
+<p>A maioria dos ícones vem em quatro "estilos de traço". O nome é o mesmo, com um final diferente:</p>
+
+<pre class="file" data-file="lib/main.dart">        body: const Center(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.favorite, size: 48),
+              Icon(Icons.favorite_outlined, size: 48),
+              Icon(Icons.favorite_border, size: 48),
+              Icon(Icons.home, size: 48),
+              Icon(Icons.home_outlined, size: 48),
+              Icon(Icons.home_rounded, size: 48),
+              Icon(Icons.home_sharp, size: 48),
+            ],
+          ),
+        ),
+</pre>
+
+<dl class="anatomy">
+  <dt>Row(children: [...])</dt><dd>Põe os ícones lado a lado (aula <a href="row-column.html">Row e Column</a>).</dd>
+  <dt>Icons.home</dt><dd>O padrão: preenchido.</dd>
+  <dt>Icons.home_outlined</dt><dd>Só o contorno, por dentro vazio.</dd>
+  <dt>Icons.home_rounded / Icons.home_sharp</dt><dd>Cantos arredondados / cantos retos e pontudos.</dd>
+  <dt>Icons.favorite_border</dt><dd>O coração "vazio". Alguns ícones antigos têm o contorno com outro nome, como este; e alguns, como o <code>favorite_outlined</code>, existem mas saem iguais ao preenchido (veja a foto abaixo). Confira no catálogo antes de usar.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/icon-3.png" alt="Sete ícones escuros lado a lado no meio da tela: dois corações cheios, um coração só com o contorno, uma casinha cheia, uma casinha só com o contorno e mais duas casinhas cheias quase iguais à primeira" width="390" height="844" loading="lazy"><figcaption>Da esquerda para a direita: <code>favorite</code>, <code>favorite_outlined</code>, <code>favorite_border</code>, <code>home</code>, <code>home_outlined</code>, <code>home_rounded</code>, <code>home_sharp</code>.</figcaption></figure>
+<p>A foto mostra as pegadinhas: o <code>favorite_outlined</code> saiu <strong>cheio</strong>, igual ao <code>favorite</code>; o coração vazio é o <code>favorite_border</code>. Já nas casinhas o <code>_outlined</code> funciona como esperado. E o <code>_rounded</code> e o <code>_sharp</code> só mudam os cantos, uma diferença que mal se vê neste tamanho.</p>
+
+<div class="tip">
+<strong>Um estilo só</strong>
+<p>Escolha uma variante e use-a no app inteiro: misturar contornos e preenchidos na mesma tela parece desleixo. Um costume comum é o <strong>contorno</strong> para o normal e o <strong>preenchido</strong> para o selecionado (o coração vazio que fica cheio ao favoritar, aula <a href="setstate.html">setState</a>).</p>
+</div>
+
+<hr>
+
+<h2>4. Ícone ao lado do texto</h2>
+<p>Ícone sozinho é placa; ícone com texto é placa com legenda. Para pôr os dois lado a lado, use uma <code>Row</code>:</p>
+
+<pre class="file" data-file="lib/main.dart">        body: const Column(
+          children: [
+            Row(
+              children: [
+                Icon(Icons.timer, color: Colors.deepOrange),
+                Text(' 50 minutos'),
+              ],
+            ),
+            Row(
+              children: [
+                Icon(Icons.people, color: Colors.deepOrange),
+                Text(' 8 porções'),
+              ],
+            ),
+            Row(
+              children: [
+                Icon(
+                  Icons.star,
+                  color: Colors.amber,
+                  semanticLabel: 'Receita favorita',
+                ),
+                Text(' Favorita'),
+              ],
+            ),
+          ],
+        ),
+</pre>
+
+<dl class="anatomy">
+  <dt>Text(' 50 minutos')</dt><dd>O espaço no começo do texto afasta a palavra do ícone. É o jeito mais rápido; o jeito "certo" é um <code>SizedBox(width: 8)</code> entre os dois (aula <a href="sizedbox.html">SizedBox e Spacer</a>).</dd>
+  <dt>semanticLabel: 'Receita favorita'</dt><dd>O que o <strong>leitor de tela</strong> (o app que lê a tela em voz alta para quem não enxerga) fala quando passa pelo ícone. Sem ele, o ícone é mudo. Use em ícones que <strong>significam</strong> algo sem texto do lado.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/icon-4.png" alt="Três linhas alinhadas à esquerda, cada uma com um ícone e um texto: um cronômetro laranja com '50 minutos', um grupo de pessoas laranja com '8 porções' e uma estrela amarela com 'Favorita'" width="390" height="844" loading="lazy"><figcaption>Ícones com texto: cada linha é uma <code>Row</code>.</figcaption></figure>
+
+<hr>
+
+<h2>Formas diferentes: <code>Icons</code>, <code>CupertinoIcons</code> e imagens</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Forma</th><th>Quando usar</th></tr>
+<tr><td><code>Icon(Icons.home)</code></td><td><strong>Quase sempre.</strong> Os ícones do Material vêm com o Flutter e combinam com o <code>MaterialApp</code>.</td></tr>
+<tr><td><code>Icon(CupertinoIcons.home)</code></td><td>Para o visual de iPhone. Precisa do <code>import 'package:flutter/cupertino.dart';</code> e do pacote <code>cupertino_icons</code>, que o <code>flutter create</code> já põe no <code>pubspec.yaml</code>.</td></tr>
+<tr><td><code>Image.asset('assets/logo.png', width: 24)</code></td><td>Para um desenho que não existe em nenhum catálogo, como o logotipo da lojinha (aula <a href="image.html">Imagens</a>).</td></tr>
+<tr><td><code>IconButton(icon: Icon(...), onPressed: ...)</code></td><td>Quando o ícone é um <strong>botão</strong> (aula <a href="botoes.html">Botões</a>).</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<p>Os dois erros abaixo são de <strong>compilação</strong>: o compilador do <code>flutter run</code> recusa o código e o app não abre. (Nos dois, o <code>Icon</code> está na linha 16 do arquivo da seção 1.)</p>
+
+<div class="cenario">
+<strong>Um ícone que não existe</strong>
+<pre class="file" data-file="lib/main.dart">        body: const Center(
+          child: Icon(Icons.bolo),
+        ),
+</pre>
+<pre class="term">lib/main.dart:16:29: Error: Member not found: 'bolo'.
+          child: Icon(Icons.bolo),
+                            ^^^^
+</pre>
+<p>"Membro não encontrado: <code>bolo</code>". A classe <code>Icons</code> não tem nada com esse nome: os nomes são em inglês. A vantagem é que o erro aparece <strong>antes</strong> de o app rodar, nunca como um ícone em branco na tela. <strong>Como consertar:</strong> procure o nome certo no catálogo (<code>Icons.cake</code>) ou deixe o VS Code sugerir.</p>
+</div>
+
+<div class="cenario">
+<strong>O nome do ícone entre aspas</strong>
+<pre class="file" data-file="lib/main.dart">        body: const Center(
+          child: Icon('cake'),
+        ),
+</pre>
+<pre class="term">lib/main.dart:16:23: Error: The argument type 'String' can't be assigned to the parameter type 'IconData?'.
+ - 'IconData' is from 'package:flutter/src/widgets/icon_data.dart'.   « caminho do arquivo cortado
+          child: Icon('cake'),
+                      ^
+</pre>
+<p>"Uma <code>String</code> não pode ir num parâmetro do tipo <code>IconData?</code>". O <code>Icon</code> não procura o ícone pelo nome escrito: ele quer um <code>IconData</code>, o "desenho" do ícone, que é o que as constantes da classe <code>Icons</code> guardam. <strong>Como consertar:</strong> <code>Icon(Icons.cake)</code>, sem aspas.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>Icon(Icons.cake)</code></td><td>Mostra o ícone, tamanho 24, cor do tema</td></tr>
+<tr><td><code>size: 48</code></td><td>Tamanho em pontos</td></tr>
+<tr><td><code>color: Colors.pink</code></td><td>Cor</td></tr>
+<tr><td><code>Icons.home_outlined</code> / <code>_rounded</code> / <code>_sharp</code></td><td>Variantes do mesmo ícone</td></tr>
+<tr><td><code>semanticLabel: '...'</code></td><td>Texto para o leitor de tela</td></tr>
+<tr><td><code>Row(children: [Icon(...), Text(...)])</code></td><td>Ícone com texto do lado</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. A classe do catálogo</h3>
+<p>Complete para mostrar o ícone de busca:</p>
+<div class="ex-code">Icon(<input data-answer="Icons" aria-label="classe">.search)</div>
+</div>
+
+<div class="exercise">
+<h3>2. O tamanho</h3>
+<p>Complete para o ícone ter tamanho 40:</p>
+<div class="ex-code">Icon(Icons.search, <input data-answer="size" aria-label="parâmetro">: 40)</div>
+</div>
+
+<div class="exercise">
+<h3>3. O carrinho</h3>
+<p>Qual é o nome do ícone de carrinho de compras na classe <code>Icons</code>?</p>
+<div class="ex-code">Icons.<input data-answer="shopping_cart" aria-label="nome do ícone"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. Qual é o tamanho de um <code>Icon</code> sem <code>size</code>?</p>
+<label><input type="radio" name="q4"> 14</label>
+<label><input type="radio" name="q4"> 24</label>
+<label><input type="radio" name="q4"> 48</label>
+<label><input type="radio" name="q4"> O tamanho da tela inteira</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">5. Para que serve o <code>semanticLabel</code>?</p>
+<label><input type="radio" name="q5"> Para mostrar um texto embaixo do ícone</label>
+<label><input type="radio" name="q5"> Para mudar o nome do ícone</label>
+<label><input type="radio" name="q5"> Para mostrar uma dica quando o mouse passa por cima</label>
+<label><input type="radio" name="q5"> Para o leitor de tela falar o que o ícone significa</label>
+</div>
+
+<h3>Missão final: a ficha da receita</h3>
+
+<div class="tryflutter" data-goal="src:Icons\.timer;;src:Icons\.people;;src:Icons\.local_fire_department;;src:Text\(\s*'\s*Forno médio'\s*\)">
+<p class="try-task"><strong>Missão:</strong> a ficha já tem o tempo e as porções. Acrescente uma terceira linha com o ícone <code>Icons.local_fire_department</code> e o texto <code>' Forno médio'</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Bolo de cenoura')),
+        body: const Column(
+          children: [
+            Row(
+              children: [
+                Icon(Icons.timer, color: Colors.deepOrange),
+                Text(' 50 minutos'),
+              ],
+            ),
+            Row(
+              children: [
+                Icon(Icons.people, color: Colors.deepOrange),
+                Text(' 8 porções'),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Bolo de cenoura')),
+        body: const Column(
+          children: [
+            Row(
+              children: [
+                Icon(Icons.timer, color: Colors.deepOrange),
+                Text(' 50 minutos'),
+              ],
+            ),
+            Row(
+              children: [
+                Icon(Icons.people, color: Colors.deepOrange),
+                Text(' 8 porções'),
+              ],
+            ),
+            Row(
+              children: [
+                Icon(Icons.local_fire_department, color: Colors.deepOrange),
+                Text(' Forno médio'),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>Icon(Icons.nome)</code> mostra um dos ícones do Material, que já vêm com o Flutter.</li>
+  <li><code>size</code> (padrão 24) e <code>color</code> mudam tamanho e cor.</li>
+  <li>Variantes: <code>_outlined</code>, <code>_rounded</code>, <code>_sharp</code>; use um estilo só no app.</li>
+  <li>Ícone com texto: uma <code>Row</code> com os dois.</li>
+  <li><code>semanticLabel</code> dá voz ao ícone para o leitor de tela.</li>
+  <li>Nome errado de ícone é erro de compilação; o nome vai sem aspas.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
