@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Recursos do Aparelho — câmera, localização e permissões | Guia Flutter</title>
+<meta name="description" content="Recursos do aparelho no Flutter para quem nunca fez um app: o que são plugins, a câmera com image_picker, a localização com geolocator, as permissões do Android (AndroidManifest.xml) e do iOS (Info.plist), o await que espera a pessoa, o null quando ela cancela e os erros mais comuns. Exemplos ilustrativos, com as telas iniciais fotografadas no laboratório.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Recursos do Aparelho</span></h1>
+
+<p class="intro">Um celular é cheio de sensores e peças: câmera, GPS, microfone, vibração, galeria de fotos. O Flutter, sozinho, só desenha a tela; para falar com essas peças, ele usa <strong>plugins</strong>, pacotes do <a href="pacotes.html">pub.dev</a> que têm, por dentro, um pedaço escrito na língua de cada sistema (Kotlin/Java no Android, Swift no iOS, JavaScript na web). Você chama uma função em Dart, e o plugin conversa com o aparelho. Esta aula mostra os dois mais pedidos, a <strong>câmera</strong> e a <strong>localização</strong>, e o assunto que vem junto com eles: as <strong>permissões</strong>.</p>
+
+<div class="warning">
+<strong>Aula ilustrativa</strong>
+<p>O laboratório do guia não tem câmera nem GPS: ele roda o app num navegador, num servidor. Por isso, as <strong>telas iniciais</strong> abaixo foram compiladas e fotografadas de verdade, mas o que acontece <strong>depois do toque</strong> (a câmera abrindo, o pedido de permissão, a posição aparecendo) é descrito a partir da documentação oficial dos pacotes, sem saída real do lab. Rode no seu celular para ver.</p>
+</div>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é um <strong>plugin</strong> e por que ele precisa de configuração em cada plataforma.</li>
+  <li>A tirar uma foto (ou escolher da galeria) com o <code>image_picker</code>.</li>
+  <li>A pegar a localização com o <code>geolocator</code>, pedindo permissão do jeito certo.</li>
+  <li>Onde declarar as permissões: <code>AndroidManifest.xml</code> (Android) e <code>Info.plist</code> (iOS).</li>
+  <li>Por que tudo aqui é <code>async</code>/<code>await</code>, e o que fazer quando a pessoa cancela ou nega.</li>
+</ul>
+</div>
+
+<p>Versões desta aula (as mais novas no pub.dev em outubro de 2026): <span class="versao">image_picker 1.2.4</span>, <span class="versao">geolocator 14.1.2</span>, com o <span class="versao">Flutter 3.47.7</span> do lab.</p>
+
+<hr>
+
+<h2>A ideia: o intérprete</h2>
+<p>A Ana fala português; o celular "fala" Kotlin (Android) ou Swift (iOS). O plugin é o <strong>intérprete</strong> no meio: ela pede "tire uma foto" em Dart, ele traduz para a língua do aparelho, o aparelho abre a câmera, e o intérprete devolve a foto em Dart. Dois detalhes vêm dessa ideia:</p>
+<ol class="passo">
+  <li>O pedido <strong>demora</strong>: a pessoa ainda vai apontar a câmera e apertar o botão. Por isso as funções devolvem <code>Future</code> e se usa <code>await</code> (veja <a href="futurebuilder.html">FutureBuilder</a>).</li>
+  <li>O sistema do aparelho protege a privacidade: câmera e localização exigem <strong>permissão</strong>. O app tem de <strong>declarar</strong>, nos arquivos de cada plataforma, que vai usar o recurso (e por quê), e a pessoa tem de <strong>aceitar</strong> na hora.</li>
+</ol>
+
+<hr>
+
+<h2>1. Instalar os plugins</h2>
+<p>Os dois de uma vez, no terminal da Ana:</p>
+<pre class="term">$ flutter pub add image_picker geolocator
+Resolving dependencies...
+Downloading packages...
++ args 2.7.0
++ cross_file 0.3.5+5 (0.4.0 available)
+…
++ geolocator 14.1.2
++ geolocator_android 5.2.1
++ geolocator_apple 2.4.2
++ geolocator_linux 0.2.6
++ geolocator_platform_interface 4.4.1
++ geolocator_web 4.1.4
++ geolocator_windows 0.2.5
+…
++ image_picker 1.2.4
++ image_picker_android 0.8.13+25
++ image_picker_for_web 3.1.1
++ image_picker_ios 0.8.13+12
++ image_picker_linux 0.2.2
++ image_picker_macos 0.2.2+1
++ image_picker_platform_interface 2.11.2
++ image_picker_windows 0.2.2
+…
+Changed 43 dependencies!
+9 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+</pre>
+<p><strong>43 pacotes</strong> para dois plugins! Repare nos nomes: cada plugin vem em pedaços, um por plataforma (<code>geolocator_android</code>, <code>geolocator_apple</code>, <code>geolocator_web</code>…), mais uma "interface comum" (<code>…_platform_interface</code>) que o seu código Dart enxerga. É o "intérprete" para cada língua. Você só importa o pacote principal; o Flutter escolhe o pedaço certo na hora de compilar.</p>
+
+<div class="tip">
+<strong>Depois de instalar um plugin, rode o app do zero</strong>
+<p>Um plugin traz código nativo, que só entra no app numa compilação nova. Um <a href="hot-reload.html">hot reload</a> (nem um hot restart) não basta: pare o <code>flutter run</code> e rode de novo. Sem isso, a chamada costuma falhar com uma <code>MissingPluginException</code>.</p>
+</div>
+
+<hr>
+
+<h2>2. A câmera: <code>image_picker</code></h2>
+<p>O app de receitas da Ana vai ter a foto de cada bolo. Com o <code>image_picker</code>, o app abre a câmera <strong>do próprio sistema</strong> (ou a galeria), e a pessoa tira a foto lá; o app recebe o arquivo pronto.</p>
+
+<pre class="file" data-file="lib/main.dart">import 'dart:typed_data';
+
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+
+void main() =&gt; runApp(const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaFotoReceita(),
+    ));
+
+class TelaFotoReceita extends StatefulWidget {
+  const TelaFotoReceita({super.key});
+
+  @override
+  State&lt;TelaFotoReceita&gt; createState() =&gt; _TelaFotoReceitaState();
+}
+
+class _TelaFotoReceitaState extends State&lt;TelaFotoReceita&gt; {
+  final _picker = ImagePicker();
+  Uint8List? _foto;
+
+  Future&lt;void&gt; _tirarFoto() async {
+    final arquivo = await _picker.pickImage(source: ImageSource.camera);
+    if (arquivo == null) return; // a pessoa cancelou
+    final bytes = await arquivo.readAsBytes();
+    setState(() =&gt; _foto = bytes);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Foto do bolo')),
+      body: Center(
+        child: _foto == null
+            ? const Text('Nenhuma foto ainda')
+            : Image.memory(_foto!, height: 300),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _tirarFoto,
+        icon: const Icon(Icons.photo_camera),
+        label: const Text('Tirar foto'),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>final _picker = ImagePicker()</dt><dd>O "intérprete" da câmera.</dd>
+  <dt>Uint8List? _foto</dt><dd>A foto, em bytes (<code>Uint8List</code>, do <code>dart:typed_data</code>). Começa <code>null</code>: ainda não há foto.</dd>
+  <dt>Future&lt;void&gt; _tirarFoto() async</dt><dd>Uma função assíncrona: ela vai esperar a pessoa.</dd>
+  <dt>await _picker.pickImage(source: ImageSource.camera)</dt><dd>Abre a câmera e <strong>espera</strong>. Com <code>ImageSource.gallery</code>, abre a galeria. Devolve um <code>XFile?</code>.</dd>
+  <dt>if (arquivo == null) return</dt><dd>Se a pessoa <strong>cancelou</strong> (voltou sem tirar foto), vem <code>null</code>. Sempre trate esse caso.</dd>
+  <dt>await arquivo.readAsBytes()</dt><dd>Lê a foto. Usar os bytes com <code>Image.memory</code> funciona em todas as plataformas, inclusive na web (onde não existe "arquivo" no disco).</dd>
+  <dt>setState(() =&gt; _foto = bytes)</dt><dd>Guarda e redesenha a tela, que agora mostra a foto.</dd>
+</dl>
+
+<p>A tela ao abrir, compilada e fotografada no lab:</p>
+<figure class="tela"><img src="assets/telas/plataforma-1.png" alt="Tela Foto do bolo com o texto Nenhuma foto ainda no meio e, no canto de baixo à direita, um botão com ícone de câmera e o texto Tirar foto" width="390" height="844" loading="lazy"><figcaption>Antes do toque (foto do lab).</figcaption></figure>
+
+<p><strong>Ilustrativo (sem saída do lab):</strong> no celular, o toque em "Tirar foto" abre o app de câmera do sistema; depois de tirar e confirmar, o app volta e a foto aparece no lugar do texto "Nenhuma foto ainda". Na primeira vez, o iOS pergunta se o app pode usar a câmera, mostrando o texto que você escreveu no <code>Info.plist</code> (seção 4).</p>
+
+<hr>
+
+<h2>3. A localização: <code>geolocator</code></h2>
+<p>Para mostrar a lojinha mais perto, o app precisa de onde a pessoa está. A localização é mais delicada que a câmera: o app tem de <strong>conferir</strong> se o GPS está ligado e <strong>pedir</strong> a permissão, antes de perguntar a posição.</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+
+void main() =&gt; runApp(const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaOndeEstou(),
+    ));
+
+class TelaOndeEstou extends StatefulWidget {
+  const TelaOndeEstou({super.key});
+
+  @override
+  State&lt;TelaOndeEstou&gt; createState() =&gt; _TelaOndeEstouState();
+}
+
+class _TelaOndeEstouState extends State&lt;TelaOndeEstou&gt; {
+  String _texto = 'Toque no botão para achar a lojinha mais perto.';
+
+  Future&lt;void&gt; _localizar() async {
+    if (!await Geolocator.isLocationServiceEnabled()) {
+      setState(() =&gt; _texto = 'O GPS do aparelho está desligado.');
+      return;
+    }
+    var permissao = await Geolocator.checkPermission();
+    if (permissao == LocationPermission.denied) {
+      permissao = await Geolocator.requestPermission();
+    }
+    if (permissao == LocationPermission.denied ||
+        permissao == LocationPermission.deniedForever) {
+      setState(() =&gt; _texto = 'Sem permissão de localização.');
+      return;
+    }
+    final posicao = await Geolocator.getCurrentPosition();
+    setState(() =&gt; _texto =
+        'Você está em ${posicao.latitude.toStringAsFixed(4)}, '
+        '${posicao.longitude.toStringAsFixed(4)}');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Onde estou?')),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(_texto, textAlign: TextAlign.center),
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _localizar,
+        icon: const Icon(Icons.my_location),
+        label: const Text('Localizar'),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>Geolocator.isLocationServiceEnabled()</dt><dd>O GPS (o "serviço de localização") do aparelho está ligado? Se a pessoa o desligou nas configurações, não adianta pedir posição.</dd>
+  <dt>Geolocator.checkPermission()</dt><dd>Qual é a permissão <strong>atual</strong> do app? Devolve um <code>LocationPermission</code>: <code>denied</code> (negada, ainda dá para pedir), <code>deniedForever</code> (negada para sempre), <code>whileInUse</code> (enquanto o app está aberto) ou <code>always</code> (sempre).</dd>
+  <dt>Geolocator.requestPermission()</dt><dd>Mostra a janelinha do sistema: "Permitir que o app acesse a localização?". Devolve a resposta.</dd>
+  <dt>deniedForever</dt><dd>A pessoa marcou "não perguntar de novo" (ou negou duas vezes, no Android). O app não pode mais perguntar; só ela, nas configurações do aparelho. O plugin tem <code>Geolocator.openAppSettings()</code> para abrir essa tela.</dd>
+  <dt>Geolocator.getCurrentPosition()</dt><dd>A posição atual: um <code>Position</code> com <code>latitude</code>, <code>longitude</code>, <code>accuracy</code> (precisão, em metros) e outros.</dd>
+  <dt>toStringAsFixed(4)</dt><dd>4 casas decimais: cerca de 10 metros de precisão no mapa. Suficiente para "a lojinha mais perto".</dd>
+</dl>
+
+<p>A tela ao abrir, compilada e fotografada no lab:</p>
+<figure class="tela"><img src="assets/telas/plataforma-2.png" alt="Tela Onde estou? com o texto Toque no botão para achar a lojinha mais perto. no meio e, no canto de baixo à direita, um botão com ícone de mira e o texto Localizar" width="390" height="844" loading="lazy"><figcaption>Antes do toque (foto do lab).</figcaption></figure>
+
+<p><strong>Ilustrativo:</strong> no celular, o toque em "Localizar" mostra o pedido de permissão do sistema; aceitando, o texto troca para algo como <code>Você está em -23.5505, -46.6333</code> (números de exemplo, não colhidos no lab). Negando, aparece <code>Sem permissão de localização.</code>.</p>
+
+<hr>
+
+<h2>4. As permissões em cada plataforma</h2>
+<p>Além do pedido na hora, o app precisa <strong>declarar</strong> o uso em arquivos de configuração. Sem isso, o sistema bloqueia o recurso (e, no iOS, fecha o app). Os textos abaixo seguem o Readme de cada pacote.</p>
+
+<h3>Android: <code>android/app/src/main/AndroidManifest.xml</code></h3>
+<pre class="file" data-file="android/app/src/main/AndroidManifest.xml">&lt;manifest xmlns:android="http://schemas.android.com/apk/res/android"&gt;
+    &lt;uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" /&gt;
+    &lt;uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" /&gt;
+    &lt;application …&gt;
+</pre>
+<dl class="anatomy">
+  <dt>ACCESS_FINE_LOCATION</dt><dd>Localização precisa (GPS).</dd>
+  <dt>ACCESS_COARSE_LOCATION</dt><dd>Localização aproximada (antenas e Wi-Fi).</dd>
+</dl>
+<p>As linhas <code>uses-permission</code> vão dentro de <code>&lt;manifest&gt;</code>, antes de <code>&lt;application&gt;</code>. Para a câmera do <code>image_picker</code>, o Android não pede linha nenhuma: ele usa o app de câmera do próprio sistema.</p>
+
+<h3>iOS: <code>ios/Runner/Info.plist</code></h3>
+<pre class="file" data-file="ios/Runner/Info.plist">&lt;key&gt;NSCameraUsageDescription&lt;/key&gt;
+&lt;string&gt;Para fotografar as suas receitas.&lt;/string&gt;
+&lt;key&gt;NSPhotoLibraryUsageDescription&lt;/key&gt;
+&lt;string&gt;Para escolher a foto da receita na galeria.&lt;/string&gt;
+&lt;key&gt;NSLocationWhenInUseUsageDescription&lt;/key&gt;
+&lt;string&gt;Para mostrar a lojinha mais perto de você.&lt;/string&gt;
+</pre>
+<p>No iOS, cada recurso tem uma "chave" com um <strong>texto explicando o porquê</strong>. É esse texto que aparece na janelinha de permissão, então escreva em português, para a pessoa entender. A Apple recusa na loja apps com textos vagos (veja <a href="publicar.html">Publicando nas Lojas</a>).</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Recurso</th><th>Plugin comum</th><th>Android</th><th>iOS (<code>Info.plist</code>)</th></tr>
+<tr><td>Câmera / galeria</td><td><code>image_picker</code></td><td>nada</td><td><code>NSCameraUsageDescription</code>, <code>NSPhotoLibraryUsageDescription</code></td></tr>
+<tr><td>Câmera com preview dentro do app</td><td><code>camera</code></td><td>conforme o Readme</td><td><code>NSCameraUsageDescription</code>, <code>NSMicrophoneUsageDescription</code></td></tr>
+<tr><td>Localização</td><td><code>geolocator</code></td><td><code>ACCESS_FINE_LOCATION</code>, <code>ACCESS_COARSE_LOCATION</code></td><td><code>NSLocationWhenInUseUsageDescription</code></td></tr>
+<tr><td>Abrir site, telefone, e-mail</td><td><code>url_launcher</code></td><td>conforme o Readme</td><td>conforme o Readme</td></tr>
+</table>
+</div>
+<p>Cada plugin tem a sua lista no Readme do pub.dev. <strong>Leia antes de instalar</strong>: é ali que está o que muda em cada plataforma.</p>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Você quer…</th><th>Use</th></tr>
+<tr><td>Uma foto, com a câmera do sistema (o mais simples)</td><td><code>image_picker</code>, <code>ImageSource.camera</code></td></tr>
+<tr><td>Escolher uma ou várias fotos da galeria</td><td><code>image_picker</code>: <code>pickImage(source: ImageSource.gallery)</code> ou <code>pickMultiImage()</code></td></tr>
+<tr><td>A imagem da câmera <strong>dentro</strong> do seu app (filtros, leitor de código)</td><td><code>camera</code> (mais controle, mais trabalho)</td></tr>
+<tr><td>A posição uma vez</td><td><code>Geolocator.getCurrentPosition()</code></td></tr>
+<tr><td>Acompanhar a pessoa andando</td><td><code>Geolocator.getPositionStream()</code>, um <code>Stream</code> (veja <a href="streambuilder.html">StreamBuilder</a>)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+<p>Os casos abaixo são os problemas mais citados na documentação dos pacotes. Como o lab não tem aparelho, as mensagens não foram colhidas aqui; o nome de cada erro é o que você vai procurar no console.</p>
+
+<div class="cenario">
+<strong><code>MissingPluginException</code></strong>
+<p>Você instalou o plugin e deu hot reload. O código Dart novo entrou, mas o pedaço nativo do plugin não. <strong>Como consertar:</strong> pare o app e rode <code>flutter run</code> de novo (às vezes, <code>flutter clean</code> antes).</p>
+</div>
+
+<div class="cenario">
+<strong>O app fecha no iOS ao abrir a câmera</strong>
+<p>Faltou a chave <code>NSCameraUsageDescription</code> no <code>Info.plist</code>. O iOS fecha na hora qualquer app que acessa a câmera sem ter declarado o motivo. <strong>Como consertar:</strong> acrescente a chave e o texto (seção 4) e rode de novo.</p>
+</div>
+
+<div class="cenario">
+<strong>A permissão de localização sempre vem negada</strong>
+<p>Ou faltam as linhas no <code>AndroidManifest.xml</code>/<code>Info.plist</code>, ou a pessoa negou para sempre (<code>deniedForever</code>). No segundo caso, o app não consegue mais perguntar: explique na tela e ofereça um botão com <code>Geolocator.openAppSettings()</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Esqueceu de tratar o <code>null</code></strong>
+<p>Se a pessoa cancelar a câmera, <code>pickImage</code> devolve <code>null</code>. Um <code>arquivo!.readAsBytes()</code> (com <code>!</code>) faz a função parar com um erro no meio. Como isso acontece dentro de um <code>onPressed</code>, e não no <code>build</code>, não aparece a tela vermelha: o erro vai para o console e a tela fica parada no estado anterior (a missão abaixo mostra o caso, com uma câmera de mentira: no lab, a tela ficou em <code>Abrindo a câmera...</code>). <strong>Como consertar:</strong> <code>if (arquivo == null) return;</code>, como no exemplo.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>flutter pub add image_picker geolocator</code></td><td>Instala os plugins (depois, rode o app do zero)</td></tr>
+<tr><td><code>await ImagePicker().pickImage(source: ImageSource.camera)</code></td><td>Abre a câmera; devolve <code>XFile?</code> (<code>null</code> = cancelou)</td></tr>
+<tr><td><code>await arquivo.readAsBytes()</code> + <code>Image.memory(bytes)</code></td><td>Mostra a foto</td></tr>
+<tr><td><code>Geolocator.isLocationServiceEnabled()</code></td><td>O GPS está ligado?</td></tr>
+<tr><td><code>Geolocator.checkPermission()</code> / <code>requestPermission()</code></td><td>Confere / pede a permissão</td></tr>
+<tr><td><code>Geolocator.getCurrentPosition()</code></td><td>A posição (<code>latitude</code>, <code>longitude</code>)</td></tr>
+<tr><td><code>AndroidManifest.xml</code>: <code>&lt;uses-permission …&gt;</code></td><td>Declara a permissão no Android</td></tr>
+<tr><td><code>Info.plist</code>: <code>NS…UsageDescription</code></td><td>Declara e explica a permissão no iOS</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">1. A pessoa abriu a câmera pelo app e voltou sem tirar foto. O que o <code>pickImage</code> devolve?</p>
+<label><input type="radio" name="q1"> Uma foto preta</label>
+<label><input type="radio" name="q1"> <code>null</code></label>
+<label><input type="radio" name="q1"> Uma exceção</label>
+<label><input type="radio" name="q1"> A última foto da galeria</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">2. Onde se declara, no iOS, o texto que explica por que o app quer a localização?</p>
+<label><input type="radio" name="q2"> No <code>pubspec.yaml</code></label>
+<label><input type="radio" name="q2"> No <code>AndroidManifest.xml</code></label>
+<label><input type="radio" name="q2"> No <code>ios/Runner/Info.plist</code>, na chave <code>NSLocationWhenInUseUsageDescription</code></label>
+<label><input type="radio" name="q2"> No <code>main.dart</code></label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">3. Você instalou um plugin, deu hot reload e veio <code>MissingPluginException</code>. O que fazer?</p>
+<label><input type="radio" name="q3"> Reinstalar o Flutter</label>
+<label><input type="radio" name="q3"> Trocar de plugin</label>
+<label><input type="radio" name="q3"> Dar outro hot reload</label>
+<label><input type="radio" name="q3"> Parar o app e rodar <code>flutter run</code> de novo</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. A permissão de localização veio <code>deniedForever</code>. O que o app pode fazer?</p>
+<label><input type="radio" name="q4"> Explicar e abrir as configurações do aparelho (<code>Geolocator.openAppSettings()</code>)</label>
+<label><input type="radio" name="q4"> Chamar <code>requestPermission()</code> até a pessoa aceitar</label>
+<label><input type="radio" name="q4"> Pegar a posição assim mesmo</label>
+<label><input type="radio" name="q4"> Fechar o app</label>
+</div>
+
+<h3>Missão final: quando a pessoa cancela</h3>
+
+<p>O editor do guia não tem câmera, então esta missão <strong>finge</strong> uma: a função <code>fingirCamera()</code> espera 1 segundo e devolve <code>null</code>, exatamente como o <code>pickImage</code> faz quando a pessoa cancela.</p>
+
+<div class="tryflutter" data-goal="src:arquivo\s*==\s*null;;nsrc:arquivo!" data-foto="assets/telas/plataforma-4.png" data-foto-alt="Tela Foto do bolo com o texto Foto cancelada no meio e o botão Tirar foto no canto">
+<p class="try-task"><strong>Missão:</strong> rode e toque em "Tirar foto": a tela mostra <code>Abrindo a câmera...</code> e fica nisso para sempre. Depois de 1 segundo, o <code>arquivo!</code> encontrou um <code>null</code> e a função parou com um erro (no console, não na tela: o erro aconteceu num <code>onPressed</code>, fora do <code>build</code>). Conserte o <code>_tirarFoto</code>: se <code>arquivo == null</code>, mostre <code>Foto cancelada</code> e saia com <code>return</code>; depois disso, o <code>!</code> não é mais necessário. A foto mostra a tela depois do conserto.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaFotoFingida(),
+    ));
+
+// Finge a câmera: espera 1 segundo e devolve null,
+// como o pickImage faz quando a pessoa cancela.
+Future&lt;String?&gt; fingirCamera() async {
+  await Future.delayed(const Duration(seconds: 1));
+  return null;
+}
+
+class TelaFotoFingida extends StatefulWidget {
+  const TelaFotoFingida({super.key});
+
+  @override
+  State&lt;TelaFotoFingida&gt; createState() =&gt; _TelaFotoFingidaState();
+}
+
+class _TelaFotoFingidaState extends State&lt;TelaFotoFingida&gt; {
+  String _texto = 'Nenhuma foto ainda';
+
+  Future&lt;void&gt; _tirarFoto() async {
+    setState(() =&gt; _texto = 'Abrindo a câmera...');
+    final arquivo = await fingirCamera();
+    setState(() =&gt; _texto = 'Foto recebida: ${arquivo!.length} letras');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Foto do bolo')),
+      body: Center(child: Text(_texto)),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _tirarFoto,
+        icon: const Icon(Icons.photo_camera),
+        label: const Text('Tirar foto'),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaFotoFingida(),
+    ));
+
+// Finge a câmera: espera 1 segundo e devolve null,
+// como o pickImage faz quando a pessoa cancela.
+Future&lt;String?&gt; fingirCamera() async {
+  await Future.delayed(const Duration(seconds: 1));
+  return null;
+}
+
+class TelaFotoFingida extends StatefulWidget {
+  const TelaFotoFingida({super.key});
+
+  @override
+  State&lt;TelaFotoFingida&gt; createState() =&gt; _TelaFotoFingidaState();
+}
+
+class _TelaFotoFingidaState extends State&lt;TelaFotoFingida&gt; {
+  String _texto = 'Nenhuma foto ainda';
+
+  Future&lt;void&gt; _tirarFoto() async {
+    setState(() =&gt; _texto = 'Abrindo a câmera...');
+    final arquivo = await fingirCamera();
+    if (arquivo == null) {
+      setState(() =&gt; _texto = 'Foto cancelada');
+      return;
+    }
+    setState(() =&gt; _texto = 'Foto recebida: ${arquivo.length} letras');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Foto do bolo')),
+      body: Center(child: Text(_texto)),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _tirarFoto,
+        icon: const Icon(Icons.photo_camera),
+        label: const Text('Tirar foto'),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Recursos do aparelho entram por <strong>plugins</strong>: pacotes com um pedaço nativo para cada plataforma. Depois de instalar, rode o app do zero.</li>
+  <li>Tudo é assíncrono (<code>await</code>), e a pessoa pode cancelar (<code>null</code>) ou negar (permissão).</li>
+  <li>Câmera/galeria: <code>image_picker</code>. Localização: <code>geolocator</code>, conferindo o serviço e a permissão antes de pedir a posição.</li>
+  <li>Permissões: declaradas no <code>AndroidManifest.xml</code> e no <code>Info.plist</code> (com um texto explicando o porquê) e pedidas na hora.</li>
+  <li>O Readme do pacote, no pub.dev, diz exatamente o que configurar em cada plataforma.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
