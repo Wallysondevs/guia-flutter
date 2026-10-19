@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Rotas Nomeadas — chamando as telas pelo nome | Guia Flutter</title>
+<meta name="description" content="Rotas nomeadas no Flutter para quem nunca fez um app: a tabela routes e o initialRoute do MaterialApp, Navigator.pushNamed, nomes em constantes, onGenerateRoute e onUnknownRoute para rotas que não existem, quando usar (e quando preferir o go_router) e os erros reais (Could not find a generator for route, home junto com a rota /).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Rotas Nomeadas</span></h1>
+
+<p class="intro">Na aula <a href="navegacao.html">Navegação</a>, cada <code>push</code> construía a tela ali mesmo: <code>MaterialPageRoute(builder: (context) =&gt; const TelaReceita())</code>. Num app com 15 telas, esse código se espalha por todo canto. As <strong>rotas nomeadas</strong> organizam isso: você dá um <strong>nome</strong> a cada tela, num lugar só, e depois chama a tela pelo nome: <code>Navigator.pushNamed(context, '/receita')</code>.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como montar a tabela de rotas (<code>routes</code>) e a primeira tela (<code>initialRoute</code>) no <code>MaterialApp</code>.</li>
+  <li>Como abrir uma tela pelo nome com <code>Navigator.pushNamed</code> (e as versões <code>pushReplacementNamed</code> e companhia).</li>
+  <li>Por que guardar os nomes em constantes.</li>
+  <li>Como tratar uma rota que não existe com <code>onUnknownRoute</code>, e o que é o <code>onGenerateRoute</code>.</li>
+  <li>Quando as rotas nomeadas são uma boa ideia, e quando a documentação do Flutter recomenda outra coisa.</li>
+  <li>Os erros reais: a rota que não existe e o <code>home</code> junto com a rota <code>'/'</code>.</li>
+</ul>
+</div>
+
+<hr>
+
+<h2>A ideia: os ramais da empresa</h2>
+<p>Numa empresa grande, ninguém decora o celular de cada setor. Existe uma <strong>lista de ramais</strong> na recepção: "Financeiro: 201. Suporte: 305." Quem quer falar com o suporte só disca 305, e a central sabe para onde ligar.</p>
+<ul>
+  <li>A <strong>lista de ramais</strong> é a tabela <code>routes</code> do <code>MaterialApp</code>: cada nome aponta para a função que constrói a tela.</li>
+  <li><strong>Discar o ramal</strong> é o <code>Navigator.pushNamed(context, '/suporte')</code>.</li>
+  <li>Se alguém discar um ramal que não existe, a central precisa dizer alguma coisa: é o <code>onUnknownRoute</code>.</li>
+</ul>
+<p>Os nomes parecem endereços de site (<code>'/'</code>, <code>'/receita'</code>, <code>'/sobre'</code>) de propósito: no Flutter web, eles viram mesmo o endereço da página. O <code>'/'</code> é a tela inicial, como a página principal de um site.</p>
+
+<hr>
+
+<h2>1. A tabela de rotas</h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const AppReceitas());
+
+class AppReceitas extends StatelessWidget {
+  const AppReceitas({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      initialRoute: '/',
+      routes: {
+        '/': (context) =&gt; const TelaInicial(),
+        '/receita': (context) =&gt; const TelaReceita(),
+        '/sobre': (context) =&gt; const TelaSobre(),
+      },
+    );
+  }
+}
+
+class TelaInicial extends StatelessWidget {
+  const TelaInicial({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FilledButton(
+              onPressed: () =&gt; Navigator.pushNamed(context, '/receita'),
+              child: const Text('Ver o bolo de cenoura'),
+            ),
+            TextButton(
+              onPressed: () =&gt; Navigator.pushNamed(context, '/sobre'),
+              child: const Text('Sobre o app'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class TelaReceita extends StatelessWidget {
+  const TelaReceita({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Bolo de cenoura')),
+      body: const Center(child: Text('3 cenouras, 3 ovos, 2 xícaras de farinha')),
+    );
+  }
+}
+
+class TelaSobre extends StatelessWidget {
+  const TelaSobre({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Sobre')),
+      body: const Center(child: Text('Receitas da Ana, versão 1.0')),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>routes: { '/': …, '/receita': …, '/sobre': … }</dt><dd>Um <code>Map</code> (veja o <a href="https://wallysondevs.github.io/guia-dart/">Guia Dart</a>): a chave é o <strong>nome</strong> da rota, um <code>String</code>; o valor é uma função que recebe o <code>context</code> e devolve a tela. É a "lista de ramais".</dd>
+  <dt>'/': (context) =&gt; const TelaInicial()</dt><dd>A rota <code>'/'</code> é a tela de entrada. Com ela na tabela, <strong>não</strong> se usa o <code>home</code> (os dois juntos dão erro; veja <a href="#errado">Quando dá errado</a>).</dd>
+  <dt>initialRoute: '/'</dt><dd>Com qual rota o app começa. <code>'/'</code> já é o padrão, então aqui ele só deixa explícito; serve para começar em outra (<code>initialRoute: '/sobre'</code>, por exemplo, enquanto você testa essa tela).</dd>
+  <dt>Navigator.pushNamed(context, '/receita')</dt><dd>Procura <code>'/receita'</code> na tabela, constrói a tela e faz o <code>push</code>, exatamente como o <code>Navigator.push</code> com <code>MaterialPageRoute</code>. Voltar continua igual: a seta da <code>AppBar</code> ou <code>Navigator.pop(context)</code>.</dd>
+  <dt>class AppReceitas</dt><dd>O <code>MaterialApp</code> ficou num widget próprio, e as telas, cada uma no seu. Repare que agora <strong>nenhuma tela sabe construir as outras</strong>: a <code>TelaInicial</code> só conhece os nomes.</dd>
+</dl>
+
+<p>O app abriu na rota <code>'/'</code>. A Ana tocou em <strong>Sobre o app</strong>, e o <code>pushNamed</code> abriu a <code>TelaSobre</code>, com a seta de voltar, exatamente como um <code>push</code> comum:</p>
+<div class="table-wrap"><table class="ref"><tr><td><figure class="tela"><img src="assets/telas/rotas-nomeadas-1.png" alt="Tela &#39;Receitas da Ana&#39; com o botão roxo &#39;Ver o bolo de cenoura&#39; e, embaixo, o botão de texto &#39;Sobre o app&#39;" width="390" height="844" loading="lazy"><figcaption>A rota <code>'/'</code>.</figcaption></figure></td><td><figure class="tela"><img src="assets/telas/rotas-nomeadas-2.png" alt="Tela &#39;Sobre&#39; com a seta de voltar antes do título e, no meio, &#39;Receitas da Ana, versão 1.0&#39;" width="390" height="844" loading="lazy"><figcaption>Depois do <code>pushNamed(context, '/sobre')</code>.</figcaption></figure></td></tr></table></div>
+
+<div class="tryflutter" data-goal="src:'/contato'">
+<p class="try-task"><strong>Missão:</strong> o app tem uma <code>TelaContato</code> pronta, mas sem rota. Acrescente <code>'/contato'</code> na tabela <code>routes</code> e faça o botão "Fale com a Ana" abri-la com <code>Navigator.pushNamed</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const AppReceitas());
+
+class AppReceitas extends StatelessWidget {
+  const AppReceitas({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      initialRoute: '/',
+      routes: {
+        '/': (context) =&gt; const TelaInicial(),
+      },
+    );
+  }
+}
+
+class TelaInicial extends StatelessWidget {
+  const TelaInicial({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: Center(
+        child: FilledButton(
+          onPressed: () {},
+          child: const Text('Fale com a Ana'),
+        ),
+      ),
+    );
+  }
+}
+
+class TelaContato extends StatelessWidget {
+  const TelaContato({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Contato')),
+      body: const Center(child: Text('ana@exemplo.com')),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const AppReceitas());
+
+class AppReceitas extends StatelessWidget {
+  const AppReceitas({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      initialRoute: '/',
+      routes: {
+        '/': (context) =&gt; const TelaInicial(),
+        '/contato': (context) =&gt; const TelaContato(),
+      },
+    );
+  }
+}
+
+class TelaInicial extends StatelessWidget {
+  const TelaInicial({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: Center(
+        child: FilledButton(
+          onPressed: () =&gt; Navigator.pushNamed(context, '/contato'),
+          child: const Text('Fale com a Ana'),
+        ),
+      ),
+    );
+  }
+}
+
+class TelaContato extends StatelessWidget {
+  const TelaContato({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Contato')),
+      body: const Center(child: Text('ana@exemplo.com')),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>2. Os outros comandos, com <code>Named</code></h2>
+<p>Cada comando da aula <a href="navegacao.html">Navegação</a> tem a sua versão por nome:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Com a rota construída</th><th>Com o nome</th></tr>
+<tr><td><code>Navigator.push(context, MaterialPageRoute(…))</code></td><td><code>Navigator.pushNamed(context, '/receita')</code></td></tr>
+<tr><td><code>Navigator.pushReplacement(context, …)</code></td><td><code>Navigator.pushReplacementNamed(context, '/inicio')</code></td></tr>
+<tr><td><code>Navigator.pushAndRemoveUntil(context, …, (r) =&gt; false)</code></td><td><code>Navigator.pushNamedAndRemoveUntil(context, '/login', (r) =&gt; false)</code></td></tr>
+<tr><td><code>Navigator.popUntil(context, (r) =&gt; r.isFirst)</code></td><td><code>Navigator.popUntil(context, ModalRoute.withName('/'))</code></td></tr>
+</table>
+</div>
+<p>O <code>pop</code> não muda: voltar não precisa de nome.</p>
+
+<hr>
+
+<h2>3. Nomes em constantes</h2>
+<p>Com os nomes espalhados como texto solto, um erro de digitação (<code>'/receitas'</code> em vez de <code>'/receita'</code>) só aparece quando alguém toca no botão, com o app rodando. Guarde os nomes em constantes, num lugar só:</p>
+<pre class="file" data-file="lib/main.dart (trecho)">class Rotas {
+  static const inicio = '/';
+  static const receita = '/receita';
+  static const sobre = '/sobre';
+}
+
+// na tabela:
+routes: {
+  Rotas.inicio: (context) =&gt; const TelaInicial(),
+  Rotas.receita: (context) =&gt; const TelaReceita(),
+  Rotas.sobre: (context) =&gt; const TelaSobre(),
+},
+
+// no botão:
+Navigator.pushNamed(context, Rotas.receita);
+</pre>
+<p>Agora, se você escrever <code>Rotas.receitas</code>, o Dart reclama <strong>antes</strong> de rodar, e o editor ainda completa o nome para você.</p>
+
+<hr>
+
+<h2>4. A rota que não existe: <code>onUnknownRoute</code></h2>
+<p>E se alguém pedir uma rota que não está na tabela? (No Flutter web isso acontece de verdade: basta digitar um endereço errado no navegador.) Sem preparo, é erro (veja <a href="#errado">Quando dá errado</a>). Com o <code>onUnknownRoute</code>, você mostra uma tela de "não encontrado":</p>
+<pre class="file" data-file="lib/main.dart (trecho)">MaterialApp(
+  initialRoute: '/',
+  routes: { … },
+  onUnknownRoute: (settings) {
+    return MaterialPageRoute(
+      builder: (context) =&gt; Scaffold(
+        appBar: AppBar(title: const Text('Ops!')),
+        body: Center(child: Text('A tela ${settings.name} não existe')),
+      ),
+    );
+  },
+)
+</pre>
+<dl class="anatomy">
+  <dt>onUnknownRoute: (settings) { … }</dt><dd>Chamado quando ninguém soube construir a rota pedida. Recebe um <code>RouteSettings</code>, com o <code>name</code> pedido (e os <code>arguments</code>, que você vai ver na próxima aula).</dd>
+  <dt>return MaterialPageRoute(…)</dt><dd>Aqui você devolve a <strong>rota</strong> pronta (não só a tela).</dd>
+</dl>
+
+<h3>E o <code>onGenerateRoute</code>?</h3>
+<p>É o "plano B" da tabela: quando o nome não está em <code>routes</code>, o Flutter chama o <code>onGenerateRoute(settings)</code> antes de desistir. Ele serve para rotas que a tabela fixa não resolve, como nomes com partes que mudam (<code>'/receita/42'</code>) ou telas que precisam de dados (próxima aula). A ordem que o Flutter segue é a que aparece na própria mensagem de erro logo abaixo: <code>home</code> → <code>routes</code> → <code>onGenerateRoute</code> → <code>onUnknownRoute</code>.</p>
+
+<hr>
+
+<h2 id="formas">Quando usar rotas nomeadas</h2>
+<p>A documentação oficial do Flutter (a página <em>Navigation and routing</em>, em docs.flutter.dev) diz que as rotas nomeadas <strong>não são recomendadas para a maioria dos apps</strong>: elas não deixam personalizar bem o que acontece quando um link de fora abre o app (os <em>deep links</em>), e no Flutter web o botão "avançar" do navegador não funciona com elas. No lugar delas, a recomendação é um pacote de rotas como o <code>go_router</code>, ou o próprio <code>Navigator</code> com <code>MaterialPageRoute</code> da aula anterior.</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>O que usar</th></tr>
+<tr><td>Poucas telas, app de celular</td><td><code>Navigator.push</code> com <code>MaterialPageRoute</code> (aula <a href="navegacao.html">Navegação</a>)</td></tr>
+<tr><td>Várias telas, quer os nomes num lugar só, sem links de fora</td><td>Rotas nomeadas (esta aula)</td></tr>
+<tr><td>Web, links que abrem telas internas (<em>deep links</em>), app grande</td><td><code>go_router</code> (aula <a href="go-router.html">go_router</a>)</td></tr>
+</table>
+</div>
+<p>Mesmo assim, vale conhecer as rotas nomeadas: estão em muito código e tutorial, e o <code>go_router</code> usa a mesma ideia de "caminhos" (<code>'/receita'</code>).</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Pediu uma rota que não está na tabela</strong>
+<p>A Ana escreveu <code>Navigator.pushNamed(context, '/carrinho')</code>, mas esqueceu de pôr <code>'/carrinho'</code> em <code>routes</code>. Ao tocar no botão, nada abre, e o console mostra (de um teste da Ana que toca no botão):</p>
+<pre class="term">══╡ EXCEPTION CAUGHT BY GESTURE ╞═══════════════════════════════════════════════════════════════════
+The following assertion was thrown while handling a gesture:
+Could not find a generator for route RouteSettings("/carrinho", null) in the _WidgetsAppState.
+Make sure your root app widget has provided a way to generate
+this route.
+Generators for routes are searched for in the following order:
+ 1. For the "/" route, the "home" property, if non-null, is used.
+ 2. Otherwise, the "routes" table is used, if it has an entry for the route.
+ 3. Otherwise, onGenerateRoute is called. It should return a non-null value for any valid route not
+handled by "home" and "routes".
+ 4. Finally if all else fails onUnknownRoute is called.
+Unfortunately, onUnknownRoute was not set.
+
+When the exception was thrown, this was the stack:
+…
+#3      NavigatorState.pushNamed (package:flutter/src/widgets/navigator.dart:4776:21)
+#4      Navigator.pushNamed (package:flutter/src/widgets/navigator.dart:1931:34)
+#5      TelaInicial.build.&lt;anonymous closure&gt; (file:///home/ana/app/test/rotas_test.dart:11:36)
+</pre>
+<dl class="anatomy">
+  <dt>Could not find a generator for route RouteSettings("/carrinho", null)</dt><dd>"Não achei quem construa a rota <code>/carrinho</code>." O <code>null</code> são os argumentos (nenhum).</dd>
+  <dt>Make sure your root app widget has provided a way to generate this route.</dt><dd>"Garanta que o widget raiz do app (o <code>MaterialApp</code>) tenha um jeito de gerar esta rota."</dd>
+  <dt>Generators for routes are searched for in the following order: 1… 4.</dt><dd>A ordem de busca: o <code>home</code> (só para <code>'/'</code>), a tabela <code>routes</code>, o <code>onGenerateRoute</code> e, por último, o <code>onUnknownRoute</code>.</dd>
+  <dt>Unfortunately, onUnknownRoute was not set.</dt><dd>"Infelizmente, o <code>onUnknownRoute</code> não foi definido": ninguém para atender o ramal errado.</dd>
+  <dt>#5 TelaInicial.build…</dt><dd>De onde veio o pedido: o botão da <code>TelaInicial</code>.</dd>
+</dl>
+<p><strong>Como consertar:</strong> acrescente a rota à tabela (ou corrija o nome; as constantes da seção 3 evitam esse erro). Para não deixar a pessoa sem resposta em casos que você não previu, defina o <code>onUnknownRoute</code>.</p>
+</div>
+
+<div class="cenario">
+<strong><code>home</code> junto com a rota <code>'/'</code></strong>
+<pre class="file" data-file="lib/main.dart (trecho)">MaterialApp(
+  home: const TelaInicial(),
+  routes: {'/': (context) =&gt; const TelaInicial()},
+)
+</pre>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following assertion was thrown building MaterialApp(dirty, state: _MaterialAppState#c5e59):
+If the home property is specified, the routes table cannot include an entry for "/", since it would
+be redundant.
+'package:flutter/src/widgets/app.dart':
+Failed assertion: line 379 pos 10: 'home == null || !routes.containsKey(Navigator.defaultRouteName)'
+</pre>
+<p>"Se o <code>home</code> foi dado, a tabela de rotas não pode ter uma entrada para <code>'/'</code>, porque seria redundante." Os dois dizem qual é a tela inicial, e o Flutter não aceita duas respostas para a mesma pergunta. O <code>Navigator.defaultRouteName</code> da última linha é o próprio <code>'/'</code>. <strong>Como consertar:</strong> escolha um: ou <code>home:</code>, ou <code>'/'</code> na tabela.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Peça</th><th>O que faz</th></tr>
+<tr><td><code>routes: {'/nome': (context) =&gt; Tela()}</code></td><td>A tabela: nome → tela</td></tr>
+<tr><td><code>initialRoute: '/'</code></td><td>A rota com que o app começa (padrão <code>'/'</code>)</td></tr>
+<tr><td><code>Navigator.pushNamed(context, '/nome')</code></td><td>Abre a tela pelo nome</td></tr>
+<tr><td><code>pushReplacementNamed</code> / <code>pushNamedAndRemoveUntil</code></td><td>As versões por nome de <code>pushReplacement</code> e <code>pushAndRemoveUntil</code></td></tr>
+<tr><td><code>ModalRoute.withName('/')</code></td><td>"Até a rota com este nome", para o <code>popUntil</code></td></tr>
+<tr><td><code>onGenerateRoute: (settings) =&gt; …</code></td><td>Constrói rotas que não estão na tabela</td></tr>
+<tr><td><code>onUnknownRoute: (settings) =&gt; …</code></td><td>A tela de "não encontrado"</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete a tabela e o botão</h3>
+<div class="ex-code">MaterialApp(<br>&nbsp;&nbsp;<input data-answer="routes" aria-label="parâmetro da tabela de rotas">: {<br>&nbsp;&nbsp;&nbsp;&nbsp;'/': (context) =&gt; const TelaInicial(),<br>&nbsp;&nbsp;&nbsp;&nbsp;'/perfil': (context) =&gt; const TelaPerfil(),<br>&nbsp;&nbsp;},<br>)<br><br>// no botão:<br>Navigator.<input data-answer="pushNamed" aria-label="método que abre pelo nome">(context, '/perfil');</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">2. Na tabela <code>routes</code>, o que vai como valor de cada nome?</p>
+<label><input type="radio" name="q2"> A tela pronta: <code>const TelaPerfil()</code></label>
+<label><input type="radio" name="q2"> Um <code>MaterialPageRoute</code></label>
+<label><input type="radio" name="q2"> Uma função que recebe o <code>context</code> e devolve a tela</label>
+<label><input type="radio" name="q2"> O nome da classe como texto</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">3. O app tem <code>routes</code> com <code>'/'</code>. O que acontece se você também passar <code>home:</code>?</p>
+<label><input type="radio" name="q3"> Erro: os dois juntos são redundantes</label>
+<label><input type="radio" name="q3"> O <code>home</code> ganha</label>
+<label><input type="radio" name="q3"> A rota <code>'/'</code> ganha</label>
+<label><input type="radio" name="q3"> O app abre as duas telas</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. Qual parâmetro mostra uma tela de "não encontrado" quando a rota pedida não existe?</p>
+<label><input type="radio" name="q4"> <code>initialRoute</code></label>
+<label><input type="radio" name="q4"> <code>routes</code></label>
+<label><input type="radio" name="q4"> <code>home</code></label>
+<label><input type="radio" name="q4"> <code>onUnknownRoute</code></label>
+</div>
+
+<h3>Missão final: a tela de "não encontrado"</h3>
+<div class="tryflutter" data-goal="src:onUnknownRoute">
+<p class="try-task"><strong>Missão:</strong> o botão "Promoções" pede uma rota que ainda não existe. Rode e toque nele: nada abre. Acrescente um <code>onUnknownRoute</code> ao <code>MaterialApp</code> que mostre uma tela com o texto <code>'Em breve!'</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const AppLoja());
+
+class AppLoja extends StatelessWidget {
+  const AppLoja({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      routes: {
+        '/': (context) =&gt; const TelaInicial(),
+      },
+    );
+  }
+}
+
+class TelaInicial extends StatelessWidget {
+  const TelaInicial({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Lojinha da Ana')),
+      body: Center(
+        child: FilledButton(
+          onPressed: () =&gt; Navigator.pushNamed(context, '/promocoes'),
+          child: const Text('Promoções'),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const AppLoja());
+
+class AppLoja extends StatelessWidget {
+  const AppLoja({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      routes: {
+        '/': (context) =&gt; const TelaInicial(),
+      },
+      onUnknownRoute: (settings) {
+        return MaterialPageRoute(
+          builder: (context) =&gt; Scaffold(
+            appBar: AppBar(title: const Text('Ops!')),
+            body: const Center(child: Text('Em breve!')),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class TelaInicial extends StatelessWidget {
+  const TelaInicial({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Lojinha da Ana')),
+      body: Center(
+        child: FilledButton(
+          onPressed: () =&gt; Navigator.pushNamed(context, '/promocoes'),
+          child: const Text('Promoções'),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Rotas nomeadas dão um nome a cada tela, numa tabela só: <code>routes</code> no <code>MaterialApp</code>, com <code>'/'</code> como entrada (sem <code>home</code>).</li>
+  <li><code>Navigator.pushNamed(context, '/nome')</code> abre pelo nome; o <code>pop</code> continua igual.</li>
+  <li>Guarde os nomes em constantes para o Dart pegar os erros de digitação.</li>
+  <li>Rota que não existe: erro <code>Could not find a generator for route</code>, a não ser que haja <code>onGenerateRoute</code> ou <code>onUnknownRoute</code>.</li>
+  <li>Para web, links de fora e apps grandes, a documentação recomenda um pacote como o <code>go_router</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
