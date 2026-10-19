@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter iOS, Web e Desktop — flutter build ios, web, linux, windows e macos | Guia Flutter</title>
+<meta name="description" content="Como gerar o app Flutter para iPhone, navegador e computador: o que cada plataforma exige (Mac com Xcode para iOS e macOS, Windows para Windows, Linux para Linux), flutter build web com a pasta build/web, Wasm, flutter build linux, as mensagens reais quando a máquina não serve e onde fica cada arquivo gerado.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">iOS, Web e Desktop</span></h1>
+
+<p class="intro">A grande promessa do Flutter é escrever o app <strong>uma vez</strong> e rodar em vários lugares: Android, iPhone, navegador, Windows, Mac e Linux. O código do <code>lib/</code> é o mesmo; o que muda é o <strong>empacotamento</strong> no fim, feito com <code>flutter build</code> + o nome da plataforma. Na aula <a href="build-android.html">Gerando o APK</a> você viu o Android. Aqui vêm as outras cinco, e a regra mais importante delas: <strong>cada uma tem de ser gerada na máquina certa</strong>.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Qual computador gera qual plataforma (e por que o iPhone exige um Mac).</li>
+  <li>Como gerar o app para a <strong>web</strong> com <code>flutter build web</code>, o que vai na pasta <code>build/web</code> e como testar.</li>
+  <li>O que é o modo <strong>Wasm</strong> na web.</li>
+  <li>Como gerar o app de <strong>desktop</strong> (<code>flutter build linux</code>, <code>windows</code>, <code>macos</code>).</li>
+  <li>Os passos do <strong>iOS</strong>: Xcode, assinatura e <code>flutter build ipa</code>.</li>
+  <li>As mensagens reais quando o computador não serve para aquela plataforma.</li>
+</ul>
+</div>
+
+<p>A Ana usa um notebook com <strong>Linux</strong> e Flutter 3.47.7. As saídas desta página vieram dele; o que depende de Mac ou Windows está marcado como <strong>ilustrativo</strong>, com base na documentação oficial (<a href="https://docs.flutter.dev/deployment" target="_blank" rel="noopener">docs.flutter.dev/deployment</a>).</p>
+
+<hr>
+
+<h2>A ideia: a mesma receita, fornos diferentes</h2>
+<p>A Ana tem uma receita de pão de queijo. A massa é sempre a mesma (o seu código Dart). Mas para assar, ela precisa do forno certo: forno a gás em casa, forno elétrico na casa da mãe, <em>air fryer</em> no trabalho. Cada forno tem o seu jeito, e você não assa no forno da vizinha sem ir até a casa dela.</p>
+<p>No Flutter, os "fornos" são as ferramentas de cada sistema: o <strong>Xcode</strong> da Apple (que só existe no macOS), o <strong>Visual Studio</strong> da Microsoft para o Windows, o compilador do Linux. Por isso:</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Para gerar…</th><th>Precisa de um computador com…</th><th>Comando</th><th>O que sai</th></tr>
+<tr><td>Android</td><td>Linux, Windows ou Mac (+ Android SDK)</td><td><code>flutter build apk</code> / <code>appbundle</code></td><td><code>.apk</code> / <code>.aab</code></td></tr>
+<tr><td>Web</td><td>Linux, Windows ou Mac</td><td><code>flutter build web</code></td><td>pasta <code>build/web</code> (HTML, JS, imagens)</td></tr>
+<tr><td>Linux</td><td><strong>Linux</strong></td><td><code>flutter build linux</code></td><td>pasta <code>build/linux/x64/release/bundle</code></td></tr>
+<tr><td>Windows</td><td><strong>Windows</strong> (+ Visual Studio com C++)</td><td><code>flutter build windows</code></td><td>pasta com o <code>.exe</code></td></tr>
+<tr><td>macOS</td><td><strong>Mac</strong> (+ Xcode)</td><td><code>flutter build macos</code></td><td><code>.app</code></td></tr>
+<tr><td>iOS (iPhone)</td><td><strong>Mac</strong> (+ Xcode + conta Apple)</td><td><code>flutter build ipa</code></td><td><code>.ipa</code> (para a App Store)</td></tr>
+</table>
+</div>
+
+<p>O próprio Flutter avisa isso. No Linux da Ana, a lista de subcomandos do <code>flutter build</code> <strong>nem mostra</strong> <code>ios</code>, <code>ipa</code>, <code>macos</code> nem <code>windows</code>:</p>
+
+<pre class="term">$ flutter build -h
+«…»
+Available subcommands:
+  aar         Build a repository containing an AAR and a POM file.
+  apk         Build an Android APK file from your app.
+  appbundle   Build an Android App Bundle file from your app.
+  bundle      Build the Flutter assets directory from your app.
+  linux       Build a Linux desktop application.
+  web         Build a web application bundle.
+</pre>
+<p>"Subcomandos disponíveis": AAR (biblioteca Android), APK, App Bundle, os arquivos de <em>assets</em>, Linux e web. É a lista do que <strong>este</strong> computador consegue gerar.</p>
+
+<hr>
+
+<h2>1. Web: <code>flutter build web</code></h2>
+<p>A web é a plataforma mais fácil de publicar: qualquer computador gera, e o resultado é uma pasta de arquivos comuns que qualquer servidor de sites entrega. Dentro da pasta do projeto de compras:</p>
+
+<pre class="term">$ flutter build web
+Compiling lib/main.dart for the Web...
+Wasm dry run succeeded. Consider building and testing your application with the `--wasm` flag. See docs for more info: https://docs.flutter.dev/platform-integration/web/wasm
+Use --no-wasm-dry-run to disable these warnings.
+Font asset "CupertinoIcons.ttf" was tree-shaken, reducing it from 257628 to 1472 bytes (99.4% reduction). Tree-shaking can be disabled by providing the --no-tree-shake-icons flag when building your app.
+Font asset "MaterialIcons-Regular.otf" was tree-shaken, reducing it from 1645184 to 7800 bytes (99.5% reduction). Tree-shaking can be disabled by providing the --no-tree-shake-icons flag when building your app.
+Compiling lib/main.dart for the Web...                             40.2s
+✓ Built build/web
+</pre>
+
+<dl class="anatomy">
+  <dt>Compiling lib/main.dart for the Web...</dt><dd>O compilador transforma o seu Dart em JavaScript otimizado. Levou 40,2 segundos.</dd>
+  <dt>Wasm dry run succeeded…</dt><dd>"O ensaio do Wasm deu certo. Considere gerar e testar o app com a opção <code>--wasm</code>." O Flutter testou, sem gerar nada, se o seu app <strong>poderia</strong> ser compilado para WebAssembly (veja abaixo), e deu que sim. <code>--no-wasm-dry-run</code> desliga esse aviso.</dd>
+  <dt>Font asset … was tree-shaken</dt><dd>As fontes de ícones (Cupertino e Material) foram "sacudidas": só ficaram os ícones que o app usa.</dd>
+  <dt>✓ Built build/web</dt><dd>Pronto: o site está na pasta <code>build/web</code>.</dd>
+</dl>
+
+<p>Dentro da pasta:</p>
+<pre>build/web/
+├── index.html               « a página que o navegador abre primeiro
+├── flutter_bootstrap.js     « o "dá a partida": escolhe e carrega o motor
+├── flutter.js
+├── main.dart.js             « o SEU app, em JavaScript (2,4 MB)
+├── flutter_service_worker.js
+├── manifest.json            « nome e ícones, para "instalar" o site como app
+├── favicon.png
+├── icons/
+├── assets/                  « imagens, fontes e outros assets do app
+├── canvaskit/               « o motor de desenho, em WebAssembly
+└── version.json
+</pre>
+<p>A pasta inteira ocupou 40 MB na máquina da Ana; a maior parte é a <code>canvaskit/</code>, que traz versões do motor para navegadores diferentes. O visitante não baixa tudo: só o que o navegador dele usa.</p>
+
+<h3>Testando a pasta <code>build/web</code></h3>
+<p>Abrir o <code>index.html</code> com dois cliques <strong>não funciona</strong>: o navegador bloqueia vários arquivos quando a página vem do disco (<code>file://</code>) e a tela fica em branco. A pasta precisa ser servida por um servidor web. Para testar no seu computador, qualquer servidor simples serve, por exemplo o do Python:</p>
+<pre class="file" data-file="terminal (ilustrativo)">$ cd build/web
+$ python3 -m http.server 8000
+</pre>
+<p>e abra <code>http://localhost:8000</code>. Para publicar de verdade, envie o conteúdo de <code>build/web</code> para um serviço de sites estáticos (GitHub Pages, Firebase Hosting, Netlify…). Se o site não fica na raiz do domínio (por exemplo <code>https://ana.github.io/compras/</code>), gere com <code>--base-href /compras/</code>, senão o app procura os arquivos no lugar errado.</p>
+
+<h3>Wasm: o modo mais rápido</h3>
+<p>Por padrão, o Dart vira <strong>JavaScript</strong>. Com <code>--wasm</code>, ele vira <strong>WebAssembly</strong>, um formato que o navegador roda mais perto da velocidade de um app nativo:</p>
+<pre class="file" data-file="terminal (ilustrativo)">$ flutter build web --release --wasm
+</pre>
+<p>Segundo a documentação do Flutter 3.47, o app e os pacotes precisam usar o <code>package:web</code> (e não o antigo <code>dart:html</code>), e o navegador do visitante precisa suportar o recurso de coleta de lixo do Wasm (WasmGC). Quando o navegador não suporta, o Flutter carrega a versão JavaScript no lugar.</p>
+
+<h3>Rodar na web durante o desenvolvimento</h3>
+<p>Para desenvolver, você não precisa gerar a pasta toda vez: <code>flutter run -d chrome</code> abre o app no Chrome com <em>hot reload</em> (veja <a href="flutter-run.html">flutter run</a>).</p>
+
+<div class="tryflutter" data-goal="src:Text\('Compras da Ana \(web\)'\)">
+<p class="try-task"><strong>Missão:</strong> o editor do guia roda o seu app num navegador, como o <code>flutter build web</code>. Troque o título para <code>Compras da Ana (web)</code> e rode: o mesmo código, sem mudar nada além do texto, vira página web.</p>
+<figure class="tela"><img src="assets/telas/build-ios-web-desktop-1.png" alt="Tela com o título 'Compras da Ana (web)' no topo e o texto 'Arroz, feijão e café' no meio" width="390" height="844" loading="lazy"><figcaption>O resultado esperado, fotografado num navegador (Flutter 3.47.7 compilado para web, modo debug).</figcaption></figure>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const AppCompras());
+
+class AppCompras extends StatelessWidget {
+  const AppCompras({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Compras da Ana')),
+        body: const Center(child: Text('Arroz, feijão e café')),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const AppCompras());
+
+class AppCompras extends StatelessWidget {
+  const AppCompras({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Compras da Ana (web)')),
+        body: const Center(child: Text('Arroz, feijão e café')),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>2. Desktop: Linux, Windows e Mac</h2>
+<p>O app de desktop é uma janela comum do sistema, como qualquer programa. O projeto do <code>flutter create</code> já traz as pastas <code>linux/</code>, <code>windows/</code> e <code>macos/</code> com o código nativo de cada uma.</p>
+
+<h3>Linux</h3>
+<p>No notebook da Ana, que é Linux:</p>
+<pre class="term">$ flutter build linux
+Building Linux application...
+✓ Built build/linux/x64/release/bundle/compras
+</pre>
+<p>Levou 31 segundos. O resultado é uma pasta, não um arquivo só:</p>
+<pre>build/linux/x64/release/bundle/
+├── compras     « o programa (rode com ./compras)
+├── data/       « os assets do app e o código Dart compilado
+└── lib/        « as bibliotecas do motor do Flutter
+</pre>
+<p>A pasta toda tem 24 MB, e é ela inteira que você entrega (num <code>.tar.gz</code>, por exemplo). Para compilar no Linux, o Flutter precisa de alguns pacotes do sistema (compilador C++, CMake, Ninja, GTK 3); o <code>flutter doctor</code> avisa se faltar algum.</p>
+
+<h3>Windows (ilustrativo)</h3>
+<p>Num PC com Windows e o <strong>Visual Studio</strong> (com a carga de trabalho "Desenvolvimento para desktop com C++"), o comando é <code>flutter build windows</code>, e o programa sai em <code>build\windows\x64\runner\Release\</code>: o <code>.exe</code> junto com DLLs e uma pasta <code>data</code>. Para distribuir, entregue a pasta <strong>inteira</strong>, não só o <code>.exe</code>. No Linux, a Ana tentou só para ver:</p>
+<pre class="term">$ flutter build windows
+"build windows" only supported on Windows hosts.
+</pre>
+<p>"<em>build windows</em> só é suportado em máquinas Windows."</p>
+
+<h3>macOS (ilustrativo)</h3>
+<p>Num Mac com Xcode, <code>flutter build macos</code> gera o <code>.app</code> em <code>build/macos/Build/Products/Release/</code>. A partir do Flutter 3.47, o mínimo é o <strong>macOS 12</strong>. Para distribuir fora da Mac App Store, a Apple exige que o app seja assinado e "notarizado" (verificado por ela).</p>
+
+<hr>
+
+<h2>3. iOS: o iPhone (ilustrativo)</h2>
+<p>Para o iPhone não tem atalho: é preciso um <strong>Mac</strong> com o <strong>Xcode</strong>. Mesmo com o melhor PC do mundo, um Linux ou Windows não gera o app de iPhone. No Linux da Ana:</p>
+<pre class="term">$ flutter build ios
+Could not find a subcommand named "ios" for "flutter build".
+
+Run 'flutter -h' (or 'flutter &lt;command&gt; -h') for available flutter commands and options.
+</pre>
+<p>"Não encontrei um subcomando chamado <em>ios</em> para <em>flutter build</em>." No Linux, o comando simplesmente não existe.</p>
+
+<p>No Mac, os passos, segundo a documentação oficial, são:</p>
+<ol class="passo">
+  <li>Instalar o Xcode (da App Store) e conferir com <code>flutter doctor</code> (veja <a href="flutter-doctor.html">flutter doctor</a>).</li>
+  <li>Ter uma conta de desenvolvedor da Apple. Para testar no <strong>seu</strong> iPhone, a conta gratuita basta; para publicar na App Store, é a paga (anual).</li>
+  <li>Abrir <code>ios/Runner.xcworkspace</code> no Xcode e escolher a equipe (<em>Team</em>) em <em>Signing &amp; Capabilities</em>: é a <strong>assinatura</strong>, que prova à Apple quem fez o app.</li>
+  <li>Testar no aparelho: <code>flutter run</code> com o iPhone ligado no cabo.</li>
+  <li>Gerar o pacote da loja: <code>flutter build ipa</code>, que cria o <code>.ipa</code> em <code>build/ios/ipa/</code>. O envio para a loja está na aula <a href="publicar.html">Publicando nas Lojas</a>.</li>
+</ol>
+<div class="note">
+<strong>Novidade do 3.47</strong>
+<p>O iOS mínimo passou a ser o <strong>iOS 15</strong>, e o Swift Package Manager vai substituindo o CocoaPods. Veja <a href="novidades.html">Novidades do Flutter</a>.</p>
+</div>
+
+<hr>
+
+<h2>4. Qual plataforma escolher primeiro</h2>
+<ul>
+  <li><strong>Android</strong>: o mais barato para começar (qualquer computador, taxa única na Play Store). É o foco deste guia.</li>
+  <li><strong>Web</strong>: ótimo para mostrar o app para alguém sem instalar nada. Só lembre que a primeira carga é mais pesada que a de um site comum.</li>
+  <li><strong>Desktop</strong>: para ferramentas de uso interno, na máquina que você já tem.</li>
+  <li><strong>iOS</strong>: só quando tiver acesso a um Mac (seu, emprestado ou alugado na nuvem).</li>
+</ul>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>Could not find a subcommand named "ios"</code></strong>
+<p>Você está num Linux ou num Windows. Não há o que configurar: o iOS (e o macOS) só são gerados num Mac. Use outro computador ou um serviço de compilação na nuvem com Mac.</p>
+</div>
+
+<div class="cenario">
+<strong><code>"build windows" only supported on Windows hosts.</code></strong>
+<p>A mesma ideia: só um Windows gera o app de Windows, só um Linux gera o de Linux.</p>
+</div>
+
+<div class="cenario">
+<strong>O site abre em branco</strong>
+<p>Dois motivos comuns: você abriu o <code>index.html</code> com dois cliques (sem servidor), ou o site está numa subpasta e você gerou sem <code>--base-href</code>. Abra o console do navegador (<kbd>F12</kbd>): os arquivos que não carregaram aparecem em vermelho. <strong>Como resolver:</strong> sirva a pasta com um servidor e gere com <code>flutter build web --base-href /nome-da-pasta/</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Um pacote não funciona na web ou no desktop</strong>
+<p>Nem todo pacote do pub.dev suporta todas as plataformas (um pacote de câmera pode não ter versão para Linux, por exemplo). Na página do pacote, as etiquetas <em>Android, iOS, Web, Linux, macOS, Windows</em> mostram onde ele funciona. Veja <a href="pacotes.html">Pacotes</a>.</p>
+</div>
+
+<hr>
+
+<h2>Referência</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>Onde roda</th><th>Saída</th></tr>
+<tr><td><code>flutter build web</code></td><td>Qualquer sistema</td><td><code>build/web/</code></td></tr>
+<tr><td><code>flutter build web --wasm</code></td><td>Qualquer sistema</td><td><code>build/web/</code> com WebAssembly</td></tr>
+<tr><td><code>flutter build web --base-href /pasta/</code></td><td>Qualquer sistema</td><td>Site para uma subpasta</td></tr>
+<tr><td><code>flutter build linux</code></td><td>Linux</td><td><code>build/linux/x64/release/bundle/</code></td></tr>
+<tr><td><code>flutter build windows</code></td><td>Windows</td><td><code>build\windows\x64\runner\Release\</code></td></tr>
+<tr><td><code>flutter build macos</code></td><td>Mac</td><td><code>build/macos/Build/Products/Release/</code></td></tr>
+<tr><td><code>flutter build ipa</code></td><td>Mac</td><td><code>build/ios/ipa/</code></td></tr>
+<tr><td><code>flutter build -h</code></td><td>Qualquer</td><td>Lista o que este computador consegue gerar</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. O comando da web</h3>
+<div class="ex-code">$ flutter build <input data-answer="web" aria-label="plataforma"></div>
+</div>
+
+<div class="exercise">
+<h3>2. A pasta</h3>
+<p>Depois do <code>flutter build web</code>, em que pasta ficam os arquivos do site?</p>
+<div class="ex-code"><input data-answer="build/web" aria-label="pasta"></div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. A Ana tem só um notebook com Linux. Quais destas plataformas ela consegue gerar?</p>
+<label><input type="radio" name="q3"> iOS e macOS</label>
+<label><input type="radio" name="q3"> Só Android</label>
+<label><input type="radio" name="q3"> Android, web e Linux</label>
+<label><input type="radio" name="q3"> Todas</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. Ela deu dois cliques no <code>build/web/index.html</code> e a tela ficou em branco. Por quê?</p>
+<label><input type="radio" name="q4"> A pasta precisa ser servida por um servidor web, não aberta do disco</label>
+<label><input type="radio" name="q4"> Faltou o <code>flutter doctor</code></label>
+<label><input type="radio" name="q4"> O app só roda no Chrome</label>
+<label><input type="radio" name="q4"> O Flutter não gera apps para web</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">5. Para distribuir o app de Windows, o que você entrega?</p>
+<label><input type="radio" name="q5"> Só o <code>.exe</code></label>
+<label><input type="radio" name="q5"> O <code>main.dart</code></label>
+<label><input type="radio" name="q5"> O <code>.apk</code></label>
+<label><input type="radio" name="q5"> A pasta <code>Release</code> inteira (o <code>.exe</code>, as DLLs e a pasta <code>data</code>)</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O código é um só; o empacotamento muda: <code>flutter build</code> + <code>apk</code>, <code>appbundle</code>, <code>web</code>, <code>linux</code>, <code>windows</code>, <code>macos</code>, <code>ipa</code>.</li>
+  <li>Cada sistema gera o seu: iOS e macOS só no Mac (com Xcode), Windows só no Windows, Linux só no Linux. Android e web, em qualquer um.</li>
+  <li><code>flutter build -h</code> mostra o que o seu computador consegue gerar.</li>
+  <li>A web sai na pasta <code>build/web</code>, que precisa de um servidor; <code>--base-href</code> para subpastas; <code>--wasm</code> para WebAssembly.</li>
+  <li>iOS exige conta Apple e assinatura no Xcode.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
