@@ -1,0 +1,566 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter TextStyle — tamanho, cor, negrito e mais | Guia Flutter</title>
+<meta name="description" content="TextStyle no Flutter 3: fontSize, fontWeight, color, fontStyle, letterSpacing, height, decoration (sublinhado e riscado), os estilos prontos do tema (Theme.of(context).textTheme) com copyWith, e os erros reais de cor sem const e de FontWeight escrito errado, com fotos da tela e missões no editor.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">TextStyle</span>: estilos de texto</h1>
+
+<p class="intro">Na aula <a href="text.html">Text</a>, todo texto saiu igual: mesmo tamanho, mesma cor. Mas o nome de uma receita precisa ser grande, o preço precisa chamar atenção, e o preço antigo de uma promoção aparece riscado. Quem decide a aparência das letras é o <code>TextStyle</code>, que vai no parâmetro <code>style</code> do <code>Text</code>.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A mudar o tamanho (<code>fontSize</code>), o peso (<code>fontWeight</code>) e a cor (<code>color</code>).</li>
+  <li>Itálico, espaçamento entre letras e entre linhas.</li>
+  <li>Sublinhado e riscado (<code>decoration</code>).</li>
+  <li>A usar os estilos prontos do tema (<code>Theme.of(context).textTheme</code>) e a ajustar um deles com <code>copyWith</code>.</li>
+  <li>Os erros reais: uma cor que não pode ser <code>const</code> e um <code>FontWeight</code> escrito errado.</li>
+</ul>
+</div>
+
+<p>Todos os apps desta aula foram compilados com o Flutter 3.47.7 do laboratório e fotografados numa tela do tamanho de um celular.</p>
+
+<hr>
+
+<h2>A ideia: a ficha de formatação</h2>
+<p>Num editor de textos, você seleciona uma palavra e escolhe: tamanho 20, negrito, vermelho. O <code>TextStyle</code> é essa ficha de formatação, escrita em código. O <code>Text</code> carrega o <strong>conteúdo</strong>; o <code>TextStyle</code> carrega a <strong>aparência</strong>. Tudo o que você não preencher na ficha continua com o valor do tema.</p>
+
+<hr>
+
+<h2>1. Tamanho, peso e cor</h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Column(
+          children: [
+            Text('Bolo de cenoura'),
+            Text(
+              'Bolo de cenoura',
+              style: TextStyle(fontSize: 28),
+            ),
+            Text(
+              'Bolo de cenoura',
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              'Bolo de cenoura',
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Colors.deepOrange,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>style:</dt><dd>O parâmetro do <code>Text</code> que recebe o estilo.</dd>
+  <dt>TextStyle( ... )</dt><dd>A ficha de formatação. Todos os parâmetros são opcionais.</dd>
+  <dt>fontSize: 28</dt><dd>O tamanho da letra, em <strong>pontos lógicos</strong> (a medida do Flutter, que é a mesma em telas de densidades diferentes). O padrão do corpo do texto no Material 3 é 14.</dd>
+  <dt>fontWeight: FontWeight.bold</dt><dd>O peso (a "grossura") da letra. <code>FontWeight.bold</code> é o negrito; também existem <code>FontWeight.w100</code> (bem fininha) até <code>FontWeight.w900</code> (bem grossa), com <code>.normal</code> = <code>w400</code> e <code>.bold</code> = <code>w700</code>.</dd>
+  <dt>color: Colors.deepOrange</dt><dd>A cor da letra. <code>Colors</code> traz as cores do Material com nome (<code>Colors.red</code>, <code>Colors.teal</code>...).</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/text-style-1.png" alt="Quatro linhas 'Bolo de cenoura' embaixo da barra: a primeira pequena e centralizada; a segunda bem maior; a terceira grande e em negrito; a quarta grande, em negrito e laranja-avermelhada" width="390" height="844" loading="lazy"><figcaption>De cima para baixo: o padrão, <code>fontSize: 28</code>, mais <code>bold</code>, mais <code>color</code>.</figcaption></figure>
+
+<div class="tryflutter" data-goal="src:fontSize:\s*32;;src:color:\s*Colors\.teal">
+<p class="try-task"><strong>Missão:</strong> deixe o nome da receita com tamanho <code>32</code> e na cor <code>Colors.teal</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Center(
+          child: Text(
+            'Pão de queijo',
+            style: TextStyle(fontSize: 14),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Center(
+          child: Text(
+            'Pão de queijo',
+            style: TextStyle(fontSize: 32, color: Colors.teal),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>2. Itálico, espaçamento e altura da linha</h2>
+
+<pre class="file" data-file="lib/main.dart">        body: const Column(
+          children: [
+            Text(
+              'Receita da vó Lurdes',
+              style: TextStyle(fontSize: 20, fontStyle: FontStyle.italic),
+            ),
+            Text(
+              'SOBREMESAS',
+              style: TextStyle(fontSize: 20, letterSpacing: 6),
+            ),
+            Text(
+              'Bata tudo no liquidificador e leve ao forno. '
+              'Espere esfriar antes de cobrir.',
+              style: TextStyle(fontSize: 16, height: 2),
+            ),
+          ],
+        ),
+</pre>
+
+<dl class="anatomy">
+  <dt>fontStyle: FontStyle.italic</dt><dd>Itálico, a letra inclinada. O contrário é <code>FontStyle.normal</code>.</dd>
+  <dt>letterSpacing: 6</dt><dd>Espaço extra entre as letras, em pontos. Fica bonito em títulos curtos em maiúsculas. Valores negativos apertam as letras.</dd>
+  <dt>height: 2</dt><dd>A altura da linha, como <strong>múltiplo</strong> do tamanho da letra: <code>2</code> = linhas com o dobro da altura da letra, um texto mais "arejado".</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/text-style-2.png" alt="Três textos: 'Receita da vó Lurdes' em itálico, 'S O B R E M E S A S' com as letras bem afastadas, e um parágrafo de duas linhas com bastante espaço entre elas" width="390" height="844" loading="lazy"><figcaption>Itálico, <code>letterSpacing: 6</code> e <code>height: 2</code>.</figcaption></figure>
+
+<hr>
+
+<h2>3. Sublinhado e riscado: <code>decoration</code></h2>
+<p>A lojinha da Ana está em promoção: o preço antigo aparece riscado, e o novo, em destaque.</p>
+
+<pre class="file" data-file="lib/main.dart">        body: const Column(
+          children: [
+            Text(
+              'R\$ 45,00',
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.grey,
+                decoration: TextDecoration.lineThrough,
+              ),
+            ),
+            Text(
+              'R\$ 39,90',
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Colors.green,
+              ),
+            ),
+            Text(
+              'Ver condições',
+              style: TextStyle(
+                color: Colors.blue,
+                decoration: TextDecoration.underline,
+              ),
+            ),
+          ],
+        ),
+</pre>
+
+<dl class="anatomy">
+  <dt>'R\$ 45,00'</dt><dd>O <code>$</code> é especial nas strings do Dart (é a interpolação, aula <a href="text.html">Text</a>). Para escrever um cifrão de verdade, use <code>\$</code>.</dd>
+  <dt>decoration: TextDecoration.lineThrough</dt><dd>Uma linha <strong>atravessando</strong> o texto: o riscado.</dd>
+  <dt>decoration: TextDecoration.underline</dt><dd>Uma linha <strong>embaixo</strong> do texto: o sublinhado. Há ainda <code>TextDecoration.overline</code> (linha em cima).</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/text-style-3.png" alt="Três linhas: 'R$ 45,00' em cinza com um risco atravessado, 'R$ 39,90' grande, verde e em negrito, e 'Ver condições' em azul sublinhado" width="390" height="844" loading="lazy"><figcaption>Riscado, destaque e sublinhado: o cartão de promoção da lojinha.</figcaption></figure>
+
+<div class="tryflutter" data-goal="src:TextDecoration\.lineThrough;;src:FontWeight\.bold">
+<p class="try-task"><strong>Missão:</strong> risque o preço antigo (<code>TextDecoration.lineThrough</code>) e deixe o preço novo em negrito.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const LojinhaApp());
+}
+
+class LojinhaApp extends StatelessWidget {
+  const LojinhaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lojinha da Ana')),
+        body: const Column(
+          children: [
+            Text('De R\$ 80,00', style: TextStyle(color: Colors.grey)),
+            Text('Por R\$ 59,90', style: TextStyle(fontSize: 24)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const LojinhaApp());
+}
+
+class LojinhaApp extends StatelessWidget {
+  const LojinhaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lojinha da Ana')),
+        body: const Column(
+          children: [
+            Text(
+              'De R\$ 80,00',
+              style: TextStyle(
+                color: Colors.grey,
+                decoration: TextDecoration.lineThrough,
+              ),
+            ),
+            Text(
+              'Por R\$ 59,90',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>4. Os estilos prontos do tema</h2>
+<p>Escrever <code>fontSize: 28, fontWeight: FontWeight.bold</code> em cada título do app é repetitivo, e cada tela acaba com um tamanho diferente. O Material 3 já traz uma escala de estilos prontos, com nomes: <strong>display</strong> (enorme), <strong>headline</strong>, <strong>title</strong>, <strong>body</strong> (o texto comum) e <strong>label</strong> (botões e rótulos), cada um em <strong>Large</strong>, <strong>Medium</strong> e <strong>Small</strong>. Você os pega do tema com <code>Theme.of(context).textTheme</code>:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const TelaReceita(),
+      ),
+    );
+  }
+}
+
+class TelaReceita extends StatelessWidget {
+  const TelaReceita({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final estilos = Theme.of(context).textTheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Bolo de cenoura', style: estilos.headlineMedium),
+        Text('Sobremesas', style: estilos.titleMedium),
+        Text('Rende 8 porções. Pronto em 50 minutos.', style: estilos.bodyMedium),
+        Text(
+          'Receita favorita',
+          style: estilos.labelLarge?.copyWith(color: Colors.deepOrange),
+        ),
+      ],
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>Theme.of(context)</dt><dd>"O tema deste lugar da árvore": pega o tema que o <code>MaterialApp</code> lá de cima definiu. Precisa do <code>context</code>, e é por isso que a tela virou um widget separado (<code>TelaReceita</code>), cujo <code>context</code> fica <strong>abaixo</strong> do <code>MaterialApp</code>.</dd>
+  <dt>.textTheme</dt><dd>A escala de estilos de texto do tema.</dd>
+  <dt>estilos.headlineMedium</dt><dd>O estilo "manchete média", bom para o nome de uma tela ou de um item importante.</dd>
+  <dt>?.copyWith(color: ...)</dt><dd><code>copyWith</code> = "uma cópia com": copia o estilo pronto e troca só o que você disser (aqui, a cor). O <code>?.</code> está ali porque, para o Dart, os estilos do tema podem ser <code>null</code>.</dd>
+  <dt>crossAxisAlignment: CrossAxisAlignment.start</dt><dd>Alinha os textos da coluna à esquerda (aula <a href="alinhamento.html">Alinhamento</a>).</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/text-style-4.png" alt="Quatro textos alinhados à esquerda: 'Bolo de cenoura' grande, 'Sobremesas' médio, 'Rende 8 porções. Pronto em 50 minutos.' pequeno e 'Receita favorita' pequeno em laranja" width="390" height="844" loading="lazy"><figcaption><code>headlineMedium</code>, <code>titleMedium</code>, <code>bodyMedium</code> e <code>labelLarge</code> com <code>copyWith</code>.</figcaption></figure>
+
+<hr>
+
+<h2>Formas diferentes: estilo na mão, estilo do tema</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Forma</th><th>Quando usar</th></tr>
+<tr><td><code>TextStyle(fontSize: 24, ...)</code></td><td>Um detalhe único (o preço riscado, uma etiqueta colorida). Rápido, mas não acompanha o tema.</td></tr>
+<tr><td><code>Theme.of(context).textTheme.titleLarge</code></td><td><strong>O recomendado</strong> para títulos e textos comuns: o app inteiro fica coerente, e muda junto se você mudar o tema (ou o tema escuro).</td></tr>
+<tr><td><code>...titleLarge?.copyWith(color: ...)</code></td><td>O estilo do tema com um ajuste pequeno.</td></tr>
+<tr><td><code>ThemeData(textTheme: ...)</code></td><td>Para mudar a escala do app inteiro (aula <a href="temas.html">Temas</a>); fontes de fora estão em <a href="fontes.html">Fontes Personalizadas</a>.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<p>Os erros abaixo são de <strong>compilação</strong>: o compilador do <code>flutter run</code> recusa o código e o app não abre.</p>
+
+<div class="cenario">
+<strong>Uma cor que não é <code>const</code> dentro de um <code>Text</code> <code>const</code></strong>
+<p>A Ana quis um laranja mais escuro, o <code>shade700</code> (o arquivo é o da seção 1; o <code>Text</code> está na linha 15):</p>
+<pre class="file" data-file="lib/main.dart">        body: const Text(
+          'Bolo de cenoura',
+          style: TextStyle(color: Colors.orange.shade700),
+        ),
+</pre>
+<pre class="term">lib/main.dart:17:42: Error: Not a constant expression.
+          style: TextStyle(color: Colors.orange.shade700),
+                                         ^^^^^^
+lib/main.dart:15:21: Error: Constant evaluation error:
+        body: const Text(
+                    ^
+lib/main.dart:17:49: Context: The property 'shade700' can't be accessed on 'MaterialColor {}' in a constant expression.
+ - 'MaterialColor' is from 'package:flutter/src/material/colors.dart'.   « caminho do arquivo cortado
+          style: TextStyle(color: Colors.orange.shade700),
+                                                ^
+</pre>
+<dl class="anatomy">
+  <dt>Not a constant expression.</dt><dd>"Não é uma expressão constante": o <code>const</code> do <code>Text</code> exige que tudo dentro dele seja conhecido antes de o app rodar.</dd>
+  <dt>Constant evaluation error: (linha 15)</dt><dd>Aponta o <code>const</code> que exigiu isso: o do <code>Text</code>.</dd>
+  <dt>The property 'shade700' can't be accessed on 'MaterialColor {}' in a constant expression.</dt><dd>A explicação: "não dá para ler a propriedade <code>shade700</code> de uma <code>MaterialColor</code> numa expressão constante". <code>Colors.orange</code> é <code>const</code>; o <code>.shade700</code> é calculado na hora.</dd>
+</dl>
+<p><strong>Como consertar:</strong> tire o <code>const</code> de antes do <code>Text</code> (e de qualquer widget acima dele que o contenha). Ou use uma cor <code>const</code>, como <code>Colors.deepOrange</code> ou <code>Color(0xFFF57C00)</code> (o código hexadecimal da cor).</p>
+</div>
+
+<div class="cenario">
+<strong><code>bold</code> sem o <code>FontWeight.</code></strong>
+<pre class="file" data-file="lib/main.dart">        body: const Text(
+          'Bolo de cenoura',
+          style: TextStyle(fontWeight: bold),
+        ),
+</pre>
+<pre class="term">lib/main.dart:17:40: Error: Not a constant expression.
+          style: TextStyle(fontWeight: bold),
+                                       ^^^^
+</pre>
+<p>A mensagem engana: ela fala de "expressão constante", mas o problema é que <strong>não existe</strong> nada chamado <code>bold</code> sozinho. O Dart procurou esse nome, não achou, e, como ele está dentro de um <code>const</code>, reclamou do <code>const</code>. <strong>Como consertar:</strong> <code>FontWeight.bold</code>. O mesmo vale para <code>FontStyle.italic</code>, <code>TextDecoration.underline</code> e <code>TextAlign.center</code>: o valor sempre vem com o nome da classe na frente.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Parâmetro do <code>TextStyle</code></th><th>O que faz</th><th>Exemplo</th></tr>
+<tr><td><code>fontSize</code></td><td>Tamanho da letra</td><td><code>fontSize: 24</code></td></tr>
+<tr><td><code>fontWeight</code></td><td>Peso (negrito)</td><td><code>FontWeight.bold</code>, <code>FontWeight.w300</code></td></tr>
+<tr><td><code>color</code></td><td>Cor da letra</td><td><code>Colors.deepOrange</code></td></tr>
+<tr><td><code>fontStyle</code></td><td>Itálico</td><td><code>FontStyle.italic</code></td></tr>
+<tr><td><code>letterSpacing</code></td><td>Espaço entre letras</td><td><code>letterSpacing: 2</code></td></tr>
+<tr><td><code>height</code></td><td>Altura da linha (múltiplo do tamanho)</td><td><code>height: 1.5</code></td></tr>
+<tr><td><code>decoration</code></td><td>Sublinhado, riscado</td><td><code>TextDecoration.underline</code>, <code>.lineThrough</code></td></tr>
+<tr><td><code>backgroundColor</code></td><td>Cor de fundo atrás das letras</td><td><code>backgroundColor: Colors.yellow</code></td></tr>
+<tr><td><code>fontFamily</code></td><td>A fonte (aula <a href="fontes.html">Fontes</a>)</td><td><code>fontFamily: 'Roboto'</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Negrito</h3>
+<p>Complete para deixar o texto em negrito:</p>
+<div class="ex-code">TextStyle(fontWeight: FontWeight.<input data-answer="bold" aria-label="peso">)</div>
+</div>
+
+<div class="exercise">
+<h3>2. Riscado</h3>
+<p>Complete para riscar o preço antigo:</p>
+<div class="ex-code">TextStyle(decoration: TextDecoration.<input data-answer="lineThrough" aria-label="decoração">)</div>
+</div>
+
+<div class="exercise">
+<h3>3. O parâmetro do Text</h3>
+<p>Em qual parâmetro do <code>Text</code> vai o <code>TextStyle</code>?</p>
+<div class="ex-code">Text('Oi', <input data-answer="style" aria-label="parâmetro">: TextStyle(fontSize: 20))</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. O que faz <code>estilos.titleLarge?.copyWith(color: Colors.red)</code>?</p>
+<label><input type="radio" name="q4"> Muda a cor de todos os títulos do app para vermelho</label>
+<label><input type="radio" name="q4"> Cria um estilo vermelho do zero, sem nada do tema</label>
+<label><input type="radio" name="q4"> Copia o estilo <code>titleLarge</code> do tema e troca só a cor</label>
+<label><input type="radio" name="q4"> Dá erro, porque <code>titleLarge</code> não aceita cor</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">5. Para escrever <code>R$ 10</code> num <code>Text</code>, como fica a string?</p>
+<label><input type="radio" name="q5"> <code>'R$ 10'</code></label>
+<label><input type="radio" name="q5"> <code>'R\$ 10'</code></label>
+<label><input type="radio" name="q5"> <code>'R$$ 10'</code></label>
+<label><input type="radio" name="q5"> <code>'R{$} 10'</code></label>
+</div>
+
+<h3>Missão final: o cartão de produto</h3>
+
+<div class="tryflutter" data-goal="src:headlineSmall;;src:TextDecoration\.lineThrough;;src:FontStyle\.italic">
+<p class="try-task"><strong>Missão:</strong> monte o cartão: o nome do produto com o estilo do tema <code>headlineSmall</code>, o preço antigo riscado e a frase "Últimas unidades" em itálico.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const LojinhaApp());
+}
+
+class LojinhaApp extends StatelessWidget {
+  const LojinhaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lojinha da Ana')),
+        body: const Produto(),
+      ),
+    );
+  }
+}
+
+class Produto extends StatelessWidget {
+  const Produto({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final estilos = Theme.of(context).textTheme;
+
+    return Column(
+      children: [
+        Text('Caneca de cerâmica', style: estilos.bodyMedium),
+        const Text('R\$ 45,00'),
+        const Text('R\$ 32,00'),
+        const Text('Últimas unidades'),
+      ],
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const LojinhaApp());
+}
+
+class LojinhaApp extends StatelessWidget {
+  const LojinhaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lojinha da Ana')),
+        body: const Produto(),
+      ),
+    );
+  }
+}
+
+class Produto extends StatelessWidget {
+  const Produto({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final estilos = Theme.of(context).textTheme;
+
+    return Column(
+      children: [
+        Text('Caneca de cerâmica', style: estilos.headlineSmall),
+        const Text(
+          'R\$ 45,00',
+          style: TextStyle(decoration: TextDecoration.lineThrough),
+        ),
+        const Text('R\$ 32,00'),
+        const Text(
+          'Últimas unidades',
+          style: TextStyle(fontStyle: FontStyle.italic),
+        ),
+      ],
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O <code>TextStyle</code> vai no <code>style</code> do <code>Text</code> e define a aparência: <code>fontSize</code>, <code>fontWeight</code>, <code>color</code>, <code>fontStyle</code>, <code>letterSpacing</code>, <code>height</code>, <code>decoration</code>.</li>
+  <li>O que você não preencher continua com o valor do tema.</li>
+  <li>Prefira os estilos do tema: <code>Theme.of(context).textTheme.titleLarge</code>, e ajuste com <code>copyWith</code>.</li>
+  <li>Num <code>Text</code> <code>const</code>, só cabem cores <code>const</code>: <code>Colors.orange</code> sim, <code>Colors.orange.shade700</code> não.</li>
+  <li>Cifrão dentro de string: <code>\$</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
