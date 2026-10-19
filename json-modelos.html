@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter JSON e Classes de Modelo — fromJson e toJson | Guia Flutter</title>
+<meta name="description" content="Como transformar o JSON que vem de um servidor em objetos do Dart no Flutter: jsonDecode, Map&lt;String, dynamic&gt;, uma classe de modelo Cliente com factory fromJson e toJson, objetos aninhados, a forma com padrões do Dart 3 (switch), geradores de código, e os erros reais: chave errada, tipo errado e JSON inválido.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">JSON e Classes de Modelo</span></h1>
+
+<p class="intro">Na aula <a href="http.html">http</a>, o app da lojinha recebeu os clientes do servidor e pegou o nome de cada um com <code>cliente['name']</code>. Funciona, mas é frágil: um erro de digitação na chave (<code>'nmae'</code>) só aparece com o app rodando, o editor não sugere nada e cada tela precisa lembrar o formato do JSON. O jeito profissional é transformar o JSON, logo que ele chega, numa <strong>classe de modelo</strong>: uma classe <code>Cliente</code> com campos de verdade (<code>nome</code>, <code>email</code>, <code>cidade</code>), que o resto do app usa sem nunca mais ver um mapa.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é JSON e como o <code>jsonDecode</code> o transforma em <code>Map</code> e <code>List</code> do Dart.</li>
+  <li>Como escrever uma classe de modelo com o construtor <code>factory Cliente.fromJson</code> e o método <code>toJson</code>.</li>
+  <li>Como ler objetos dentro de objetos (o <code>address</code> com a <code>city</code>).</li>
+  <li>Outra forma: validar o JSON com os padrões do Dart 3 (<code>switch</code>).</li>
+  <li>Quando vale usar um gerador de código (<code>json_serializable</code>).</li>
+  <li>Os erros reais: a chave errada, o tipo errado e o JSON mal escrito.</li>
+</ul>
+</div>
+
+<p>Os exemplos rodaram no laboratório do guia (<span class="versao">Flutter 3.47</span>). Para a aula não depender da internet, o JSON está escrito dentro do próprio código, numa constante: é exatamente o texto que o <code>resposta.body</code> traria, no mesmo formato do JSONPlaceholder da aula anterior.</p>
+
+<hr>
+
+<h2>A ideia: a ficha de cadastro</h2>
+<p>Quando um cliente novo chega na lojinha, a Ana não anota os dados num papel solto ("Ana, ana@…, Recife"). Ela preenche uma <strong>ficha</strong> com campos impressos: <em>Nome</em>, <em>E-mail</em>, <em>Cidade</em>. Com a ficha, ninguém esquece um campo, ninguém escreve a cidade no lugar do e-mail, e qualquer funcionário sabe onde olhar.</p>
+<p>O JSON que vem do servidor é o papel solto: um texto. A <strong>classe de modelo</strong> é a ficha. O <code>fromJson</code> é a pessoa que <strong>passa o papel a limpo</strong> para a ficha (conferindo cada campo), e o <code>toJson</code> faz o caminho de volta, quando o app precisa mandar a ficha para o servidor.</p>
+
+<h3>Revisão rápida: o JSON</h3>
+<p>JSON (<em>JavaScript Object Notation</em>) é o formato de texto mais usado para trocar dados na internet. Ele tem objetos entre <code>{ }</code> (pares <code>"chave": valor</code>), listas entre <code>[ ]</code>, textos <strong>sempre com aspas duplas</strong>, números, <code>true</code>/<code>false</code> e <code>null</code>. O <code>jsonDecode</code> (de <code>dart:convert</code>) faz a tradução:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>No JSON</th><th>No Dart, depois do <code>jsonDecode</code></th></tr>
+<tr><td><code>{"id": 1, "name": "Ana"}</code></td><td><code>Map&lt;String, dynamic&gt;</code></td></tr>
+<tr><td><code>[ … ]</code></td><td><code>List&lt;dynamic&gt;</code></td></tr>
+<tr><td><code>"texto"</code></td><td><code>String</code></td></tr>
+<tr><td><code>1</code> / <code>1.5</code></td><td><code>int</code> / <code>double</code></td></tr>
+<tr><td><code>true</code>, <code>null</code></td><td><code>bool</code>, <code>null</code></td></tr>
+</table>
+</div>
+<p>O <code>dynamic</code> quer dizer "pode ser qualquer coisa": o Dart só descobre o tipo de verdade com o app rodando. É por isso que vale passar tudo para uma classe com tipos firmes o quanto antes.</p>
+
+<hr>
+
+<h2>1. A classe de modelo <code>Cliente</code></h2>
+
+<pre class="file" data-file="lib/main.dart">import 'dart:convert';
+
+import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+// O texto que o servidor mandaria (o mesmo formato do JSONPlaceholder).
+const respostaDoServidor = '''
+[
+  {"id": 1, "name": "Ana Souza", "email": "ana@lojinha.com",
+   "address": {"city": "Recife"}},
+  {"id": 2, "name": "Bruno Lima", "email": "bruno@lojinha.com",
+   "address": {"city": "Natal"}},
+  {"id": 3, "name": "Carla Dias", "email": "carla@lojinha.com",
+   "address": {"city": "Belém"}}
+]
+''';
+
+class Cliente {
+  final int id;
+  final String nome;
+  final String email;
+  final String cidade;
+
+  const Cliente({
+    required this.id,
+    required this.nome,
+    required this.email,
+    required this.cidade,
+  });
+
+  factory Cliente.fromJson(Map&lt;String, dynamic&gt; json) {
+    return Cliente(
+      id: json['id'] as int,
+      nome: json['name'] as String,
+      email: json['email'] as String,
+      cidade: json['address']['city'] as String,
+    );
+  }
+
+  Map&lt;String, dynamic&gt; toJson() =&gt; {
+        'id': id,
+        'name': nome,
+        'email': email,
+        'address': {'city': cidade},
+      };
+}
+
+List&lt;Cliente&gt; lerClientes(String texto) {
+  final lista = jsonDecode(texto) as List&lt;dynamic&gt;;
+  return [
+    for (final item in lista) Cliente.fromJson(item as Map&lt;String, dynamic&gt;),
+  ];
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final clientes = lerClientes(respostaDoServidor);
+    print(jsonEncode(clientes.first.toJson()));
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Clientes da Lojinha')),
+        body: ListView(
+          children: [
+            for (final c in clientes)
+              ListTile(
+                leading: CircleAvatar(child: Text('${c.id}')),
+                title: Text(c.nome),
+                subtitle: Text('${c.email} · ${c.cidade}'),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>const respostaDoServidor = '''…'''</dt><dd>O JSON de exemplo, num texto de várias linhas (as três aspas do Dart). Num app de verdade, seria o <code>resposta.body</code> do <a href="http.html">http</a>.</dd>
+  <dt>class Cliente { final int id; final String nome; … }</dt><dd>A ficha. Campos <code>final</code> (não mudam depois de criados) e com os <strong>nossos</strong> nomes, em português: o JSON diz <code>name</code>, o app diz <code>nome</code>. A tradução acontece num lugar só.</dd>
+  <dt>factory Cliente.fromJson(Map&lt;String, dynamic&gt; json)</dt><dd>Um <strong>construtor com nome</strong> (<code>fromJson</code>, "a partir do JSON"). O <code>factory</code> permite que o construtor faça contas antes de criar o objeto (aqui, ler o mapa) e devolva o <code>Cliente</code> com <code>return</code>. Esse nome, <code>fromJson</code>, é uma convenção da comunidade Dart: qualquer programador reconhece.</dd>
+  <dt>id: json['id'] as int</dt><dd>Pega o valor da chave <code>'id'</code> e <strong>confere</strong> que é um <code>int</code> (o <code>as</code>). Se não for, o app quebra ali mesmo, com uma mensagem clara (veja <a href="#errado">Quando dá errado</a>), e não três telas depois.</dd>
+  <dt>cidade: json['address']['city'] as String</dt><dd>Objeto dentro de objeto: o <code>address</code> é outro mapa, e a <code>city</code> está dentro dele. A ficha da Ana não precisa do endereço inteiro: só guarda a cidade.</dd>
+  <dt>Map&lt;String, dynamic&gt; toJson()</dt><dd>O caminho de volta: monta um mapa com as chaves que o servidor entende. O <code>jsonEncode</code> transforma esse mapa em texto JSON.</dd>
+  <dt>List&lt;Cliente&gt; lerClientes(String texto)</dt><dd>Decodifica o texto (uma lista), e passa cada item pelo <code>Cliente.fromJson</code>. O <code>item as Map&lt;String, dynamic&gt;</code> diz ao Dart que cada item da lista é um objeto JSON.</dd>
+  <dt>c.nome, c.email, c.cidade</dt><dd>Na tela, nada de mapas: campos com nome e tipo. O editor sugere <code>c.</code>+<kbd>Tab</kbd>, e um erro de digitação (<code>c.nmoe</code>) nem compila.</dd>
+  <dt>print(jsonEncode(clientes.first.toJson()))</dt><dd>Só para conferir o <code>toJson</code>: mostra o primeiro cliente de volta em JSON, no console.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/json-modelos-1.png" alt="App Clientes da Lojinha com três clientes, cada um com um círculo lilás com o número: 1 Ana Souza, ana@lojinha.com · Recife; 2 Bruno Lima, bruno@lojinha.com · Natal; 3 Carla Dias, carla@lojinha.com · Belém" width="390" height="844" loading="lazy"><figcaption>A lista vinda do JSON, já como objetos <code>Cliente</code>.</figcaption></figure>
+
+<p>E o console mostrou o <code>toJson</code> do primeiro cliente:</p>
+<pre class="term">{"id":1,"name":"Ana Souza","email":"ana@lojinha.com","address":{"city":"Recife"}}
+</pre>
+
+<div class="tryflutter" data-goal="src:Davi Rocha" data-foto="assets/telas/json-modelos-7.png" data-altura="600">
+<p class="try-task"><strong>Missão:</strong> um cliente novo se cadastrou. Acrescente no JSON um quarto objeto: <code>{"id": 4, "name": "Davi Rocha", "email": "davi@lojinha.com", "address": {"city": "Manaus"}}</code>. Cuidado com a <strong>vírgula</strong> entre o terceiro e o quarto objeto, e com as aspas duplas.</p>
+<pre class="script" data-file="main.dart">import 'dart:convert';
+
+import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+// O texto que o servidor mandaria (o mesmo formato do JSONPlaceholder).
+const respostaDoServidor = '''
+[
+  {"id": 1, "name": "Ana Souza", "email": "ana@lojinha.com",
+   "address": {"city": "Recife"}},
+  {"id": 2, "name": "Bruno Lima", "email": "bruno@lojinha.com",
+   "address": {"city": "Natal"}},
+  {"id": 3, "name": "Carla Dias", "email": "carla@lojinha.com",
+   "address": {"city": "Belém"}}
+]
+''';
+
+class Cliente {
+  final int id;
+  final String nome;
+  final String email;
+  final String cidade;
+
+  const Cliente({
+    required this.id,
+    required this.nome,
+    required this.email,
+    required this.cidade,
+  });
+
+  factory Cliente.fromJson(Map&lt;String, dynamic&gt; json) {
+    return Cliente(
+      id: json['id'] as int,
+      nome: json['name'] as String,
+      email: json['email'] as String,
+      cidade: json['address']['city'] as String,
+    );
+  }
+
+  Map&lt;String, dynamic&gt; toJson() =&gt; {
+        'id': id,
+        'name': nome,
+        'email': email,
+        'address': {'city': cidade},
+      };
+}
+
+List&lt;Cliente&gt; lerClientes(String texto) {
+  final lista = jsonDecode(texto) as List&lt;dynamic&gt;;
+  return [
+    for (final item in lista) Cliente.fromJson(item as Map&lt;String, dynamic&gt;),
+  ];
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final clientes = lerClientes(respostaDoServidor);
+    print(jsonEncode(clientes.first.toJson()));
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Clientes da Lojinha')),
+        body: ListView(
+          children: [
+            for (final c in clientes)
+              ListTile(
+                leading: CircleAvatar(child: Text('${c.id}')),
+                title: Text(c.nome),
+                subtitle: Text('${c.email} · ${c.cidade}'),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'dart:convert';
+
+import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+// O texto que o servidor mandaria (o mesmo formato do JSONPlaceholder).
+const respostaDoServidor = '''
+[
+  {"id": 1, "name": "Ana Souza", "email": "ana@lojinha.com",
+   "address": {"city": "Recife"}},
+  {"id": 2, "name": "Bruno Lima", "email": "bruno@lojinha.com",
+   "address": {"city": "Natal"}},
+  {"id": 3, "name": "Carla Dias", "email": "carla@lojinha.com",
+   "address": {"city": "Belém"}},
+  {"id": 4, "name": "Davi Rocha", "email": "davi@lojinha.com",
+   "address": {"city": "Manaus"}}
+]
+''';
+
+class Cliente {
+  final int id;
+  final String nome;
+  final String email;
+  final String cidade;
+
+  const Cliente({
+    required this.id,
+    required this.nome,
+    required this.email,
+    required this.cidade,
+  });
+
+  factory Cliente.fromJson(Map&lt;String, dynamic&gt; json) {
+    return Cliente(
+      id: json['id'] as int,
+      nome: json['name'] as String,
+      email: json['email'] as String,
+      cidade: json['address']['city'] as String,
+    );
+  }
+
+  Map&lt;String, dynamic&gt; toJson() =&gt; {
+        'id': id,
+        'name': nome,
+        'email': email,
+        'address': {'city': cidade},
+      };
+}
+
+List&lt;Cliente&gt; lerClientes(String texto) {
+  final lista = jsonDecode(texto) as List&lt;dynamic&gt;;
+  return [
+    for (final item in lista) Cliente.fromJson(item as Map&lt;String, dynamic&gt;),
+  ];
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final clientes = lerClientes(respostaDoServidor);
+    print(jsonEncode(clientes.first.toJson()));
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Clientes da Lojinha')),
+        body: ListView(
+          children: [
+            for (final c in clientes)
+              ListTile(
+                leading: CircleAvatar(child: Text('${c.id}')),
+                title: Text(c.nome),
+                subtitle: Text('${c.email} · ${c.cidade}'),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>2. Outra forma: padrões do Dart 3</h2>
+<p>O <code>fromJson</code> com <code>as</code> quebra no primeiro campo errado. Com os <strong>padrões</strong> (<em>patterns</em>) do Dart 3, dá para conferir o formato <strong>inteiro</strong> de uma vez e decidir o que fazer se não bater. É a forma que a documentação do Dart mostra para "validar JSON que chega":</p>
+
+<pre class="file" data-file="trecho de lib/main.dart (o resto é igual)">  factory Cliente.fromJson(Map&lt;String, dynamic&gt; json) {
+    return switch (json) {
+      {
+        'id': int id,
+        'name': String nome,
+        'email': String email,
+        'address': {'city': String cidade},
+      } =&gt;
+        Cliente(id: id, nome: nome, email: email, cidade: cidade),
+      _ =&gt; throw FormatException('Cliente inválido: $json'),
+    };
+  }
+</pre>
+
+<dl class="anatomy">
+  <dt>switch (json) { {…} =&gt; …, _ =&gt; … }</dt><dd>Uma <strong>expressão switch</strong>: compara o <code>json</code> com cada padrão, de cima para baixo, e devolve o valor do primeiro que combinar.</dd>
+  <dt>{'id': int id, 'name': String nome, …}</dt><dd>Um <strong>padrão de mapa</strong>: combina se o mapa tem essas chaves, com valores desses tipos; e já guarda cada valor numa variável (<code>id</code>, <code>nome</code>…). O <code>'address': {'city': String cidade}</code> entra no objeto de dentro.</dd>
+  <dt>_ =&gt; throw FormatException(…)</dt><dd>O <code>_</code> combina com qualquer coisa: se o mapa não tiver o formato esperado, lança um <code>FormatException</code> ("erro de formato") com uma mensagem que diz qual cliente veio errado.</dd>
+</dl>
+
+<p>Com o JSON certo, a tela fica <strong>igual</strong> à do exemplo 1 (conferido no laboratório). A diferença aparece quando o JSON vem errado; veja o último cenário de <a href="#errado">Quando dá errado</a>.</p>
+
+<h3>Gerar o <code>fromJson</code> automaticamente</h3>
+<p>Num app com 30 classes de modelo, escrever <code>fromJson</code> e <code>toJson</code> à mão cansa e dá erro. Os pacotes <code>json_serializable</code> + <code>json_annotation</code> + <code>build_runner</code> <strong>geram</strong> esse código: você marca a classe com <code>@JsonSerializable()</code>, roda <code>dart run build_runner build</code>, e aparece um arquivo <code>cliente.g.dart</code> com as funções prontas. A documentação oficial explica as duas formas em <a href="https://docs.flutter.dev/data-and-backend/serialization/json">JSON and serialization</a> (docs.flutter.dev). Para começar, e para apps pequenos, a forma manual desta aula é a recomendada.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Forma</th><th>Quando usar</th></tr>
+<tr><td><code>json['chave']</code> direto, sem classe</td><td>Um teste rápido. Evite em app de verdade.</td></tr>
+<tr><td>Classe com <code>fromJson</code>/<code>toJson</code> e <code>as</code></td><td>O padrão para a maioria dos apps; simples de ler.</td></tr>
+<tr><td><code>fromJson</code> com <code>switch</code> e padrões</td><td>Quando o JSON pode vir incompleto e você quer uma mensagem de erro sua.</td></tr>
+<tr><td><code>json_serializable</code> (gerador)</td><td>Muitas classes, JSON grande, equipe.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Chave errada</strong>
+<p>A Ana escreveu a chave em português, mas o servidor manda em inglês:</p>
+<pre class="file" data-file="lib/main.dart (trecho)">      nome: json['nome'] as String,
+</pre>
+<figure class="tela"><img src="assets/telas/json-modelos-2.png" alt="A tela inteira vermelho-escura, sem barra de título, com o texto amarelo TypeError: null: type 'Null' is not a subtype of type 'String' e See also: https://docs.flutter.dev/testing/errors" width="390" height="844" loading="lazy"><figcaption>O erro aconteceu no <code>build</code> do <code>MeuApp</code>, antes do <code>MaterialApp</code>: a tela vermelha ocupa tudo.</figcaption></figure>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following _TypeError was thrown building MeuApp(dirty):
+TypeError: null: type 'Null' is not a subtype of type 'String'
+
+The relevant error-causing widget was:
+  MeuApp MeuApp:file:///home/ana/app/lib/main.dart:5:29
+
+When the exception was thrown, this was the stack:
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 274:3  throw_
+dart-sdk/lib/_internal/js_shared/lib/rti.dart 1717:3                         _asString
+package:app/main.dart 35:26                                                  fromJson
+package:app/main.dart 52:39                                                  &lt;fn&gt;
+package:app/main.dart 51:10                                                  lerClientes
+package:app/main.dart 61:22                                                  build
+package:flutter/src/widgets/framework.dart 5902:22                           build
+…
+════════════════════════════════════════════════════════════════════════════════════════════════════
+</pre>
+<p>Linha por linha, na primeira vez:</p>
+<ul>
+  <li><code>The following _TypeError was thrown building MeuApp(dirty)</code>: "um erro de tipo aconteceu enquanto o <code>MeuApp</code> era construído".</li>
+  <li><code>TypeError: null: type 'Null' is not a subtype of type 'String'</code>: o valor era <code>null</code>, e o tipo <code>Null</code> "não é um subtipo de <code>String</code>", ou seja, o <code>as String</code> recebeu um nulo. Por quê? O mapa não tem a chave <code>'nome'</code>, e ler uma chave que não existe num <code>Map</code> devolve <code>null</code>.</li>
+  <li><code>The relevant error-causing widget was: MeuApp … main.dart:5:29</code>: o widget culpado, e onde ele foi criado (o <code>runApp(const MeuApp())</code> da linha 5).</li>
+  <li>A pilha (<em>stack</em>) mostra o caminho, de dentro para fora: o erro nasceu no <code>fromJson</code>, linha 35 (<code>package:app/main.dart 35:26</code>, a linha do <code>nome:</code>), chamado por <code>lerClientes</code> (linha 51), chamado pelo <code>build</code> (linha 61). As linhas de <code>dart-sdk</code> e <code>package:flutter</code> são de dentro do Dart e do Flutter: procure sempre a primeira linha <strong>do seu</strong> arquivo.</li>
+</ul>
+<p>(As linhas com <code>dart-sdk/lib/_internal/js_dev_runtime</code> aparecem porque o laboratório roda o app no navegador; num celular, os nomes internos mudam, mas a mensagem e as linhas do <code>main.dart</code> são o que importa.) <strong>Como consertar:</strong> use exatamente as chaves que o servidor manda (<code>'name'</code>), copiando de um exemplo real da resposta.</p>
+</div>
+
+<div class="cenario">
+<strong>Tipo errado</strong>
+<p>O servidor mudou e passou a mandar o <code>id</code> do primeiro cliente como texto: <code>"id": "1"</code> (com aspas). O <code>fromJson</code> continua com <code>json['id'] as int</code>:</p>
+<figure class="tela"><img src="assets/telas/json-modelos-3.png" alt="Tela inteira vermelho-escura com o texto amarelo TypeError: &quot;1&quot;: type 'String' is not a subtype of type 'int'" width="390" height="844" loading="lazy"><figcaption>O <code>"1"</code> com aspas é um texto, e o <code>fromJson</code> esperava um número.</figcaption></figure>
+<pre class="term">The following _TypeError was thrown building MeuApp(dirty):
+TypeError: "1": type 'String' is not a subtype of type 'int'
+…
+package:app/main.dart 34:22                                                  fromJson
+</pre>
+<p>"O valor <code>"1"</code> é do tipo <code>String</code>, que não é um subtipo de <code>int</code>": o <code>json['id'] as int</code> (linha 34) recebeu um texto. É o tipo de erro que aparece quando o servidor muda sem avisar. <strong>Como consertar:</strong> se o servidor pode mandar das duas formas, converta: <code>id: int.parse('${json['id']}')</code>; se não deveria, avise quem cuida do servidor. A vantagem do <code>as</code> é que o erro aparece <strong>aqui</strong>, com a linha certa, e não lá na frente numa conta que dá errado.</p>
+</div>
+
+<div class="cenario">
+<strong>JSON mal escrito</strong>
+<p>No terceiro cliente, a chave <code>name</code> ficou com aspas simples: <code>'name': "Carla Dias"</code>. No Dart, aspas simples valem; no JSON, <strong>não</strong>:</p>
+<figure class="tela"><img src="assets/telas/json-modelos-4.png" alt="Tela inteira vermelho-escura com o texto amarelo FormatException: SyntaxError: Expected double-quoted property name in JSON at position 208 (line 6 column 13)" width="390" height="844" loading="lazy"><figcaption>O <code>jsonDecode</code> nem conseguiu ler o texto.</figcaption></figure>
+<pre class="term">The following FormatException was thrown building MeuApp(dirty):
+SyntaxError: Expected double-quoted property name in JSON at position 208 (line 6 column 13)
+…
+dart-sdk/lib/convert/json.dart 160:12                                        jsonDecode
+package:app/main.dart 50:17                                                  lerClientes
+</pre>
+<p>Agora o erro é um <code>FormatException</code> ("erro de formato"), lançado pelo <code>jsonDecode</code> (linha 50): "era esperado um nome de propriedade com aspas duplas, na posição 208 (linha 6, coluna 13)". A linha 6 e a coluna 13 são <strong>do texto JSON</strong>, e não do arquivo <code>.dart</code>: na sexta linha do texto, a coluna 13 é a aspa simples de <code>'name'</code>. (O texto <code>SyntaxError: …</code> é o do navegador, porque no laboratório o app roda na web; num celular, o <code>FormatException</code> vem com uma mensagem própria do Dart, também apontando a posição.) <strong>Como consertar:</strong> no JSON, chaves e textos sempre com aspas duplas, e nada de vírgula depois do último item.</p>
+</div>
+
+<div class="cenario">
+<strong>Chave errada, com o <code>fromJson</code> de padrões</strong>
+<p>Com a versão do <code>switch</code> (seção 2), o segundo cliente veio com <code>"nome"</code> no lugar de <code>"name"</code>:</p>
+<figure class="tela"><img src="assets/telas/json-modelos-6.png" alt="Tela inteira vermelho-escura com o texto amarelo FormatException: Cliente inválido: {id: 2, nome: Bruno Lima, email: bruno@lojinha.com, address: {city: Natal}}" width="390" height="844" loading="lazy"><figcaption>A mensagem é a nossa: diz qual cliente veio fora do formato.</figcaption></figure>
+<pre class="term">The following FormatException was thrown building MeuApp(dirty):
+Cliente inválido: {id: 2, nome: Bruno Lima, email: bruno@lojinha.com, address: {city: Natal}}
+…
+</pre>
+<p>O mapa do Bruno não combinou com o padrão (falta <code>'name'</code>), então caiu no <code>_ =&gt; throw FormatException('Cliente inválido: $json')</code>. Compare com o primeiro cenário: lá, a mensagem era técnica (<code>type 'Null' is not a subtype…</code>); aqui, você escolheu o texto e incluiu o cliente inteiro, e fica fácil ver que a chave veio como <code>nome</code>. Num app de verdade, esse erro iria parar no <code>snapshot.hasError</code> do <a href="futurebuilder.html">FutureBuilder</a>, numa tela amigável, e não na tela vermelha.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>import 'dart:convert';</code></td><td>Traz <code>jsonDecode</code> e <code>jsonEncode</code></td></tr>
+<tr><td><code>jsonDecode(texto)</code></td><td>Texto JSON → <code>Map</code>/<code>List</code> do Dart (<code>dynamic</code>)</td></tr>
+<tr><td><code>jsonEncode(objeto)</code></td><td><code>Map</code>/<code>List</code> → texto JSON</td></tr>
+<tr><td><code>factory Classe.fromJson(Map&lt;String, dynamic&gt; json)</code></td><td>Cria o objeto a partir do mapa</td></tr>
+<tr><td><code>Map&lt;String, dynamic&gt; toJson()</code></td><td>Devolve o objeto como mapa (para <code>jsonEncode</code>)</td></tr>
+<tr><td><code>json['chave'] as Tipo</code></td><td>Lê e confere o tipo (quebra com <code>TypeError</code> se não for)</td></tr>
+<tr><td><code>json['a']['b']</code></td><td>Valor dentro de um objeto aninhado</td></tr>
+<tr><td><code>switch (json) { {'chave': Tipo v} =&gt; …, _ =&gt; … }</code></td><td>Confere o formato inteiro com padrões do Dart 3</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o <code>fromJson</code></h3>
+<div class="ex-code"><input data-answer="factory" aria-label="palavra antes do construtor"> Produto.fromJson(Map&lt;String, dynamic&gt; json) {<br>&nbsp;&nbsp;return Produto(<br>&nbsp;&nbsp;&nbsp;&nbsp;nome: json['nome'] <input data-answer="as" aria-label="operador de conversão"> String,<br>&nbsp;&nbsp;);<br>}</div>
+</div>
+
+<div class="exercise">
+<h3>2. Que tipo?</h3>
+<p>Depois de <code>jsonDecode('[1, 2, 3]')</code>, o resultado é uma <code>List</code>. E depois de <code>jsonDecode('{"a": 1}')</code>? Escreva só o nome do tipo, sem os <code>&lt; &gt;</code>.</p>
+<div class="ex-code"><input data-answer="Map" aria-label="nome do tipo"></div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. Qual destes é um JSON válido?</p>
+<label><input type="radio" name="q3"> <code>{'nome': 'Ana'}</code></label>
+<label><input type="radio" name="q3"> <code>{nome: "Ana"}</code></label>
+<label><input type="radio" name="q3"> <code>{"nome": "Ana"}</code></label>
+<label><input type="radio" name="q3"> <code>{"nome": "Ana",}</code></label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. Para que serve o <code>toJson()</code>?</p>
+<label><input type="radio" name="q4"> Para ler o JSON que chegou do servidor</label>
+<label><input type="radio" name="q4"> Para transformar o objeto num mapa que o <code>jsonEncode</code> vira texto, para mandar ao servidor ou guardar</label>
+<label><input type="radio" name="q4"> Para mostrar o objeto na tela</label>
+<label><input type="radio" name="q4"> Para conferir os tipos</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. Qual a vantagem principal de usar <code>c.nome</code> (classe) em vez de <code>c['name']</code> (mapa)?</p>
+<label><input type="radio" name="q5"> O editor sugere os campos e um nome errado nem compila</label>
+<label><input type="radio" name="q5"> O app fica mais rápido na internet</label>
+<label><input type="radio" name="q5"> O JSON fica menor</label>
+<label><input type="radio" name="q5"> Não precisa mais do <code>jsonDecode</code></label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>jsonDecode</code> transforma o texto JSON em <code>Map&lt;String, dynamic&gt;</code> e <code>List&lt;dynamic&gt;</code>; <code>jsonEncode</code> faz o caminho de volta.</li>
+  <li>Passe o JSON para uma <strong>classe de modelo</strong> logo que ele chega: <code>factory Classe.fromJson(Map&lt;String, dynamic&gt; json)</code> e <code>Map&lt;String, dynamic&gt; toJson()</code>.</li>
+  <li>Use <code>as Tipo</code> em cada campo: se o servidor mandar algo diferente, o erro aparece na hora, no lugar certo.</li>
+  <li>Objetos aninhados: <code>json['address']['city']</code>; ou padrões do Dart 3, que conferem o formato inteiro.</li>
+  <li>No JSON, textos e chaves usam <strong>aspas duplas</strong>; aspas simples ou vírgula sobrando quebram o <code>jsonDecode</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
