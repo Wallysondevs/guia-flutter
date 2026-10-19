@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Gerando o APK e o App Bundle — flutter build apk e appbundle | Guia Flutter</title>
+<meta name="description" content="Como gerar o app Android do Flutter para instalar e publicar: modo debug e release, flutter build apk, o APK gordo e o --split-per-abi, flutter build appbundle (.aab) para a Play Store, nome e versão do app, ícone, assinatura com keystore e key.properties, tempos e tamanhos reais e o erro No Android SDK found.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Gerando o APK e o App Bundle</span></h1>
+
+<p class="intro">Até aqui, o app de compras da Ana só rodou com <code>flutter run</code>, ligado ao computador. Para a mãe dela instalar no celular, ou para publicar na Google Play, é preciso <strong>empacotar</strong> o app num arquivo: o <strong>APK</strong> (o instalador do Android) ou o <strong>App Bundle</strong> (<code>.aab</code>, o formato que a Play Store pede). Esta aula mostra os dois comandos, o que sai de cada um, quanto demora, quanto pesa, e como dar nome, versão e assinatura ao app.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A diferença entre o modo <strong>debug</strong> (o do <code>flutter run</code>) e o <strong>release</strong> (o que vai para as pessoas).</li>
+  <li>Como gerar o APK com <code>flutter build apk</code>, onde ele fica e como instalar.</li>
+  <li>O APK "gordo" e o <code>--split-per-abi</code> (um APK por tipo de processador).</li>
+  <li>Como gerar o App Bundle para a Play Store com <code>flutter build appbundle</code>.</li>
+  <li>Onde mudar o nome do app, o identificador (<code>applicationId</code>) e a versão.</li>
+  <li>Como <strong>assinar</strong> o app com a sua própria chave (keystore).</li>
+  <li>Os erros mais comuns ao compilar.</li>
+</ul>
+</div>
+
+<p>As saídas desta página vieram do <strong>Flutter 3.47.7</strong> da máquina da Ana (Linux, com o Android SDK e o Java 21 instalados), compilando o app de compras da aula <a href="testes-widget.html">Testes de Widget</a>. Os tempos são os dela: no seu computador serão outros.</p>
+
+<hr>
+
+<h2>A ideia: da cozinha para a marmita</h2>
+<p>Enquanto a Ana cozinha, ela prova a comida direto da panela, mexe, acerta o sal, prova de novo. É o <strong>modo debug</strong>: o app ligado ao computador, com <em>hot reload</em>, mensagens de erro detalhadas e a faixa "DEBUG" no canto. Quando a comida fica pronta, ela monta a <strong>marmita</strong>: fecha bem, etiqueta com o nome e a data, e entrega. É o <strong>modo release</strong>: o app compilado de verdade, otimizado, mais rápido e menor, sem ferramentas de cozinha dentro. Ninguém entrega a panela.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th></th><th>Debug (<code>flutter run</code>)</th><th>Release (<code>flutter build</code>)</th></tr>
+<tr><td>Para quem</td><td>Você, desenvolvendo</td><td>As pessoas que vão usar</td></tr>
+<tr><td>Velocidade</td><td>Mais lento (o código roda num modo que permite <em>hot reload</em>)</td><td>Rápido (o Dart vira código de máquina, AOT)</td></tr>
+<tr><td>Faixa "DEBUG" no canto</td><td>Sim</td><td>Não</td></tr>
+<tr><td>Erros na tela</td><td>Tela vermelha com a mensagem</td><td>Tela cinza, sem detalhes</td></tr>
+<tr><td>DevTools</td><td>Sim (veja <a href="devtools.html">DevTools</a>)</td><td>Não</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>1. O primeiro APK: <code>flutter build apk</code></h2>
+<p>Dentro da pasta do projeto:</p>
+
+<pre class="term">$ flutter build apk
+Running Gradle task 'assembleRelease'...
+Warning: SDK processing. This version only understands SDK XML versions up to 3 but an SDK XML file of version 4 was encountered. This can happen if you use versions of Android Studio and the command-line tools that were released at different times.
+Font asset "MaterialIcons-Regular.otf" was tree-shaken, reducing it from 1645184 to 1472 bytes (99.9% reduction). Tree-shaking can be disabled by providing the --no-tree-shake-icons flag when building your app.
+Running Gradle task 'assembleRelease'...                          239.5s
+✓ Built build/app/outputs/flutter-apk/app-release.apk (48.0MB)
+</pre>
+
+<dl class="anatomy">
+  <dt>Running Gradle task 'assembleRelease'...</dt><dd>O Flutter entrega o trabalho ao <strong>Gradle</strong>, a ferramenta que monta apps Android. <code>assembleRelease</code> = "montar a versão release". Por padrão, <code>flutter build apk</code> já é release.</dd>
+  <dt>Warning: SDK processing…</dt><dd>"Aviso: esta versão só entende arquivos XML do SDK até a versão 3, mas encontrou um da versão 4. Isso acontece quando o Android Studio e as ferramentas de linha de comando são de épocas diferentes." É só um <strong>aviso</strong> sobre as versões das ferramentas do Android instaladas; o APK saiu normalmente.</dd>
+  <dt>Font asset "MaterialIcons-Regular.otf" was tree-shaken…</dt><dd>"A fonte de ícones foi 'sacudida': de 1.645.184 bytes para 1.472 (99,9% menor)." O Material tem milhares de ícones, mas o app usa um só (o <code>Icons.add</code>). O Flutter "sacode a árvore" (<em>tree shaking</em>) e deixa cair tudo o que não é usado.</dd>
+  <dt>239.5s</dt><dd>Quase <strong>4 minutos</strong>. Foi a primeira compilação Android dessa máquina: o Gradle baixou a si mesmo (versão 9.3.1) e as bibliotecas do Android. As próximas são bem mais rápidas.</dd>
+  <dt>✓ Built build/app/outputs/flutter-apk/app-release.apk (48.0MB)</dt><dd>"Pronto". O caminho do arquivo, a partir da pasta do projeto, e o tamanho.</dd>
+</dl>
+
+<p>E se a Ana rodar de novo, sem mudar nada?</p>
+<pre class="term">$ flutter build apk
+Running Gradle task 'assembleRelease'...                            4.8s
+✓ Built build/app/outputs/flutter-apk/app-release.apk (48.0MB)
+</pre>
+<p>4,8 segundos: o Gradle percebeu que nada mudou e reaproveitou o trabalho. Mudando o código, fica no meio do caminho (dezenas de segundos).</p>
+
+<h3>Instalando o APK</h3>
+<p>Há dois jeitos:</p>
+<ul>
+  <li><strong>Pelo cabo</strong>, com o celular ligado e a depuração USB ativada: <code>flutter install</code> (instala o release que acabou de ser gerado) ou <code>adb install build/app/outputs/flutter-apk/app-release.apk</code>.</li>
+  <li><strong>Mandando o arquivo</strong> (por e-mail, Drive, mensageiro): no celular, a pessoa toca no APK e permite "instalar apps desconhecidos" para aquele aplicativo. O Android mostra um aviso, porque o app não veio da loja.</li>
+</ul>
+
+<hr>
+
+<h2>2. Por que 48 MB? O <code>--split-per-abi</code></h2>
+<p>Os celulares Android usam processadores de tipos diferentes, as <strong>ABIs</strong>: <code>arm64-v8a</code> (quase todos os celulares atuais), <code>armeabi-v7a</code> (os mais antigos, de 32 bits) e <code>x86_64</code> (emuladores e alguns tablets). O APK padrão é <strong>gordo</strong> (<em>fat APK</em>): leva o app compilado para os três, e cada celular usa só um. Para separar:</p>
+
+<pre class="term">$ flutter build apk --split-per-abi
+Running Gradle task 'assembleRelease'...                           19.4s
+✓ Built build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk (14.1MB)
+✓ Built build/app/outputs/flutter-apk/app-arm64-v8a-release.apk (16.7MB)
+✓ Built build/app/outputs/flutter-apk/app-x86_64-release.apk (18.2MB)
+</pre>
+
+<p>Três APKs, cada um com um terço do tamanho. Some os três: 14,1 + 16,7 + 18,2 = 49,0 MB, praticamente o APK gordo. Para mandar para um celular moderno, o <code>app-arm64-v8a-release.apk</code> basta.</p>
+
+<div class="tip">
+<strong>Qual usar</strong>
+<p><strong>APK gordo</strong>: para mandar a alguém sem se preocupar com o tipo do celular (funciona em todos). <strong>Split</strong>: quando o tamanho importa e você sabe o aparelho. <strong>App Bundle</strong> (próxima seção): para a Play Store, que faz essa separação sozinha.</p>
+</div>
+
+<hr>
+
+<h2>3. Para a Play Store: <code>flutter build appbundle</code></h2>
+<p>A Google Play não aceita APK para apps novos: ela pede o <strong>App Bundle</strong> (<code>.aab</code>). Você envia o pacote completo, e a própria loja monta, para cada celular, um APK só com o que ele precisa (a ABI dele, as imagens na resolução da tela dele).</p>
+
+<pre class="term">$ flutter build appbundle
+Running Gradle task 'bundleRelease'...                             20.3s
+✓ Built build/app/outputs/bundle/release/app-release.aab (47.4MB)
+</pre>
+
+<p>O <code>.aab</code> tem quase o tamanho do APK gordo, mas o que cada pessoa baixa da loja é bem menor. O <code>.aab</code> <strong>não instala</strong> direto no celular: ele é só para enviar à loja. O envio está na aula <a href="publicar.html">Publicando nas Lojas</a>.</p>
+
+<hr>
+
+<h2>4. Nome, identificador e versão</h2>
+<p>O app ainda se chama <code>compras</code> e tem o identificador <code>com.example.compras</code>. Antes de entregar a alguém, acerte três coisas.</p>
+
+<h3>O nome que aparece embaixo do ícone</h3>
+<pre class="file" data-file="android/app/src/main/AndroidManifest.xml (trecho)">    &lt;application
+        android:label="Compras da Ana"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher"&gt;
+</pre>
+<p>Troque o <code>android:label</code> (no projeto novo, ele vem com o nome da pasta, <code>compras</code>). O ícone é o <code>@mipmap/ic_launcher</code>, as imagens em <code>android/app/src/main/res/mipmap-*</code>. O jeito mais prático de trocar é o pacote <code>flutter_launcher_icons</code>, que gera todos os tamanhos a partir de uma imagem (veja <a href="pacotes.html">Pacotes</a>).</p>
+
+<h3>O identificador (<code>applicationId</code>)</h3>
+<p>É o "CPF" do app: a Play Store e o celular reconhecem o app por ele, e ele <strong>nunca mais pode mudar</strong> depois de publicado. O projeto novo vem com um aviso <code>TODO</code> ("a fazer"):</p>
+<pre class="file" data-file="android/app/build.gradle.kts (trecho, como o flutter create gerou)">    defaultConfig {
+        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
+        applicationId = "com.example.compras"
+        // You can update the following values to match your application needs.
+        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        minSdk = flutter.minSdkVersion
+        targetSdk = flutter.targetSdkVersion
+        …
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
+    }
+</pre>
+<p>"Especifique o seu próprio ID de aplicativo, único." O costume é usar um domínio seu ao contrário: <code>br.com.anasilva.compras</code>. O <code>com.example</code> é recusado pela Play Store.</p>
+
+<h3>A versão</h3>
+<p>O <code>versionCode</code> e o <code>versionName</code> vêm do <code>pubspec.yaml</code>:</p>
+<pre class="file" data-file="pubspec.yaml (trecho)">version: 1.0.0+1
+</pre>
+<dl class="anatomy">
+  <dt>1.0.0</dt><dd>O <strong>versionName</strong>: o que as pessoas veem na loja ("versão 1.0.0").</dd>
+  <dt>+1</dt><dd>O <strong>versionCode</strong>: um número inteiro que a loja usa para saber qual é mais novo. A cada envio à Play Store ele <strong>tem de aumentar</strong> (<code>1.0.1+2</code>, <code>1.1.0+3</code>…).</dd>
+</dl>
+<p>Também dá para passar na hora, sem mexer no arquivo: <code>flutter build appbundle --build-name=1.0.1 --build-number=2</code>.</p>
+
+<hr>
+
+<h2>5. Assinatura: a sua chave</h2>
+<p>Todo app Android é <strong>assinado</strong> com uma chave digital, que prova que as atualizações vêm do mesmo autor. Repare no fim do <code>build.gradle.kts</code> gerado:</p>
+<pre class="file" data-file="android/app/build.gradle.kts (trecho, como o flutter create gerou)">    buildTypes {
+        release {
+            // TODO: Add your own signing config for the release build.
+            // Signing with the debug keys for now, so `flutter run --release` works.
+            signingConfig = signingConfigs.getByName("debug")
+        }
+    }
+</pre>
+<p>"Adicione a sua própria configuração de assinatura. Por enquanto, assinando com as chaves de debug." Ou seja: os APKs acima foram assinados com a chave de <strong>debug</strong>, que o Android SDK cria sozinho em cada computador. Servem para testar e mandar para a família, mas <strong>não</strong> para a Play Store. Para publicar, siga os passos da documentação oficial (<a href="https://docs.flutter.dev/deployment/android" target="_blank" rel="noopener">docs.flutter.dev/deployment/android</a>), resumidos aqui (ilustrativo):</p>
+
+<ol class="passo">
+  <li><strong>Crie a chave</strong> com o <code>keytool</code> (vem com o Java):
+<pre class="file" data-file="terminal (ilustrativo)">$ keytool -genkey -v -keystore ~/upload-keystore.jks -keyalg RSA \
+    -keysize 2048 -validity 10000 -alias upload
+</pre>
+  Ele pergunta uma senha e seus dados. Guarde o arquivo <code>.jks</code> e a senha num lugar seguro: sem eles, você não consegue mais atualizar o app (a Play Store tem um processo para trocar a chave de envio, mas é trabalhoso).</li>
+  <li><strong>Crie o arquivo <code>android/key.properties</code></strong> com a senha e o caminho:
+<pre class="file" data-file="android/key.properties">storePassword=SUA-SENHA
+keyPassword=SUA-SENHA
+keyAlias=upload
+storeFile=/home/ana/upload-keystore.jks
+</pre></li>
+  <li><strong>Leia esse arquivo no <code>build.gradle.kts</code></strong> e troque o <code>signingConfigs.getByName("debug")</code> por uma configuração <code>release</code> que use esses dados (o código exato está na documentação).</li>
+  <li><strong>Nunca</strong> envie o <code>key.properties</code> nem o <code>.jks</code> para o Git: ponha os dois no <code>.gitignore</code>.</li>
+</ol>
+
+<hr>
+
+<h2>6. Antes de gerar: confira</h2>
+<div class="tryflutter" data-goal="src:debugShowCheckedModeBanner:\s*false">
+<p class="try-task"><strong>Missão:</strong> no app de release a faixa "DEBUG" já some sozinha, mas muita gente quer tirá-la também das capturas de tela feitas em debug. Acrescente <code>debugShowCheckedModeBanner: false</code> ao <code>MaterialApp</code> e rode: a faixa vermelha do canto desaparece.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const AppCompras());
+
+class AppCompras extends StatelessWidget {
+  const AppCompras({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Compras da Ana',
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Compras da Ana')),
+        body: const Center(child: Text('Versão 1.0.0')),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const AppCompras());
+
+class AppCompras extends StatelessWidget {
+  const AppCompras({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Compras da Ana',
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Compras da Ana')),
+        body: const Center(child: Text('Versão 1.0.0')),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+<figure class="tela"><img src="assets/telas/build-android-1.png" alt="Tela com o título 'Compras da Ana' no topo e o texto 'Versão 1.0.0' no meio, sem a faixa DEBUG no canto superior direito" width="390" height="844" loading="lazy"><figcaption>O resultado esperado: o mesmo app, em modo debug, sem a faixa vermelha DEBUG no canto.</figcaption></figure>
+
+<p>A lista da Ana antes de cada versão:</p>
+<ul>
+  <li><code>flutter analyze</code> sem problemas e <code>flutter test</code> passando (veja <a href="testes-widget.html">Testes de Widget</a>).</li>
+  <li>Testou o app em modo release no celular: <code>flutter run --release</code>.</li>
+  <li>Aumentou o <code>version</code> do <code>pubspec.yaml</code>.</li>
+  <li>Nome, ícone e <code>applicationId</code> definitivos.</li>
+  <li>Se o app usa a internet, a permissão <code>&lt;uses-permission android:name="android.permission.INTERNET"/&gt;</code> no <code>AndroidManifest.xml</code> de <code>main</code> (em debug ela vem de outro manifesto; no release, se faltar, o app simplesmente não acessa a rede).</li>
+</ul>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>No Android SDK found</code></strong>
+<pre class="term">$ flutter build apk
+[!] No Android SDK found. Try setting the ANDROID_HOME environment variable.
+</pre>
+<p>"Nenhum Android SDK encontrado. Tente definir a variável de ambiente ANDROID_HOME." O Flutter não achou as ferramentas do Android. Isso acontece quando o SDK foi instalado num lugar fora do padrão, ou não foi instalado. <strong>Como resolver:</strong> instale o Android Studio (ele traz o SDK) ou aponte o Flutter para a pasta: <code>flutter config --android-sdk /caminho/do/sdk</code> (ou <code>export ANDROID_HOME=/caminho/do/sdk</code> no seu <code>~/.bashrc</code>). Depois, <code>flutter doctor</code> mostra se ficou tudo certo (veja <a href="flutter-doctor.html">flutter doctor</a>).</p>
+</div>
+
+<div class="cenario">
+<strong>Licenças do Android não aceitas</strong>
+<p>Se o <code>flutter doctor</code> mostrar <em>Android license status unknown</em> ou <em>Some Android licenses not accepted</em>, o Gradle se recusa a usar o SDK. <strong>Como resolver:</strong> <code>flutter doctor --android-licenses</code> e responda <code>y</code> a cada licença (ilustrativo).</p>
+</div>
+
+<div class="cenario">
+<strong>A primeira compilação demora "uma eternidade"</strong>
+<p>Os 239,5 segundos da Ana não foram defeito: na primeira vez o Gradle baixa centenas de megabytes. Não interrompa. Se a internet cair no meio, rode de novo: ele continua de onde parou.</p>
+</div>
+
+<div class="cenario">
+<strong>A Play Store recusou o arquivo</strong>
+<p>As causas mais comuns: enviou o <code>.apk</code> em vez do <code>.aab</code>; o <code>applicationId</code> ainda é <code>com.example…</code>; o <code>versionCode</code> não aumentou; o app foi assinado com a chave de debug. Cada uma tem a sua correção nas seções acima.</p>
+</div>
+
+<div class="cenario">
+<strong>O app de release abre e fica cinza</strong>
+<p>Em release, um erro que em debug mostraria a tela vermelha vira uma <strong>tela cinza</strong>, sem mensagem. <strong>Como resolver:</strong> rode <code>flutter run --release</code> com o celular no cabo: a mensagem do erro aparece no terminal. Os erros mais comuns estão em <a href="erros-comuns.html">Erros Comuns</a>.</p>
+</div>
+
+<hr>
+
+<h2>Referência</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que gera</th><th>Onde fica</th></tr>
+<tr><td><code>flutter build apk</code></td><td>APK release "gordo" (todas as ABIs)</td><td><code>build/app/outputs/flutter-apk/app-release.apk</code></td></tr>
+<tr><td><code>flutter build apk --split-per-abi</code></td><td>Um APK por ABI</td><td><code>build/app/outputs/flutter-apk/app-ABI-release.apk</code></td></tr>
+<tr><td><code>flutter build apk --debug</code></td><td>APK de debug</td><td><code>build/app/outputs/flutter-apk/app-debug.apk</code></td></tr>
+<tr><td><code>flutter build appbundle</code></td><td>App Bundle para a Play Store</td><td><code>build/app/outputs/bundle/release/app-release.aab</code></td></tr>
+<tr><td><code>--build-name=1.0.1 --build-number=2</code></td><td>Define versão na hora</td><td>—</td></tr>
+<tr><td><code>flutter install</code></td><td>Instala o APK no celular ligado</td><td>—</td></tr>
+<tr><td><code>flutter run --release</code></td><td>Roda em release no celular</td><td>—</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. O comando da Play Store</h3>
+<div class="ex-code">$ flutter build <input data-answer="appbundle" aria-label="subcomando"></div>
+</div>
+
+<div class="exercise">
+<h3>2. A próxima versão</h3>
+<p>O <code>pubspec.yaml</code> tem <code>version: 1.0.0+1</code>. A Ana corrigiu um defeito e vai mandar para a loja. Complete com o <code>versionCode</code> seguinte:</p>
+<div class="ex-code">version: 1.0.1+<input data-answer="2" aria-label="versionCode"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. Por que o APK padrão tinha 48 MB, e o <code>arm64-v8a</code> sozinho 16,7 MB?</p>
+<label><input type="radio" name="q3"> O padrão é em modo debug</label>
+<label><input type="radio" name="q3"> O padrão leva o app compilado para três tipos de processador (ABIs)</label>
+<label><input type="radio" name="q3"> O padrão inclui o código-fonte</label>
+<label><input type="radio" name="q3"> O <code>--split-per-abi</code> remove as imagens</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. Qual destes <strong>nunca</strong> pode mudar depois que o app foi publicado?</p>
+<label><input type="radio" name="q4"> O <code>android:label</code></label>
+<label><input type="radio" name="q4"> O <code>versionName</code></label>
+<label><input type="radio" name="q4"> O ícone</label>
+<label><input type="radio" name="q4"> O <code>applicationId</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. A Ana perdeu o arquivo <code>.jks</code> da chave de envio. O que acontece?</p>
+<label><input type="radio" name="q5"> Ela não consegue assinar atualizações com a mesma chave; precisa pedir a troca da chave de envio à loja</label>
+<label><input type="radio" name="q5"> Nada, o Flutter cria outra igual</label>
+<label><input type="radio" name="q5"> O app some da loja na hora</label>
+<label><input type="radio" name="q5"> Basta usar a chave de debug</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>flutter run</code> é debug (a panela); <code>flutter build</code> é release (a marmita): rápido, menor, sem faixa DEBUG.</li>
+  <li><code>flutter build apk</code> gera o APK em <code>build/app/outputs/flutter-apk/</code>; <code>--split-per-abi</code> separa por processador.</li>
+  <li><code>flutter build appbundle</code> gera o <code>.aab</code> que a Play Store pede.</li>
+  <li>Nome no <code>AndroidManifest.xml</code>, identificador no <code>build.gradle.kts</code>, versão no <code>pubspec.yaml</code> (<code>1.0.0+1</code>: nome + código).</li>
+  <li>Para publicar, assine com a sua chave (<code>keytool</code> + <code>key.properties</code>) e guarde-a bem.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
