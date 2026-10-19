@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Rolagem — SingleChildScrollView, Scrollbar e ScrollController | Guia Flutter</title>
+<meta name="description" content="Rolagem no Flutter para iniciantes: SingleChildScrollView para uma tela de receita mais alta que o celular, rolagem horizontal de uma Row, a barra de rolagem (Scrollbar), o botão de voltar ao topo com ScrollController (fotos reais antes e depois) e o erro real de pôr uma ListView dentro de algo que rola (shrinkWrap).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Rolagem</span></h1>
+
+<p class="intro">Nem toda tela que rola é uma lista. A página de uma receita tem uma foto, um título, os ingredientes e o modo de preparo: peças diferentes, uma embaixo da outra, que juntas passam da altura do celular. Para isso existe o <code>SingleChildScrollView</code> ("visão de rolagem de um filho só"): você põe a sua <code>Column</code> dentro dele, e a tela inteira passa a rolar. Nesta aula você também vai ver a barra de rolagem, um botão de "voltar ao topo" e o erro de misturar duas coisas que rolam.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como fazer uma tela rolar com <code>SingleChildScrollView</code>.</li>
+  <li>Como rolar para o lado com <code>scrollDirection: Axis.horizontal</code>.</li>
+  <li>Como mostrar a barra de rolagem (<code>Scrollbar</code>).</li>
+  <li>Como rolar pelo código com um <code>ScrollController</code> (o botão "voltar ao topo").</li>
+  <li>O erro real de pôr uma <code>ListView</code> dentro de um <code>SingleChildScrollView</code>, e o <code>shrinkWrap</code>.</li>
+</ul>
+</div>
+
+<p>As telas e o console desta aula vieram de um Flutter de verdade, no laboratório da Ana, em tamanho de celular, com fotos antes e depois de rolar.</p>
+
+<hr>
+
+<h2>A ideia: o cardápio comprido</h2>
+<p>O cardápio da padaria não cabe no quadro da parede, então o dono o escreveu num papel comprido, preso num rolo: quem quer ler o resto, puxa o papel. O <code>SingleChildScrollView</code> é esse rolo para <strong>um</strong> filho (em geral, uma <code>Column</code> com tudo dentro). Ele deixa o filho ser tão alto quanto precisar e mostra só a parte que cabe na janela.</p>
+
+<hr>
+
+<h2>1. A página da receita</h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Bolo de cenoura')),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                height: 200,
+                color: Colors.orange.shade200,
+                alignment: Alignment.center,
+                child: const Icon(Icons.cake, size: 96),
+              ),
+              const SizedBox(height: 16),
+              const Text('Ingredientes', style: TextStyle(fontSize: 24)),
+              const Text('3 cenouras médias\n4 ovos\n1 xícara de óleo\n2 xícaras de açúcar\n'
+                  '2 xícaras de farinha de trigo\n1 colher de sopa de fermento',
+                  style: TextStyle(fontSize: 18, height: 1.6)),
+              const SizedBox(height: 16),
+              const Text('Modo de preparo', style: TextStyle(fontSize: 24)),
+              const Text('1. Bata no liquidificador as cenouras, os ovos e o óleo.\n'
+                  '2. Numa tigela, misture o açúcar e a farinha.\n'
+                  '3. Junte a mistura do liquidificador e mexa bem.\n'
+                  '4. Acrescente o fermento por último, mexendo devagar.\n'
+                  '5. Asse em forno preaquecido a 180 °C por uns 40 minutos.\n'
+                  '6. Espere esfriar antes de pôr a cobertura.',
+                  style: TextStyle(fontSize: 18, height: 1.6)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}</pre>
+
+<dl class="anatomy">
+  <dt>SingleChildScrollView(…)</dt><dd>A área que rola. Ela tem <strong>um filho só</strong> (<code>child</code>), por isso tudo vai dentro de uma <code>Column</code>.</dd>
+  <dt>padding: const EdgeInsets.all(16)</dt><dd>Um respiro em volta do conteúdo, que rola junto com ele.</dd>
+  <dt>Column(crossAxisAlignment: CrossAxisAlignment.start, …)</dt><dd>As peças da página, uma embaixo da outra, alinhadas à esquerda (veja <a href="alinhamento.html">Alinhamento</a>).</dd>
+  <dt>Container(height: 200, …)</dt><dd>O lugar da foto do bolo: um retângulo laranja com o ícone, só para ocupar o espaço de uma imagem.</dd>
+  <dt>'…\n…'</dt><dd>O <code>\n</code> quebra a linha dentro do texto. Duas strings lado a lado (<code>'…' '…'</code>) viram uma só: é um jeito de escrever um texto comprido em várias linhas do código.</dd>
+  <dt>height: 1.6</dt><dd>No <code>TextStyle</code>, a altura da linha: 1,6 vez o tamanho da letra, para o texto respirar (veja <a href="text-style.html">Estilos de Texto</a>).</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/scroll-1.png" alt="Tela 'Bolo de cenoura' com um retângulo laranja com um ícone de bolo, o título 'Ingredientes' com seis linhas de ingredientes, e 'Modo de preparo' com os passos 1 a 5; o passo 6 está cortado no pé da tela" width="390" height="844" loading="lazy"><figcaption>Ao abrir: o passo 6 está cortado embaixo, sem listras.</figcaption></figure>
+<figure class="tela"><img src="assets/telas/scroll-2.png" alt="A mesma página rolada: o retângulo laranja subiu um pouco para baixo da barra do título, acinzentada, e agora aparece o passo 6 'Espere esfriar antes de pôr a cobertura.' no fim" width="390" height="844" loading="lazy"><figcaption>Depois de rolar: o passo 6 aparece inteiro.</figcaption></figure>
+
+<p>Sem o <code>SingleChildScrollView</code>, essa página daria o <a href="overflow.html">erro de overflow</a> (as listras embaixo). Com ele, a página tem a altura que precisa, e o fim aparece quando a Ana arrasta o dedo. A conta deu pouco mais que a tela: ao rolar, a página só subiu até o fim do texto, e a barra do título ficou acinzentada, como nas listas.</p>
+
+<div class="tryflutter" data-goal="src:Text\(\s*'Cobertura'">
+<p class="try-task"><strong>Missão:</strong> a receita precisa da cobertura. No fim da <code>Column</code>, acrescente um título <code>Text('Cobertura', style: TextStyle(fontSize: 24))</code> e um texto com os ingredientes da cobertura (por exemplo, <code>'4 colheres de chocolate em pó\n1 colher de manteiga\n1 xícara de açúcar'</code>). Depois role até o fim.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Bolo de cenoura')),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                height: 200,
+                color: Colors.orange.shade200,
+                alignment: Alignment.center,
+                child: const Icon(Icons.cake, size: 96),
+              ),
+              const SizedBox(height: 16),
+              const Text('Ingredientes', style: TextStyle(fontSize: 24)),
+              const Text('3 cenouras médias\n4 ovos\n1 xícara de óleo\n2 xícaras de açúcar\n'
+                  '2 xícaras de farinha de trigo\n1 colher de sopa de fermento',
+                  style: TextStyle(fontSize: 18, height: 1.6)),
+              const SizedBox(height: 16),
+              const Text('Modo de preparo', style: TextStyle(fontSize: 24)),
+              const Text('1. Bata no liquidificador as cenouras, os ovos e o óleo.\n'
+                  '2. Numa tigela, misture o açúcar e a farinha.\n'
+                  '3. Junte a mistura do liquidificador e mexa bem.\n'
+                  '4. Acrescente o fermento por último, mexendo devagar.\n'
+                  '5. Asse em forno preaquecido a 180 °C por uns 40 minutos.\n'
+                  '6. Espere esfriar antes de pôr a cobertura.',
+                  style: TextStyle(fontSize: 18, height: 1.6)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Bolo de cenoura')),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                height: 200,
+                color: Colors.orange.shade200,
+                alignment: Alignment.center,
+                child: const Icon(Icons.cake, size: 96),
+              ),
+              const SizedBox(height: 16),
+              const Text('Ingredientes', style: TextStyle(fontSize: 24)),
+              const Text('3 cenouras médias\n4 ovos\n1 xícara de óleo\n2 xícaras de açúcar\n'
+                  '2 xícaras de farinha de trigo\n1 colher de sopa de fermento',
+                  style: TextStyle(fontSize: 18, height: 1.6)),
+              const SizedBox(height: 16),
+              const Text('Modo de preparo', style: TextStyle(fontSize: 24)),
+              const Text('1. Bata no liquidificador as cenouras, os ovos e o óleo.\n'
+                  '2. Numa tigela, misture o açúcar e a farinha.\n'
+                  '3. Junte a mistura do liquidificador e mexa bem.\n'
+                  '4. Acrescente o fermento por último, mexendo devagar.\n'
+                  '5. Asse em forno preaquecido a 180 °C por uns 40 minutos.\n'
+                  '6. Espere esfriar antes de pôr a cobertura.',
+                  style: TextStyle(fontSize: 18, height: 1.6)),
+              const SizedBox(height: 16),
+              const Text('Cobertura', style: TextStyle(fontSize: 24)),
+              const Text('4 colheres de chocolate em pó\n1 colher de manteiga\n1 xícara de açúcar',
+                  style: TextStyle(fontSize: 18, height: 1.6)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}</pre>
+</div>
+
+<hr>
+
+<h2>2. Rolagem para o lado</h2>
+<p>Lembra das etiquetas da aula de overflow? Além do <code>Wrap</code>, outra saída é deixar a fileira <strong>rolar para o lado</strong>:</p>
+
+<pre class="file" data-file="lib/main.dart">        body: const Padding(
+          padding: EdgeInsets.symmetric(vertical: 16),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                SizedBox(width: 16),
+                Chip(label: Text('Doce')),
+                SizedBox(width: 8),
+                Chip(label: Text('Sem glúten')),
+                SizedBox(width: 8),
+                Chip(label: Text('Forno')),
+                SizedBox(width: 8),
+                Chip(label: Text('40 minutos')),
+                SizedBox(width: 8),
+                Chip(label: Text('Fácil')),
+                SizedBox(width: 16),
+              ],
+            ),
+          ),
+        ),</pre>
+
+<dl class="anatomy">
+  <dt>scrollDirection: Axis.horizontal</dt><dd>O <code>SingleChildScrollView</code> rola na horizontal, e o filho (a <code>Row</code>) pode ser tão largo quanto precisar.</dd>
+  <dt>SizedBox(width: 16) nas pontas</dt><dd>Um respiro no começo e no fim da fileira, que rola junto.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/scroll-7.png" alt="Tela 'Receitas da Ana' com uma fileira de etiquetas: Doce, Sem glúten, Forno e 40 minutos, esta última encostada na borda direita, sem listras" width="390" height="844" loading="lazy"><figcaption>As etiquetas numa fileira que rola para o lado: sem listras.</figcaption></figure>
+
+<p>"Doce", "Sem glúten", "Forno" e "40 minutos" aparecem, encostando na borda direita; o "Fácil" está fora da tela, à espera de uma arrastada para o lado. Sem listras: quem não cabe não transbordou, só ainda não apareceu. <strong>Qual usar?</strong> O <code>Wrap</code> mostra tudo de uma vez, em várias linhas; a rolagem lateral economiza altura, mas esconde parte das etiquetas.</p>
+
+<hr>
+
+<h2>3. Barra de rolagem e "voltar ao topo"</h2>
+<p>Numa página comprida, ajuda mostrar <strong>onde</strong> o usuário está (a barra de rolagem) e dar um atalho para voltar ao começo. Para rolar pelo código, você precisa de um <code>ScrollController</code> ("controlador de rolagem"), o "volante" da área que rola:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(home: Passos());
+  }
+}
+
+class Passos extends StatefulWidget {
+  const Passos({super.key});
+
+  @override
+  State&lt;Passos&gt; createState() =&gt; _PassosState();
+}
+
+class _PassosState extends State&lt;Passos&gt; {
+  final _controle = ScrollController();
+
+  @override
+  void dispose() {
+    _controle.dispose();
+    super.dispose();
+  }
+
+  void _voltarAoTopo() {
+    _controle.animateTo(
+      0,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeOut,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Passo a passo')),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _voltarAoTopo,
+        tooltip: 'Voltar ao topo',
+        child: const Icon(Icons.arrow_upward),
+      ),
+      body: Scrollbar(
+        controller: _controle,
+        thumbVisibility: true,
+        child: SingleChildScrollView(
+          controller: _controle,
+          child: Column(
+            children: [
+              for (var i = 1; i &lt;= 20; i++)
+                ListTile(
+                  leading: CircleAvatar(child: Text('$i')),
+                  title: Text('Passo $i da receita'),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}</pre>
+
+<dl class="anatomy">
+  <dt>final _controle = ScrollController();</dt><dd>O controlador, criado uma vez no <code>State</code>. Ele sabe a posição da rolagem e consegue mudá-la.</dd>
+  <dt>_controle.dispose();</dt><dd>Como tudo o que é criado no <code>State</code> e tem um <code>dispose</code>, o controlador é descartado quando o widget sai da tela (veja <a href="ciclo-de-vida.html">Ciclo de Vida</a>).</dd>
+  <dt>_controle.animateTo(0, duration: …, curve: Curves.easeOut)</dt><dd>"Role, com animação, até a posição 0 (o topo), em meio segundo, desacelerando no fim." Para pular sem animação, existe o <code>_controle.jumpTo(0)</code>.</dd>
+  <dt>Scrollbar(controller: _controle, thumbVisibility: true, …)</dt><dd>A barra de rolagem na lateral. O <code>thumbVisibility: true</code> deixa o "polegar" (o pedaço que anda) sempre visível; sem ele, a barra só aparece durante a rolagem.</dd>
+  <dt>SingleChildScrollView(controller: _controle, …)</dt><dd>O mesmo controlador ligado à área que rola: assim o botão e a barra mexem na mesma rolagem.</dd>
+  <dt>FloatingActionButton(tooltip: 'Voltar ao topo', …)</dt><dd>O botão redondo flutuante, no canto de baixo, com uma seta para cima.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/scroll-3.png" alt="Tela 'Passo a passo' rolada: os passos 5 a 20 numerados em círculos lilases, a barra de rolagem cinza na lateral direita, mais embaixo, e o botão redondo com uma seta para cima no canto inferior direito" width="390" height="844" loading="lazy"><figcaption>Depois de rolar até o fim: a barra de rolagem desceu.</figcaption></figure>
+<figure class="tela"><img src="assets/telas/scroll-4.png" alt="A mesma tela de volta ao topo: os passos 1 a 16, a barra de rolagem no alto da lateral direita e o botão com a seta no canto" width="390" height="844" loading="lazy"><figcaption>Depois de um toque em "Voltar ao topo": de volta ao passo 1.</figcaption></figure>
+
+<p>Na primeira foto, a Ana rolou até o fim (o passo 20) e a barra cinza da direita está embaixo. Um toque no botão com a seta e, meio segundo depois, a lista voltou ao passo 1, com a barra lá em cima.</p>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de rolar: qual usar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Use</th></tr>
+<tr><td>Uma tela com peças diferentes que passa da altura (receita, perfil, formulário)</td><td><code>SingleChildScrollView</code> + <code>Column</code></td></tr>
+<tr><td>Muitos itens parecidos</td><td><a href="listview.html">ListView</a> / <a href="listview-builder.html">ListView.builder</a></td></tr>
+<tr><td>Itens em grade</td><td><a href="gridview.html">GridView</a></td></tr>
+<tr><td>Uma fileira que não cabe na largura</td><td><code>SingleChildScrollView(scrollDirection: Axis.horizontal)</code>, ou <code>Wrap</code> para quebrar a linha</td></tr>
+<tr><td>Lista grande com cabeçalho e outras peças que rolam juntos</td><td>Uma <code>ListView</code> só, com o cabeçalho como primeiro item (ou <code>CustomScrollView</code>, assunto avançado)</td></tr>
+</table>
+</div>
+
+<div class="warning">
+<strong>O <code>SingleChildScrollView</code> monta tudo</strong>
+<p>Ao contrário da <code>ListView.builder</code>, ele monta o filho inteiro, mesmo a parte fora da tela. Para uma página de receita, ótimo. Para 500 comentários, use uma lista com <code>builder</code>.</p>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Uma <code>ListView</code> dentro do <code>SingleChildScrollView</code></strong>
+<p>A Ana pôs os comentários da receita, numa <code>ListView</code>, embaixo da foto, tudo dentro do <code>SingleChildScrollView</code>:</p>
+<pre class="file" data-file="lib/main.dart">        body: SingleChildScrollView(
+          child: Column(
+            children: [
+              Container(height: 200, color: Colors.orange.shade200),
+              const Text('Comentários', style: TextStyle(fontSize: 24)),
+              ListView(
+                children: const [
+                  ListTile(title: Text('Ficou ótimo!')),
+                  ListTile(title: Text('Fiz com cobertura de brigadeiro.')),
+                  ListTile(title: Text('Rendeu 12 pedaços.')),
+                ],
+              ),
+            ],
+          ),
+        ),</pre>
+<figure class="tela"><img src="assets/telas/scroll-5.png" alt="Tela totalmente vazia, só com a faixa DEBUG no canto: nem o título 'Bolo de cenoura' aparece" width="390" height="844" loading="lazy"><figcaption>A tela inteira em branco, até sem o título.</figcaption></figure>
+<pre class="term">══╡ EXCEPTION CAUGHT BY RENDERING LIBRARY ╞═════════════════════════════════════════════════════════
+The following assertion was thrown during performResize():
+Vertical viewport was given unbounded height.
+Viewports expand in the scrolling direction to fill their container. In this case, a vertical
+viewport was given an unlimited amount of vertical space in which to expand. This situation
+typically happens when a scrollable widget is nested inside another scrollable widget.
+If this widget is always nested in a scrollable widget there is no need to use a viewport because
+there will always be enough vertical space for the children. In this case, consider using a Column
+or Wrap instead. Otherwise, consider using a CustomScrollView to concatenate arbitrary slivers into
+a single scrollable.
+
+The relevant error-causing widget was:
+  ListView ListView:file:///home/ana/app/lib/main.dart:18:15
+« … a pilha de chamadas e mais detalhes …
+════════════════════════════════════════════════════════════════════════════════════════════════════
+Another exception was thrown: Assertion failed: file:///home/ana/flutter/packages/flutter/lib/src/rendering/box.dart:2251:12
+« … e mais 30 linhas "Another exception was thrown" (31 ao todo)</pre>
+<p>É o mesmo erro da <a href="listview.html#errado">ListView dentro de uma Column</a>, agora com a frase que explica o caso: <code>This situation typically happens when a scrollable widget is nested inside another scrollable widget</code>, "acontece quando um widget que rola está dentro de outro que rola". O <code>SingleChildScrollView</code> dá à <code>Column</code> altura infinita, e a <code>ListView</code> quer ocupar "toda a altura que recebeu". A linha <code>main.dart:18:15</code> aponta a <code>ListView</code>. <strong>Como consertar</strong>, de dois jeitos:</p>
+<ul>
+  <li>Se os itens são poucos, troque a <code>ListView</code> por uma <code>Column</code> (ou por um <code>for</code> dentro da <code>Column</code> de fora): não precisa de duas rolagens.</li>
+  <li>Ou diga à <code>ListView</code> para ter só a altura dos itens e não rolar sozinha:</li>
+</ul>
+<pre class="file" data-file="lib/main.dart">              ListView(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                children: const [ … ],
+              ),</pre>
+<figure class="tela"><img src="assets/telas/scroll-6.png" alt="Tela 'Bolo de cenoura' com o retângulo laranja em cima, o título 'Comentários' centralizado e os três comentários: Ficou ótimo!, Fiz com cobertura de brigadeiro., Rendeu 12 pedaços." width="390" height="844" loading="lazy"><figcaption>Com <code>shrinkWrap</code>: a foto, o título e os comentários.</figcaption></figure>
+<p><code>shrinkWrap: true</code> ("encolher para embrulhar") faz a lista ter a altura da soma dos itens, em vez de "toda a altura"; <code>NeverScrollableScrollPhysics()</code> ("física que nunca rola") desliga a rolagem própria dela, para só a de fora rolar. Atenção: com <code>shrinkWrap</code>, a lista monta todos os itens; para listas grandes, prefira uma <code>ListView</code> só, com a foto e o título como os primeiros itens.</p>
+</div>
+
+<div class="cenario">
+<strong><code>Expanded</code> dentro do <code>SingleChildScrollView</code></strong>
+<p>Também não combina: dentro da rolagem, a altura é infinita, e o <code>Expanded</code> não tem "o que sobrou" para ocupar. O erro é <code>RenderFlex children have non-zero flex but incoming height constraints are unbounded</code>, com a tela em branco; a mensagem real, explicada, está em <a href="overflow.html#errado">O Famoso Erro de Overflow</a>.</p>
+</div>
+
+<div class="tryflutter" data-goal="src:shrinkWrap:\s*true">
+<p class="try-task"><strong>Missão:</strong> este é o app com a tela em branco. Ponha <code>shrinkWrap: true</code> e <code>physics: const NeverScrollableScrollPhysics()</code> na <code>ListView</code> para os comentários aparecerem embaixo da foto.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Bolo de cenoura')),
+        body: SingleChildScrollView(
+          child: Column(
+            children: [
+              Container(height: 200, color: Colors.orange.shade200),
+              const Text('Comentários', style: TextStyle(fontSize: 24)),
+              ListView(
+                children: const [
+                  ListTile(title: Text('Ficou ótimo!')),
+                  ListTile(title: Text('Fiz com cobertura de brigadeiro.')),
+                  ListTile(title: Text('Rendeu 12 pedaços.')),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Bolo de cenoura')),
+        body: SingleChildScrollView(
+          child: Column(
+            children: [
+              Container(height: 200, color: Colors.orange.shade200),
+              const Text('Comentários', style: TextStyle(fontSize: 24)),
+              ListView(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                children: const [
+                  ListTile(title: Text('Ficou ótimo!')),
+                  ListTile(title: Text('Fiz com cobertura de brigadeiro.')),
+                  ListTile(title: Text('Rendeu 12 pedaços.')),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}</pre>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>SingleChildScrollView(child: Column(…))</code></td><td>A tela inteira rola</td></tr>
+<tr><td><code>scrollDirection: Axis.horizontal</code></td><td>Rola para o lado</td></tr>
+<tr><td><code>padding: EdgeInsets.all(16)</code></td><td>Respiro que rola junto</td></tr>
+<tr><td><code>Scrollbar(thumbVisibility: true, child: …)</code></td><td>Barra de rolagem sempre visível</td></tr>
+<tr><td><code>final _c = ScrollController();</code> + <code>controller: _c</code></td><td>Controle da rolagem pelo código (lembre o <code>_c.dispose()</code>)</td></tr>
+<tr><td><code>_c.animateTo(0, duration: …, curve: …)</code> / <code>_c.jumpTo(0)</code></td><td>Volta ao topo, com ou sem animação</td></tr>
+<tr><td><code>shrinkWrap: true</code> + <code>NeverScrollableScrollPhysics()</code></td><td>Lista pequena dentro de outra rolagem</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete</h3>
+<p>Complete para a fileira rolar para o lado:</p>
+<div class="ex-code"><input data-answer="SingleChildScrollView" aria-label="widget que rola um filho">(<br>&nbsp;&nbsp;scrollDirection: Axis.<input data-answer="horizontal" aria-label="direção">,<br>&nbsp;&nbsp;child: Row(children: [...]),<br>)</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. Quantos filhos um <code>SingleChildScrollView</code> recebe?</p>
+<label><input type="radio" name="q2"> Quantos quiser, em <code>children</code></label>
+<label><input type="radio" name="q2"> Um só, em <code>child</code> (em geral, uma <code>Column</code>)</label>
+<label><input type="radio" name="q2"> Nenhum</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. Qual destas linhas leva a rolagem de volta ao topo com animação?</p>
+<label><input type="radio" name="q3"> <code>setState(() =&gt; topo = 0);</code></label>
+<label><input type="radio" name="q3"> <code>Scrollbar(thumbVisibility: true)</code></label>
+<label><input type="radio" name="q3"> <code>_controle.animateTo(0, duration: const Duration(milliseconds: 500), curve: Curves.easeOut);</code></label>
+<label><input type="radio" name="q3"> <code>shrinkWrap: true</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. Uma <code>ListView</code> dentro de um <code>SingleChildScrollView</code> deixou a tela em branco. Qual é uma solução?</p>
+<label><input type="radio" name="q4"> <code>shrinkWrap: true</code> e <code>physics: const NeverScrollableScrollPhysics()</code> na <code>ListView</code></label>
+<label><input type="radio" name="q4"> Pôr um <code>Expanded</code> em volta da <code>ListView</code></label>
+<label><input type="radio" name="q4"> Trocar o <code>SingleChildScrollView</code> por um <code>Center</code></label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>SingleChildScrollView</code> faz um filho (uma <code>Column</code>) rolar: é a solução para telas de peças diferentes mais altas que o celular.</li>
+  <li><code>scrollDirection: Axis.horizontal</code> rola para o lado.</li>
+  <li><code>Scrollbar</code> mostra a barra; um <code>ScrollController</code> rola pelo código (<code>animateTo</code>, <code>jumpTo</code>) e precisa de <code>dispose</code>.</li>
+  <li>Rolagem dentro de rolagem dá <code>Vertical viewport was given unbounded height</code>: troque a lista de dentro por uma <code>Column</code>, ou use <code>shrinkWrap: true</code> + <code>NeverScrollableScrollPhysics()</code>.</li>
+  <li>Muitos itens? Prefira uma <code>ListView.builder</code>, que só monta o que aparece.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
