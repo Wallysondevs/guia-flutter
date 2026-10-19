@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Text — mostrando textos na tela | Guia Flutter</title>
+<meta name="description" content="O widget Text do Flutter: texto fixo e com variáveis (interpolação), quebra de linha automática e com \n, textAlign, maxLines e overflow com reticências, softWrap, textScaler, SelectableText e Text.rich, e os erros reais de passar um número para o Text, com fotos da tela e missões no editor.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Text</span></h1>
+
+<p class="intro">Nome da receita, preço do produto, quantidade de itens no carrinho: quase tudo o que um app mostra é texto. No Flutter, todo texto na tela é um widget <code>Text</code>. Nesta aula a Ana usa o <code>Text</code> para montar o cartão de uma receita e descobre o que fazer quando o texto é grande demais para o espaço que tem.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A anatomia do <code>Text</code>: a string e os parâmetros com nome.</li>
+  <li>A mostrar valores de variáveis com a interpolação do Dart (<code>'$nome'</code>).</li>
+  <li>Como o texto quebra de linha sozinho, e a quebrar onde você quer com <code>\n</code>.</li>
+  <li>A alinhar com <code>textAlign</code>.</li>
+  <li>A limitar o número de linhas com <code>maxLines</code> e cortar com reticências (<code>overflow</code>).</li>
+  <li>Alternativas: <code>SelectableText</code> (texto que dá para copiar) e <code>Text.rich</code> (vários estilos numa frase).</li>
+  <li>Os erros reais: um número no lugar da string e uma string que não fecha.</li>
+</ul>
+</div>
+
+<p>Todos os apps desta aula foram compilados com o Flutter estável do laboratório e fotografados numa tela do tamanho de um celular. As cores, tamanhos e negrito ficam para a próxima aula, <a href="text-style.html">Estilos de Texto</a>.</p>
+
+<hr>
+
+<h2>A ideia: uma etiqueta</h2>
+<p>Pense numa etiquetadora de mercado: você digita o texto, ela imprime uma etiqueta e você cola onde quiser. A etiqueta não decide onde fica; ela só carrega o texto. O tamanho dela depende do texto e do espaço onde ela é colada.</p>
+
+<p>O <code>Text</code> é essa etiqueta. Ele recebe uma string e a desenha, e quem decide onde ele fica é o widget de fora (o <code>Center</code>, o <code>Scaffold</code>, uma coluna).</p>
+
+<hr>
+
+<h2>1. O <code>Text</code> mais simples</h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Text('Bolo de cenoura com cobertura de chocolate'),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>Text( ... )</dt><dd>O widget de texto. Ele desenha uma string na tela com o estilo padrão do tema.</dd>
+  <dt>'Bolo de cenoura com cobertura de chocolate'</dt><dd>A string. É o <strong>primeiro</strong> parâmetro, sem nome (um parâmetro <strong>posicional</strong>, como você viu no Dart) e obrigatório. Todos os outros parâmetros do <code>Text</code> têm nome e são opcionais.</dd>
+  <dt>const</dt><dd>Como o texto nunca muda, o widget pode ser <code>const</code>. Isso deixa o Flutter reaproveitar o widget em vez de criar de novo.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/text-1.png" alt="Tela com a barra 'Receitas da Ana' no topo e, logo abaixo, colado à margem esquerda, o texto 'Bolo de cenoura com cobertura de chocolate' em letra pequena" width="390" height="844" loading="lazy"><figcaption>Um <code>Text</code> direto no <code>body</code>: fica no canto de cima, à esquerda.</figcaption></figure>
+
+<hr>
+
+<h2>2. Texto com variáveis: interpolação</h2>
+<p>Quase sempre o texto vem de uma variável: o nome da receita, o número de porções. Use a <strong>interpolação</strong> do Dart: <code>$variavel</code> ou <code>${expressão}</code> dentro da string.</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    const receita = 'Bolo de cenoura';
+    const porcoes = 8;
+    const minutos = 40;
+
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Center(
+          child: Text('$receita: $porcoes porções, ${minutos + 10} minutos'),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>$receita</dt><dd>Põe o valor da variável <code>receita</code> dentro do texto.</dd>
+  <dt>$porcoes</dt><dd>Um <code>int</code> dentro do texto: a interpolação transforma o número em texto sozinha.</dd>
+  <dt>${minutos + 10}</dt><dd>Uma <strong>conta</strong> dentro do texto precisa de chaves: <code>${...}</code>. Saem <code>50</code> minutos (40 de forno + 10 de preparo).</dd>
+  <dt>const receita = ...</dt><dd>As variáveis são <code>const</code>, então o <code>Text</code> que as usa também pode ser <code>const</code>. Se elas fossem <code>final</code> ou viessem de fora, o <code>const</code> do <code>Text</code> teria de sair.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/text-2.png" alt="Tela com a barra 'Receitas da Ana' e, no meio, a frase 'Bolo de cenoura: 8 porções, 50 minutos'" width="390" height="844" loading="lazy"><figcaption>A interpolação trocou cada <code>$</code> pelo valor; o <code>${minutos + 10}</code> virou 50.</figcaption></figure>
+
+<div class="tryflutter" data-goal="src:const\s+receita\s*=\s*'Pão de queijo';;src:const\s+porcoes\s*=\s*20;">
+<p class="try-task"><strong>Missão:</strong> troque a receita para <code>Pão de queijo</code>, com <code>20</code> porções, mexendo só nas variáveis (não no <code>Text</code>).</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    const receita = 'Bolo de cenoura';
+    const porcoes = 8;
+
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Center(
+          child: Text('$receita: $porcoes porções'),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    const receita = 'Pão de queijo';
+    const porcoes = 20;
+
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Center(
+          child: Text('$receita: $porcoes porções'),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>3. Quebra de linha: sozinha e com <code>\n</code></h2>
+<p>Quando o texto não cabe na largura, o <code>Text</code> <strong>quebra a linha sozinho</strong>, entre as palavras. E, quando você quer quebrar num ponto exato, usa o <code>\n</code> ("nova linha") dentro da string:</p>
+
+<pre class="file" data-file="lib/main.dart">        body: const Text(
+          'Modo de preparo:\n'
+          'Bata no liquidificador as cenouras, os ovos e o óleo. '
+          'Misture com o açúcar e a farinha, junte o fermento e '
+          'leve ao forno médio por 40 minutos.',
+        ),
+</pre>
+
+<dl class="anatomy">
+  <dt>\n</dt><dd>Uma quebra de linha <strong>forçada</strong>: o texto continua na linha de baixo, mesmo que ainda houvesse espaço.</dd>
+  <dt>'...' '...' '...'</dt><dd>Strings escritas uma ao lado da outra, sem nada entre elas, viram <strong>uma</strong> string só (é uma regra do Dart). É o jeito de escrever um texto comprido em várias linhas do código sem mudar o texto na tela. Repare no espaço no fim de cada pedaço: sem ele, as palavras grudariam.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/text-3.png" alt="Tela com o texto 'Modo de preparo:' na primeira linha e, abaixo, o modo de preparo ocupando três linhas, quebradas entre as palavras na largura da tela" width="390" height="844" loading="lazy"><figcaption>O <code>\n</code> quebrou depois de 'Modo de preparo:'; as outras quebras o <code>Text</code> fez sozinho.</figcaption></figure>
+
+<hr>
+
+<h2>4. Alinhamento: <code>textAlign</code></h2>
+
+<pre class="file" data-file="lib/main.dart">        body: const Text(
+          'Bata no liquidificador as cenouras, os ovos e o óleo. '
+          'Misture com o açúcar e a farinha.',
+          textAlign: TextAlign.center,
+        ),
+</pre>
+
+<dl class="anatomy">
+  <dt>textAlign: TextAlign.center</dt><dd>Centraliza <strong>cada linha</strong> dentro do espaço do texto. Os outros valores: <code>TextAlign.left</code>, <code>.right</code>, <code>.justify</code> (justificado, como jornal), <code>.start</code> e <code>.end</code> (começo e fim na direção do texto).</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/text-4.png" alt="Tela com um parágrafo de duas linhas centralizadas logo abaixo da barra: a segunda linha, mais curta, 'com o açúcar e a farinha.', fica no meio" width="390" height="844" loading="lazy"><figcaption>Com <code>TextAlign.center</code>, cada linha fica centralizada.</figcaption></figure>
+
+<div class="warning">
+<strong><code>textAlign</code> não é o mesmo que <code>Center</code></strong>
+<p>O <code>textAlign</code> alinha as linhas <strong>dentro do espaço que o texto ocupa</strong>. Se o texto é curto e ocupa só uma linha, esse espaço tem o tamanho do próprio texto, e não há para onde alinhar: <code>Text('Oi', textAlign: TextAlign.center)</code> continua no canto. Para pôr o texto no meio da tela, use o <code>Center</code> em volta (aula <a href="center-align.html">Center e Align</a>). Foi o que o lab fotografou com o <code>Oi</code> sozinho no <code>body</code>:</p>
+</div>
+
+<figure class="tela"><img src="assets/telas/text-5.png" alt="Tela com a barra 'Receitas da Ana' e a palavra 'Oi' sozinha no canto esquerdo, logo abaixo da barra" width="390" height="844" loading="lazy"><figcaption><code>Text('Oi', textAlign: TextAlign.center)</code>: continua no canto.</figcaption></figure>
+
+<hr>
+
+<h2>5. Texto grande demais: <code>maxLines</code> e <code>overflow</code></h2>
+<p>Numa lista de receitas, cada item tem espaço para uma ou duas linhas. Se o nome é comprido, você quer cortá-lo com reticências (<code>...</code>), e não empurrar o resto da tela para baixo:</p>
+
+<pre class="file" data-file="lib/main.dart">        body: const Column(
+          children: [
+            Text(
+              'Bolo de cenoura com cobertura de chocolate meio amargo e raspas de laranja',
+            ),
+            Divider(),
+            Text(
+              'Bolo de cenoura com cobertura de chocolate meio amargo e raspas de laranja',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            Divider(),
+            Text(
+              'Bolo de cenoura com cobertura de chocolate meio amargo e raspas de laranja',
+              maxLines: 1,
+              overflow: TextOverflow.fade,
+            ),
+          ],
+        ),
+</pre>
+
+<dl class="anatomy">
+  <dt>Column(children: [...])</dt><dd>Põe os widgets um embaixo do outro (aula <a href="row-column.html">Row e Column</a>). O <code>Divider</code> é a linha fina entre eles.</dd>
+  <dt>maxLines: 1</dt><dd>No máximo uma linha. O que passar disso não aparece.</dd>
+  <dt>overflow: TextOverflow.ellipsis</dt><dd>"Transbordamento: reticências". O que não cabe é trocado por <code>…</code> no fim.</dd>
+  <dt>overflow: TextOverflow.fade</dt><dd>O fim do texto vai sumindo, num degradê, em vez das reticências.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/text-6.png" alt="Três versões do mesmo nome de receita separadas por linhas finas: a primeira em duas linhas completas; a segunda numa linha só terminando em 'meio amargo...' com reticências; a terceira numa linha só, com o fim 'e' sumindo num degradê na borda direita" width="390" height="844" loading="lazy"><figcaption>Sem limite (2 linhas), com <code>ellipsis</code> e com <code>fade</code>.</figcaption></figure>
+
+<div class="tryflutter" data-goal="src:maxLines:\s*2;;src:TextOverflow\.ellipsis">
+<p class="try-task"><strong>Missão:</strong> o modo de preparo está ocupando a tela toda. Mostre só as <strong>2 primeiras linhas</strong>, terminando com reticências.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Bolo de cenoura')),
+        body: const Text(
+          'Bata no liquidificador as cenouras, os ovos e o óleo. '
+          'Misture com o açúcar e a farinha, junte o fermento e '
+          'leve ao forno médio por 40 minutos. Para a cobertura, '
+          'derreta o chocolate com o leite e o açúcar.',
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Bolo de cenoura')),
+        body: const Text(
+          'Bata no liquidificador as cenouras, os ovos e o óleo. '
+          'Misture com o açúcar e a farinha, junte o fermento e '
+          'leve ao forno médio por 40 minutos. Para a cobertura, '
+          'derreta o chocolate com o leite e o açúcar.',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Formas diferentes de mostrar texto</h2>
+
+<pre class="file" data-file="lib/main.dart">        body: const Column(
+          children: [
+            Text('Text: não dá para selecionar'),
+            SelectableText('SelectableText: segure para copiar'),
+            Text.rich(
+              TextSpan(
+                text: 'Text.rich: ',
+                children: [
+                  TextSpan(
+                    text: 'negrito',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  TextSpan(text: ' no meio da frase'),
+                ],
+              ),
+            ),
+          ],
+        ),
+</pre>
+
+<figure class="tela"><img src="assets/telas/text-7.png" alt="Três linhas centralizadas: 'Text: não dá para selecionar', 'SelectableText: segure para copiar' e 'Text.rich: negrito no meio da frase', com só a palavra 'negrito' em negrito" width="390" height="844" loading="lazy"><figcaption>As três formas; só o <code>Text.rich</code> mistura estilos na mesma frase.</figcaption></figure>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Widget</th><th>Quando usar</th></tr>
+<tr><td><code>Text</code></td><td><strong>Quase sempre.</strong> Títulos, rótulos, nomes, preços.</td></tr>
+<tr><td><code>SelectableText</code></td><td>Quando o usuário vai querer <strong>copiar</strong> o texto: um código de rastreio, uma chave Pix, um endereço.</td></tr>
+<tr><td><code>Text.rich(TextSpan(...))</code></td><td>Quando uma frase só tem <strong>pedaços com estilos diferentes</strong> (uma palavra em negrito, um preço em vermelho). Os estilos são o assunto de <a href="text-style.html">Estilos de Texto</a>.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<p>Os dois erros abaixo são de <strong>compilação</strong>: o app nem abre, e o compilador do <code>flutter run</code> mostra o arquivo, a linha e a coluna, com <code>^</code> embaixo do ponto exato.</p>
+
+<div class="cenario">
+<strong>Um número no lugar da string</strong>
+<p>A Ana quer mostrar as porções e escreveu a variável direto no <code>Text</code> (o arquivo é o da seção 2, com <code>const porcoes = 8;</code>; o <code>Text</code> está na linha 18):</p>
+<pre class="file" data-file="lib/main.dart">        body: const Center(
+          child: Text(porcoes),
+        ),
+</pre>
+<pre class="term">lib/main.dart:18:23: Error: The argument type 'int' can't be assigned to the parameter type 'String'.
+          child: Text(porcoes),
+                      ^
+</pre>
+<dl class="anatomy">
+  <dt>lib/main.dart:18:23:</dt><dd>Linha 18, coluna 23: bem em cima do <code>porcoes</code>.</dd>
+  <dt>The argument type 'int' can't be assigned to the parameter type 'String'.</dt><dd>"O argumento do tipo <code>int</code> não pode ser passado para o parâmetro do tipo <code>String</code>". O <code>Text</code> só aceita texto; o Dart não transforma o número em texto sozinho.</dd>
+</dl>
+<p><strong>Como consertar:</strong> transforme em texto, com interpolação (<code>Text('$porcoes')</code>, ou melhor, <code>Text('$porcoes porções')</code>) ou com <code>Text(porcoes.toString())</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>A aspa que não fecha</strong>
+<pre class="file" data-file="lib/main.dart">        body: const Text('Bolo de cenoura),
+</pre>
+<pre class="term">lib/main.dart:15:26: Error: String starting with ' must end with '.
+        body: const Text('Bolo de cenoura),
+                         ^^^^^^^^^^^^^^^^^^
+lib/main.dart:12:23: Error: Can't find ')' to match '('.
+    return MaterialApp(
+                      ^
+</pre>
+<dl class="anatomy">
+  <dt>String starting with ' must end with '.</dt><dd>"Uma string que começa com <code>'</code> tem de terminar com <code>'</code>". Os <code>^</code> sublinham do começo da string até o fim da linha: o Dart engoliu o <code>),</code> como parte do texto.</dd>
+  <dt>Can't find ')' to match '('.</dt><dd>"Não acho o <code>)</code> que fecha este <code>(</code>". É consequência do primeiro erro: como o <code>)</code> virou texto, o <code>MaterialApp(</code> da linha 12 ficou sem par. Quando aparecem vários erros, conserte o <strong>primeiro</strong> e compile de novo; muitas vezes os outros somem junto.</dd>
+</dl>
+<p><strong>Como consertar:</strong> feche a aspa: <code>Text('Bolo de cenoura')</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>O texto que "não aparece": está no canto</strong>
+<p>Não é erro, mas confunde todo iniciante: um <code>Text</code> direto no <code>body</code> fica colado no canto de cima, à esquerda (fotos das seções 1 e 4), e o <code>textAlign</code> não o tira de lá. Para centralizar na tela, embrulhe num <code>Center</code>; para afastar das bordas, num <code>Padding</code> (aula <a href="padding-margin.html">Padding e Margem</a>).</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Parâmetro</th><th>O que faz</th><th>Exemplo</th></tr>
+<tr><td>(a string)</td><td>O texto; obrigatório, sem nome, sempre <code>String</code></td><td><code>Text('Bolo')</code></td></tr>
+<tr><td><code>style</code></td><td>Cor, tamanho, negrito... (próxima aula)</td><td><code>style: TextStyle(fontSize: 20)</code></td></tr>
+<tr><td><code>textAlign</code></td><td>Alinha as linhas dentro do espaço do texto</td><td><code>textAlign: TextAlign.center</code></td></tr>
+<tr><td><code>maxLines</code></td><td>Número máximo de linhas</td><td><code>maxLines: 2</code></td></tr>
+<tr><td><code>overflow</code></td><td>O que fazer com o que não cabe</td><td><code>TextOverflow.ellipsis</code>, <code>.fade</code>, <code>.clip</code></td></tr>
+<tr><td><code>softWrap</code></td><td><code>false</code> não quebra a linha sozinho</td><td><code>softWrap: false</code></td></tr>
+<tr><td><code>\n</code></td><td>Quebra de linha forçada, dentro da string</td><td><code>'Linha 1\nLinha 2'</code></td></tr>
+<tr><td><code>$var</code> / <code>${expr}</code></td><td>Valor de variável ou conta dentro do texto</td><td><code>'Total: ${preco * 2}'</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Reticências</h3>
+<p>Complete para cortar o texto com reticências:</p>
+<div class="ex-code">overflow: TextOverflow.<input data-answer="ellipsis" aria-label="valor"></div>
+</div>
+
+<div class="exercise">
+<h3>2. Um número no texto</h3>
+<p>Complete para mostrar o valor da variável <code>int porcoes</code>:</p>
+<div class="ex-code">Text('<input data-answer="$porcoes" aria-label="interpolação"> porções')</div>
+</div>
+
+<div class="exercise">
+<h3>3. No máximo três linhas</h3>
+<p>Complete:</p>
+<div class="ex-code">Text(receita, <input data-answer="maxLines" aria-label="parâmetro">: 3)</div>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. Qual destas linhas <strong>não compila</strong>, com <code>int porcoes = 8</code>?</p>
+<label><input type="radio" name="q4"> <code>Text('$porcoes')</code></label>
+<label><input type="radio" name="q4"> <code>Text(porcoes.toString())</code></label>
+<label><input type="radio" name="q4"> <code>Text('Porções: $porcoes')</code></label>
+<label><input type="radio" name="q4"> <code>Text(porcoes)</code></label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">5. A Ana escreveu <code>Text('Oi', textAlign: TextAlign.center)</code> direto no <code>body</code>, e o "Oi" ficou no canto. Por quê?</p>
+<label><input type="radio" name="q5"> O <code>textAlign</code> só funciona no iPhone</label>
+<label><input type="radio" name="q5"> O texto ocupa só o tamanho dele, e o <code>textAlign</code> alinha dentro desse espaço; para ir ao meio da tela, precisa de um <code>Center</code></label>
+<label><input type="radio" name="q5"> Faltou o <code>const</code></label>
+<label><input type="radio" name="q5"> O certo é <code>TextAlign.middle</code></label>
+</div>
+
+<h3>Missão final: o cartão da receita</h3>
+
+<div class="tryflutter" data-goal="src:Text\(\s*'\$nome'|Text\(\s*nome\s*[,)];;src:\$\{tempo\s*\+\s*10\}|\$\{10\s*\+\s*tempo\};;src:maxLines:\s*1">
+<p class="try-task"><strong>Missão:</strong> complete o cartão. O primeiro <code>Text</code> mostra o <code>nome</code>, em <strong>uma linha só</strong> com reticências. O segundo mostra o tempo total, que é o <code>tempo</code> de forno <strong>mais 10</strong> minutos de preparo, escrito como <code>${tempo + 10}</code>, no formato <code>Pronto em 50 minutos</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    const nome = 'Bolo de cenoura com cobertura de chocolate meio amargo';
+    const tempo = 40;
+
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Column(
+          children: [
+            Text('nome aqui'),
+            Text('tempo aqui'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    const nome = 'Bolo de cenoura com cobertura de chocolate meio amargo';
+    const tempo = 40;
+
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Column(
+          children: [
+            Text(
+              nome,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            Text('Pronto em ${tempo + 10} minutos'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>Text('...')</code> mostra uma string na tela. A string é o primeiro parâmetro, sem nome, e precisa ser <code>String</code>.</li>
+  <li>Para mostrar variáveis, use a interpolação: <code>'$nome'</code>, <code>'${conta}'</code>.</li>
+  <li>O texto quebra a linha sozinho quando não cabe; <code>\n</code> força a quebra.</li>
+  <li><code>textAlign</code> alinha as linhas dentro do espaço do texto; para centralizar na tela, use <code>Center</code>.</li>
+  <li><code>maxLines</code> + <code>overflow: TextOverflow.ellipsis</code> cortam o texto com reticências.</li>
+  <li><code>SelectableText</code> deixa copiar; <code>Text.rich</code> mistura estilos numa frase.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
