@@ -1,0 +1,661 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Passando Dados entre Telas — ida pelo construtor, volta pelo pop | Guia Flutter</title>
+<meta name="description" content="Passar dados entre telas no Flutter para quem nunca fez um app: mandar um objeto para a próxima tela pelo construtor (required), receber uma resposta de volta com await Navigator.push e Navigator.pop(context, valor), os arguments das rotas nomeadas com ModalRoute.of(context), e os erros reais (parâmetro obrigatório esquecido, type 'Null' is not a subtype).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter: <span class="hl">Passando Dados entre Telas</span></h1>
+
+<p class="intro">Na aula <a href="navegacao.html">Navegação</a>, a segunda tela era sempre a mesma: o bolo de cenoura. Mas o caderno da Ana tem dezenas de receitas, e ela não vai escrever uma tela para cada uma. Ela quer <strong>uma</strong> tela de receita que mostre <strong>a receita que foi tocada</strong>. Para isso, a primeira tela precisa <strong>mandar um dado</strong> para a segunda. E às vezes o caminho é o contrário: a segunda tela pergunta algo ("o que achou da receita?") e precisa <strong>devolver a resposta</strong>.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A <strong>ida</strong>: mandar um dado (um texto, um número, um objeto inteiro) para a próxima tela pelo <strong>construtor</strong> dela.</li>
+  <li>A <strong>volta</strong>: receber uma resposta com <code>await Navigator.push</code> e <code>Navigator.pop(context, valor)</code>.</li>
+  <li>Como fazer a ida com rotas nomeadas: <code>arguments</code> e <code>ModalRoute.of(context)</code>.</li>
+  <li>Os erros reais: o parâmetro obrigatório esquecido e o <code>type 'Null' is not a subtype</code>.</li>
+</ul>
+</div>
+
+<hr>
+
+<h2>A ideia: a encomenda e o recibo</h2>
+<p>Quando a Ana manda o filho à padaria, ela <strong>entrega</strong> um bilhete: "6 pães e 1 litro de leite". Ele não precisa adivinhar: o pedido vai <strong>junto</strong> com ele. Na volta, ele <strong>traz</strong> o troco e o recibo.</p>
+<ul>
+  <li>A <strong>ida</strong> é o bilhete: no Flutter, é o parâmetro do construtor da tela nova: <code>TelaReceita(receita: pudim)</code>. A tela recebe o dado ao nascer.</li>
+  <li>A <strong>volta</strong> é o troco: a tela que fecha devolve um valor no <code>Navigator.pop(context, troco)</code>, e quem a abriu o recebe com <code>await</code>.</li>
+</ul>
+<p>Você já viu essa volta na aula <a href="dialogos.html">Diálogos</a>: o diálogo também é uma rota, e o <code>pop(context, true)</code> do botão Apagar mandava a resposta de volta.</p>
+
+<hr>
+
+<h2>1. A ida: pelo construtor</h2>
+<p>A lista de receitas e uma tela de receita que serve para qualquer uma:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: ListaReceitas()));
+
+class Receita {
+  final String nome;
+  final int minutos;
+  final List&lt;String&gt; ingredientes;
+
+  const Receita(this.nome, this.minutos, this.ingredientes);
+}
+
+const receitas = [
+  Receita('Bolo de cenoura', 50, ['3 cenouras', '3 ovos', '2 xícaras de farinha']),
+  Receita('Pudim', 90, ['1 lata de leite condensado', '3 ovos', '1 xícara de açúcar']),
+  Receita('Brigadeiro', 20, ['1 lata de leite condensado', '1 colher de manteiga']),
+];
+
+class ListaReceitas extends StatelessWidget {
+  const ListaReceitas({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: ListView(
+        children: [
+          for (final receita in receitas)
+            ListTile(
+              title: Text(receita.nome),
+              subtitle: Text('${receita.minutos} min'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =&gt; TelaReceita(receita: receita),
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class TelaReceita extends StatelessWidget {
+  final Receita receita;
+
+  const TelaReceita({super.key, required this.receita});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(receita.nome)),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text('Pronta em ${receita.minutos} minutos'),
+          const SizedBox(height: 8),
+          for (final ingrediente in receita.ingredientes) Text('• $ingrediente'),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>class Receita { … }</dt><dd>Uma classe de dados com tudo o que uma receita tem (veja <a href="https://wallysondevs.github.io/guia-dart/">o Guia Dart</a>, classes). Em vez de passar o nome, os minutos e os ingredientes separados, passamos o <strong>objeto inteiro</strong>.</dd>
+  <dt>const receitas = [ … ]</dt><dd>A lista de receitas. Num app de verdade, ela viria de um banco de dados ou da internet (nível 3).</dd>
+  <dt>final Receita receita;</dt><dd>A tela de receita ganha um <strong>campo</strong>: o dado que ela vai mostrar. É <code>final</code> porque não muda enquanto a tela existe.</dd>
+  <dt>const TelaReceita({super.key, required this.receita});</dt><dd>O construtor recebe a receita como parâmetro <strong>nomeado</strong> e <strong>obrigatório</strong> (<code>required</code>): não dá para abrir a tela sem dizer qual receita mostrar. O Dart confere isso <strong>antes</strong> de rodar.</dd>
+  <dt>TelaReceita(receita: receita)</dt><dd>A ida: na hora do <code>push</code>, a lista constrói a tela <strong>com</strong> a receita tocada. Repare que aqui não tem <code>const</code>: a receita muda conforme o toque.</dd>
+  <dt>Text(receita.nome)</dt><dd>Dentro da tela nova, o dado é só um campo: <code>receita.nome</code>, <code>receita.minutos</code>. (Num <code>StatefulWidget</code>, o <code>State</code> acessa o mesmo campo como <code>widget.receita</code>.)</dd>
+</dl>
+
+<p>A Ana tocou em <strong>Pudim</strong>. A mesma <code>TelaReceita</code> que mostraria o bolo mostrou o pudim, com o título, o tempo e os ingredientes dele:</p>
+<div class="table-wrap"><table class="ref"><tr><td><figure class="tela"><img src="assets/telas/passar-dados-telas-1.png" alt="Tela &#39;Receitas da Ana&#39; com três linhas, cada uma com uma setinha à direita: &#39;Bolo de cenoura, 50 min&#39;, &#39;Pudim, 90 min&#39; e &#39;Brigadeiro, 20 min&#39;" width="390" height="844" loading="lazy"><figcaption>A lista.</figcaption></figure></td><td><figure class="tela"><img src="assets/telas/passar-dados-telas-2.png" alt="Tela com a seta de voltar e o título &#39;Pudim&#39;; embaixo, &#39;Pronta em 90 minutos&#39; e a lista &#39;• 1 lata de leite condensado&#39;, &#39;• 3 ovos&#39;, &#39;• 1 xícara de açúcar&#39;" width="390" height="844" loading="lazy"><figcaption>A TelaReceita recebeu o pudim.</figcaption></figure></td></tr></table></div>
+
+<div class="tryflutter" data-goal="src:Receita\(\s*'Pastel'">
+<p class="try-task"><strong>Missão:</strong> acrescente a receita <code>Receita('Pastel', 30, ['massa de pastel', 'queijo'])</code> à lista, rode e toque nela. Repare que você não escreveu nenhuma tela nova: a <code>TelaReceita</code> serve para todas.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: ListaReceitas()));
+
+class Receita {
+  final String nome;
+  final int minutos;
+  final List&lt;String&gt; ingredientes;
+
+  const Receita(this.nome, this.minutos, this.ingredientes);
+}
+
+const receitas = [
+  Receita('Bolo de cenoura', 50, ['3 cenouras', '3 ovos', '2 xícaras de farinha']),
+  Receita('Pudim', 90, ['1 lata de leite condensado', '3 ovos', '1 xícara de açúcar']),
+];
+
+class ListaReceitas extends StatelessWidget {
+  const ListaReceitas({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: ListView(
+        children: [
+          for (final receita in receitas)
+            ListTile(
+              title: Text(receita.nome),
+              subtitle: Text('${receita.minutos} min'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =&gt; TelaReceita(receita: receita),
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class TelaReceita extends StatelessWidget {
+  final Receita receita;
+
+  const TelaReceita({super.key, required this.receita});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(receita.nome)),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text('Pronta em ${receita.minutos} minutos'),
+          for (final ingrediente in receita.ingredientes) Text('• $ingrediente'),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: ListaReceitas()));
+
+class Receita {
+  final String nome;
+  final int minutos;
+  final List&lt;String&gt; ingredientes;
+
+  const Receita(this.nome, this.minutos, this.ingredientes);
+}
+
+const receitas = [
+  Receita('Bolo de cenoura', 50, ['3 cenouras', '3 ovos', '2 xícaras de farinha']),
+  Receita('Pudim', 90, ['1 lata de leite condensado', '3 ovos', '1 xícara de açúcar']),
+  Receita('Pastel', 30, ['massa de pastel', 'queijo']),
+];
+
+class ListaReceitas extends StatelessWidget {
+  const ListaReceitas({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: ListView(
+        children: [
+          for (final receita in receitas)
+            ListTile(
+              title: Text(receita.nome),
+              subtitle: Text('${receita.minutos} min'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =&gt; TelaReceita(receita: receita),
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class TelaReceita extends StatelessWidget {
+  final Receita receita;
+
+  const TelaReceita({super.key, required this.receita});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(receita.nome)),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text('Pronta em ${receita.minutos} minutos'),
+          for (final ingrediente in receita.ingredientes) Text('• $ingrediente'),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>2. A volta: <code>await Navigator.push</code> + <code>Navigator.pop(context, valor)</code></h2>
+<p>Agora a tela do pudim tem um botão <strong>Avaliar</strong>, que abre uma tela com três opções. A opção escolhida tem de <strong>voltar</strong> para a tela do pudim:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: TelaReceita()));
+
+class TelaReceita extends StatefulWidget {
+  const TelaReceita({super.key});
+
+  @override
+  State&lt;TelaReceita&gt; createState() =&gt; _TelaReceitaState();
+}
+
+class _TelaReceitaState extends State&lt;TelaReceita&gt; {
+  String? avaliacao;
+
+  Future&lt;void&gt; avaliar() async {
+    final resposta = await Navigator.push&lt;String&gt;(
+      context,
+      MaterialPageRoute(builder: (context) =&gt; const TelaAvaliar()),
+    );
+    debugPrint('voltou com: $resposta');
+    if (resposta == null) return;
+    setState(() {
+      avaliacao = resposta;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Pudim')),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(avaliacao == null ? 'Ainda sem avaliação' : 'Sua avaliação: $avaliacao',
+                style: const TextStyle(fontSize: 20)),
+            const SizedBox(height: 16),
+            FilledButton(onPressed: avaliar, child: const Text('Avaliar')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class TelaAvaliar extends StatelessWidget {
+  const TelaAvaliar({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('O que achou?')),
+      body: ListView(
+        children: [
+          for (final opcao in ['Adorei', 'Gostei', 'Não gostei'])
+            ListTile(
+              title: Text(opcao),
+              onTap: () =&gt; Navigator.pop(context, opcao),
+            ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>await Navigator.push&lt;String&gt;(…)</dt><dd>O <code>push</code> devolve um <code>Future</code>: a promessa do valor que vai voltar <strong>quando a tela nova fechar</strong>. O <code>await</code> espera; o <code>&lt;String&gt;</code> diz o tipo do valor. Enquanto a pessoa está na tela de avaliar, a função <code>avaliar</code> fica "parada" nessa linha.</dd>
+  <dt>Navigator.pop(context, opcao)</dt><dd>Na tela de avaliar: fecha a tela e manda <code>opcao</code> de volta. É ele que "cumpre a promessa" do <code>push</code>.</dd>
+  <dt>if (resposta == null) return;</dt><dd>Se a pessoa voltar pela <strong>seta</strong> (ou pelo Voltar do Android), a tela fecha sem valor, e a resposta é <code>null</code>. Por isso o tipo é <code>String?</code> e é preciso tratar o "não respondeu".</dd>
+  <dt>setState(() { avaliacao = resposta; })</dt><dd>Guarda a resposta e redesenha a tela do pudim.</dd>
+</dl>
+
+<p>A Ana tocou em <strong>Avaliar</strong>, escolheu <strong>Adorei</strong>, e a tela do pudim mostrou a resposta:</p>
+<div class="table-wrap"><table class="ref"><tr><td><figure class="tela"><img src="assets/telas/passar-dados-telas-3.png" alt="Tela &#39;Pudim&#39; com &#39;Ainda sem avaliação&#39; e o botão roxo &#39;Avaliar&#39;" width="390" height="844" loading="lazy"><figcaption>1. Antes.</figcaption></figure></td><td><figure class="tela"><img src="assets/telas/passar-dados-telas-4.png" alt="Tela &#39;O que achou?&#39; com a seta de voltar e três linhas: Adorei, Gostei e Não gostei" width="390" height="844" loading="lazy"><figcaption>2. A tela de avaliar.</figcaption></figure></td><td><figure class="tela"><img src="assets/telas/passar-dados-telas-5.png" alt="Tela &#39;Pudim&#39; com &#39;Sua avaliação: Adorei&#39; e o botão &#39;Avaliar&#39;" width="390" height="844" loading="lazy"><figcaption>3. Depois do pop com Adorei.</figcaption></figure></td></tr></table></div>
+<p>E o <code>debugPrint</code> mostrou no console:</p>
+<pre class="term">voltou com: Adorei
+</pre>
+
+<div class="tip">
+<strong>Depois do <code>await</code>, confira o <code>mounted</code></strong>
+<p>Neste exemplo usamos só <code>setState</code>, o que é seguro. Mas se depois do <code>await</code> você for usar o <code>context</code> (para um <code>SnackBar</code>, outro <code>push</code>), comece com <code>if (!mounted) return;</code>: enquanto a pessoa estava na outra tela, esta pode ter sido fechada. O <code>flutter analyze</code> avisa quando falta essa conferência (veja a missão final de <a href="dialogos.html">Diálogos</a>).</p>
+</div>
+
+<hr>
+
+<h2>3. Com rotas nomeadas: <code>arguments</code></h2>
+<p>Com rotas nomeadas (aula <a href="rotas-nomeadas.html">Rotas Nomeadas</a>), a tabela constrói a tela sozinha, então não dá para passar o dado no construtor. O dado vai como <code>arguments</code>, e a tela o pega de volta da rota:</p>
+
+<pre class="file" data-file="lib/main.dart (trecho)">// a ida:
+Navigator.pushNamed(context, '/receita', arguments: receita);
+
+// na TelaReceita, dentro do build:
+final receita = ModalRoute.of(context)!.settings.arguments as Receita;
+</pre>
+
+<dl class="anatomy">
+  <dt>arguments: receita</dt><dd>Qualquer objeto. O <code>Navigator</code> o guarda nas "configurações" da rota (o <code>RouteSettings</code>, aquele que aparecia como <code>RouteSettings("/carrinho", null)</code> na mensagem de erro da aula anterior: o <code>null</code> eram os argumentos).</dd>
+  <dt>ModalRoute.of(context)!</dt><dd>A rota em que esta tela está. O <code>!</code> porque, em tese, um widget poderia estar fora de uma rota.</dd>
+  <dt>.settings.arguments as Receita</dt><dd>Os argumentos vêm como <code>Object?</code> (o <code>Navigator</code> não sabe o tipo). O <code>as Receita</code> diz ao Dart "confie em mim, é uma <code>Receita</code>". Se não for, é erro <strong>com o app rodando</strong> (veja abaixo).</dd>
+</dl>
+
+<p>A volta não muda: <code>await Navigator.pushNamed&lt;String&gt;(…)</code> e <code>Navigator.pop(context, valor)</code>.</p>
+
+<hr>
+
+<h2 id="formas">Qual usar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>O que usar</th></tr>
+<tr><td>Mandar um dado para a próxima tela</td><td>Parâmetro <code>required</code> no construtor: o Dart confere o tipo e se ele foi passado</td></tr>
+<tr><td>Receber uma resposta da tela que fechou</td><td><code>await Navigator.push&lt;T&gt;</code> + <code>Navigator.pop(context, valor)</code></td></tr>
+<tr><td>Mandar um dado com rotas nomeadas</td><td><code>arguments</code> + <code>ModalRoute.of(context)!.settings.arguments as T</code> (sem conferência antes de rodar)</td></tr>
+<tr><td>Um dado que <strong>várias</strong> telas leem e mudam (o carrinho, o usuário logado)</td><td>Não passe de mão em mão: guarde num lugar comum (aulas <a href="elevar-estado.html">Elevando o Estado</a> e <a href="provider.html">Provider</a>)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Esqueceu de passar o dado obrigatório</strong>
+<p>No app da seção 1, trocando <code>TelaReceita(receita: receita)</code> por <code>TelaReceita()</code>:</p>
+<pre class="term">$ flutter analyze lib
+Analyzing lib...
+  error • The named parameter 'receita' is required, but there's no corresponding argument. Try adding the required argument • lib/main.dart:37:43 • missing_required_argument
+1 issue found. (ran in 5.2s)
+</pre>
+<p>"O parâmetro nomeado <code>receita</code> é obrigatório, mas não há argumento para ele." É o <code>required</code> trabalhando a seu favor: o erro aparece <strong>antes</strong> de rodar, apontando a linha 37 (a do <code>builder</code>), em vez de uma tela quebrada na mão do usuário. <strong>Como consertar:</strong> <code>TelaReceita(receita: receita)</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Rota nomeada aberta sem os <code>arguments</code></strong>
+<p>A <code>TelaReceita</code> espera uma <code>Receita</code> nos argumentos, mas o botão fez só <code>Navigator.pushNamed(context, '/receita')</code>, sem <code>arguments</code>. Compila sem reclamar; o erro aparece quando a tela abre (de um teste da Ana que toca no botão):</p>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following _TypeError was thrown building TelaReceita(dirty, dependencies: [_ModalScopeStatus]):
+type 'Null' is not a subtype of type 'Receita' in type cast
+
+The relevant error-causing widget was:
+  TelaReceita TelaReceita:file:///home/ana/app/test/args_test.dart:38:40
+
+When the exception was thrown, this was the stack:
+#0      TelaReceita.build (file:///home/ana/app/test/args_test.dart:28:64)
+…
+</pre>
+<dl class="anatomy">
+  <dt>_TypeError … building TelaReceita</dt><dd>Um erro de <strong>tipo</strong>, ao construir a <code>TelaReceita</code>.</dd>
+  <dt>type 'Null' is not a subtype of type 'Receita' in type cast</dt><dd>"O tipo <code>Null</code> não é um subtipo de <code>Receita</code>, na conversão de tipo." O <code>as Receita</code> recebeu <code>null</code> (não havia argumentos) e não conseguiu transformá-lo numa <code>Receita</code>.</dd>
+  <dt>#0 TelaReceita.build (…:28:64)</dt><dd>A linha do <code>as Receita</code>.</dd>
+</dl>
+<p><strong>Como consertar:</strong> passe os argumentos em <strong>todo</strong> <code>pushNamed</code> para essa rota. Esse erro só existe porque os <code>arguments</code> não têm tipo; com o construtor <code>required</code> da seção 1, ele não compila. É um bom motivo para preferir o construtor.</p>
+</div>
+
+<div class="cenario">
+<strong>Usou a resposta sem <code>await</code></strong>
+<p>Sem o <code>await</code>, <code>final resposta = Navigator.push&lt;String&gt;(…)</code> guarda o <code>Future</code>, não a resposta, e a linha de baixo roda <strong>na hora</strong>, antes de a pessoa escolher qualquer coisa. Num <code>Text('Sua avaliação: $resposta')</code>, aparece uma descrição do <code>Future</code> (algo como "Instance of …Future…") em vez de "Adorei". <strong>Como consertar:</strong> <code>await</code>, numa função <code>async</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Peça</th><th>O que faz</th></tr>
+<tr><td><code>final Receita receita;</code> + <code>required this.receita</code></td><td>A tela exige o dado ao nascer</td></tr>
+<tr><td><code>TelaReceita(receita: r)</code> no <code>builder</code></td><td>A ida</td></tr>
+<tr><td><code>widget.receita</code></td><td>O dado, dentro do <code>State</code> de um <code>StatefulWidget</code></td></tr>
+<tr><td><code>final r = await Navigator.push&lt;T&gt;(…)</code></td><td>Espera a resposta (ou <code>null</code>)</td></tr>
+<tr><td><code>Navigator.pop(context, valor)</code></td><td>A volta</td></tr>
+<tr><td><code>pushNamed(context, '/x', arguments: dado)</code></td><td>A ida com rota nomeada</td></tr>
+<tr><td><code>ModalRoute.of(context)!.settings.arguments as T</code></td><td>Pega o dado na tela da rota nomeada</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete a tela que recebe um nome</h3>
+<div class="ex-code">class TelaOla extends StatelessWidget {<br>&nbsp;&nbsp;final String nome;<br><br>&nbsp;&nbsp;const TelaOla({super.key, <input data-answer="required" aria-label="palavra que torna obrigatório"> this.nome});<br>&nbsp;&nbsp;…<br>}<br><br>// a ida:<br>MaterialPageRoute(builder: (context) =&gt; TelaOla(<input data-answer="nome" aria-label="nome do parâmetro">: 'Ana'))</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. A pessoa abre a tela de avaliar e volta pela seta, sem escolher nada. O que o <code>await Navigator.push&lt;String&gt;(…)</code> devolve?</p>
+<label><input type="radio" name="q2"> <code>''</code> (texto vazio)</label>
+<label><input type="radio" name="q2"> <code>null</code></label>
+<label><input type="radio" name="q2"> A última opção da lista</label>
+<label><input type="radio" name="q2"> Dá erro</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. Qual linha manda <code>'Adorei'</code> de volta para a tela anterior?</p>
+<label><input type="radio" name="q3"> <code>Navigator.push(context, 'Adorei')</code></label>
+<label><input type="radio" name="q3"> <code>return 'Adorei';</code></label>
+<label><input type="radio" name="q3"> <code>Navigator.pop(context, 'Adorei')</code></label>
+<label><input type="radio" name="q3"> <code>setState(() =&gt; 'Adorei')</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. Por que preferir o construtor com <code>required</code> aos <code>arguments</code>?</p>
+<label><input type="radio" name="q4"> O Dart confere o tipo e se o dado foi passado antes de rodar</label>
+<label><input type="radio" name="q4"> É mais rápido</label>
+<label><input type="radio" name="q4"> Os <code>arguments</code> só aceitam texto</label>
+<label><input type="radio" name="q4"> Os <code>arguments</code> não funcionam no Android</label>
+</div>
+
+<h3>Missão final: o nome que volta</h3>
+<div class="tryflutter" data-goal="src:Navigator\.pop\(\s*context\s*,\s*controle\.text\s*\)">
+<p class="try-task"><strong>Missão:</strong> a tela "Seu nome" tem um campo e um botão OK que só fecha a tela. Faça o OK devolver o que foi digitado: <code>Navigator.pop(context, controle.text)</code>. A primeira tela já espera a resposta com <code>await</code> e mostra "Olá, …".</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Inicio()));
+
+class Inicio extends StatefulWidget {
+  const Inicio({super.key});
+
+  @override
+  State&lt;Inicio&gt; createState() =&gt; _InicioState();
+}
+
+class _InicioState extends State&lt;Inicio&gt; {
+  String nome = 'visitante';
+
+  Future&lt;void&gt; perguntarNome() async {
+    final resposta = await Navigator.push&lt;String&gt;(
+      context,
+      MaterialPageRoute(builder: (context) =&gt; const TelaNome()),
+    );
+    if (resposta == null || resposta.isEmpty) return;
+    setState(() {
+      nome = resposta;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Boas-vindas')),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Olá, $nome!', style: const TextStyle(fontSize: 24)),
+            FilledButton(onPressed: perguntarNome, child: const Text('Mudar nome')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class TelaNome extends StatefulWidget {
+  const TelaNome({super.key});
+
+  @override
+  State&lt;TelaNome&gt; createState() =&gt; _TelaNomeState();
+}
+
+class _TelaNomeState extends State&lt;TelaNome&gt; {
+  final controle = TextEditingController();
+
+  @override
+  void dispose() {
+    controle.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Seu nome')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            TextField(
+              controller: controle,
+              decoration: const InputDecoration(labelText: 'Nome'),
+            ),
+            FilledButton(
+              onPressed: () =&gt; Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Inicio()));
+
+class Inicio extends StatefulWidget {
+  const Inicio({super.key});
+
+  @override
+  State&lt;Inicio&gt; createState() =&gt; _InicioState();
+}
+
+class _InicioState extends State&lt;Inicio&gt; {
+  String nome = 'visitante';
+
+  Future&lt;void&gt; perguntarNome() async {
+    final resposta = await Navigator.push&lt;String&gt;(
+      context,
+      MaterialPageRoute(builder: (context) =&gt; const TelaNome()),
+    );
+    if (resposta == null || resposta.isEmpty) return;
+    setState(() {
+      nome = resposta;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Boas-vindas')),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Olá, $nome!', style: const TextStyle(fontSize: 24)),
+            FilledButton(onPressed: perguntarNome, child: const Text('Mudar nome')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class TelaNome extends StatefulWidget {
+  const TelaNome({super.key});
+
+  @override
+  State&lt;TelaNome&gt; createState() =&gt; _TelaNomeState();
+}
+
+class _TelaNomeState extends State&lt;TelaNome&gt; {
+  final controle = TextEditingController();
+
+  @override
+  void dispose() {
+    controle.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Seu nome')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            TextField(
+              controller: controle,
+              decoration: const InputDecoration(labelText: 'Nome'),
+            ),
+            FilledButton(
+              onPressed: () =&gt; Navigator.pop(context, controle.text),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><strong>Ida:</strong> a tela nova recebe o dado no construtor (<code>final</code> + <code>required this.dado</code>), e quem abre passa: <code>TelaReceita(receita: r)</code>.</li>
+  <li><strong>Volta:</strong> <code>final r = await Navigator.push&lt;T&gt;(…)</code> espera; <code>Navigator.pop(context, valor)</code> responde. Voltando pela seta, chega <code>null</code>.</li>
+  <li>Com rotas nomeadas: <code>arguments</code> na ida e <code>ModalRoute.of(context)!.settings.arguments as T</code> na tela; sem conferência antes de rodar.</li>
+  <li>Dados que muitas telas compartilham não devem ir de mão em mão: veja <a href="elevar-estado.html">Elevando o Estado</a> e <a href="provider.html">Provider</a>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
