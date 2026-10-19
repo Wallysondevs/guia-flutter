@@ -291,7 +291,7 @@ class CartaoProduto extends StatelessWidget {
 <p>Para um exemplo, sim. Num app de verdade, uma variável solta no arquivo é difícil de testar (todos os testes dividem o mesmo carrinho) e qualquer parte do código pode mexer nela. Por isso as ferramentas das próximas aulas <strong>entregam</strong> o estado pela árvore de widgets: quem está abaixo pede, e o Flutter acha.</p>
 </div>
 
-<div class="tryflutter" data-goal="src:carrinho\.value\s*=\s*0" data-foto="assets/telas/gerencia-estado-4.png">
+<div class="tryflutter" data-goal="src:carrinho\.value\s*=\s*0" data-foto="assets/telas/gerencia-estado-4.png" data-foto-alt="Depois de adicionar um bolo e tocar em Esvaziar: o título volta a Lojinha · Carrinho: 0, com o ícone de carrinho cortado no canto direito da barra">
 <p class="try-task"><strong>Missão:</strong> ponha um botão para <strong>esvaziar</strong> o carrinho: na <code>AppBar</code>, acrescente <code>actions: [IconButton(tooltip: 'Esvaziar', icon: const Icon(Icons.remove_shopping_cart), onPressed: () =&gt; carrinho.value = 0)]</code>. Toque em adicionar algumas vezes e depois esvazie.</p>
 <pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
 
