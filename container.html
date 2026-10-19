@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Container — a caixa que faz de tudo | Guia Flutter</title>
+<meta name="description" content="O Container do Flutter: cor, largura e altura, padding e margin, alignment, cantos arredondados e borda com BoxDecoration, como o Container decide o próprio tamanho (com e sem filho), quando usar SizedBox, Padding ou ColoredBox no lugar dele, e o erro real de usar color e decoration juntos, com fotos da tela e missões no editor.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Container</span></h1>
+
+<p class="intro">Fundo colorido atrás de um texto, um espaço em volta de uma foto, um cartão com cantos arredondados: quase sempre que a Ana quer "uma caixa" na tela, o widget é o <code>Container</code>. Ele junta numa peça só várias coisas que o Flutter também oferece separadas: cor, tamanho, espaço por dentro, espaço por fora, alinhamento e decoração. É o canivete suíço do layout.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A pintar uma caixa com <code>color</code> e dar a ela <code>width</code> e <code>height</code>.</li>
+  <li>O espaço por dentro (<code>padding</code>) e por fora (<code>margin</code>).</li>
+  <li>A posicionar o filho com <code>alignment</code>.</li>
+  <li>Cantos arredondados e borda com <code>decoration: BoxDecoration(...)</code>.</li>
+  <li>Como o <code>Container</code> decide o próprio tamanho, com e sem filho.</li>
+  <li>Quando trocar o <code>Container</code> por um widget mais simples.</li>
+  <li>O erro real de usar <code>color</code> e <code>decoration</code> juntos.</li>
+</ul>
+</div>
+
+<p>Todos os apps desta aula foram compilados com o Flutter 3.47.7 do laboratório e fotografados numa tela do tamanho de um celular.</p>
+
+<hr>
+
+<h2>A ideia: a caixa de presente</h2>
+<p>Uma caixa de presente tem um tamanho, uma cor de papel, às vezes uma fita (a borda) e cantos arredondados. Dentro dela vai o presente, com um pouco de papel de seda em volta para não bater nas paredes (o <code>padding</code>). E, na mesa, você não cola uma caixa na outra: deixa um espaço entre elas (a <code>margin</code>).</p>
+
+<p>O <code>Container</code> é essa caixa, e o <code>child</code> é o presente.</p>
+
+<hr>
+
+<h2>1. Cor e tamanho</h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: Center(
+          child: Container(
+            width: 200,
+            height: 120,
+            color: Colors.orange,
+            child: const Text('Bolo de cenoura'),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>Container( ... )</dt><dd>A caixa. Todos os parâmetros são opcionais.</dd>
+  <dt>width: 200, height: 120</dt><dd>Largura e altura, em pontos lógicos.</dd>
+  <dt>color: Colors.orange</dt><dd>A cor do fundo da caixa.</dd>
+  <dt>child: const Text(...)</dt><dd>O "presente": o widget de dentro. Repare onde ele ficou na foto.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/container-1.png" alt="No meio da tela, um retângulo laranja deitado, com o texto 'Bolo de cenoura' colado no canto de cima, à esquerda, dentro dele" width="390" height="844" loading="lazy"><figcaption>Uma caixa laranja de 200 × 120. O filho ficou no canto de cima, à esquerda.</figcaption></figure>
+<p>Repare: o texto <strong>não</strong> ficou no meio da caixa. Um <code>Container</code> com tamanho põe o filho no canto de cima, à esquerda, a não ser que você diga outra coisa (seção 3). E o <code>Center</code> de fora centralizou a caixa inteira na tela, não o texto dentro dela.</p>
+
+<hr>
+
+<h2>2. Espaço por dentro e por fora: <code>padding</code> e <code>margin</code></h2>
+
+<pre class="file" data-file="lib/main.dart">        body: Container(
+          color: Colors.amber.shade100,
+          child: Container(
+            margin: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(16),
+            color: Colors.orange,
+            child: const Text('Bata no liquidificador as cenouras, os ovos e o óleo.'),
+          ),
+        ),
+</pre>
+
+<dl class="anatomy">
+  <dt>padding: const EdgeInsets.all(16)</dt><dd>"Enchimento": 16 pontos de espaço <strong>por dentro</strong> da caixa, entre a borda e o filho, nos quatro lados. A cor da caixa pinta esse espaço.</dd>
+  <dt>margin: const EdgeInsets.all(24)</dt><dd>"Margem": 24 pontos de espaço <strong>por fora</strong>, entre a caixa e o que está em volta. A margem é transparente: aparece a cor de quem está atrás (aqui, o <code>Container</code> âmbar-claro de fora, colocado só para você ver a margem).</dd>
+  <dt>EdgeInsets</dt><dd>"Recuos das bordas": o tipo que descreve os quatro lados. <code>EdgeInsets.all(16)</code> = os quatro iguais. Há também <code>EdgeInsets.symmetric(horizontal: 16, vertical: 8)</code> e <code>EdgeInsets.only(left: 16)</code>; a aula <a href="padding-margin.html">Padding e Margem</a> mostra todos.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/container-2.png" alt="Logo abaixo da barra, uma faixa amarelo-clara ocupando a largura da tela e, dentro dela, afastada das bordas, uma caixa laranja com o texto do modo de preparo em duas linhas, também afastado das bordas da caixa" width="390" height="844" loading="lazy"><figcaption>A faixa clara em volta é a margem (24); o laranja em volta do texto é o padding (16).</figcaption></figure>
+
+<hr>
+
+<h2>3. Onde o filho fica: <code>alignment</code></h2>
+
+<pre class="file" data-file="lib/main.dart">        body: Center(
+          child: Container(
+            width: 240,
+            height: 160,
+            color: Colors.orange,
+            alignment: Alignment.bottomRight,
+            padding: const EdgeInsets.all(8),
+            child: const Text('R\$ 25,00'),
+          ),
+        ),
+</pre>
+
+<dl class="anatomy">
+  <dt>alignment: Alignment.bottomRight</dt><dd>Põe o filho no canto de baixo, à direita, da caixa. Os outros: <code>Alignment.center</code>, <code>.topLeft</code>, <code>.topCenter</code>, <code>.centerLeft</code>... (aula <a href="center-align.html">Center e Align</a>).</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/container-3.png" alt="Um retângulo laranja no meio da tela com o texto 'R$ 25,00' no canto de baixo, à direita, um pouco afastado das bordas" width="390" height="844" loading="lazy"><figcaption><code>alignment: Alignment.bottomRight</code>, com um <code>padding</code> de 8.</figcaption></figure>
+
+<div class="tryflutter" data-goal="src:alignment:\s*Alignment\.center\b;;src:color:\s*Colors\.teal">
+<p class="try-task"><strong>Missão:</strong> centralize o preço dentro da caixa (<code>Alignment.center</code>) e pinte a caixa de <code>Colors.teal</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lojinha da Ana')),
+        body: Center(
+          child: Container(
+            width: 240,
+            height: 160,
+            color: Colors.orange,
+            alignment: Alignment.bottomRight,
+            child: const Text('R\$ 25,00'),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lojinha da Ana')),
+        body: Center(
+          child: Container(
+            width: 240,
+            height: 160,
+            color: Colors.teal,
+            alignment: Alignment.center,
+            child: const Text('R\$ 25,00'),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>4. Cantos arredondados e borda: <code>decoration</code></h2>
+<p>Para cantos arredondados, borda ou sombra, o <code>color</code> não basta: entra a <code>decoration</code>, com um <code>BoxDecoration</code>. E a cor passa a morar <strong>dentro</strong> dele:</p>
+
+<pre class="file" data-file="lib/main.dart">        body: Center(
+          child: Container(
+            width: 260,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.orange.shade50,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.orange, width: 2),
+            ),
+            child: const Text('Dica da Ana: unte a forma com manteiga e farinha.'),
+          ),
+        ),
+</pre>
+
+<dl class="anatomy">
+  <dt>decoration: BoxDecoration(...)</dt><dd>A "decoração" da caixa: cor, cantos, borda, sombra, degradê, imagem de fundo.</dd>
+  <dt>color: (dentro do BoxDecoration)</dt><dd>A cor do fundo. Com <code>decoration</code>, a cor vai <strong>aqui</strong>, e não no <code>color</code> do <code>Container</code> (veja <a href="#errado">Quando dá errado</a>).</dd>
+  <dt>borderRadius: BorderRadius.circular(16)</dt><dd>Cantos arredondados, raio 16.</dd>
+  <dt>border: Border.all(color: Colors.orange, width: 2)</dt><dd>Uma borda laranja de 2 pontos nos quatro lados.</dd>
+  <dt>width: 260, sem height</dt><dd>Sem altura, a caixa fica com a altura do filho mais o <code>padding</code>.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/container-4.png" alt="No meio da tela, uma caixa creme-clara com cantos bem arredondados e uma borda laranja, com o texto 'Dica da Ana: unte a forma com manteiga e farinha.' em duas linhas" width="390" height="844" loading="lazy"><figcaption><code>BoxDecoration</code>: cor, cantos e borda.</figcaption></figure>
+
+<p>O <code>BoxDecoration</code> tem muito mais (sombras, degradês, formas): a aula <a href="decoration.html">Cores, Bordas e Sombras</a> é toda dele.</p>
+
+<hr>
+
+<h2>5. Que tamanho tem um <code>Container</code>?</h2>
+<p>Essa é a pergunta que mais confunde no começo. A regra, simplificada:</p>
+<ol class="passo">
+  <li>Se você deu <code>width</code>/<code>height</code>, ele <strong>tenta</strong> ter esse tamanho (o pai ainda pode limitar: aula <a href="constraints.html">Como o Flutter Calcula Tamanhos</a>).</li>
+  <li>Se não deu e ele <strong>tem filho</strong>, ele fica do tamanho do filho (mais o <code>padding</code>).</li>
+  <li>Se não deu e ele <strong>não tem filho</strong>, ele fica <strong>o maior possível</strong>: ocupa todo o espaço que o pai deixar.</li>
+</ol>
+
+<pre class="file" data-file="lib/main.dart">        body: Column(
+          children: [
+            Container(
+              color: Colors.orange,
+              child: const Text('Com filho: do tamanho do texto'),
+            ),
+            Expanded(
+              child: Container(color: Colors.teal),
+            ),
+          ],
+        ),
+</pre>
+
+<dl class="anatomy">
+  <dt>Container com filho, sem tamanho</dt><dd>Fica do tamanho do texto.</dd>
+  <dt>Container sem filho, sem tamanho</dt><dd>Ocupa tudo o que pode. O <code>Expanded</code> em volta dá a ele "todo o resto da coluna" (aula <a href="expanded.html">Expanded e Flexible</a>).</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/container-5.png" alt="Logo abaixo da barra, uma tira laranja estreita, do tamanho do texto 'Com filho: do tamanho do texto', centralizada; abaixo dela, todo o resto da tela pintado de verde-azulado" width="390" height="844" loading="lazy"><figcaption>Com filho, o tamanho do filho; sem filho, todo o espaço.</figcaption></figure>
+
+<hr>
+
+<h2>Formas diferentes: <code>Container</code> ou um widget mais simples?</h2>
+<p>O <code>Container</code> é prático, mas, por dentro, ele só junta outros widgets mais simples. Quando você usa só <strong>uma</strong> das coisas dele, o widget específico deixa o código mais claro (num <code>Container</code> só com tamanho e sem cor, o analisador do Flutter até sugere trocar por <code>SizedBox</code>):</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Se você só quer...</th><th>Use</th><th>Em vez de</th></tr>
+<tr><td>Espaço em volta</td><td><code>Padding(padding: EdgeInsets.all(16), child: ...)</code></td><td><code>Container(padding: ...)</code></td></tr>
+<tr><td>Um tamanho fixo, ou um espaço vazio</td><td><code>SizedBox(width: 100, height: 50)</code></td><td><code>Container(width: ..., height: ...)</code></td></tr>
+<tr><td>Uma cor de fundo</td><td><code>ColoredBox(color: Colors.orange, child: ...)</code></td><td><code>Container(color: ...)</code></td></tr>
+<tr><td>Centralizar / alinhar</td><td><code>Center(...)</code> / <code>Align(...)</code></td><td><code>Container(alignment: ...)</code></td></tr>
+<tr><td>Cor <strong>e</strong> espaço <strong>e</strong> cantos juntos</td><td><code>Container</code></td><td>Três widgets aninhados</td></tr>
+</table>
+</div>
+
+<p>Os widgets simples têm aulas próprias: <a href="padding-margin.html">Padding e Margem</a>, <a href="sizedbox.html">SizedBox e Spacer</a>, <a href="center-align.html">Center e Align</a>.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>color</code> e <code>decoration</code> juntos</strong>
+<p>A Ana já tinha uma caixa laranja e quis arredondar os cantos. Acrescentou a <code>decoration</code> e deixou o <code>color</code> onde estava:</p>
+<pre class="file" data-file="lib/main.dart">        body: Center(
+          child: Container(
+            width: 200,
+            height: 120,
+            color: Colors.orange,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Text('Bolo de cenoura'),
+          ),
+        ),
+</pre>
+<p>O código compila, mas, com o app rodando, a tela inteira fica vermelha de erro (a tela vermelha que você conheceu em <a href="primeiro-app.html">Seu Primeiro App</a>), e o console mostra:</p>
+<pre class="devtools">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following assertion was thrown building MeuApp(dirty):
+Assertion failed:
+file:///home/ana/flutter/packages/flutter/lib/src/widgets/container.dart:277:10
+color == null || decoration == null
+"Cannot provide both a color and a decoration.\nThe color argument is just a shorthand for
+\"decoration: BoxDecoration(color: color)\".\nTo use both a color and other decoration properties,
+set the color in the BoxDecoration instead."
+
+The relevant error-causing widget was:
+  MeuApp MeuApp:file:///home/ana/app/lib/main.dart:4:16
+…
+</pre>
+<dl class="anatomy">
+  <dt>Assertion failed:</dt><dd>"A verificação falhou". Uma <strong>assertion</strong> é uma conferência que o próprio Flutter faz no modo debug; quando ela falha, aparece a tela vermelha.</dd>
+  <dt>container.dart:277:10 / color == null || decoration == null</dt><dd>Onde fica a conferência (no código do <code>Container</code>, dentro do Flutter) e o que ela exige: "ou o <code>color</code> é nulo, ou a <code>decoration</code> é nula". Os dois juntos, não.</dd>
+  <dt>Cannot provide both a color and a decoration.</dt><dd>"Não dá para informar uma cor e uma decoração ao mesmo tempo."</dd>
+  <dt>The color argument is just a shorthand for "decoration: BoxDecoration(color: color)".</dt><dd>A explicação: o <code>color</code> do <code>Container</code> é só um <strong>atalho</strong> para uma decoração com cor. Com os dois, o <code>Container</code> teria duas decorações.</dd>
+  <dt>To use both a color and other decoration properties, set the color in the BoxDecoration instead.</dt><dd>O conserto, já escrito pelo Flutter: ponha a cor dentro do <code>BoxDecoration</code>.</dd>
+  <dt>The relevant error-causing widget was: MeuApp ... main.dart:4:16</dt><dd>O widget que estava sendo construído quando o erro aconteceu: o <code>MeuApp</code>, cujo <code>build</code> cria o <code>Container</code>.</dd>
+</dl>
+<p><strong>Como consertar:</strong> tire o <code>color</code> do <code>Container</code> e escreva <code>decoration: BoxDecoration(color: Colors.orange, borderRadius: BorderRadius.circular(16))</code>, como na seção 4.</p>
+</div>
+
+<div class="cenario">
+<strong>O texto não centraliza dentro da caixa</strong>
+<p>Não é erro, mas confunde: com <code>width</code> e <code>height</code>, o filho vai para o canto de cima, à esquerda (foto da seção 1), e um <code>Center</code> <strong>em volta</strong> do <code>Container</code> centraliza a caixa, não o texto. <strong>Como consertar:</strong> <code>alignment: Alignment.center</code> no <code>Container</code>, ou um <code>Center</code> <strong>dentro</strong> dele, como <code>child</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Parâmetro</th><th>O que faz</th><th>Exemplo</th></tr>
+<tr><td><code>child</code></td><td>O widget de dentro</td><td><code>child: Text('Oi')</code></td></tr>
+<tr><td><code>width</code> / <code>height</code></td><td>Tamanho</td><td><code>width: 200</code></td></tr>
+<tr><td><code>color</code></td><td>Cor de fundo (sem <code>decoration</code>)</td><td><code>color: Colors.orange</code></td></tr>
+<tr><td><code>padding</code></td><td>Espaço por dentro</td><td><code>padding: EdgeInsets.all(16)</code></td></tr>
+<tr><td><code>margin</code></td><td>Espaço por fora</td><td><code>margin: EdgeInsets.all(8)</code></td></tr>
+<tr><td><code>alignment</code></td><td>Posição do filho dentro da caixa</td><td><code>alignment: Alignment.center</code></td></tr>
+<tr><td><code>decoration</code></td><td>Cor, cantos, borda, sombra</td><td><code>BoxDecoration(color: ..., borderRadius: BorderRadius.circular(12))</code></td></tr>
+<tr><td><code>constraints</code></td><td>Limites de tamanho (mínimo/máximo)</td><td><code>BoxConstraints(maxWidth: 300)</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Por dentro</h3>
+<p>Qual parâmetro dá espaço <strong>por dentro</strong> da caixa?</p>
+<div class="ex-code">Container(<input data-answer="padding" aria-label="parâmetro">: EdgeInsets.all(16), child: ...)</div>
+</div>
+
+<div class="exercise">
+<h3>2. Por fora</h3>
+<p>E <strong>por fora</strong>?</p>
+<div class="ex-code">Container(<input data-answer="margin" aria-label="parâmetro">: EdgeInsets.all(16), child: ...)</div>
+</div>
+
+<div class="exercise">
+<h3>3. Cantos</h3>
+<p>Complete para arredondar os cantos com raio 12:</p>
+<div class="ex-code">BoxDecoration(borderRadius: BorderRadius.<input data-answer="circular" aria-label="construtor">(12))</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. Um <code>Container(color: Colors.red)</code>, sem filho e sem tamanho, direto no <code>body</code>. Como fica?</p>
+<label><input type="radio" name="q4"> Invisível: sem filho, ele tem tamanho zero</label>
+<label><input type="radio" name="q4"> Um quadradinho vermelho de 24 × 24</label>
+<label><input type="radio" name="q4"> Vermelho ocupando todo o espaço do <code>body</code></label>
+<label><input type="radio" name="q4"> Dá erro de compilação</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">5. Com <code>decoration: BoxDecoration(...)</code>, onde vai a cor de fundo?</p>
+<label><input type="radio" name="q5"> No <code>color</code> do <code>Container</code>, como sempre</label>
+<label><input type="radio" name="q5"> No <code>color</code> de dentro do <code>BoxDecoration</code></label>
+<label><input type="radio" name="q5"> Nos dois, para garantir</label>
+<label><input type="radio" name="q5"> No <code>child</code></label>
+</div>
+
+<h3>Missão final: a etiqueta de promoção</h3>
+
+<div class="tryflutter" data-goal="src:padding:\s*const\s+EdgeInsets\.all\(\s*12\s*\);;src:BorderRadius\.circular\(\s*20\s*\);;src:color:\s*Colors\.red\b;;nsrc:^\s{12}color:">
+<p class="try-task"><strong>Missão:</strong> transforme a caixa numa etiqueta: <code>padding</code> de <code>EdgeInsets.all(12)</code>, cantos com raio <code>20</code> e fundo <code>Colors.red</code>. Para os cantos você vai precisar de um <code>BoxDecoration</code>, então tire o <code>color</code> do <code>Container</code> e leve a cor para dentro da decoração.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const LojinhaApp());
+}
+
+class LojinhaApp extends StatelessWidget {
+  const LojinhaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lojinha da Ana')),
+        body: Center(
+          child: Container(
+            color: Colors.orange,
+            child: const Text(
+              '30% OFF',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const LojinhaApp());
+}
+
+class LojinhaApp extends StatelessWidget {
+  const LojinhaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lojinha da Ana')),
+        body: Center(
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.red,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Text(
+              '30% OFF',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O <code>Container</code> é uma caixa com <code>child</code>, e junta numa peça: <code>color</code>, <code>width</code>/<code>height</code>, <code>padding</code> (por dentro), <code>margin</code> (por fora), <code>alignment</code> e <code>decoration</code>.</li>
+  <li>Cantos, borda e sombra vão no <code>decoration: BoxDecoration(...)</code>; aí a cor vai dentro dele, nunca nos dois lugares.</li>
+  <li>Sem tamanho: com filho, fica do tamanho do filho; sem filho, ocupa todo o espaço que puder.</li>
+  <li>Se só precisa de uma coisa, prefira o widget simples: <code>Padding</code>, <code>SizedBox</code>, <code>ColoredBox</code>, <code>Center</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
