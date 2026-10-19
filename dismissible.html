@@ -320,7 +320,7 @@ class _ListaDeComprasState extends State&lt;ListaDeCompras&gt; {
 </pre>
 
 <dl class="anatomy">
-  <dt>confirmDismiss: (direction) { … }</dt><dd>Recebe a direção (para você poder perguntar só num dos lados) e tem de devolver um <code>Future&lt;bool?&gt;</code>, uma resposta que "chega depois" (veja <a href="https://wallysondevs.github.io/guia-dart/">o Guia Dart</a>, aulas de assincronia).</dd>
+  <dt>confirmDismiss: (direction) { … }</dt><dd>Recebe a direção (para você poder perguntar só num dos lados) e tem de devolver um <code>Future&lt;bool?&gt;</code>, uma resposta que "chega depois" (veja <a href="https://wallysondevs.github.io/guia-dart/future.html">o Guia Dart</a>, aulas de assincronia).</dd>
   <dt>showDialog&lt;bool&gt;(…)</dt><dd>Abre a caixinha de pergunta e devolve um <code>Future&lt;bool?&gt;</code> com o valor que o botão mandou no <code>Navigator.pop</code>. É exatamente o tipo que o <code>confirmDismiss</code> quer, então dá para devolver direto. Os diálogos têm aula própria: <a href="dialogos.html">Diálogos e SnackBar</a>.</dd>
   <dt>Navigator.pop(context, false)</dt><dd>Fecha o diálogo respondendo <code>false</code>: o item volta.</dd>
   <dt>Navigator.pop(context, true)</dt><dd>Fecha respondendo <code>true</code>: o item sai e o <code>onDismissed</code> roda.</dd>
