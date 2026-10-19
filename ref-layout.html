@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Widgets de Layout — referência rápida | Guia Flutter</title>
+<meta name="description" content="Referência rápida do Guia Flutter: os widgets de layout (Container, Padding, Center, Align, SizedBox, Spacer, Row, Column, Expanded, Flexible, Stack, Positioned, Wrap, os de rolagem e os de tamanho de tela), os valores de mainAxisAlignment e crossAxisAlignment, e qual usar em cada situação, com links para as aulas e um laboratório de layout com a foto real.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Widgets de Layout</span></h1>
+
+<p class="intro">Widgets de layout não aparecem na tela: eles <strong>arrumam</strong> os outros. Põem um embaixo do outro, dão espaço, centralizam, empilham. Esta página reúne todos os que o guia usa, com o que cada um faz, o jeito mínimo de escrever e o link para a aula. Para os widgets que <strong>aparecem</strong> (texto, botões, campos), veja <a href="ref-widgets.html">Widgets Mais Usados</a>.</p>
+
+<div class="note">
+<strong>A regra de ouro do layout</strong>
+<p>"As restrições descem, os tamanhos sobem, e o pai decide a posição." Cada widget recebe do pai os limites de tamanho (mínimo e máximo), escolhe o próprio tamanho dentro deles e avisa o pai, que então decide onde colocá-lo. Quase todo susto de layout (o <a href="overflow.html">overflow</a>, a lista que não aparece) se explica por essa regra. A aula <a href="constraints.html">Como o Flutter Calcula Tamanhos</a> mostra em detalhe.</p>
+</div>
+
+<hr>
+
+<h2>Um laboratório de layout</h2>
+<p>Um app com três dos arranjos mais comuns: uma <code>Row</code> com <code>Expanded</code> (as caixas dividem a largura em partes), uma <code>Row</code> com <code>spaceBetween</code> (o espaço sobra entre as caixas) e um <code>Stack</code> (uma coisa por cima da outra).</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const LayoutApp());
+
+class LayoutApp extends StatelessWidget {
+  const LayoutApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.blue),
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Laboratório de layout')),
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('Row com Expanded (flex 1, 2 e 1):'),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(flex: 1, child: Container(height: 60, color: Colors.red)),
+                  Expanded(flex: 2, child: Container(height: 60, color: Colors.green)),
+                  Expanded(flex: 1, child: Container(height: 60, color: Colors.blue)),
+                ],
+              ),
+              const SizedBox(height: 24),
+              const Text('Row com spaceBetween:'),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(width: 60, height: 60, color: Colors.orange),
+                  Container(width: 60, height: 60, color: Colors.purple),
+                  Container(width: 60, height: 60, color: Colors.teal),
+                ],
+              ),
+              const SizedBox(height: 24),
+              const Text('Stack com Positioned:'),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 120,
+                child: Stack(
+                  children: [
+                    Container(color: Colors.amber.shade100),
+                    const Positioned(
+                      right: 8,
+                      bottom: 8,
+                      child: Icon(Icons.star, size: 48, color: Colors.amber),
+                    ),
+                    const Center(child: Text('Centro do Stack')),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<figure class="tela"><img src="assets/telas/ref-layout-1.png" alt="Tela 'Laboratório de layout' com três exemplos: uma faixa dividida em vermelho, verde e azul, com o verde ocupando o dobro dos outros; três quadrados (laranja, roxo e verde-azulado), um em cada ponta e um no meio, com espaços iguais entre eles; e um retângulo amarelo-claro com 'Centro do Stack' escrito no meio e uma estrela amarela no canto de baixo à direita" width="390" height="844" loading="lazy"><figcaption>O laboratório de layout rodando (Flutter 3.47, tamanho de celular).</figcaption></figure>
+
+<p>Na primeira linha, a verde ocupa metade da largura (2 de 4 partes) e a vermelha e a azul, um quarto cada. Na segunda, os quadrados têm 60 pixels fixos, e o <code>spaceBetween</code> mandou o primeiro para a esquerda, o último para a direita e dividiu a sobra entre eles. No <code>Stack</code>, os três filhos ficaram na ordem da lista: o fundo amarelo embaixo, a estrela por cima no canto (o <code>Positioned</code>) e o texto centralizado por cima de tudo.</p>
+
+<div class="tryflutter" data-goal="src:Expanded\(flex:\s*4,\s*child:\s*Container\(height:\s*60,\s*color:\s*Colors\.green\)\)">
+<p class="try-task"><strong>Missão:</strong> na primeira linha, troque o <code>flex: 2</code> da caixa verde por <code>flex: 4</code>. Com 1 + 4 + 1 = 6 partes, que fração da largura a verde passa a ocupar? Depois, experimente trocar o <code>spaceBetween</code> da segunda linha por <code>spaceEvenly</code> e por <code>center</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const LayoutApp());
+
+class LayoutApp extends StatelessWidget {
+  const LayoutApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.blue),
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Laboratório de layout')),
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('Row com Expanded (flex 1, 2 e 1):'),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(flex: 1, child: Container(height: 60, color: Colors.red)),
+                  Expanded(flex: 2, child: Container(height: 60, color: Colors.green)),
+                  Expanded(flex: 1, child: Container(height: 60, color: Colors.blue)),
+                ],
+              ),
+              const SizedBox(height: 24),
+              const Text('Row com spaceBetween:'),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(width: 60, height: 60, color: Colors.orange),
+                  Container(width: 60, height: 60, color: Colors.purple),
+                  Container(width: 60, height: 60, color: Colors.teal),
+                ],
+              ),
+              const SizedBox(height: 24),
+              const Text('Stack com Positioned:'),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 120,
+                child: Stack(
+                  children: [
+                    Container(color: Colors.amber.shade100),
+                    const Positioned(
+                      right: 8,
+                      bottom: 8,
+                      child: Icon(Icons.star, size: 48, color: Colors.amber),
+                    ),
+                    const Center(child: Text('Centro do Stack')),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const LayoutApp());
+
+class LayoutApp extends StatelessWidget {
+  const LayoutApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.blue),
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Laboratório de layout')),
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('Row com Expanded (flex 1, 2 e 1):'),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(flex: 1, child: Container(height: 60, color: Colors.red)),
+                  Expanded(flex: 4, child: Container(height: 60, color: Colors.green)),
+                  Expanded(flex: 1, child: Container(height: 60, color: Colors.blue)),
+                ],
+              ),
+              const SizedBox(height: 24),
+              const Text('Row com spaceBetween:'),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(width: 60, height: 60, color: Colors.orange),
+                  Container(width: 60, height: 60, color: Colors.purple),
+                  Container(width: 60, height: 60, color: Colors.teal),
+                ],
+              ),
+              const SizedBox(height: 24),
+              const Text('Stack com Positioned:'),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 120,
+                child: Stack(
+                  children: [
+                    Container(color: Colors.amber.shade100),
+                    const Positioned(
+                      right: 8,
+                      bottom: 8,
+                      child: Icon(Icons.star, size: 48, color: Colors.amber),
+                    ),
+                    const Center(child: Text('Centro do Stack')),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Espaço e posição de um filho só</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Widget</th><th>Para que serve</th><th>Exemplo mínimo</th><th>Aula</th></tr>
+<tr><td><code>Container</code></td><td>Caixa "faz-tudo": tamanho, cor, margem, espaço interno, borda</td><td><code>Container(width: 100, height: 50, color: Colors.red)</code></td><td><a href="container.html">Container</a></td></tr>
+<tr><td><code>Padding</code></td><td>Espaço <strong>dentro</strong>, em volta do filho</td><td><code>Padding(padding: EdgeInsets.all(16), child: …)</code></td><td><a href="padding-margin.html">Padding e Margem</a></td></tr>
+<tr><td><code>Center</code></td><td>Centraliza o filho no espaço disponível</td><td><code>Center(child: …)</code></td><td><a href="center-align.html">Center e Align</a></td></tr>
+<tr><td><code>Align</code></td><td>Põe o filho num canto ou lado (<code>topRight</code>, <code>bottomCenter</code>…)</td><td><code>Align(alignment: Alignment.topRight, child: …)</code></td><td><a href="center-align.html">Center e Align</a></td></tr>
+<tr><td><code>SizedBox</code></td><td>Tamanho fixo para o filho, ou um espaço vazio</td><td><code>SizedBox(height: 16)</code></td><td><a href="sizedbox.html">SizedBox e Spacer</a></td></tr>
+<tr><td><code>BoxDecoration</code></td><td>A "pintura" do <code>Container</code>: cor, cantos, borda, sombra, gradiente</td><td><code>Container(decoration: BoxDecoration(borderRadius: BorderRadius.circular(12)))</code></td><td><a href="decoration.html">Cores, Bordas e Sombras</a></td></tr>
+</table>
+</div>
+
+<h2>Vários filhos</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Widget</th><th>Para que serve</th><th>Exemplo mínimo</th><th>Aula</th></tr>
+<tr><td><code>Row</code></td><td>Filhos lado a lado (na horizontal)</td><td><code>Row(children: [ … ])</code></td><td><a href="row-column.html">Row e Column</a></td></tr>
+<tr><td><code>Column</code></td><td>Filhos um embaixo do outro (na vertical)</td><td><code>Column(children: [ … ])</code></td><td><a href="row-column.html">Row e Column</a></td></tr>
+<tr><td><code>Expanded</code></td><td>Dentro de <code>Row</code>/<code>Column</code>: o filho ocupa o espaço que sobra (dividido pelo <code>flex</code>)</td><td><code>Expanded(flex: 2, child: …)</code></td><td><a href="expanded.html">Expanded e Flexible</a></td></tr>
+<tr><td><code>Flexible</code></td><td>Como o <code>Expanded</code>, mas o filho <strong>pode</strong> ficar menor que a parte dele</td><td><code>Flexible(child: …)</code></td><td><a href="expanded.html">Expanded e Flexible</a></td></tr>
+<tr><td><code>Spacer</code></td><td>Dentro de <code>Row</code>/<code>Column</code>: um espaço vazio que empurra os vizinhos</td><td><code>Spacer()</code></td><td><a href="sizedbox.html">SizedBox e Spacer</a></td></tr>
+<tr><td><code>Stack</code></td><td>Filhos empilhados, um por cima do outro</td><td><code>Stack(children: [ fundo, frente ])</code></td><td><a href="stack.html">Stack e Positioned</a></td></tr>
+<tr><td><code>Positioned</code></td><td>Dentro de <code>Stack</code>: posição pelas bordas (<code>top</code>, <code>right</code>…)</td><td><code>Positioned(right: 8, bottom: 8, child: …)</code></td><td><a href="stack.html">Stack e Positioned</a></td></tr>
+<tr><td><code>Wrap</code></td><td>Como uma <code>Row</code>, mas quebra para a linha de baixo quando não cabe</td><td><code>Wrap(spacing: 8, children: [ … ])</code></td><td><a href="row-column.html">Row e Column</a></td></tr>
+</table>
+</div>
+
+<h2>Rolagem</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Widget</th><th>Para que serve</th><th>Exemplo mínimo</th><th>Aula</th></tr>
+<tr><td><code>SingleChildScrollView</code></td><td>Deixa um conteúdo comprido (uma <code>Column</code>, um formulário) rolar</td><td><code>SingleChildScrollView(child: Column(…))</code></td><td><a href="scroll.html">Rolagem</a></td></tr>
+<tr><td><code>ListView</code> / <code>ListView.builder</code></td><td>Lista rolável</td><td><code>ListView.builder(itemCount: n, itemBuilder: …)</code></td><td><a href="listview-builder.html">ListView.builder</a></td></tr>
+<tr><td><code>GridView</code></td><td>Grade rolável</td><td><code>GridView.count(crossAxisCount: 3, children: [ … ])</code></td><td><a href="gridview.html">GridView</a></td></tr>
+</table>
+</div>
+
+<h2>Tamanho de tela</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Peça</th><th>Para que serve</th><th>Exemplo mínimo</th><th>Aula</th></tr>
+<tr><td><code>MediaQuery</code></td><td>Saber o tamanho da tela inteira, a orientação, o tamanho de fonte do sistema</td><td><code>MediaQuery.sizeOf(context).width</code></td><td><a href="responsivo.html">Telas de Vários Tamanhos</a></td></tr>
+<tr><td><code>LayoutBuilder</code></td><td>Saber o espaço que <strong>o pai</strong> deu, e montar diferente conforme ele</td><td><code>LayoutBuilder(builder: (context, constraints) =&gt; …)</code></td><td><a href="responsivo.html">Telas de Vários Tamanhos</a></td></tr>
+<tr><td><code>SafeArea</code></td><td>Afasta o conteúdo do entalhe, da barra de status e dos cantos arredondados</td><td><code>SafeArea(child: …)</code></td><td><a href="scaffold.html">Scaffold e AppBar</a></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Alinhamento em <code>Row</code> e <code>Column</code></h2>
+<p>O <strong>eixo principal</strong> (<em>main axis</em>) é a direção em que os filhos se enfileiram: horizontal na <code>Row</code>, vertical na <code>Column</code>. O <strong>eixo cruzado</strong> (<em>cross axis</em>) é o outro. Os detalhes, com fotos de cada valor, estão em <a href="alinhamento.html">Alinhamento</a>.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th><code>mainAxisAlignment:</code></th><th>O que faz no eixo principal</th></tr>
+<tr><td><code>MainAxisAlignment.start</code></td><td>Tudo no começo (o padrão)</td></tr>
+<tr><td><code>MainAxisAlignment.center</code></td><td>Tudo no meio</td></tr>
+<tr><td><code>MainAxisAlignment.end</code></td><td>Tudo no fim</td></tr>
+<tr><td><code>MainAxisAlignment.spaceBetween</code></td><td>O primeiro no começo, o último no fim, o espaço dividido entre eles</td></tr>
+<tr><td><code>MainAxisAlignment.spaceAround</code></td><td>Espaço igual em volta de cada filho (meio espaço nas pontas)</td></tr>
+<tr><td><code>MainAxisAlignment.spaceEvenly</code></td><td>Espaços todos iguais, inclusive nas pontas</td></tr>
+</table>
+</div>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th><code>crossAxisAlignment:</code></th><th>O que faz no eixo cruzado</th></tr>
+<tr><td><code>CrossAxisAlignment.center</code></td><td>Cada filho no meio (o padrão)</td></tr>
+<tr><td><code>CrossAxisAlignment.start</code></td><td>Cada filho encostado no começo (à esquerda numa <code>Column</code>, em cima numa <code>Row</code>)</td></tr>
+<tr><td><code>CrossAxisAlignment.end</code></td><td>Cada filho encostado no fim</td></tr>
+<tr><td><code>CrossAxisAlignment.stretch</code></td><td>Estica cada filho para ocupar o eixo cruzado inteiro</td></tr>
+<tr><td><code>CrossAxisAlignment.baseline</code></td><td>Alinha textos de tamanhos diferentes pela linha de base (pede também <code>textBaseline</code>)</td></tr>
+</table>
+</div>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th><code>mainAxisSize:</code></th><th>O que faz</th></tr>
+<tr><td><code>MainAxisSize.max</code></td><td>Ocupa todo o eixo principal disponível (o padrão)</td></tr>
+<tr><td><code>MainAxisSize.min</code></td><td>Ocupa só o tamanho dos filhos (bom dentro de <code>Center</code>, de botões, de cartões)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Qual usar?</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Eu quero…</th><th>Use</th></tr>
+<tr><td>um espaço entre dois widgets</td><td><code>SizedBox(height: 16)</code> (ou <code>width</code> numa <code>Row</code>)</td></tr>
+<tr><td>espaço em volta de um widget</td><td><code>Padding</code></td></tr>
+<tr><td>espaço, cor e cantos arredondados juntos</td><td><code>Container</code> com <code>padding</code> e <code>decoration</code></td></tr>
+<tr><td>dividir a largura em partes</td><td><code>Row</code> + <code>Expanded(flex: …)</code></td></tr>
+<tr><td>empurrar um item para o fim da linha</td><td><code>Spacer()</code> antes dele</td></tr>
+<tr><td>um selo por cima de uma foto</td><td><code>Stack</code> + <code>Positioned</code></td></tr>
+<tr><td>etiquetas que quebram de linha</td><td><code>Wrap</code></td></tr>
+<tr><td>uma tela comprida que rola</td><td><code>SingleChildScrollView</code> (poucos itens) ou <code>ListView</code> (muitos)</td></tr>
+<tr><td>uma lista dentro de uma <code>Column</code></td><td><code>Expanded(child: ListView…)</code> (sem o <code>Expanded</code>: erro; veja o <a href="projeto-tarefas.html">Projeto Lista de Tarefas</a>)</td></tr>
+<tr><td>um texto comprido numa <code>Row</code> sem estourar</td><td><code>Expanded(child: Text(…))</code> ou <code>Flexible</code> (veja <a href="overflow.html">Overflow</a>)</td></tr>
+<tr><td>um layout para celular e outro para tablet</td><td><code>LayoutBuilder</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">1. Numa <code>Row</code> com três <code>Expanded</code> de <code>flex</code> 1, 2 e 1, que fração da largura fica com o do meio?</p>
+<label><input type="radio" name="q1"> Um terço</label>
+<label><input type="radio" name="q1"> Metade</label>
+<label><input type="radio" name="q1"> Um quarto</label>
+<label><input type="radio" name="q1"> Dois terços</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">2. Numa <code>Column</code>, qual valor faz os filhos ocuparem a largura toda?</p>
+<label><input type="radio" name="q2"> <code>MainAxisAlignment.spaceEvenly</code></label>
+<label><input type="radio" name="q2"> <code>MainAxisSize.max</code></label>
+<label><input type="radio" name="q2"> <code>CrossAxisAlignment.center</code></label>
+<label><input type="radio" name="q2"> <code>CrossAxisAlignment.stretch</code></label>
+</div>
+
+<div class="exercise">
+<h3>3. Complete</h3>
+<p>Para pôr um ícone no canto de baixo à direita de uma foto: um <input data-answer="Stack" aria-label="widget que empilha"> com a foto e um <input data-answer="Positioned" aria-label="widget de posição"> com <code>right: 8, bottom: 8</code>.</p>
+</div>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>

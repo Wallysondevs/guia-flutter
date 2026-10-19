@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Widgets Mais Usados — referência rápida | Guia Flutter</title>
+<meta name="description" content="Referência rápida do Guia Flutter: os widgets mais usados, separados por assunto (estrutura, texto e imagem, botões, entrada, listas, avisos, navegação, estado e animação), com o que cada um faz, um exemplo mínimo e o link para a aula completa. Inclui uma vitrine com vários widgets numa tela só, com a foto real.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Widgets Mais Usados</span></h1>
+
+<p class="intro">Esta página é para <strong>consulta</strong>: quando você lembrar que "existe um widget que faz isso", mas não lembrar o nome nem o jeito de escrever. Os widgets estão separados por assunto. Cada linha traz o que ele faz, o exemplo mínimo e o link para a aula que ensina com calma. Os widgets de <strong>arrumar a tela</strong> (<code>Row</code>, <code>Column</code>, <code>Padding</code>…) têm uma página própria: <a href="ref-layout.html">Widgets de Layout</a>.</p>
+
+<div class="note">
+<strong>Como ler as tabelas</strong>
+<ul>
+  <li>Os exemplos são o <strong>mínimo</strong> para o widget funcionar. Os parâmetros obrigatórios estão todos lá.</li>
+  <li><code>…</code> quer dizer "outro widget qualquer aqui".</li>
+  <li>Um <code>onPressed: () {}</code> é um toque que não faz nada; com <code>onPressed: null</code>, o botão fica desativado (cinza).</li>
+  <li>A versão do lab é o Flutter 3.47 (Dart 3.13), com o Material 3, que já é o padrão.</li>
+</ul>
+</div>
+
+<hr>
+
+<h2>Uma vitrine com vários deles</h2>
+<p>Antes das tabelas, um app só com widgets desta página numa tela: <code>Card</code>, <code>ListTile</code>, <code>CircleAvatar</code>, <code>SwitchListTile</code>, <code>Slider</code>, <code>LinearProgressIndicator</code>, os cinco tipos de botão e o <code>FloatingActionButton</code>.</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const VitrineApp());
+
+class VitrineApp extends StatelessWidget {
+  const VitrineApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.green),
+      home: const VitrinePage(),
+    );
+  }
+}
+
+class VitrinePage extends StatefulWidget {
+  const VitrinePage({super.key});
+
+  @override
+  State&lt;VitrinePage&gt; createState() =&gt; _VitrinePageState();
+}
+
+class _VitrinePageState extends State&lt;VitrinePage&gt; {
+  bool _aberta = true;
+  double _fornadas = 3;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Vitrine de widgets')),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {},
+        child: const Icon(Icons.add),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          const Card(
+            child: ListTile(
+              leading: CircleAvatar(child: Text('A')),
+              title: Text('Padaria da Ana'),
+              subtitle: Text('Card + ListTile + CircleAvatar'),
+            ),
+          ),
+          SwitchListTile(
+            title: const Text('Loja aberta'),
+            value: _aberta,
+            onChanged: (v) =&gt; setState(() =&gt; _aberta = v),
+          ),
+          Text('Fornadas hoje: ${_fornadas.round()}'),
+          Slider(
+            value: _fornadas,
+            min: 0,
+            max: 10,
+            divisions: 10,
+            onChanged: (v) =&gt; setState(() =&gt; _fornadas = v),
+          ),
+          LinearProgressIndicator(value: _fornadas / 10),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ElevatedButton(onPressed: () {}, child: const Text('Elevated')),
+              FilledButton(onPressed: () {}, child: const Text('Filled')),
+              OutlinedButton(onPressed: () {}, child: const Text('Outlined')),
+              TextButton(onPressed: () {}, child: const Text('Text')),
+              IconButton(
+                onPressed: () {},
+                icon: const Icon(Icons.favorite),
+                tooltip: 'Favoritar',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+
+<figure class="tela"><img src="assets/telas/ref-widgets-1.png" alt="Tela 'Vitrine de widgets' em tons de verde: no alto, um cartão com um círculo com a letra A, 'Padaria da Ana' e 'Card + ListTile + CircleAvatar'; embaixo, 'Loja aberta' com uma chave ligada à direita; 'Fornadas hoje: 3' e um controle deslizante com marquinhas, posicionado em 3; uma barra de progresso com um pouco menos de um terço preenchido; uma fila de botões Elevated, Filled e Outlined e, na linha de baixo, Text e um coração; no canto de baixo à direita, um botão redondo verde-claro com o sinal de mais" width="390" height="844" loading="lazy"><figcaption>A vitrine rodando (Flutter 3.47, tamanho de celular).</figcaption></figure>
+
+<p>Repare em como os botões se diferenciam só pelo "peso" visual: o <code>FilledButton</code> é o mais forte (fundo verde-escuro), o <code>ElevatedButton</code> tem fundo claro, o <code>OutlinedButton</code> só contorno e o <code>TextButton</code> só o texto. O <code>Wrap</code> quebrou a fila de botões em duas linhas porque os cinco não cabiam numa só. A barra de progresso acompanha o <code>Slider</code>: 3 de 10 fornadas, 30% da barra.</p>
+
+<div class="tryflutter" data-goal="src:TextField\(">
+<p class="try-task"><strong>Missão:</strong> acrescente à vitrine um campo de texto, logo depois da barra de progresso: um <code>TextField</code> com <code>labelText: 'Seu nome'</code> e borda (<code>OutlineInputBorder</code>). Mexa também no <code>Slider</code> e no <code>Switch</code> para ver o estado mudar.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const VitrineApp());
+
+class VitrineApp extends StatelessWidget {
+  const VitrineApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.green),
+      home: const VitrinePage(),
+    );
+  }
+}
+
+class VitrinePage extends StatefulWidget {
+  const VitrinePage({super.key});
+
+  @override
+  State&lt;VitrinePage&gt; createState() =&gt; _VitrinePageState();
+}
+
+class _VitrinePageState extends State&lt;VitrinePage&gt; {
+  bool _aberta = true;
+  double _fornadas = 3;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Vitrine de widgets')),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {},
+        child: const Icon(Icons.add),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          const Card(
+            child: ListTile(
+              leading: CircleAvatar(child: Text('A')),
+              title: Text('Padaria da Ana'),
+              subtitle: Text('Card + ListTile + CircleAvatar'),
+            ),
+          ),
+          SwitchListTile(
+            title: const Text('Loja aberta'),
+            value: _aberta,
+            onChanged: (v) =&gt; setState(() =&gt; _aberta = v),
+          ),
+          Text('Fornadas hoje: ${_fornadas.round()}'),
+          Slider(
+            value: _fornadas,
+            min: 0,
+            max: 10,
+            divisions: 10,
+            onChanged: (v) =&gt; setState(() =&gt; _fornadas = v),
+          ),
+          LinearProgressIndicator(value: _fornadas / 10),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ElevatedButton(onPressed: () {}, child: const Text('Elevated')),
+              FilledButton(onPressed: () {}, child: const Text('Filled')),
+              OutlinedButton(onPressed: () {}, child: const Text('Outlined')),
+              TextButton(onPressed: () {}, child: const Text('Text')),
+              IconButton(
+                onPressed: () {},
+                icon: const Icon(Icons.favorite),
+                tooltip: 'Favoritar',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const VitrineApp());
+
+class VitrineApp extends StatelessWidget {
+  const VitrineApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: Colors.green),
+      home: const VitrinePage(),
+    );
+  }
+}
+
+class VitrinePage extends StatefulWidget {
+  const VitrinePage({super.key});
+
+  @override
+  State&lt;VitrinePage&gt; createState() =&gt; _VitrinePageState();
+}
+
+class _VitrinePageState extends State&lt;VitrinePage&gt; {
+  bool _aberta = true;
+  double _fornadas = 3;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Vitrine de widgets')),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {},
+        child: const Icon(Icons.add),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          const Card(
+            child: ListTile(
+              leading: CircleAvatar(child: Text('A')),
+              title: Text('Padaria da Ana'),
+              subtitle: Text('Card + ListTile + CircleAvatar'),
+            ),
+          ),
+          SwitchListTile(
+            title: const Text('Loja aberta'),
+            value: _aberta,
+            onChanged: (v) =&gt; setState(() =&gt; _aberta = v),
+          ),
+          Text('Fornadas hoje: ${_fornadas.round()}'),
+          Slider(
+            value: _fornadas,
+            min: 0,
+            max: 10,
+            divisions: 10,
+            onChanged: (v) =&gt; setState(() =&gt; _fornadas = v),
+          ),
+          LinearProgressIndicator(value: _fornadas / 10),
+          const SizedBox(height: 16),
+          const TextField(
+            decoration: InputDecoration(
+              labelText: 'Seu nome',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ElevatedButton(onPressed: () {}, child: const Text('Elevated')),
+              FilledButton(onPressed: () {}, child: const Text('Filled')),
+              OutlinedButton(onPressed: () {}, child: const Text('Outlined')),
+              TextButton(onPressed: () {}, child: const Text('Text')),
+              IconButton(
+                onPressed: () {},
+                icon: const Icon(Icons.favorite),
+                tooltip: 'Favoritar',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Estrutura do app</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Widget</th><th>Para que serve</th><th>Exemplo mínimo</th><th>Aula</th></tr>
+<tr><td><code>MaterialApp</code></td><td>O app inteiro: tema, título, tela inicial e o <code>Navigator</code></td><td><code>MaterialApp(home: …)</code></td><td><a href="material-app.html">MaterialApp</a></td></tr>
+<tr><td><code>Scaffold</code></td><td>A estrutura de uma tela: barra, corpo, botão flutuante, menu</td><td><code>Scaffold(appBar: …, body: …)</code></td><td><a href="scaffold.html">Scaffold e AppBar</a></td></tr>
+<tr><td><code>AppBar</code></td><td>A barra do topo, com título e ações</td><td><code>AppBar(title: Text('Receitas'))</code></td><td><a href="scaffold.html">Scaffold e AppBar</a></td></tr>
+<tr><td><code>StatelessWidget</code></td><td>Um widget seu que não muda depois de desenhado</td><td><code>class X extends StatelessWidget</code></td><td><a href="stateless.html">StatelessWidget</a></td></tr>
+<tr><td><code>StatefulWidget</code></td><td>Um widget seu com estado, que se redesenha com <code>setState</code></td><td><code>class X extends StatefulWidget</code></td><td><a href="stateful.html">StatefulWidget</a></td></tr>
+</table>
+</div>
+
+<h2>Texto e imagem</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Widget</th><th>Para que serve</th><th>Exemplo mínimo</th><th>Aula</th></tr>
+<tr><td><code>Text</code></td><td>Mostrar um texto</td><td><code>Text('Bolo de cenoura')</code></td><td><a href="text.html">Text</a></td></tr>
+<tr><td><code>TextStyle</code></td><td>Tamanho, cor, negrito e outros estilos de um <code>Text</code></td><td><code>TextStyle(fontSize: 24, fontWeight: FontWeight.bold)</code></td><td><a href="text-style.html">Estilos de Texto</a></td></tr>
+<tr><td><code>Icon</code></td><td>Um ícone do Material</td><td><code>Icon(Icons.cake, size: 32)</code></td><td><a href="icon.html">Ícones</a></td></tr>
+<tr><td><code>Image</code></td><td>Uma imagem da internet ou dos <em>assets</em> do app</td><td><code>Image.asset('assets/bolo.png')</code></td><td><a href="image.html">Imagens</a></td></tr>
+<tr><td><code>CircleAvatar</code></td><td>Um círculo para foto de perfil ou iniciais</td><td><code>CircleAvatar(child: Text('A'))</code></td><td><a href="projeto-perfil.html">Projeto: Cartão de Perfil</a></td></tr>
+</table>
+</div>
+
+<h2>Botões</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Widget</th><th>Para que serve</th><th>Exemplo mínimo</th><th>Aula</th></tr>
+<tr><td><code>FilledButton</code></td><td>O botão principal da tela, preenchido com a cor do tema</td><td><code>FilledButton(onPressed: () {}, child: Text('Salvar'))</code></td><td><a href="botoes.html">Botões</a></td></tr>
+<tr><td><code>ElevatedButton</code></td><td>Botão com fundo claro e sombra</td><td><code>ElevatedButton(onPressed: () {}, child: Text('OK'))</code></td><td><a href="botoes.html">Botões</a></td></tr>
+<tr><td><code>OutlinedButton</code></td><td>Botão só com contorno, para ações secundárias</td><td><code>OutlinedButton(onPressed: () {}, child: Text('Cancelar'))</code></td><td><a href="botoes.html">Botões</a></td></tr>
+<tr><td><code>TextButton</code></td><td>Botão só com o texto, o mais discreto</td><td><code>TextButton(onPressed: () {}, child: Text('Pular'))</code></td><td><a href="botoes.html">Botões</a></td></tr>
+<tr><td><code>IconButton</code></td><td>Um ícone que se toca (na <code>AppBar</code>, em listas)</td><td><code>IconButton(onPressed: () {}, icon: Icon(Icons.delete))</code></td><td><a href="botoes.html">Botões</a></td></tr>
+<tr><td><code>FloatingActionButton</code></td><td>O botão redondo flutuante, no canto da tela</td><td><code>FloatingActionButton(onPressed: () {}, child: Icon(Icons.add))</code></td><td><a href="botoes.html">Botões</a></td></tr>
+<tr><td><code>.icon</code> (em <code>FilledButton</code>, <code>OutlinedButton</code>…)</td><td>A versão com ícone e texto</td><td><code>FilledButton.icon(onPressed: () {}, icon: Icon(Icons.add), label: Text('Novo'))</code></td><td><a href="botoes.html">Botões</a></td></tr>
+</table>
+</div>
+
+<h2>Entrada do usuário</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Widget</th><th>Para que serve</th><th>Exemplo mínimo</th><th>Aula</th></tr>
+<tr><td><code>TextField</code></td><td>Campo para digitar texto</td><td><code>TextField(controller: _c, decoration: InputDecoration(labelText: 'Nome'))</code></td><td><a href="textfield.html">Campos de Texto</a></td></tr>
+<tr><td><code>Form</code> + <code>TextFormField</code></td><td>Formulário com validação dos campos</td><td><code>TextFormField(validator: (v) =&gt; v!.isEmpty ? 'Obrigatório' : null)</code></td><td><a href="formularios.html">Formulários e Validação</a></td></tr>
+<tr><td><code>Checkbox</code> / <code>CheckboxListTile</code></td><td>Caixa de marcar (sim ou não)</td><td><code>Checkbox(value: _ok, onChanged: (v) =&gt; setState(() =&gt; _ok = v!))</code></td><td><a href="checkbox-switch.html">Checkbox, Switch e Radio</a></td></tr>
+<tr><td><code>Switch</code> / <code>SwitchListTile</code></td><td>Chave de liga e desliga</td><td><code>Switch(value: _on, onChanged: (v) =&gt; setState(() =&gt; _on = v))</code></td><td><a href="checkbox-switch.html">Checkbox, Switch e Radio</a></td></tr>
+<tr><td><code>Radio</code></td><td>Escolher uma opção entre várias</td><td><code>RadioListTile</code> dentro de um grupo (veja a aula)</td><td><a href="checkbox-switch.html">Checkbox, Switch e Radio</a></td></tr>
+<tr><td><code>Slider</code></td><td>Escolher um número arrastando</td><td><code>Slider(value: _v, onChanged: (v) =&gt; setState(() =&gt; _v = v))</code></td><td><a href="slider-dropdown.html">Slider e Dropdown</a></td></tr>
+<tr><td><code>DropdownButton</code> / <code>DropdownMenu</code></td><td>Lista que abre para escolher um item</td><td>veja a aula</td><td><a href="slider-dropdown.html">Slider e Dropdown</a></td></tr>
+<tr><td><code>GestureDetector</code> / <code>InkWell</code></td><td>Tornar tocável qualquer widget (toque, toque longo, arrasto)</td><td><code>GestureDetector(onTap: () {}, child: …)</code></td><td><a href="gestos.html">Toques e Gestos</a></td></tr>
+</table>
+</div>
+
+<h2>Listas e grades</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Widget</th><th>Para que serve</th><th>Exemplo mínimo</th><th>Aula</th></tr>
+<tr><td><code>ListView</code></td><td>Lista rolável com poucos itens fixos</td><td><code>ListView(children: [ … ])</code></td><td><a href="listview.html">ListView</a></td></tr>
+<tr><td><code>ListView.builder</code></td><td>Lista rolável que cria os itens sob demanda (listas grandes)</td><td><code>ListView.builder(itemCount: n, itemBuilder: (context, i) =&gt; …)</code></td><td><a href="listview-builder.html">ListView.builder</a></td></tr>
+<tr><td><code>GridView</code></td><td>Grade rolável (galeria, cardápio)</td><td><code>GridView.count(crossAxisCount: 2, children: [ … ])</code></td><td><a href="gridview.html">GridView</a></td></tr>
+<tr><td><code>ListTile</code></td><td>Uma linha de lista pronta: ícone, título, subtítulo, algo à direita</td><td><code>ListTile(leading: Icon(Icons.phone), title: Text('…'))</code></td><td><a href="card.html">Card e ListTile</a></td></tr>
+<tr><td><code>Card</code></td><td>Um cartão com cantos arredondados</td><td><code>Card(child: …)</code></td><td><a href="card.html">Card e ListTile</a></td></tr>
+<tr><td><code>Dismissible</code></td><td>Arrastar um item para o lado para apagar</td><td><code>Dismissible(key: ObjectKey(item), onDismissed: …, child: …)</code></td><td><a href="dismissible.html">Arrastar para Apagar</a></td></tr>
+</table>
+</div>
+
+<h2>Avisos e espera</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Widget</th><th>Para que serve</th><th>Exemplo mínimo</th><th>Aula</th></tr>
+<tr><td><code>SnackBar</code></td><td>Aviso rápido no rodapé, que some sozinho</td><td><code>ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Salvo!')))</code></td><td><a href="dialogos.html">Diálogos e SnackBar</a></td></tr>
+<tr><td><code>AlertDialog</code></td><td>Janela de pergunta ou confirmação</td><td><code>showDialog(context: context, builder: (context) =&gt; AlertDialog(…))</code></td><td><a href="dialogos.html">Diálogos e SnackBar</a></td></tr>
+<tr><td><code>CircularProgressIndicator</code></td><td>Rodinha de "carregando"</td><td><code>CircularProgressIndicator()</code></td><td><a href="futurebuilder.html">FutureBuilder</a></td></tr>
+<tr><td><code>LinearProgressIndicator</code></td><td>Barra de progresso (com <code>value</code> de 0 a 1) ou de espera (sem <code>value</code>)</td><td><code>LinearProgressIndicator(value: 0.5)</code></td><td><a href="projeto-quiz.html">Projeto: Quiz</a></td></tr>
+</table>
+</div>
+
+<h2>Navegação</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Widget</th><th>Para que serve</th><th>Exemplo mínimo</th><th>Aula</th></tr>
+<tr><td><code>Navigator</code></td><td>Abrir e fechar telas (a pilha de telas)</td><td><code>Navigator.push(context, MaterialPageRoute(builder: (context) =&gt; Tela()))</code></td><td><a href="navegacao.html">Navigator</a></td></tr>
+<tr><td><code>Drawer</code></td><td>Menu lateral que desliza</td><td><code>Scaffold(drawer: Drawer(child: …))</code></td><td><a href="drawer.html">Menu Lateral</a></td></tr>
+<tr><td><code>NavigationBar</code></td><td>Barra de abas no rodapé</td><td><code>NavigationBar(destinations: [ … ], selectedIndex: _i, onDestinationSelected: …)</code></td><td><a href="bottom-navigation.html">Barra de Navegação Inferior</a></td></tr>
+<tr><td><code>TabBar</code> + <code>TabBarView</code></td><td>Abas no topo, com o conteúdo deslizando</td><td><code>DefaultTabController(length: 2, child: …)</code></td><td><a href="tabs.html">Abas</a></td></tr>
+</table>
+</div>
+
+<h2>Dados que chegam depois</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Widget</th><th>Para que serve</th><th>Exemplo mínimo</th><th>Aula</th></tr>
+<tr><td><code>FutureBuilder</code></td><td>Mostrar carregando, erro ou o resultado de um <code>Future</code></td><td><code>FutureBuilder(future: _f, builder: (context, snapshot) =&gt; …)</code></td><td><a href="futurebuilder.html">FutureBuilder</a></td></tr>
+<tr><td><code>StreamBuilder</code></td><td>Redesenhar a cada valor novo de um <code>Stream</code></td><td><code>StreamBuilder(stream: _s, builder: (context, snapshot) =&gt; …)</code></td><td><a href="streambuilder.html">StreamBuilder</a></td></tr>
+</table>
+</div>
+
+<h2>Animação e desenho</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Widget</th><th>Para que serve</th><th>Exemplo mínimo</th><th>Aula</th></tr>
+<tr><td><code>AnimatedContainer</code> (e outros <code>Animated…</code>)</td><td>Anima sozinho quando um valor muda</td><td><code>AnimatedContainer(duration: Duration(milliseconds: 300), width: _w)</code></td><td><a href="animacoes-implicitas.html">Animações Implícitas</a></td></tr>
+<tr><td><code>AnimationController</code></td><td>Animações com controle total (repetir, inverter)</td><td>veja a aula</td><td><a href="animacoes-explicitas.html">Animações Explícitas</a></td></tr>
+<tr><td><code>Hero</code></td><td>Um elemento "voa" de uma tela para a outra</td><td><code>Hero(tag: 'bolo', child: …)</code></td><td><a href="hero.html">Hero</a></td></tr>
+<tr><td><code>CustomPaint</code></td><td>Desenhar à mão (linhas, círculos, gráficos)</td><td><code>CustomPaint(painter: MeuPintor())</code></td><td><a href="custom-paint.html">Desenhando</a></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Como achar o widget certo</h2>
+<ol class="passo">
+  <li>Pense no que você quer <strong>em português</strong> ("uma linha com ícone e texto", "um aviso que some") e procure nesta página com <kbd>Ctrl</kbd>+<kbd>F</kbd>.</li>
+  <li>Se não achar, o catálogo oficial de widgets fica em <a href="https://docs.flutter.dev/ui/widgets" target="_blank" rel="noopener">docs.flutter.dev/ui/widgets</a>, separado por categoria, e cada widget tem a sua página na documentação da API (<a href="https://api.flutter.dev/" target="_blank" rel="noopener">api.flutter.dev</a>), com exemplos.</li>
+  <li>No VS Code, digite o nome do widget e aperte <kbd>Ctrl</kbd>+<kbd>Espaço</kbd>: o editor mostra os parâmetros (veja <a href="editor.html">VS Code e Android Studio</a>).</li>
+</ol>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">1. Qual widget mostra um aviso rápido no rodapé, que some sozinho?</p>
+<label><input type="radio" name="q1"> <code>AlertDialog</code></label>
+<label><input type="radio" name="q1"> <code>Drawer</code></label>
+<label><input type="radio" name="q1"> <code>SnackBar</code></label>
+<label><input type="radio" name="q1"> <code>Card</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">2. Para uma lista com 2.000 produtos, qual é a melhor escolha?</p>
+<label><input type="radio" name="q2"> <code>ListView.builder</code></label>
+<label><input type="radio" name="q2"> <code>Column</code> com 2.000 filhos</label>
+<label><input type="radio" name="q2"> <code>ListView(children: [ … ])</code> com 2.000 filhos</label>
+<label><input type="radio" name="q2"> <code>Wrap</code></label>
+</div>
+
+<div class="exercise">
+<h3>3. Qual botão?</h3>
+<p>Complete com o nome do botão: o redondo, flutuante no canto da tela, é o <input data-answer="FloatingActionButton" aria-label="nome do botão flutuante">; o que é só um ícone tocável é o <input data-answer="IconButton" aria-label="nome do botão de ícone">.</p>
+</div>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
