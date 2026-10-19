@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Keys — quando o estado troca de lugar | Guia Flutter</title>
+<meta name="description" content="Keys do Flutter para iniciantes: por que o estado fica no lugar errado quando você reordena widgets com estado, como o ValueKey resolve (fotos reais antes e depois), os tipos de chave (ValueKey, ObjectKey, UniqueKey, GlobalKey) e a tela vermelha real de 'Duplicate keys found'.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Keys</span></h1>
+
+<p class="intro">Desde a primeira aula, todo widget que você escreveu tinha um <code>{super.key}</code> no construtor, e até agora ninguém usou. Esta aula mostra para que ele serve. Uma <strong>key</strong> ("chave") é um crachá que você pendura num widget para o Flutter saber <strong>quem é quem</strong> quando a lista muda de ordem. Sem crachá, num caso específico, o estado vai parar no widget errado, e o resultado é um bug estranho, sem mensagem de erro nenhuma.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como o Flutter decide qual <code>State</code> pertence a qual widget depois de um <code>build</code>.</li>
+  <li>O bug de trocar a ordem de widgets com estado (fotos reais).</li>
+  <li>Como o <code>ValueKey</code> resolve.</li>
+  <li>Os tipos de chave: <code>ValueKey</code>, <code>ObjectKey</code>, <code>UniqueKey</code> e <code>GlobalKey</code>, e quando usar cada um.</li>
+  <li>A tela vermelha real de <code>Duplicate keys found</code>.</li>
+</ul>
+</div>
+
+<p>As telas e o console desta aula vieram de um Flutter de verdade, no laboratório da Ana, em tamanho de celular.</p>
+
+<hr>
+
+<h2>A ideia: as cadeiras da sala</h2>
+<p>Na sala de aula, cada carteira tem um caderno em cima. Se a professora disser "a Ana e a Bia trocam de lugar" e as duas trocarem <strong>sem levar o caderno</strong>, cada uma vai encontrar o caderno da outra. A carteira foi reconhecida pela <strong>posição</strong> (1ª, 2ª), e não pela dona.</p>
+<p>É assim que o Flutter faz por padrão. Depois de um <code>build</code>, ele compara a lista nova de filhos com a antiga, <strong>posição por posição</strong>: se na posição 1 havia um <code>CartaoPontos</code> e continua havendo um <code>CartaoPontos</code>, ele reaproveita o <code>State</code> que já estava lá (o caderno da carteira), só trocando os parâmetros. Uma <strong>key</strong> é a etiqueta com o nome da dona no caderno: com ela, o Flutter procura o <code>State</code> pela etiqueta, e não pela posição.</p>
+
+<hr>
+
+<h2>1. O bug: os pontos ficaram na posição</h2>
+<p>O placar da Ana e da Bia: cada <code>CartaoPontos</code> guarda os seus pontos (um <code>StatefulWidget</code>), e um botão troca a ordem das jogadoras:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(home: Placar());
+  }
+}
+
+class Placar extends StatefulWidget {
+  const Placar({super.key});
+
+  @override
+  State&lt;Placar&gt; createState() =&gt; _PlacarState();
+}
+
+class _PlacarState extends State&lt;Placar&gt; {
+  List&lt;String&gt; _jogadoras = ['Ana', 'Bia'];
+
+  void _trocar() {
+    setState(() {
+      _jogadoras = _jogadoras.reversed.toList();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Placar')),
+      body: Column(
+        children: [
+          for (final nome in _jogadoras) CartaoPontos(nome: nome),
+          const SizedBox(height: 16),
+          FilledButton(onPressed: _trocar, child: const Text('Trocar a ordem')),
+        ],
+      ),
+    );
+  }
+}
+
+class CartaoPontos extends StatefulWidget {
+  const CartaoPontos({super.key, required this.nome});
+
+  final String nome;
+
+  @override
+  State&lt;CartaoPontos&gt; createState() =&gt; _CartaoPontosState();
+}
+
+class _CartaoPontosState extends State&lt;CartaoPontos&gt; {
+  int _pontos = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: Text(widget.nome, style: const TextStyle(fontSize: 22)),
+      subtitle: Text('$_pontos pontos'),
+      trailing: IconButton(
+        icon: const Icon(Icons.add_circle),
+        tooltip: 'Ponto para ${widget.nome}',
+        onPressed: () =&gt; setState(() =&gt; _pontos++),
+      ),
+    );
+  }
+}</pre>
+
+<dl class="anatomy">
+  <dt>List&lt;String&gt; _jogadoras = ['Ana', 'Bia'];</dt><dd>A ordem das jogadoras, no estado do placar.</dd>
+  <dt>_jogadoras.reversed.toList()</dt><dd>A lista de trás para a frente: <code>['Bia', 'Ana']</code>.</dd>
+  <dt>for (final nome in _jogadoras) CartaoPontos(nome: nome)</dt><dd>Um cartão para cada jogadora, na ordem da lista. <strong>Sem key.</strong></dd>
+  <dt>int _pontos = 0;</dt><dd>Os pontos moram no <code>State</code> de cada cartão.</dd>
+</dl>
+
+<p>A Ana marcou dois pontos (dois toques no ⊕ da Ana) e depois tocou em <strong>Trocar a ordem</strong>:</p>
+
+<figure class="tela"><img src="assets/telas/keys-1.png" alt="Tela 'Placar' com Ana '2 pontos' na primeira linha, Bia '0 pontos' na segunda, cada uma com um botão de mais na direita, e o botão roxo 'Trocar a ordem' embaixo" width="390" height="844" loading="lazy"><figcaption>Antes de trocar: Ana 2, Bia 0. Certo.</figcaption></figure>
+<figure class="tela"><img src="assets/telas/keys-2.png" alt="A mesma tela depois da troca: Bia '2 pontos' na primeira linha e Ana '0 pontos' na segunda" width="390" height="844" loading="lazy"><figcaption>Depois de trocar, sem key: Bia 2, Ana 0. Os pontos mudaram de dona!</figcaption></figure>
+
+<p>Os <strong>nomes</strong> trocaram de lugar, mas os <strong>pontos</strong> ficaram onde estavam: agora a Bia tem os 2 pontos da Ana. Nenhuma mensagem no console. O que aconteceu, passo a passo:</p>
+<ol class="passo">
+  <li>Antes: posição 1 = <code>CartaoPontos('Ana')</code> com um <code>State</code> de 2 pontos; posição 2 = <code>CartaoPontos('Bia')</code> com um <code>State</code> de 0.</li>
+  <li>O <code>setState</code> do placar roda o <code>build</code> de novo, que agora monta <code>CartaoPontos('Bia')</code> na posição 1 e <code>CartaoPontos('Ana')</code> na 2.</li>
+  <li>O Flutter compara posição por posição: na posição 1, "era um <code>CartaoPontos</code>, continua sendo um <code>CartaoPontos</code>". Ele reaproveita o <code>State</code> da posição 1 (o de 2 pontos) e só troca o parâmetro <code>nome</code> para "Bia".</li>
+  <li>Resultado: o <code>State</code> de 2 pontos agora mostra "Bia".</li>
+</ol>
+
+<div class="note">
+<strong>Por que nunca tinha dado problema antes?</strong>
+<p>Porque o bug só aparece quando as três coisas acontecem juntas: <strong>widgets com estado</strong> (<code>StatefulWidget</code>), <strong>do mesmo tipo</strong>, <strong>lado a lado numa lista que muda</strong> (troca de ordem, item apagado no meio, item inserido no começo). Se o estado estivesse no pai (veja <a href="elevar-estado.html">Elevando o Estado</a>), os cartões seriam <code>StatelessWidget</code> e não haveria nada para trocar de lugar.</p>
+</div>
+
+<hr>
+
+<h2>2. A solução: uma <code>ValueKey</code> em cada cartão</h2>
+<p>Uma linha muda: cada cartão ganha uma chave com o nome da jogadora.</p>
+
+<pre class="file" data-file="lib/main.dart">          for (final nome in _jogadoras) CartaoPontos(key: ValueKey(nome), nome: nome),</pre>
+
+<dl class="anatomy">
+  <dt>key:</dt><dd>O parâmetro que todo widget aceita: é o <code>{super.key}</code> do construtor, que passa a chave para a classe <code>Widget</code>.</dd>
+  <dt>ValueKey(nome)</dt><dd>Uma chave feita de um <strong>valor</strong>: o nome da jogadora. Duas <code>ValueKey</code> são iguais quando os valores são iguais (<code>ValueKey('Ana') == ValueKey('Ana')</code>).</dd>
+</dl>
+
+<p>Os mesmos toques: dois pontos para a Ana e Trocar a ordem:</p>
+
+<figure class="tela"><img src="assets/telas/keys-3.png" alt="Tela 'Placar' depois da troca, com Bia '0 pontos' na primeira linha e Ana '2 pontos' na segunda" width="390" height="844" loading="lazy"><figcaption>Depois de trocar, com <code>ValueKey</code>: Bia 0, Ana 2. Certo.</figcaption></figure>
+
+<p>Agora o Flutter compara pelas chaves: "o <code>State</code> que era da chave <code>'Ana'</code> vai para onde está o widget com a chave <code>'Ana'</code>". Os pontos foram junto com a dona.</p>
+
+<div class="tryflutter" data-goal="src:key:\s*ValueKey\(\s*nome\s*\)">
+<p class="try-task"><strong>Missão:</strong> rode o placar sem chave, dê dois pontos para a Ana e toque em "Trocar a ordem": veja os pontos mudarem de dona. Depois conserte: dê a cada <code>CartaoPontos</code> a chave <code>key: ValueKey(nome)</code> e repita.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(home: Placar());
+  }
+}
+
+class Placar extends StatefulWidget {
+  const Placar({super.key});
+
+  @override
+  State&lt;Placar&gt; createState() =&gt; _PlacarState();
+}
+
+class _PlacarState extends State&lt;Placar&gt; {
+  List&lt;String&gt; _jogadoras = ['Ana', 'Bia'];
+
+  void _trocar() {
+    setState(() {
+      _jogadoras = _jogadoras.reversed.toList();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Placar')),
+      body: Column(
+        children: [
+          for (final nome in _jogadoras) CartaoPontos(nome: nome),
+          const SizedBox(height: 16),
+          FilledButton(onPressed: _trocar, child: const Text('Trocar a ordem')),
+        ],
+      ),
+    );
+  }
+}
+
+class CartaoPontos extends StatefulWidget {
+  const CartaoPontos({super.key, required this.nome});
+
+  final String nome;
+
+  @override
+  State&lt;CartaoPontos&gt; createState() =&gt; _CartaoPontosState();
+}
+
+class _CartaoPontosState extends State&lt;CartaoPontos&gt; {
+  int _pontos = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: Text(widget.nome, style: const TextStyle(fontSize: 22)),
+      subtitle: Text('$_pontos pontos'),
+      trailing: IconButton(
+        icon: const Icon(Icons.add_circle),
+        tooltip: 'Ponto para ${widget.nome}',
+        onPressed: () =&gt; setState(() =&gt; _pontos++),
+      ),
+    );
+  }
+}</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(home: Placar());
+  }
+}
+
+class Placar extends StatefulWidget {
+  const Placar({super.key});
+
+  @override
+  State&lt;Placar&gt; createState() =&gt; _PlacarState();
+}
+
+class _PlacarState extends State&lt;Placar&gt; {
+  List&lt;String&gt; _jogadoras = ['Ana', 'Bia'];
+
+  void _trocar() {
+    setState(() {
+      _jogadoras = _jogadoras.reversed.toList();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Placar')),
+      body: Column(
+        children: [
+          for (final nome in _jogadoras) CartaoPontos(key: ValueKey(nome), nome: nome),
+          const SizedBox(height: 16),
+          FilledButton(onPressed: _trocar, child: const Text('Trocar a ordem')),
+        ],
+      ),
+    );
+  }
+}
+
+class CartaoPontos extends StatefulWidget {
+  const CartaoPontos({super.key, required this.nome});
+
+  final String nome;
+
+  @override
+  State&lt;CartaoPontos&gt; createState() =&gt; _CartaoPontosState();
+}
+
+class _CartaoPontosState extends State&lt;CartaoPontos&gt; {
+  int _pontos = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: Text(widget.nome, style: const TextStyle(fontSize: 22)),
+      subtitle: Text('$_pontos pontos'),
+      trailing: IconButton(
+        icon: const Icon(Icons.add_circle),
+        tooltip: 'Ponto para ${widget.nome}',
+        onPressed: () =&gt; setState(() =&gt; _pontos++),
+      ),
+    );
+  }
+}</pre>
+</div>
+<p>O resultado esperado é a última foto acima: depois da troca, a Ana continua com os seus 2 pontos.</p>
+
+<hr>
+
+<h2 id="formas">3. Os tipos de chave: qual usar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Chave</th><th>Feita de</th><th>Use quando</th></tr>
+<tr><td><code>ValueKey(valor)</code></td><td>Um valor simples e único: o nome, o <code>id</code> do produto</td><td><strong>Quase sempre.</strong> Itens de lista que têm um identificador</td></tr>
+<tr><td><code>ObjectKey(objeto)</code></td><td>A identidade de um objeto (o mesmo objeto na memória)</td><td>Os itens são objetos sem um campo único, mas cada um é uma instância diferente</td></tr>
+<tr><td><code>UniqueKey()</code></td><td>Nada: cada <code>UniqueKey()</code> é diferente de todas as outras</td><td>Quando você quer <strong>forçar</strong> um <code>State</code> novo (a chave muda a cada <code>build</code>, e o estado recomeça do zero)</td></tr>
+<tr><td><code>GlobalKey()</code></td><td>Uma chave única no app inteiro</td><td>Para alcançar o <code>State</code> de um widget de fora dele. O uso mais comum é o <code>GlobalKey&lt;FormState&gt;</code> do <a href="formularios.html">Form</a></td></tr>
+</table>
+</div>
+
+<div class="warning">
+<strong>Não use o índice como chave</strong>
+<p><code>ValueKey(i)</code>, com a posição da lista, é a mesma coisa que não ter chave: depois da troca, a posição 0 continua sendo <code>ValueKey(0)</code>, e o estado continua indo para a posição. A chave tem de ser algo que <strong>vai junto com o item</strong> (o nome, o id), não algo que depende de onde ele está.</p>
+</div>
+
+<p>Nas listas grandes, o lugar mais comum das chaves é o <a href="listview-builder.html">ListView.builder</a> e o <a href="dismissible.html">Dismissible</a> (que exige uma chave em cada item).</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Duas chaves iguais na mesma lista</strong>
+<p>A lista ficou com a Ana duas vezes (<code>['Ana', 'Ana']</code>), e cada cartão ganhou <code>ValueKey(nome)</code>, ou seja, duas vezes <code>ValueKey('Ana')</code>:</p>
+<figure class="tela"><img src="assets/telas/keys-4.png" alt="Tela 'Placar' com o corpo todo vermelho escuro e, em letras amarelas: 'Duplicate keys found. If multiple keyed widgets exist as children of another widget, they must have unique keys. Column(direction: vertical, mainAxisAlignment: start, crossAxisAlignment: center) has multiple children with key [&lt;'Ana'&gt;]. See also: https://docs.flutter.dev/testing/errors'" width="390" height="844" loading="lazy"><figcaption>A tela vermelha de erro do modo debug.</figcaption></figure>
+<p>Esta é a famosa <strong>tela vermelha</strong> do Flutter: quando um widget falha ao ser montado (aqui, a <code>Column</code>), o modo debug desenha a mensagem do erro no lugar dele, em amarelo sobre vermelho. O <code>AppBar</code> continuou aparecendo porque não foi ele que falhou. No console, a mesma mensagem, com mais detalhes:</p>
+<pre class="term">══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following assertion was thrown building KeyedSubtree-[GlobalKey#11ccb]:
+Duplicate keys found.
+If multiple keyed widgets exist as children of another widget, they must have unique keys.
+Column(direction: vertical, mainAxisAlignment: start, crossAxisAlignment: center) has multiple
+children with key [&lt;'Ana'&gt;].
+
+The relevant error-causing widget was:
+  Scaffold Scaffold:file:///home/ana/app/lib/main.dart:32:12
+
+When the exception was thrown, this was the stack:
+« … umas 30 linhas com a pilha de chamadas (o caminho dentro do Flutter) …
+════════════════════════════════════════════════════════════════════════════════════════════════════</pre>
+<p>"Chaves duplicadas encontradas. Se vários widgets com chave são filhos de um mesmo widget, as chaves têm de ser únicas." E aponta o culpado: a <code>Column</code> tem mais de um filho com a chave <code>[&lt;'Ana'&gt;]</code> (é assim que uma <code>ValueKey('Ana')</code> aparece escrita). Repare que o <code>relevant error-causing widget</code> aponta o <code>Scaffold</code> da linha 32, e não a <code>Column</code>: nem sempre ele acerta o culpado exato, mas mostra a região do código onde procurar. <strong>Como consertar:</strong> use na chave algo que seja realmente único para cada item: um <code>id</code>, em vez do nome.</p>
+</div>
+
+<div class="cenario">
+<strong>A chave no widget errado</strong>
+<p>A chave tem de estar no widget que é <strong>filho direto</strong> da lista que muda (aqui, o <code>CartaoPontos</code>, filho da <code>Column</code>). Se você embrulhar o cartão num <code>Padding</code> e puser a chave no cartão de dentro, o Flutter compara os <code>Padding</code> pela posição, e o bug volta. <strong>Como consertar:</strong> ponha a chave no widget de fora: <code>Padding(key: ValueKey(nome), …)</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>const MeuWidget({super.key});</code></td><td>Deixa o widget aceitar uma chave</td></tr>
+<tr><td><code>MeuWidget(key: ValueKey(produto.id))</code></td><td>Chave pelo identificador do item</td></tr>
+<tr><td><code>MeuWidget(key: ObjectKey(produto))</code></td><td>Chave pela identidade do objeto</td></tr>
+<tr><td><code>MeuWidget(key: UniqueKey())</code></td><td>Força um <code>State</code> novo</td></tr>
+<tr><td><code>final _chave = GlobalKey&lt;FormState&gt;();</code></td><td>Chave global para alcançar um <code>State</code></td></tr>
+<tr><td><code>Duplicate keys found.</code></td><td>Dois irmãos com a mesma chave</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete</h3>
+<p>Complete para cada tarefa manter o seu estado quando a lista mudar de ordem:</p>
+<div class="ex-code">for (final tarefa in _tarefas)<br>&nbsp;&nbsp;TarefaTile(<input data-answer="key" aria-label="nome do parâmetro">: <input data-answer="ValueKey" aria-label="tipo da chave">(tarefa.id), tarefa: tarefa),</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. Sem chaves, como o Flutter decide qual <code>State</code> vai para qual widget depois de um <code>build</code>?</p>
+<label><input type="radio" name="q2"> Pelo nome passado no construtor</label>
+<label><input type="radio" name="q2"> Pela posição e pelo tipo do widget</label>
+<label><input type="radio" name="q2"> Ao acaso</label>
+<label><input type="radio" name="q2"> Ele cria sempre um <code>State</code> novo</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">3. Qual chave <strong>não</strong> resolve o bug da troca de ordem?</p>
+<label><input type="radio" name="q3"> <code>ValueKey(nome)</code></label>
+<label><input type="radio" name="q3"> <code>ValueKey(produto.id)</code></label>
+<label><input type="radio" name="q3"> <code>ObjectKey(produto)</code></label>
+<label><input type="radio" name="q3"> <code>ValueKey(i)</code>, com a posição na lista</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. Em que caso as chaves fazem diferença?</p>
+<label><input type="radio" name="q4"> Widgets com estado, do mesmo tipo, numa lista que muda de ordem ou perde itens</label>
+<label><input type="radio" name="q4"> Qualquer <code>Text</code></label>
+<label><input type="radio" name="q4"> Só no <code>main</code></label>
+<label><input type="radio" name="q4"> Só em <code>StatelessWidget</code></label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Sem chave, o Flutter reaproveita o <code>State</code> pela <strong>posição</strong> e pelo tipo do widget.</li>
+  <li>Quando widgets com estado, do mesmo tipo, trocam de ordem, o estado fica na posição e "muda de dono", sem erro nenhum.</li>
+  <li>Uma <code>ValueKey</code> com algo único do item (nome, id) faz o estado ir junto com o item. Nunca use a posição como chave.</li>
+  <li><code>ObjectKey</code> usa a identidade do objeto; <code>UniqueKey</code> força um estado novo; <code>GlobalKey</code> alcança um <code>State</code> de fora.</li>
+  <li>Chaves iguais entre irmãos dão a tela vermelha <code>Duplicate keys found</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
