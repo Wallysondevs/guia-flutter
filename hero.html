@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Hero — o elemento que voa entre as telas | Guia Flutter</title>
+<meta name="description" content="O widget Hero do Flutter para quem nunca fez um app: a mesma tag nas duas telas, o ícone da receita que voa da lista para a tela de detalhes, a volta, fotos do começo e do fim e o erro real das tags repetidas (There are multiple heroes that share the same tag).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Hero</span></h1>
+
+<p class="intro">Você toca na foto de um produto numa loja on-line e a foto, em vez de sumir, <strong>voa</strong> e cresce até virar a foto grande da tela de detalhes. Na volta, ela encolhe e pousa de novo no lugar dela na lista. Esse efeito tem nome no Flutter: animação <strong>Hero</strong> ("herói"), e é uma das mais fáceis de fazer. Basta embrulhar o elemento nas duas telas com um <code>Hero</code> e dar a eles o mesmo nome.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como o <code>Hero</code> liga um widget de uma tela a um widget de outra pela <code>tag</code>.</li>
+  <li>A fazer o ícone de uma receita voar da lista para a tela de detalhes (e voltar).</li>
+  <li>Por que cada <code>tag</code> tem de ser única dentro de uma tela.</li>
+  <li>O erro real das tags repetidas, linha por linha.</li>
+</ul>
+</div>
+
+<div class="note">
+<strong>Sobre as fotos desta aula</strong>
+<p>As fotos do laboratório mostram as duas pontas do voo: a lista (antes do toque) e a tela de detalhes (depois). O voo em si, só no <strong>Experimente</strong>.</p>
+</div>
+
+<hr>
+
+<h2>A ideia: o mesmo ator em dois cenários</h2>
+<p>No teatro, um ator sai de um cenário e entra no outro. A plateia entende que é <strong>a mesma pessoa</strong>, porque ela tem o mesmo rosto. O Flutter faz isso com widgets: na hora de trocar de tela (veja <a href="navegacao.html">Navigator</a>), ele procura, na tela que sai e na que entra, os <code>Hero</code> que têm a <strong>mesma <code>tag</code></strong> (a mesma "etiqueta"). Para cada par, ele tira o widget da tela velha e o faz <strong>voar</strong>, mudando de tamanho e de lugar, até a posição do par na tela nova.</p>
+
+<pre>
+Tela da lista                      Tela de detalhe
+ListTile                           Column
+ └─ Hero(tag: 'Bolo de cenoura')    └─ Hero(tag: 'Bolo de cenoura')
+     └─ Icon(size: 40)   ──voa──▶       └─ Icon(size: 200)
+</pre>
+
+<hr>
+
+<h2>1. A lista de receitas que voa</h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaLista(),
+    ));
+
+class Receita {
+  final String nome;
+  final IconData icone;
+  final Color cor;
+  const Receita(this.nome, this.icone, this.cor);
+}
+
+const receitas = [
+  Receita('Bolo de cenoura', Icons.cake, Colors.orange),
+  Receita('Café coado', Icons.coffee, Colors.brown),
+  Receita('Pizza da Ana', Icons.local_pizza, Colors.red),
+];
+
+class TelaLista extends StatelessWidget {
+  const TelaLista({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas')),
+      body: ListView(
+        children: [
+          for (final r in receitas)
+            ListTile(
+              leading: Hero(
+                tag: r.nome,
+                child: Icon(r.icone, color: r.cor, size: 40),
+              ),
+              title: Text(r.nome),
+              onTap: () =&gt; Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) =&gt; TelaDetalhe(receita: r)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class TelaDetalhe extends StatelessWidget {
+  const TelaDetalhe({super.key, required this.receita});
+
+  final Receita receita;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(receita.nome)),
+      body: Column(
+        children: [
+          const SizedBox(height: 32),
+          Center(
+            child: Hero(
+              tag: receita.nome,
+              child: Icon(receita.icone, color: receita.cor, size: 200),
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.all(24),
+            child: Text('Modo de preparo: misture tudo, asse e sirva.'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>Hero(tag: r.nome, child: Icon(…, size: 40))</dt><dd>Na lista, o ícone pequeno de cada receita vai dentro de um <code>Hero</code>. A <code>tag</code> é o nome da receita: cada linha tem uma tag diferente.</dd>
+  <dt>onTap: () =&gt; Navigator.push(…)</dt><dd>O toque abre a tela de detalhe, passando a receita (veja <a href="passar-dados-telas.html">Passando Dados entre Telas</a>). É essa troca de tela que dispara o voo: o <code>Hero</code> não faz nada sozinho.</dd>
+  <dt>Hero(tag: receita.nome, child: Icon(…, size: 200))</dt><dd>Na tela de detalhe, o mesmo ícone, grande, com a <strong>mesma tag</strong>. É assim que o Flutter sabe que os dois são o "mesmo ator".</dd>
+  <dt>tag</dt><dd>Pode ser qualquer objeto (texto, número, o id do produto), desde que seja <strong>igual</strong> nas duas telas e <strong>único</strong> em cada uma.</dd>
+</dl>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Antes: a lista</th><th>Depois do toque em "Bolo de cenoura"</th></tr>
+<tr><td><figure class="tela"><img src="assets/telas/hero-1.png" alt="Tela Receitas com três linhas: um bolo laranja pequeno e Bolo de cenoura, uma xícara marrom e Café coado, uma fatia de pizza vermelha e Pizza da Ana" width="390" height="844" loading="lazy"><figcaption>A lista: ícones de 40 pixels.</figcaption></figure></td><td><figure class="tela"><img src="assets/telas/hero-2.png" alt="Tela Bolo de cenoura, com a seta de voltar no topo, o ícone do bolo laranja bem grande no alto e, embaixo, o texto Modo de preparo: misture tudo, asse e sirva." width="390" height="844" loading="lazy"><figcaption>O detalhe: o mesmo bolo, com 200 pixels.</figcaption></figure></td></tr>
+</table>
+</div>
+
+<p>Entre as duas fotos, durante a transição de tela (uma fração de segundo), o bolo laranja sai do canto da linha, cresce e para no meio da tela nova. Ao voltar (a seta da <code>AppBar</code>), o voo acontece ao contrário, sem uma linha a mais de código.</p>
+
+<div class="tryflutter" data-goal="src:Hero\([\s\S]*Hero\(">
+<p class="try-task"><strong>Missão:</strong> neste código, só a lista tem <code>Hero</code>. Rode e toque numa receita: a tela troca, mas o ícone não voa. Na <code>TelaDetalhe</code>, embrulhe o ícone grande num <code>Hero</code> com <code>tag: receita.nome</code> e rode de novo. Toque na seta de voltar para ver o voo de volta.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaLista(),
+    ));
+
+class Receita {
+  final String nome;
+  final IconData icone;
+  final Color cor;
+  const Receita(this.nome, this.icone, this.cor);
+}
+
+const receitas = [
+  Receita('Bolo de cenoura', Icons.cake, Colors.orange),
+  Receita('Café coado', Icons.coffee, Colors.brown),
+  Receita('Pizza da Ana', Icons.local_pizza, Colors.red),
+];
+
+class TelaLista extends StatelessWidget {
+  const TelaLista({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas')),
+      body: ListView(
+        children: [
+          for (final r in receitas)
+            ListTile(
+              leading: Hero(
+                tag: r.nome,
+                child: Icon(r.icone, color: r.cor, size: 40),
+              ),
+              title: Text(r.nome),
+              onTap: () =&gt; Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) =&gt; TelaDetalhe(receita: r)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class TelaDetalhe extends StatelessWidget {
+  const TelaDetalhe({super.key, required this.receita});
+
+  final Receita receita;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(receita.nome)),
+      body: Column(
+        children: [
+          const SizedBox(height: 32),
+          Center(
+            child: Icon(receita.icone, color: receita.cor, size: 200),
+          ),
+          const Padding(
+            padding: EdgeInsets.all(24),
+            child: Text('Modo de preparo: misture tudo, asse e sirva.'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaLista(),
+    ));
+
+class Receita {
+  final String nome;
+  final IconData icone;
+  final Color cor;
+  const Receita(this.nome, this.icone, this.cor);
+}
+
+const receitas = [
+  Receita('Bolo de cenoura', Icons.cake, Colors.orange),
+  Receita('Café coado', Icons.coffee, Colors.brown),
+  Receita('Pizza da Ana', Icons.local_pizza, Colors.red),
+];
+
+class TelaLista extends StatelessWidget {
+  const TelaLista({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas')),
+      body: ListView(
+        children: [
+          for (final r in receitas)
+            ListTile(
+              leading: Hero(
+                tag: r.nome,
+                child: Icon(r.icone, color: r.cor, size: 40),
+              ),
+              title: Text(r.nome),
+              onTap: () =&gt; Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) =&gt; TelaDetalhe(receita: r)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class TelaDetalhe extends StatelessWidget {
+  const TelaDetalhe({super.key, required this.receita});
+
+  final Receita receita;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(receita.nome)),
+      body: Column(
+        children: [
+          const SizedBox(height: 32),
+          Center(
+            child: Hero(
+              tag: receita.nome,
+              child: Icon(receita.icone, color: receita.cor, size: 200),
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.all(24),
+            child: Text('Modo de preparo: misture tudo, asse e sirva.'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>2. Detalhes que ajudam</h2>
+<ul>
+  <li><strong>Os dois filhos devem ser parecidos.</strong> O Flutter anima o tamanho e a posição, não troca um desenho por outro. Se na lista é um ícone e no detalhe é uma foto, o voo mostra o filho da tela <strong>nova</strong> esticado no caminho.</li>
+  <li><strong>Texto dentro de <code>Hero</code></strong> pode aparecer com sublinhado amarelo durante o voo (ele voa fora do <code>Scaffold</code>, sem o estilo de texto do tema). Embrulhe o texto num <code>Material(type: MaterialType.transparency, child: …)</code>.</li>
+  <li><strong>Imagens</strong>: é o uso mais comum (a foto do produto). Funciona igual com <code>Image.network</code> e <code>Image.asset</code> (veja <a href="image.html">Imagens</a>).</li>
+  <li><strong>Para mudar o caminho do voo</strong> (em arco em vez de linha reta) existe o parâmetro <code>createRectTween</code>, para quem quiser se aprofundar.</li>
+</ul>
+
+<hr>
+
+<h2 id="formas">Hero ou outra animação?</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Você quer…</th><th>Use</th></tr>
+<tr><td>Um elemento que "passa" de uma tela para a outra</td><td><code>Hero</code></td></tr>
+<tr><td>Animar algo dentro da mesma tela</td><td><a href="animacoes-implicitas.html">Animações Implícitas</a> ou <a href="animacoes-explicitas.html">Explícitas</a></td></tr>
+<tr><td>Mudar o jeito como a tela inteira entra (deslizar, esmaecer)</td><td>Uma transição de rota (<code>PageRouteBuilder</code>) ou o tema de transições</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>A mesma <code>tag</code> em várias linhas</strong>
+<p>A Ana deu a mesma tag para todas as linhas da lista: <code>Hero(tag: 'receita', …)</code>. O app abre normal, mas, ao tocar em "Bolo de cenoura", o console mostra:</p>
+<pre class="term">══╡ EXCEPTION CAUGHT BY SCHEDULER LIBRARY ╞═════════════════════════════════════════════════════════
+The following assertion was thrown during a scheduler callback:
+There are multiple heroes that share the same tag within a subtree.
+Within each subtree for which heroes are to be animated (i.e. a PageRoute subtree), each Hero must
+have a unique non-null tag.
+In this case, multiple heroes had the following tag: receita
+├# Here is the subtree for one of the offending heroes: Hero
+…
+</pre>
+<dl class="anatomy">
+  <dt>EXCEPTION CAUGHT BY SCHEDULER LIBRARY</dt><dd>O erro veio do "agendador", a parte do Flutter que roda as coisas de cada quadro, como as animações de troca de tela.</dd>
+  <dt>There are multiple heroes that share the same tag within a subtree</dt><dd>"Há vários heróis com a mesma tag na mesma subárvore" (na mesma tela).</dd>
+  <dt>each Hero must have a unique non-null tag</dt><dd>"Cada Hero precisa de uma tag única e não nula" dentro de cada <code>PageRoute</code> (cada tela do Navigator).</dd>
+  <dt>multiple heroes had the following tag: receita</dt><dd>A tag repetida: <code>receita</code>. É a pista para achar o erro no código.</dd>
+</dl>
+<p>A tela de detalhe ainda abre (no lab, ela apareceu igual à da segunda foto), mas <strong>sem voo</strong>. Com 3 linhas, o Flutter não tem como saber qual dos 3 bolos deve voar. <strong>Como consertar:</strong> uma tag diferente por linha, ligada ao dado: <code>tag: r.nome</code> (ou o id do produto).</p>
+</div>
+
+<div class="cenario">
+<strong>Tags diferentes nas duas telas: não voa, e não avisa</strong>
+<p>Se a lista usa <code>tag: r.nome</code> e o detalhe usa <code>tag: 'detalhe-${receita.nome}'</code>, cada <code>Hero</code> fica sem par. Não há erro: a tela troca do jeito normal, como se não houvesse <code>Hero</code>. <strong>Como consertar:</strong> confira se a expressão da tag dá exatamente o mesmo valor dos dois lados.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>Hero(tag: x, child: …)</code></td><td>Marca o widget para voar até o <code>Hero</code> de mesma tag na outra tela</td></tr>
+<tr><td><code>tag</code></td><td>Qualquer objeto; igual nas duas telas, único em cada uma</td></tr>
+<tr><td><code>Navigator.push</code> / <code>pop</code></td><td>A troca de tela que dispara o voo (ida e volta)</td></tr>
+<tr><td><code>Material(type: MaterialType.transparency, child: Text(…))</code></td><td>Evita o sublinhado amarelo em texto que voa</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">1. O que liga o <code>Hero</code> da lista ao <code>Hero</code> da tela de detalhe?</p>
+<label><input type="radio" name="q1"> O tamanho do filho</label>
+<label><input type="radio" name="q1"> A <code>tag</code> igual</label>
+<label><input type="radio" name="q1"> A ordem em que aparecem no código</label>
+<label><input type="radio" name="q1"> O nome da classe da tela</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">2. Uma lista tem 10 linhas, todas com <code>Hero(tag: 'foto', …)</code>. O que acontece ao tocar numa?</p>
+<label><input type="radio" name="q2"> A foto voa normalmente</label>
+<label><input type="radio" name="q2"> As 10 fotos voam juntas</label>
+<label><input type="radio" name="q2"> Nada: o <code>Hero</code> é ignorado</label>
+<label><input type="radio" name="q2"> Erro: há vários heróis com a mesma tag na mesma tela</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">3. O que dispara o voo do <code>Hero</code>?</p>
+<label><input type="radio" name="q3"> A troca de tela (<code>Navigator.push</code> ou <code>pop</code>)</label>
+<label><input type="radio" name="q3"> Um <code>setState</code></label>
+<label><input type="radio" name="q3"> Um <code>AnimationController.forward()</code></label>
+<label><input type="radio" name="q3"> O toque no próprio <code>Hero</code></label>
+</div>
+
+<h3>Missão final: uma tag para cada receita</h3>
+
+<div class="tryflutter" data-goal="nsrc:tag:\s*'receita';;src:tag:\s*r\.nome">
+<p class="try-task"><strong>Missão:</strong> este é o app com a tag repetida. Rode, toque numa receita e veja o erro no console do DartPad (e a tela trocando sem voo). Conserte a tag dos <code>Hero</code> da lista para cada receita ter a sua, igual à da tela de detalhe.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaLista(),
+    ));
+
+class Receita {
+  final String nome;
+  final IconData icone;
+  final Color cor;
+  const Receita(this.nome, this.icone, this.cor);
+}
+
+const receitas = [
+  Receita('Bolo de cenoura', Icons.cake, Colors.orange),
+  Receita('Café coado', Icons.coffee, Colors.brown),
+  Receita('Pizza da Ana', Icons.local_pizza, Colors.red),
+];
+
+class TelaLista extends StatelessWidget {
+  const TelaLista({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas')),
+      body: ListView(
+        children: [
+          for (final r in receitas)
+            ListTile(
+              leading: Hero(
+                tag: 'receita',
+                child: Icon(r.icone, color: r.cor, size: 40),
+              ),
+              title: Text(r.nome),
+              onTap: () =&gt; Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) =&gt; TelaDetalhe(receita: r)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class TelaDetalhe extends StatelessWidget {
+  const TelaDetalhe({super.key, required this.receita});
+
+  final Receita receita;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(receita.nome)),
+      body: Column(
+        children: [
+          const SizedBox(height: 32),
+          Center(
+            child: Hero(
+              tag: receita.nome,
+              child: Icon(receita.icone, color: receita.cor, size: 200),
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.all(24),
+            child: Text('Modo de preparo: misture tudo, asse e sirva.'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaLista(),
+    ));
+
+class Receita {
+  final String nome;
+  final IconData icone;
+  final Color cor;
+  const Receita(this.nome, this.icone, this.cor);
+}
+
+const receitas = [
+  Receita('Bolo de cenoura', Icons.cake, Colors.orange),
+  Receita('Café coado', Icons.coffee, Colors.brown),
+  Receita('Pizza da Ana', Icons.local_pizza, Colors.red),
+];
+
+class TelaLista extends StatelessWidget {
+  const TelaLista({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas')),
+      body: ListView(
+        children: [
+          for (final r in receitas)
+            ListTile(
+              leading: Hero(
+                tag: r.nome,
+                child: Icon(r.icone, color: r.cor, size: 40),
+              ),
+              title: Text(r.nome),
+              onTap: () =&gt; Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) =&gt; TelaDetalhe(receita: r)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class TelaDetalhe extends StatelessWidget {
+  const TelaDetalhe({super.key, required this.receita});
+
+  final Receita receita;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(receita.nome)),
+      body: Column(
+        children: [
+          const SizedBox(height: 32),
+          Center(
+            child: Hero(
+              tag: receita.nome,
+              child: Icon(receita.icone, color: receita.cor, size: 200),
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.all(24),
+            child: Text('Modo de preparo: misture tudo, asse e sirva.'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>Hero(tag: …, child: …)</code> nas duas telas, com a <strong>mesma tag</strong>, faz o widget voar na troca de tela, na ida e na volta.</li>
+  <li>A tag pode ser qualquer objeto (o nome, o id); ela tem de ser <strong>única</strong> dentro de cada tela.</li>
+  <li>O voo anima tamanho e posição; os filhos dos dois lados devem ser parecidos.</li>
+  <li>Tags repetidas na mesma tela dão o erro <code>There are multiple heroes that share the same tag within a subtree</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
