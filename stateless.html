@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter StatelessWidget — criando seus próprios widgets | Guia Flutter</title>
+<meta name="description" content="StatelessWidget no Flutter: criar um widget seu, o método build e o BuildContext, receber dados pelo construtor (campos final, required, const), reaproveitar o mesmo widget várias vezes, widget × função que devolve widget, quando um widget é stateless, e os erros reais de campo sem final e de parâmetro sem required, com fotos da tela e missões no editor.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">StatelessWidget</span></h1>
+
+<p class="intro">Até aqui, a Ana usou widgets prontos: <code>Text</code>, <code>Icon</code>, <code>Scaffold</code>. E escreveu um widget dela desde a primeira aula, o <code>MeuApp</code>, sem entender bem o que era. Agora o app de receitas vai ter uma lista de receitas, todas com a mesma "cara": nome, ícone, tempo. Em vez de copiar e colar o mesmo pedaço de código três vezes, ela vai criar um widget <strong>dela</strong>, o <code>CartaoReceita</code>, e usá-lo quantas vezes quiser.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é um <code>StatelessWidget</code> (widget "sem estado") e quando usar.</li>
+  <li>As partes de um widget seu: a classe, o construtor, o <code>build</code> e o <code>context</code>.</li>
+  <li>A receber dados pelo construtor, com campos <code>final</code> e <code>required</code>.</li>
+  <li>A reaproveitar o mesmo widget com dados diferentes.</li>
+  <li>Por que um widget é melhor que uma função que devolve widget.</li>
+  <li>Os erros reais: o parâmetro sem <code>required</code> e o campo sem <code>final</code>.</li>
+</ul>
+</div>
+
+<p>Todos os apps desta aula foram compilados com o Flutter 3.47.7 do laboratório e fotografados numa tela do tamanho de um celular.</p>
+
+<hr>
+
+<h2>A ideia: o carimbo</h2>
+<p>Pense num carimbo de "Pago" ou de data. Você faz o carimbo uma vez e carimba quantas folhas quiser; num carimbo de data, só troca os números a cada uso. Ninguém desenha o carimbo à mão em cada folha.</p>
+
+<p>Um widget seu é um carimbo de pedaço de tela. Você escreve a classe uma vez (o desenho do carimbo) e a usa quantas vezes quiser, trocando só os dados (o nome da receita, o tempo).</p>
+
+<p>E o "sem estado" (<em>stateless</em>)? Quer dizer que o carimbo, depois de feito, <strong>não muda sozinho</strong>. Para mudar o que aparece, é preciso carimbar de novo com outros dados. Um widget que muda sozinho, como um contador que sobe a cada toque, é um <code>StatefulWidget</code> (próximo nível: <a href="stateful.html">StatefulWidget</a>).</p>
+
+<hr>
+
+<h2>1. A anatomia de um widget seu</h2>
+<p>Este é o esqueleto que você já viu no <code>MeuApp</code>. Agora com um widget novo, a <code>TelaInicial</code>:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      home: TelaInicial(),
+    );
+  }
+}
+
+class TelaInicial extends StatelessWidget {
+  const TelaInicial({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Receitas da Ana')),
+      body: const Center(
+        child: Text('Nenhuma receita ainda'),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>class TelaInicial extends StatelessWidget</dt><dd>Uma classe nova que <strong>é</strong> um <code>StatelessWidget</code> (o <code>extends</code> do Dart: herda tudo dele). A partir daqui, <code>TelaInicial()</code> pode ir em qualquer lugar que aceite um widget. O nome começa com maiúscula, como toda classe.</dd>
+  <dt>const TelaInicial({super.key});</dt><dd>O construtor, com as chaves dos parâmetros com nome. O <code>super.key</code> repassa a <code>key</code> opcional para o <code>StatelessWidget</code> (aula <a href="keys.html">Keys</a>). O <code>const</code> deixa o Flutter reaproveitar o widget.</dd>
+  <dt>@override</dt><dd>"Estou substituindo": avisa que o <code>build</code> abaixo substitui o <code>build</code> do <code>StatelessWidget</code>.</dd>
+  <dt>Widget build(BuildContext context)</dt><dd>O coração do widget: o método que diz <strong>o que desenhar</strong>. Ele devolve um <code>Widget</code> (aqui, um <code>Scaffold</code> inteiro). O Flutter chama o <code>build</code> quando o widget entra na tela.</dd>
+  <dt>BuildContext context</dt><dd>O "endereço" deste widget na árvore. Serve para perguntar coisas a quem está acima, como o tema: <code>Theme.of(context)</code> (aula <a href="text-style.html">Estilos de Texto</a>).</dd>
+  <dt>home: TelaInicial()</dt><dd>O <code>MeuApp</code> usa a <code>TelaInicial</code> como tela inicial. Um widget seu dentro de outro widget seu.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/stateless-1.png" alt="Tela com a barra 'Receitas da Ana' no topo e o texto 'Nenhuma receita ainda' no meio" width="390" height="844" loading="lazy"><figcaption>A <code>TelaInicial</code>: a tela é a mesma de sempre, mas agora é um widget com nome.</figcaption></figure>
+
+<pre>MeuApp                (seu)
+└── MaterialApp
+    └── TelaInicial   (seu)
+        └── Scaffold
+            ├── AppBar
+            │   └── Text('Receitas da Ana')
+            └── Center
+                └── Text('Nenhuma receita ainda')
+</pre>
+
+<hr>
+
+<h2>2. Recebendo dados: o <code>CartaoReceita</code></h2>
+<p>Um carimbo de data precisa dos números. O <code>CartaoReceita</code> precisa do nome e do tempo da receita. Eles chegam pelo <strong>construtor</strong> e ficam guardados em <strong>campos</strong> da classe:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Column(
+          children: [
+            CartaoReceita(nome: 'Bolo de cenoura', minutos: 50),
+            CartaoReceita(nome: 'Pão de queijo', minutos: 35),
+            CartaoReceita(nome: 'Brigadeiro', minutos: 20),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class CartaoReceita extends StatelessWidget {
+  const CartaoReceita({
+    super.key,
+    required this.nome,
+    required this.minutos,
+  });
+
+  final String nome;
+  final int minutos;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        leading: const Icon(Icons.cake),
+        title: Text(nome),
+        subtitle: Text('$minutos minutos'),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>final String nome; final int minutos;</dt><dd>Os <strong>campos</strong>: onde o widget guarda os dados que recebeu. São <code>final</code> ("definitivo"): recebem o valor uma vez, no construtor, e nunca mais mudam. É isso que faz o widget ser "sem estado".</dd>
+  <dt>required this.nome</dt><dd>"Obrigatório": quem usa o <code>CartaoReceita</code> <strong>tem</strong> de passar o <code>nome</code>. O <code>this.nome</code> é o atalho do Dart que guarda o valor recebido direto no campo <code>nome</code>.</dd>
+  <dt>CartaoReceita(nome: 'Bolo de cenoura', minutos: 50)</dt><dd>Usando o widget: um "carimbo" com dados. Os parâmetros têm nome, então a ordem não importa.</dd>
+  <dt>Text(nome) e Text('$minutos minutos')</dt><dd>Dentro do <code>build</code>, os campos são usados como variáveis comuns. Repare que esses <code>Text</code> <strong>não</strong> podem ser <code>const</code>: eles dependem de dados que só se sabe quando o widget é criado.</dd>
+  <dt>Card e ListTile</dt><dd>Um cartão com sombra e uma "linha de lista" pronta, com ícone à esquerda, título e subtítulo. Eles têm aula própria: <a href="card.html">Card e ListTile</a>.</dd>
+  <dt>const Column(children: [CartaoReceita(...), ...])</dt><dd>Como o construtor do <code>CartaoReceita</code> é <code>const</code> e os dados são fixos, a coluna inteira pode ser <code>const</code>.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/stateless-2.png" alt="Três cartões claros de cantos arredondados, um embaixo do outro, cada um com um ícone de bolo à esquerda, o nome em cima e o tempo embaixo: 'Bolo de cenoura, 50 minutos', 'Pão de queijo, 35 minutos' e 'Brigadeiro, 20 minutos'" width="390" height="844" loading="lazy"><figcaption>Três <code>CartaoReceita</code>, cada um com seus dados.</figcaption></figure>
+
+<p>Três cartões, um só código. Se a Ana quiser mudar o ícone de todos os cartões, ela muda <strong>uma</strong> linha, dentro do <code>CartaoReceita</code>.</p>
+
+<div class="tryflutter" data-goal="src:CartaoReceita\(\s*nome:\s*'Pudim',\s*minutos:\s*60\s*\)">
+<p class="try-task"><strong>Missão:</strong> acrescente um quarto cartão: <code>Pudim</code>, <code>60</code> minutos. Só uma linha nova, usando o <code>CartaoReceita</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Column(
+          children: [
+            CartaoReceita(nome: 'Bolo de cenoura', minutos: 50),
+            CartaoReceita(nome: 'Pão de queijo', minutos: 35),
+            CartaoReceita(nome: 'Brigadeiro', minutos: 20),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class CartaoReceita extends StatelessWidget {
+  const CartaoReceita({
+    super.key,
+    required this.nome,
+    required this.minutos,
+  });
+
+  final String nome;
+  final int minutos;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        leading: const Icon(Icons.cake),
+        title: Text(nome),
+        subtitle: Text('$minutos minutos'),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MeuApp());
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Column(
+          children: [
+            CartaoReceita(nome: 'Bolo de cenoura', minutos: 50),
+            CartaoReceita(nome: 'Pão de queijo', minutos: 35),
+            CartaoReceita(nome: 'Brigadeiro', minutos: 20),
+            CartaoReceita(nome: 'Pudim', minutos: 60),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class CartaoReceita extends StatelessWidget {
+  const CartaoReceita({
+    super.key,
+    required this.nome,
+    required this.minutos,
+  });
+
+  final String nome;
+  final int minutos;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        leading: const Icon(Icons.cake),
+        title: Text(nome),
+        subtitle: Text('$minutos minutos'),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>3. Parâmetro opcional, com valor padrão</h2>
+<p>Nem todo dado precisa ser obrigatório. A Ana quer marcar algumas receitas como favoritas; as outras, por padrão, não são:</p>
+
+<pre class="file" data-file="lib/main.dart">class CartaoReceita extends StatelessWidget {
+  const CartaoReceita({
+    super.key,
+    required this.nome,
+    required this.minutos,
+    this.favorita = false,
+  });
+
+  final String nome;
+  final int minutos;
+  final bool favorita;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        leading: const Icon(Icons.cake),
+        title: Text(nome),
+        subtitle: Text('$minutos minutos'),
+        trailing: Icon(
+          favorita ? Icons.favorite : Icons.favorite_border,
+          color: Colors.red,
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>this.favorita = false</dt><dd>Sem <code>required</code> e com um <strong>valor padrão</strong>: quem não disser nada ganha <code>false</code>.</dd>
+  <dt>favorita ? Icons.favorite : Icons.favorite_border</dt><dd>O operador ternário do Dart ("se ... então ... senão"): coração cheio para as favoritas, vazio para as outras.</dd>
+  <dt>trailing:</dt><dd>"O que vem no fim": o widget do lado direito do <code>ListTile</code>.</dd>
+</dl>
+
+<p>E o uso fica assim (o <code>Bolo de cenoura</code> é favorito; os outros, não):</p>
+<pre class="file" data-file="lib/main.dart">            CartaoReceita(nome: 'Bolo de cenoura', minutos: 50, favorita: true),
+            CartaoReceita(nome: 'Pão de queijo', minutos: 35),
+            CartaoReceita(nome: 'Brigadeiro', minutos: 20),
+</pre>
+
+<figure class="tela"><img src="assets/telas/stateless-3.png" alt="Os mesmos três cartões, agora com um coração vermelho à direita: cheio no 'Bolo de cenoura' e só o contorno no 'Pão de queijo' e no 'Brigadeiro'" width="390" height="844" loading="lazy"><figcaption>Só o bolo recebeu <code>favorita: true</code>; os outros ficaram com o padrão, <code>false</code>.</figcaption></figure>
+
+<hr>
+
+<h2>Formas diferentes: widget ou função?</h2>
+<p>Quem vem de outras linguagens costuma separar pedaços de tela em <strong>funções</strong>:</p>
+
+<pre class="file" data-file="lib/main.dart">// Jeito 1: uma função que devolve um widget
+Widget cartaoReceita(String nome, int minutos) {
+  return Card(
+    child: ListTile(title: Text(nome), subtitle: Text('$minutos minutos')),
+  );
+}
+
+// Jeito 2: um widget (o desta aula)
+class CartaoReceita extends StatelessWidget {
+  ...
+}
+</pre>
+
+<p>As duas desenham a mesma coisa. Mas a documentação do Flutter recomenda o <strong>widget</strong>, e por bons motivos:</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th></th><th>Função</th><th><code>StatelessWidget</code></th></tr>
+<tr><td>Pode ser <code>const</code></td><td>Não</td><td>Sim: o Flutter pula a reconstrução de widgets <code>const</code></td></tr>
+<tr><td>Tem o próprio <code>context</code></td><td>Não (usa o de quem chamou)</td><td>Sim: <code>Theme.of(context)</code> funciona como esperado</td></tr>
+<tr><td>Aparece na árvore e no DevTools</td><td>Não: os widgets de dentro aparecem soltos</td><td>Sim, com o nome dele (aula <a href="devtools.html">DevTools</a>)</td></tr>
+<tr><td>Quando usar</td><td>Pedaços minúsculos, usados uma vez, dentro do mesmo <code>build</code></td><td><strong>Quase sempre</strong>, principalmente o que se repete</td></tr>
+</table>
+</div>
+
+<div class="tip">
+<strong>Quando criar um widget novo?</strong>
+<p>Quando um pedaço se <strong>repete</strong> (os cartões), quando o <code>build</code> passa de uma tela de altura, ou quando um pedaço tem um nome natural ("cartão de receita", "cabeçalho do perfil"). Widgets pequenos, com nomes claros, deixam o código fácil de ler e o app mais rápido.</p>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<p>Os dois erros abaixo são de <strong>compilação</strong> (o app nem abre) e aparecem no <code>CartaoReceita</code> da seção 2, cujo construtor começa na linha 28.</p>
+
+<div class="cenario">
+<strong>O parâmetro sem <code>required</code></strong>
+<pre class="file" data-file="lib/main.dart">  const CartaoReceita({
+    super.key,
+    this.nome,
+    required this.minutos,
+  });
+
+  final String nome;
+</pre>
+<pre class="term">lib/main.dart:30:10: Error: The parameter 'nome' can't have a value of 'null' because of its type 'String', but the implicit default value is 'null'.
+Try adding either an explicit non-'null' default value or the 'required' modifier.
+    this.nome,
+         ^^^^
+</pre>
+<dl class="anatomy">
+  <dt>The parameter 'nome' can't have a value of 'null' because of its type 'String'</dt><dd>"O parâmetro <code>nome</code> não pode valer <code>null</code>, porque o tipo dele é <code>String</code>" (sem <code>?</code>, o Dart não aceita <code>null</code>: é a segurança contra nulos).</dd>
+  <dt>but the implicit default value is 'null'.</dt><dd>"mas o valor padrão implícito é <code>null</code>": um parâmetro com nome que não é <code>required</code> e não tem valor padrão vale <code>null</code> quando ninguém o passa.</dd>
+  <dt>Try adding either an explicit non-'null' default value or the 'required' modifier.</dt><dd>A dica já traz os dois consertos: um valor padrão, ou o <code>required</code>.</dd>
+</dl>
+<p><strong>Como consertar:</strong> <code>required this.nome</code> (o nome é obrigatório), ou <code>this.nome = 'Sem nome'</code> (um padrão), ou, se o nome puder mesmo faltar, <code>final String? nome;</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Um campo sem <code>final</code></strong>
+<pre class="file" data-file="lib/main.dart">  const CartaoReceita({
+    super.key,
+    required this.nome,
+    required this.minutos,
+  });
+
+  String nome;
+  final int minutos;
+</pre>
+<pre class="term">lib/main.dart:28:9: Error: Constructor is marked 'const' so all fields must be final.
+  const CartaoReceita({
+        ^
+lib/main.dart:34:10: Context: Field isn't final, but constructor is 'const'.
+  String nome;
+         ^
+</pre>
+<p>"O construtor é <code>const</code>, então todos os campos precisam ser <code>final</code>", e a linha de <code>Context</code> aponta o culpado: o campo <code>nome</code>, da linha 34. Um objeto <code>const</code> é congelado: nada nele pode mudar, e um campo sem <code>final</code> poderia. <strong>Como consertar:</strong> <code>final String nome;</code>. Em widgets, todo campo é <code>final</code>: se um dado precisa mudar com o app rodando, ele é <strong>estado</strong>, e o lugar dele é num <a href="stateful.html">StatefulWidget</a>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Peça</th><th>Para quê</th></tr>
+<tr><td><code>class X extends StatelessWidget</code></td><td>Cria um widget seu, que não muda sozinho</td></tr>
+<tr><td><code>const X({super.key, required this.campo});</code></td><td>Construtor <code>const</code> com parâmetro obrigatório</td></tr>
+<tr><td><code>this.campo = valor</code></td><td>Parâmetro opcional com valor padrão</td></tr>
+<tr><td><code>final Tipo campo;</code></td><td>Campo que guarda o dado recebido (sempre <code>final</code>)</td></tr>
+<tr><td><code>@override Widget build(BuildContext context)</code></td><td>Diz o que desenhar</td></tr>
+<tr><td><code>X(campo: valor)</code></td><td>Usa o widget</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. A classe-mãe</h3>
+<p>Complete para criar um widget sem estado:</p>
+<div class="ex-code">class Cabecalho extends <input data-answer="StatelessWidget" aria-label="classe"> {</div>
+</div>
+
+<div class="exercise">
+<h3>2. O método</h3>
+<p>Qual método diz o que o widget desenha?</p>
+<div class="ex-code">Widget <input data-answer="build" aria-label="método">(BuildContext context)</div>
+</div>
+
+<div class="exercise">
+<h3>3. Obrigatório</h3>
+<p>Complete para o <code>nome</code> ser obrigatório:</p>
+<div class="ex-code">const Cartao({super.key, <input data-answer="required" aria-label="palavra">this.nome});</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. Por que os campos de um <code>StatelessWidget</code> são <code>final</code>?</p>
+<label><input type="radio" name="q4"> Porque o Dart não aceita campos sem <code>final</code></label>
+<label><input type="radio" name="q4"> Porque o widget não muda depois de criado: para mostrar outra coisa, o Flutter cria um widget novo</label>
+<label><input type="radio" name="q4"> Para o widget carregar mais rápido da internet</label>
+<label><input type="radio" name="q4"> Porque <code>final</code> deixa o campo opcional</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">5. Qual destes pedaços de tela pede um <code>StatefulWidget</code>, e não um <code>StatelessWidget</code>?</p>
+<label><input type="radio" name="q5"> O cartão com o nome e o tempo de uma receita</label>
+<label><input type="radio" name="q5"> O cabeçalho com o nome do app</label>
+<label><input type="radio" name="q5"> Um ícone de estrela amarela</label>
+<label><input type="radio" name="q5"> Um contador que sobe a cada toque num botão</label>
+</div>
+
+<h3>Missão final: o produto da lojinha</h3>
+
+<div class="tryflutter" data-goal="src:class\s+CartaoProduto\s+extends\s+StatelessWidget;;src:final\s+double\s+preco;;src:CartaoProduto\(\s*nome:\s*'Caneca',\s*preco:\s*32\.0\s*\)">
+<p class="try-task"><strong>Missão:</strong> crie o widget <code>CartaoProduto</code>, com os campos <code>final String nome</code> e <code>final double preco</code> (os dois <code>required</code>), que mostra um <code>ListTile</code> com o nome no <code>title</code> e o preço no <code>subtitle</code>. Depois use-o no <code>body</code>: <code>CartaoProduto(nome: 'Caneca', preco: 32.0)</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const LojinhaApp());
+}
+
+class LojinhaApp extends StatelessWidget {
+  const LojinhaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lojinha da Ana')),
+        body: const Text('Produtos aqui'),
+      ),
+    );
+  }
+}
+
+// crie o CartaoProduto aqui embaixo
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const LojinhaApp());
+}
+
+class LojinhaApp extends StatelessWidget {
+  const LojinhaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lojinha da Ana')),
+        body: const CartaoProduto(nome: 'Caneca', preco: 32.0),
+      ),
+    );
+  }
+}
+
+class CartaoProduto extends StatelessWidget {
+  const CartaoProduto({
+    super.key,
+    required this.nome,
+    required this.preco,
+  });
+
+  final String nome;
+  final double preco;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: const Icon(Icons.shopping_bag),
+      title: Text(nome),
+      subtitle: Text('R\$ ${preco.toStringAsFixed(2)}'),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Um <code>StatelessWidget</code> é um widget seu que não muda sozinho: <code>class X extends StatelessWidget</code> com um <code>build</code> que devolve o que desenhar.</li>
+  <li>Os dados chegam pelo construtor e ficam em campos <code>final</code>; <code>required</code> torna o parâmetro obrigatório, e <code>this.x = valor</code> dá um padrão.</li>
+  <li>O construtor <code>const</code> deixa o Flutter reaproveitar o widget.</li>
+  <li>Prefira widgets a funções que devolvem widgets: podem ser <code>const</code>, têm o próprio <code>context</code> e aparecem no DevTools.</li>
+  <li>Se o pedaço de tela precisa mudar sozinho (contador, campo marcado), é um <a href="stateful.html">StatefulWidget</a>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
