@@ -299,7 +299,7 @@ class _PedidoState extends State&lt;Pedido&gt; {
 </pre>
 
 <dl class="anatomy">
-  <dt>enum Tamanho { pequena, media, grande }</dt><dd>As opções possíveis, num <code>enum</code> (uma lista fechada de valores; veja o <a href="https://wallysondevs.github.io/guia-dart/">Guia Dart</a>). Poderia ser <code>String</code> ou <code>int</code>, mas com <code>enum</code> o Dart avisa se você escrever uma opção que não existe.</dd>
+  <dt>enum Tamanho { pequena, media, grande }</dt><dd>As opções possíveis, num <code>enum</code> (uma lista fechada de valores; veja o <a href="https://wallysondevs.github.io/guia-dart/enums.html">Guia Dart</a>). Poderia ser <code>String</code> ou <code>int</code>, mas com <code>enum</code> o Dart avisa se você escrever uma opção que não existe.</dd>
   <dt>Tamanho? tamanho = Tamanho.media;</dt><dd>A opção escolhida, no estado. É <code>Tamanho?</code> (pode ser nula) porque um grupo pode começar sem nada marcado.</dd>
   <dt>RadioGroup&lt;Tamanho&gt;(groupValue: …, onChanged: …, child: …)</dt><dd>O grupo. <code>groupValue</code> é o valor escolhido; <code>onChanged</code> recebe o valor do botão tocado. Todos os <code>Radio</code>/<code>RadioListTile</code> que estiverem <strong>dentro</strong> do <code>child</code>, em qualquer profundidade, fazem parte do grupo.</dd>
   <dt>RadioListTile(value: Tamanho.pequena, title: …)</dt><dd>Cada opção diz só o <strong>seu</strong> valor. Está marcada quando o seu <code>value</code> é igual ao <code>groupValue</code> do grupo. O tipo (<code>RadioListTile&lt;Tamanho&gt;</code>) o Dart descobre sozinho pelo <code>value</code>.</dd>
@@ -486,7 +486,7 @@ The following assertion was thrown building Termos(dirty, state: _TermosState#68
 <tr><td><code>title</code> / <code>subtitle</code></td><td>Texto das versões <code>ListTile</code></td></tr>
 <tr><td><code>controlAffinity: ListTileControlAffinity.leading</code></td><td>Põe o controle no começo da linha</td></tr>
 <tr><td><code>tristate: true</code></td><td><code>Checkbox</code> com 3 estados: <code>true</code>, <code>false</code> e <code>null</code> (traço)</td></tr>
-<tr><td><code>activeColor</code></td><td>Cor quando marcado/ligado</td></tr>
+<tr><td><code>activeColor</code></td><td>Cor quando marcado (<code>Checkbox</code>, <code>Radio</code>). No <code>Switch</code> e no <code>SwitchListTile</code> ele ficou obsoleto no Flutter 3.31: use <code>activeThumbColor</code> (a bolinha) e <code>activeTrackColor</code> (a trilha)</td></tr>
 </table>
 </div>
 
