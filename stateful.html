@@ -120,7 +120,7 @@ class _PorcoesState extends State&lt;Porcoes&gt; {
   <li>O app abre. O Flutter vê o widget <code>Porcoes</code>, chama o <code>createState</code> e ganha um <code>_PorcoesState</code> com <code>_porcoes = 4</code>.</li>
   <li>O Flutter chama o <code>build</code> desse estado: a tela mostra <code>4 porções</code>.</li>
   <li>A Ana toca no botão. O <code>onPressed</code> roda o <code>setState</code>, que soma 1 (agora <code>5</code>) e marca o widget como "precisa redesenhar".</li>
-  <li>No próximo quadro da tela (o Flutter desenha até 60 vezes por segundo), ele chama o <code>build</code> de novo, que agora monta <code>5 porções</code>.</li>
+  <li>No próximo quadro da tela (a tela do celular é atualizada umas 60 vezes por segundo, ou mais nas telas mais rápidas), ele chama o <code>build</code> de novo, que agora monta <code>5 porções</code>.</li>
 </ol>
 <p>O objeto <code>_PorcoesState</code> é <strong>o mesmo</strong> o tempo todo; por isso ele lembra o número. Já os widgets que o <code>build</code> devolve (o <code>Column</code>, o <code>Text</code>, o botão) são <strong>criados de novo</strong> a cada <code>build</code>: eles são baratos, são só a "descrição" da tela.</p>
 
@@ -309,7 +309,7 @@ class _ReceitaFavoritaState extends State&lt;ReceitaFavorita&gt; {
          └─ ReceitaFavorita('Brigadeiro')       → _ReceitaFavoritaState (_favorita: false)
 </pre>
 
-<div class="tryflutter" data-goal="src:ReceitaFavorita\(nome:\s*'Coxinha'\)">
+<div class="tryflutter" data-goal="src:ReceitaFavorita\(\s*nome:\s*['&quot;]Coxinha['&quot;]\s*\)">
 <p class="try-task"><strong>Missão:</strong> acrescente uma quarta receita, <code>Coxinha</code>, na lista. Depois curta duas receitas e veja que cada coração lembra o seu próprio estado.</p>
 <pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
 
