@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rodando o App (flutter run) — do código para a tela | Guia Flutter</title>
+<meta name="description" content="O comando flutter run com as saídas reais do Flutter 3.47.7: escolher o aparelho com -d (emulador, celular, Chrome, desktop, web-server), o modo debug e a faixa DEBUG, as teclas r, R, h, d, c e q, e os erros reais: fora da pasta do projeto, aparelho que não existe, CMake faltando e erro de compilação no main.dart.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Rodando o App <span class="hl">(flutter run)</span></h1>
+
+<p class="intro">O projeto está criado, o código está em <code>lib/main.dart</code>. Falta o momento mais gostoso: ver o app aberto. O comando <code>flutter run</code> compila o projeto, instala o app no aparelho escolhido (um emulador, o seu celular, o Chrome, o próprio computador) e fica <strong>ligado</strong> nele, esperando as suas ordens pelo teclado. É ele que os editores usam quando você aperta <kbd>F5</kbd>.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A rodar o app com <code>flutter run</code>, de dentro da pasta do projeto.</li>
+  <li>A escolher o aparelho com <code>-d</code>.</li>
+  <li>O que é o <strong>modo debug</strong> e a faixa DEBUG no canto da tela.</li>
+  <li>As teclas do <code>flutter run</code>: <kbd>r</kbd>, <kbd>R</kbd>, <kbd>h</kbd>, <kbd>d</kbd>, <kbd>c</kbd> e <kbd>q</kbd>.</li>
+  <li>Os erros mais comuns ao rodar, com as mensagens reais.</li>
+</ul>
+</div>
+
+<p>Os comandos desta aula foram rodados na máquina da Ana (Flutter 3.47.7), nos projetos da aula <a href="criar-projeto.html">Criando um Projeto</a>. A máquina dela não tem emulador nem Chrome (aula <a href="flutter-doctor.html">flutter doctor</a>); por isso, o app rodou no aparelho <code>web-server</code>, que serve o app para qualquer navegador. Com um emulador ou celular, a saída é parecida, com o nome do aparelho no lugar; esses casos estão marcados como ilustrativos.</p>
+
+<hr>
+
+<h2>A ideia: o forno com a porta de vidro</h2>
+<p>Pense num bolo no forno com porta de vidro. Você põe a massa (o código), liga o forno (compila) e fica olhando o bolo crescer (o app aberto). Se quiser um ajuste, não precisa começar outro bolo: abre a porta, põe uma cobertura e fecha (o <strong>hot reload</strong>). Quando terminar, desliga o forno (<kbd>q</kbd>).</p>
+
+<p>O <code>flutter run</code> é esse forno: ele não roda o app e vai embora; ele fica <strong>conectado</strong> ao app, mostrando as mensagens (os <code>print</code>, os erros) e aceitando comandos enquanto o app está aberto.</p>
+
+<hr>
+
+<h2>1. O primeiro <code>flutter run</code></h2>
+<p>Dentro da pasta do projeto, escolhendo o aparelho <code>web-server</code> e a porta 8080:</p>
+
+<pre class="term">$ cd receitas_da_ana
+$ flutter run -d web-server --web-port 8080
+Launching lib/main.dart on Web Server in debug mode...
+Waiting for connection from debug service on Web Server...         25,5s
+lib/main.dart is being served at http://localhost:8080
+The web-server device requires the Dart Debug Chrome extension for debugging. Consider using the Chrome or Edge devices for an improved development workflow.
+
+Flutter run key commands.
+r Hot reload. 🔥🔥🔥
+R Hot restart.
+h List all available interactive commands.
+d Detach (terminate "flutter run" but leave application running).
+c Clear the screen
+q Quit (terminate the application on the device).
+</pre>
+
+<dl class="anatomy">
+  <dt>-d web-server</dt><dd>O <strong>aparelho</strong> (de <em>device</em>) em que o app vai rodar. Aqui, um servidor web local.</dd>
+  <dt>--web-port 8080</dt><dd>A porta do servidor. Sem ela, o Flutter escolhe uma ao acaso.</dd>
+  <dt>Launching lib/main.dart on Web Server in debug mode...</dt><dd>"Lançando o <code>lib/main.dart</code> no Web Server em <strong>modo debug</strong>". O ponto de partida é sempre o <code>lib/main.dart</code>.</dd>
+  <dt>Waiting for connection ... 25,5s</dt><dd>A compilação. Na primeira vez demora (aqui, 25,5 segundos; num emulador Android, a primeira compilação costuma levar bem mais). As próximas são mais rápidas.</dd>
+  <dt>lib/main.dart is being served at http://localhost:8080</dt><dd>"Está sendo servido em <code>http://localhost:8080</code>": abrindo esse endereço num navegador da mesma máquina, aparece o app.</dd>
+  <dt>The web-server device requires the Dart Debug Chrome extension ...</dt><dd>Um aviso: para depurar pelo navegador, este aparelho precisa de uma extensão do Chrome; o Flutter recomenda os aparelhos <code>chrome</code> ou <code>edge</code>, que abrem o navegador sozinhos.</dd>
+  <dt>Flutter run key commands.</dt><dd>"Comandos de teclado do <code>flutter run</code>". O terminal fica esperando: o comando <strong>não termina</strong> enquanto o app estiver aberto. As teclas estão na seção 3.</dd>
+</dl>
+
+<p>O que aparece no navegador é o contador do <code>flutter create</code>:</p>
+
+<figure class="tela"><img src="assets/telas/criar-projeto-1.png" alt="O app contador: barra lilás com 'Flutter Demo Home Page', a frase 'You have pushed the button this many times:' e o número 0 no meio, e o botão de mais no canto inferior direito, com a faixa DEBUG no canto superior direito" width="390" height="844" loading="lazy"><figcaption>O app rodando em modo debug (com a faixa DEBUG), em tamanho de celular.</figcaption></figure>
+
+<div class="note">
+<strong>Num emulador ou celular (ilustrativo)</strong>
+<p>Com um emulador Android aberto ou um celular ligado no cabo (aula <a href="editor.html">VS Code e Android Studio</a>), basta <code>flutter run</code>: o Flutter compila um app Android de verdade (a primeira vez demora alguns minutos, porque o Gradle baixa o que precisa), instala no aparelho e abre. Se houver mais de um aparelho, ele pergunta qual usar.</p>
+</div>
+
+<hr>
+
+<h2>2. Escolhendo o aparelho: <code>-d</code></h2>
+<p>Sem <code>-d</code>, o Flutter usa o único aparelho disponível ou pergunta qual. Na máquina da Ana, o único aparelho "de verdade" é o próprio computador como programa de Linux (o <code>flutter devices</code> da aula <a href="flutter-doctor.html">flutter doctor</a>). Com <code>-d</code>, você escolhe pelo <strong>id</strong> (a segunda coluna do <code>flutter devices</code>) ou por um pedaço do nome:</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>Onde roda</th></tr>
+<tr><td><code>flutter run</code></td><td>No aparelho disponível (ou pergunta, se houver vários)</td></tr>
+<tr><td><code>flutter run -d chrome</code></td><td>Abre o Chrome com o app (precisa do Chrome instalado)</td></tr>
+<tr><td><code>flutter run -d emulator-5554</code></td><td>No emulador Android com esse id (ilustrativo)</td></tr>
+<tr><td><code>flutter run -d linux</code> / <code>windows</code> / <code>macos</code></td><td>Como programa de computador (precisa das ferramentas do sistema)</td></tr>
+<tr><td><code>flutter run -d web-server</code></td><td>Serve o app num endereço local, para qualquer navegador</td></tr>
+<tr><td><code>flutter run -d all</code></td><td>Em todos os aparelhos ao mesmo tempo</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>3. As teclas do <code>flutter run</code></h2>
+<p>Com o app rodando, o terminal aceita uma tecla de cada vez (sem <kbd>Enter</kbd>):</p>
+
+<dl class="anatomy">
+  <dt>r — Hot reload 🔥</dt><dd>"Recarga a quente": aplica no app aberto as mudanças que você salvou no código, em menos de um segundo, <strong>sem perder o estado</strong> (o contador continua no número em que estava). A grande estrela do Flutter: aula <a href="hot-reload.html">Hot Reload e Hot Restart</a>.</dd>
+  <dt>R — Hot restart</dt><dd>"Reinício a quente": recomeça o app do zero com o código novo (o contador volta a 0), mas sem recompilar tudo.</dd>
+  <dt>h — Help</dt><dd>Lista todas as teclas disponíveis (há outras, para depuração).</dd>
+  <dt>d — Detach</dt><dd>"Desconectar": encerra o <code>flutter run</code>, mas deixa o app aberto no aparelho.</dd>
+  <dt>c — Clear</dt><dd>Limpa a tela do terminal.</dd>
+  <dt>q — Quit</dt><dd>"Sair": fecha o app no aparelho e encerra o <code>flutter run</code>. <kbd>Ctrl</kbd>+<kbd>C</kbd> também encerra.</dd>
+</dl>
+
+<p>Nos editores, essas teclas viram botões: o raio (hot reload), a seta circular (hot restart) e o quadrado (parar). E salvar o arquivo faz o hot reload sozinho.</p>
+
+<hr>
+
+<h2>4. O modo debug e a faixa DEBUG</h2>
+<p>O <code>flutter run</code> usa, por padrão, o <strong>modo debug</strong> ("depuração"): o app é montado para ser fácil de inspecionar e de recarregar, não para ser rápido. Por isso ele é mais lento e maior que o app final, mostra as mensagens de erro na tela e tem a faixa vermelha <strong>DEBUG</strong> no canto.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Modo</th><th>Comando</th><th>Para quê</th></tr>
+<tr><td>debug</td><td><code>flutter run</code></td><td>Desenvolver: hot reload, erros na tela, faixa DEBUG</td></tr>
+<tr><td>profile</td><td><code>flutter run --profile</code></td><td>Medir o desempenho (só em aparelho de verdade)</td></tr>
+<tr><td>release</td><td><code>flutter run --release</code></td><td>Ver o app como o usuário verá: rápido, sem faixa e sem hot reload</td></tr>
+</table>
+</div>
+
+<p>A faixa também pode ser escondida no próprio código, com um parâmetro do <code>MaterialApp</code>. Experimente:</p>
+
+<div class="tryflutter" data-goal="src:debugShowCheckedModeBanner:\s*false">
+<p class="try-task"><strong>Missão:</strong> a Ana vai tirar um print da tela para mostrar à mãe e quer sem a faixa DEBUG. Acrescente <code>debugShowCheckedModeBanner: false,</code> dentro do <code>MaterialApp</code>, antes do <code>home</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MainApp());
+}
+
+class MainApp extends StatelessWidget {
+  const MainApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      home: Scaffold(body: Center(child: Text('Lista de compras'))),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MainApp());
+}
+
+class MainApp extends StatelessWidget {
+  const MainApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(body: Center(child: Text('Lista de compras'))),
+    );
+  }
+}
+</pre>
+</div>
+
+<figure class="tela"><img src="assets/telas/flutter-run-1.png" alt="O resultado esperado: tela clara com 'Lista de compras' no meio e nenhuma faixa no canto superior direito" width="390" height="844" loading="lazy"><figcaption>O resultado esperado: sem a faixa DEBUG.</figcaption></figure>
+
+<p>O app continua em modo debug (com hot reload e tudo); só a faixa sumiu. O nome do parâmetro quer dizer "mostrar a faixa do modo verificado (debug)".</p>
+
+<hr>
+
+<h2>Formas diferentes de rodar (e qual usar)</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Jeito</th><th>Como</th><th>Quando usar</th></tr>
+<tr><td>Terminal</td><td><code>flutter run</code> (e <kbd>r</kbd>, <kbd>R</kbd>, <kbd>q</kbd>)</td><td>Sempre funciona; mostra todas as mensagens</td></tr>
+<tr><td>VS Code</td><td><kbd>F5</kbd> (Run › Start Debugging), aparelho na barra de status</td><td>O dia a dia: hot reload ao salvar, pontos de parada</td></tr>
+<tr><td>Android Studio</td><td>Botão ▶ ao lado da lista de aparelhos</td><td>Igual ao VS Code</td></tr>
+<tr><td>O editor do guia</td><td>Botão Rodar das caixas "Experimente"</td><td>Testar trechos sem instalar nada (aula <a href="simulador.html">O Editor do Guia</a>)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Fora da pasta do projeto</strong>
+<pre class="term">$ cd ~
+$ flutter run
+Error: No pubspec.yaml file found.
+This command should be run from the root of your Flutter project.
+</pre>
+<p>"Erro: nenhum arquivo <code>pubspec.yaml</code> encontrado. Este comando deve ser rodado na raiz do seu projeto Flutter." O Flutter reconhece um projeto pelo <code>pubspec.yaml</code> (aula <a href="estrutura-projeto.html">As Pastas de um Projeto</a>). <strong>Como consertar:</strong> <code>cd receitas_da_ana</code> e rode de novo.</p>
+</div>
+
+<div class="cenario">
+<strong>O aparelho pedido não existe</strong>
+<pre class="term">$ flutter run -d chrome
+No supported devices found with name or id matching 'chrome'.
+
+The following devices were found:
+Linux (desktop) • linux • linux-x64 • Ubuntu 26.04.1 LTS 7.0.0-15-generic
+</pre>
+<p>"Nenhum aparelho com nome ou id <code>chrome</code>. Foram encontrados estes:" e a lista. A máquina da Ana não tem Chrome. <strong>Como consertar:</strong> instale o que falta (o <code>flutter doctor</code> diz o quê), ou escolha um aparelho da lista.</p>
+</div>
+
+<div class="cenario">
+<strong>O aparelho existe, mas faltam as ferramentas dele</strong>
+<pre class="term">$ flutter run
+Launching lib/main.dart on Linux in debug mode...
+Building Linux application...
+Error: CMake is required for Linux development.
+It is likely available from your distribution (e.g.: apt install cmake), or can be downloaded from https://cmake.org/download/
+</pre>
+<p>Sem <code>-d</code>, o Flutter escolheu o único aparelho, o Linux, e só na hora de construir o programa percebeu que falta o <code>CMake</code> (o mesmo <code>[✗] Linux toolchain</code> do <code>flutter doctor</code>). <strong>Como consertar:</strong> instale as ferramentas indicadas, ou rode em outro aparelho com <code>-d</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Erro de compilação no <code>main.dart</code></strong>
+<p>A Ana escreveu <code>Txt</code> no lugar de <code>Text</code> no app da lista de compras:</p>
+<pre class="file" data-file="lib/main.dart (trecho)">    return const MaterialApp(
+      home: Scaffold(body: Center(child: Txt('Hello World!'))),
+    );
+</pre>
+<pre class="term">$ flutter run -d web-server --web-port 8080
+Launching lib/main.dart on Web Server in debug mode...
+Waiting for connection from debug service on Web Server...
+lib/main.dart:13:42: Error: Not a constant expression.
+      home: Scaffold(body: Center(child: Txt('Hello World!'))),
+                                         ^^^
+Waiting for connection from debug service on Web Server...         23,6s
+Failed to compile application.
+</pre>
+<dl class="anatomy">
+  <dt>lib/main.dart:13:42:</dt><dd>O arquivo, a linha 13 e a coluna 42: exatamente onde está o <code>Txt</code>.</dd>
+  <dt>Error: Not a constant expression.</dt><dd>"Não é uma expressão constante." Curioso: o compilador não reclamou do nome errado, e sim do <code>const</code>. Tudo o que está dentro de <code>const MaterialApp(...)</code> precisa ser constante, e o <code>Txt(...)</code>, que não é nada conhecido, não pode ser. A mensagem nem sempre diz a causa com todas as letras: leia a <strong>linha</strong> e o <code>^^^</code>, que apontam o lugar certo.</dd>
+  <dt>Failed to compile application.</dt><dd>"Falha ao compilar o app." Nada abriu.</dd>
+</dl>
+<p><strong>Como consertar:</strong> corrija para <code>Text</code> e rode de novo. Dica: o editor (e o comando <code>flutter analyze</code>) sublinham esse erro antes de você rodar, quase sempre com uma explicação mais clara.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando ou tecla</th><th>O que faz</th></tr>
+<tr><td><code>flutter run</code></td><td>Compila e roda o app em modo debug, e fica conectado</td></tr>
+<tr><td><code>flutter run -d ID</code></td><td>Escolhe o aparelho (<code>chrome</code>, <code>linux</code>, <code>web-server</code>, o id do emulador...)</td></tr>
+<tr><td><code>flutter run --release</code></td><td>Roda o app como ele será entregue</td></tr>
+<tr><td><code>flutter devices</code></td><td>Lista os aparelhos e os ids</td></tr>
+<tr><td><kbd>r</kbd> / <kbd>R</kbd></td><td>Hot reload / hot restart</td></tr>
+<tr><td><kbd>h</kbd></td><td>Lista as teclas</td></tr>
+<tr><td><kbd>d</kbd></td><td>Desconecta e deixa o app aberto</td></tr>
+<tr><td><kbd>c</kbd></td><td>Limpa o terminal</td></tr>
+<tr><td><kbd>q</kbd></td><td>Fecha o app e o <code>flutter run</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. O aparelho</h3>
+<p>Complete o comando que roda o app no Chrome:</p>
+<div class="ex-code">$ flutter run <input data-answer="-d" aria-label="opção"> chrome</div>
+</div>
+
+<div class="exercise">
+<h3>2. A tecla de sair</h3>
+<p>Que tecla fecha o app e encerra o <code>flutter run</code>?</p>
+<div class="ex-code"><input data-answer="q" aria-label="tecla"></div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. A Ana rodou <code>flutter run</code> e recebeu <code>No pubspec.yaml file found</code>. O que aconteceu?</p>
+<label><input type="radio" name="q3"> O Flutter não está instalado</label>
+<label><input type="radio" name="q3"> Falta um emulador</label>
+<label><input type="radio" name="q3"> Ela não está dentro da pasta do projeto</label>
+<label><input type="radio" name="q3"> O <code>main.dart</code> tem um erro</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. Qual é a diferença entre <kbd>r</kbd> e <kbd>R</kbd>?</p>
+<label><input type="radio" name="q4"> Nenhuma</label>
+<label><input type="radio" name="q4"> <kbd>r</kbd> aplica as mudanças mantendo o estado; <kbd>R</kbd> recomeça o app do zero</label>
+<label><input type="radio" name="q4"> <kbd>r</kbd> roda e <kbd>R</kbd> para</label>
+<label><input type="radio" name="q4"> <kbd>R</kbd> só funciona no Chrome</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. Por que o app do <code>flutter run</code> tem a faixa DEBUG?</p>
+<label><input type="radio" name="q5"> Porque roda em modo debug, o modo de desenvolvimento</label>
+<label><input type="radio" name="q5"> Porque tem um erro</label>
+<label><input type="radio" name="q5"> Porque falta o Android Studio</label>
+<label><input type="radio" name="q5"> Porque o app não foi testado</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>flutter run</code>, dentro da pasta do projeto, compila o <code>lib/main.dart</code>, abre o app no aparelho e fica conectado.</li>
+  <li><code>-d</code> escolhe o aparelho pelo id ou nome; <code>flutter devices</code> mostra a lista.</li>
+  <li>Teclas: <kbd>r</kbd> hot reload, <kbd>R</kbd> hot restart, <kbd>h</kbd> ajuda, <kbd>d</kbd> desconectar, <kbd>c</kbd> limpar, <kbd>q</kbd> sair.</li>
+  <li>O padrão é o modo debug, com a faixa DEBUG; <code>debugShowCheckedModeBanner: false</code> esconde a faixa, e <code>--release</code> roda o app final.</li>
+  <li>Erros comuns: fora da pasta (<code>No pubspec.yaml file found</code>), aparelho inexistente, ferramentas faltando e erro de compilação com <code>arquivo:linha:coluna</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
