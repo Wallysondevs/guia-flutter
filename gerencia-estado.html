@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Gerência de Estado — por que e quando organizar o estado | Guia Flutter</title>
+<meta name="description" content="Por que gerenciar o estado num app Flutter: estado local (efêmero) e estado do app, o carrinho que a AppBar não enxerga, elevar o estado e passar callbacks por widgets que não usam (prop drilling), ValueNotifier e ValueListenableBuilder, e um mapa das opções: InheritedWidget, Provider, Riverpod e BLoC.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Gerência de Estado</span></h1>
+
+<p class="intro">Com <a href="setstate.html">setState</a> você já faz muita coisa: um contador, um formulário, uma lista que cresce. Mas, quando o app passa de uma tela, aparece um problema novo: <strong>vários widgets, em lugares diferentes da árvore, precisam do mesmo dado</strong>. O carrinho da lojinha da Ana aparece no topo da tela, em cada produto e na tela de pagamento. Onde esse dado deve morar? Como os widgets ficam sabendo quando ele muda? Responder a isso é o que se chama <strong>gerência de estado</strong> (<em>state management</em>). Esta aula mostra o problema; as próximas mostram as ferramentas.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é "estado" num app, e a diferença entre <strong>estado local</strong> e <strong>estado do app</strong>.</li>
+  <li>O que acontece quando o estado fica no lugar errado (o carrinho que a barra de cima não enxerga).</li>
+  <li>A primeira solução: <strong>elevar o estado</strong> e passar funções para baixo, e o incômodo de repassar por widgets que não usam.</li>
+  <li>Uma ferramenta que já vem no Flutter: <code>ValueNotifier</code> com <code>ValueListenableBuilder</code>.</li>
+  <li>Um mapa das opções (InheritedWidget, Provider, Riverpod, BLoC) e como escolher.</li>
+</ul>
+</div>
+
+<p>Os exemplos rodaram no laboratório do guia (<span class="versao">Flutter 3.47</span>); as fotos foram tiradas depois de tocar nos botões indicados.</p>
+
+<hr>
+
+<h2>A ideia: o quadro de pedidos da lanchonete</h2>
+<p>Numa lanchonete pequena, o atendente anota o pedido de cabeça e grita para a cozinha: funciona. Quando a lanchonete cresce (caixa, cozinha, balcão de entrega, motoboy), gritar não basta: alguém esquece, alguém ouve errado. A solução é um <strong>quadro de pedidos</strong> na parede, que todos veem, e uma regra clara de quem pode escrever nele.</p>
+<p>No app é igual. O "de cabeça" é o <code>setState</code> dentro de um widget: ótimo para coisas que só aquele widget usa. O "quadro na parede" é o estado guardado num lugar que <strong>vários</strong> widgets conseguem ler, e que os <strong>avisa</strong> quando muda.</p>
+
+<h3>Dois tipos de estado</h3>
+<p>A documentação oficial do Flutter (<a href="https://docs.flutter.dev/data-and-backend/state-mgmt/ephemeral-vs-app">Differentiate between ephemeral state and app state</a>) separa assim:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th></th><th>Estado local (efêmero)</th><th>Estado do app (compartilhado)</th></tr>
+<tr><td>Quem usa</td><td>Um widget só</td><td>Vários widgets, às vezes em telas diferentes</td></tr>
+<tr><td>Exemplos</td><td>A aba escolhida, o texto sendo digitado, uma animação, o "mostrar senha"</td><td>O carrinho, o usuário logado, as preferências, as mensagens não lidas</td></tr>
+<tr><td>Ferramenta</td><td><code>StatefulWidget</code> + <code>setState</code></td><td>Elevar o estado, <code>InheritedWidget</code>, Provider, Riverpod, BLoC…</td></tr>
+</table>
+</div>
+<p>A própria documentação diz que não há uma regra universal: um estado pode começar local e virar do app quando o app cresce.</p>
+
+<hr>
+
+<h2>1. O estado no lugar errado</h2>
+<p>A Ana fez a lojinha assim: cada cartão de produto guarda a <strong>sua</strong> quantidade no carrinho, com <code>setState</code>. Parece natural:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+const produtos = ['Bolo de cenoura', 'Pão de queijo', 'Brigadeiro'];
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        // A AppBar quer mostrar o total... mas de onde ela tira esse número?
+        appBar: AppBar(title: const Text('Lojinha · Carrinho: 0')),
+        body: ListView(
+          children: [
+            for (final nome in produtos) CartaoProduto(nome: nome),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Cada cartão guarda a SUA conta. Ninguém mais fica sabendo.
+class CartaoProduto extends StatefulWidget {
+  const CartaoProduto({super.key, required this.nome});
+
+  final String nome;
+
+  @override
+  State&lt;CartaoProduto&gt; createState() =&gt; _CartaoProdutoState();
+}
+
+class _CartaoProdutoState extends State&lt;CartaoProduto&gt; {
+  int _quantidade = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: const Icon(Icons.cake),
+      title: Text(widget.nome),
+      subtitle: Text('No carrinho: $_quantidade'),
+      trailing: IconButton(
+        tooltip: 'Adicionar ${widget.nome}',
+        icon: const Icon(Icons.add_shopping_cart),
+        onPressed: () =&gt; setState(() =&gt; _quantidade++),
+      ),
+    );
+  }
+}
+</pre>
+
+<figure class="tela"><img src="assets/telas/gerencia-estado-2.png" alt="App com o título Lojinha · Carrinho: 0 e três produtos com um bolo à esquerda e um carrinho com sinal de mais à direita: Bolo de cenoura, No carrinho: 1; Pão de queijo, No carrinho: 0; Brigadeiro, No carrinho: 2" width="390" height="844" loading="lazy"><figcaption>Depois de um toque no bolo e dois no brigadeiro: os cartões contam, a barra continua em 0.</figcaption></figure>
+
+<p>Nenhum erro, nenhuma tela vermelha, e o app está <strong>errado</strong>: a barra diz <code>Carrinho: 0</code> com 3 itens no carrinho. Cada <code>_CartaoProdutoState</code> tem a sua própria conta, e ela fica <strong>presa</strong> dentro do cartão. A <code>AppBar</code> está em outro galho da árvore e não tem como ler esses números. E se a Ana tivesse uma tela de pagamento, ela também não saberia. O estado do carrinho é um <strong>estado do app</strong>, mas foi guardado como estado local.</p>
+
+<hr>
+
+<h2>2. Elevar o estado e passar para baixo</h2>
+<p>A solução clássica (que você viu em <a href="elevar-estado.html">Passando Dados e Elevando o Estado</a>): o estado sobe para o <strong>ancestral comum</strong> de quem precisa dele, o widget que está acima da barra <strong>e</strong> dos cartões. Ele guarda o número e passa para baixo uma função para somar:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+const produtos = ['Bolo de cenoura', 'Pão de queijo', 'Brigadeiro'];
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaLoja(),
+    );
+  }
+}
+
+// O estado mora aqui em cima, porque a AppBar e os cartões precisam dele.
+class TelaLoja extends StatefulWidget {
+  const TelaLoja({super.key});
+
+  @override
+  State&lt;TelaLoja&gt; createState() =&gt; _TelaLojaState();
+}
+
+class _TelaLojaState extends State&lt;TelaLoja&gt; {
+  int _noCarrinho = 0;
+
+  void _adicionar() {
+    setState(() =&gt; _noCarrinho++);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Lojinha · Carrinho: $_noCarrinho')),
+      body: ListaProdutos(onAdicionar: _adicionar),
+    );
+  }
+}
+
+// A lista não usa o onAdicionar: só repassa para os cartões.
+class ListaProdutos extends StatelessWidget {
+  const ListaProdutos({super.key, required this.onAdicionar});
+
+  final VoidCallback onAdicionar;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      children: [
+        for (final nome in produtos)
+          CartaoProduto(nome: nome, onAdicionar: onAdicionar),
+      ],
+    );
+  }
+}
+
+class CartaoProduto extends StatelessWidget {
+  const CartaoProduto({super.key, required this.nome, required this.onAdicionar});
+
+  final String nome;
+  final VoidCallback onAdicionar;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: const Icon(Icons.cake),
+      title: Text(nome),
+      trailing: IconButton(
+        tooltip: 'Adicionar $nome',
+        icon: const Icon(Icons.add_shopping_cart),
+        onPressed: onAdicionar,
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>_TelaLojaState com int _noCarrinho</dt><dd>O estado mora na tela, que contém a <code>AppBar</code> e a lista. Os dois "enxergam" o mesmo número.</dd>
+  <dt>void _adicionar() { setState(…) }</dt><dd>Só quem guarda o estado o muda. Os outros recebem a função.</dd>
+  <dt>ListaProdutos({required this.onAdicionar})</dt><dd>A lista recebe a função… e só a repassa. Ela mesma não usa.</dd>
+  <dt>CartaoProduto(… onAdicionar)</dt><dd>Lá embaixo, o botão chama a função que veio "descendo" pela árvore.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/gerencia-estado-1.png" alt="App com o título Lojinha · Carrinho: 2 e a lista Bolo de cenoura, Pão de queijo e Brigadeiro, cada um com o botão de carrinho à direita" width="390" height="844" loading="lazy"><figcaption>Um toque no bolo e um no brigadeiro: a barra mostra 2.</figcaption></figure>
+
+<p>Funciona. Mas olhe o caminho que o dado faz:</p>
+<pre class="file" data-file="a árvore de widgets">TelaLoja            ← guarda _noCarrinho e _adicionar
+├── AppBar          ← usa _noCarrinho
+└── ListaProdutos   ← NÃO usa, só repassa onAdicionar
+    └── CartaoProduto (×3)  ← usa onAdicionar
+</pre>
+<p>A <code>ListaProdutos</code> virou um "cano" por onde a função só passa. Aqui é um nível; num app real, entre a tela e o botão há cinco, seis widgets, e <strong>cada um</strong> precisa de um parâmetro novo a cada dado novo (o nome do usuário, o tema, o carrinho…). Esse incômodo tem até nome em inglês: <em>prop drilling</em> ("furar" os widgets para passar um dado). E, a cada <code>setState</code> na <code>TelaLoja</code>, a tela inteira é reconstruída, mesmo que só a barra precise mudar.</p>
+
+<hr>
+
+<h2>3. Uma ferramenta que já vem no Flutter: <code>ValueNotifier</code></h2>
+<p>O Flutter traz uma caixinha que guarda <strong>um valor</strong> e <strong>avisa</strong> quem estiver ouvindo quando ele muda: o <code>ValueNotifier</code>. E um widget que ouve essa caixinha e se redesenha sozinho: o <code>ValueListenableBuilder</code>.</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+// O estado do carrinho fica fora dos widgets, num ValueNotifier.
+final carrinho = ValueNotifier&lt;int&gt;(0);
+
+void main() =&gt; runApp(const MeuApp());
+
+const produtos = ['Bolo de cenoura', 'Pão de queijo', 'Brigadeiro'];
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(
+          // Só este pedaço é redesenhado quando o carrinho muda.
+          title: ValueListenableBuilder&lt;int&gt;(
+            valueListenable: carrinho,
+            builder: (context, quantidade, child) {
+              return Text('Lojinha · Carrinho: $quantidade');
+            },
+          ),
+        ),
+        body: ListView(
+          children: [
+            for (final nome in produtos) CartaoProduto(nome: nome),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class CartaoProduto extends StatelessWidget {
+  const CartaoProduto({super.key, required this.nome});
+
+  final String nome;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: const Icon(Icons.cake),
+      title: Text(nome),
+      trailing: IconButton(
+        tooltip: 'Adicionar $nome',
+        icon: const Icon(Icons.add_shopping_cart),
+        onPressed: () =&gt; carrinho.value++,
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>final carrinho = ValueNotifier&lt;int&gt;(0);</dt><dd>A caixinha, com o valor inicial 0. Aqui ela está fora de qualquer widget (uma variável do arquivo), para ficar simples.</dd>
+  <dt>carrinho.value++</dt><dd>Mudar o <code>value</code> já <strong>avisa</strong> os ouvintes. Não há <code>setState</code>: o cartão nem precisa ser <code>StatefulWidget</code>.</dd>
+  <dt>ValueListenableBuilder&lt;int&gt;(valueListenable: carrinho, builder: …)</dt><dd>Ouve a caixinha e roda o <code>builder</code> a cada mudança, com o valor novo (<code>quantidade</code>). <strong>Só esse pedaço</strong> (o título da barra) é redesenhado.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/gerencia-estado-3.png" alt="App com o título Lojinha · Carrinho: 3 e a mesma lista de três produtos" width="390" height="844" loading="lazy"><figcaption>Um toque no bolo e dois no brigadeiro: a barra mostra 3, sem <code>setState</code> e sem repassar nada pela lista.</figcaption></figure>
+
+<div class="warning">
+<strong>Uma variável global resolve tudo?</strong>
+<p>Para um exemplo, sim. Num app de verdade, uma variável solta no arquivo é difícil de testar (todos os testes dividem o mesmo carrinho) e qualquer parte do código pode mexer nela. Por isso as ferramentas das próximas aulas <strong>entregam</strong> o estado pela árvore de widgets: quem está abaixo pede, e o Flutter acha.</p>
+</div>
+
+<div class="tryflutter" data-goal="src:carrinho\.value\s*=\s*0" data-foto="assets/telas/gerencia-estado-4.png">
+<p class="try-task"><strong>Missão:</strong> ponha um botão para <strong>esvaziar</strong> o carrinho: na <code>AppBar</code>, acrescente <code>actions: [IconButton(tooltip: 'Esvaziar', icon: const Icon(Icons.remove_shopping_cart), onPressed: () =&gt; carrinho.value = 0)]</code>. Toque em adicionar algumas vezes e depois esvazie.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+// O estado do carrinho fica fora dos widgets, num ValueNotifier.
+final carrinho = ValueNotifier&lt;int&gt;(0);
+
+void main() =&gt; runApp(const MeuApp());
+
+const produtos = ['Bolo de cenoura', 'Pão de queijo', 'Brigadeiro'];
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(
+          // Só este pedaço é redesenhado quando o carrinho muda.
+          title: ValueListenableBuilder&lt;int&gt;(
+            valueListenable: carrinho,
+            builder: (context, quantidade, child) {
+              return Text('Lojinha · Carrinho: $quantidade');
+            },
+          ),
+        ),
+        body: ListView(
+          children: [
+            for (final nome in produtos) CartaoProduto(nome: nome),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class CartaoProduto extends StatelessWidget {
+  const CartaoProduto({super.key, required this.nome});
+
+  final String nome;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: const Icon(Icons.cake),
+      title: Text(nome),
+      trailing: IconButton(
+        tooltip: 'Adicionar $nome',
+        icon: const Icon(Icons.add_shopping_cart),
+        onPressed: () =&gt; carrinho.value++,
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+// O estado do carrinho fica fora dos widgets, num ValueNotifier.
+final carrinho = ValueNotifier&lt;int&gt;(0);
+
+void main() =&gt; runApp(const MeuApp());
+
+const produtos = ['Bolo de cenoura', 'Pão de queijo', 'Brigadeiro'];
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(
+          actions: [
+            IconButton(
+              tooltip: 'Esvaziar',
+              icon: const Icon(Icons.remove_shopping_cart),
+              onPressed: () =&gt; carrinho.value = 0,
+            ),
+          ],
+          // Só este pedaço é redesenhado quando o carrinho muda.
+          title: ValueListenableBuilder&lt;int&gt;(
+            valueListenable: carrinho,
+            builder: (context, quantidade, child) {
+              return Text('Lojinha · Carrinho: $quantidade');
+            },
+          ),
+        ),
+        body: ListView(
+          children: [
+            for (final nome in produtos) CartaoProduto(nome: nome),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class CartaoProduto extends StatelessWidget {
+  const CartaoProduto({super.key, required this.nome});
+
+  final String nome;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: const Icon(Icons.cake),
+      title: Text(nome),
+      trailing: IconButton(
+        tooltip: 'Adicionar $nome',
+        icon: const Icon(Icons.add_shopping_cart),
+        onPressed: () =&gt; carrinho.value++,
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>4. O mapa das opções</h2>
+<p>Existem dezenas de pacotes de gerência de estado. A documentação oficial lista várias (<a href="https://docs.flutter.dev/data-and-backend/state-mgmt/options">List of state management approaches</a>). Este guia mostra as mais usadas, uma por aula:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Ferramenta</th><th>Em uma frase</th><th>Aula</th></tr>
+<tr><td><code>setState</code></td><td>Estado dentro de um widget só</td><td><a href="setstate.html">setState</a></td></tr>
+<tr><td>Elevar o estado</td><td>O estado sobe para o ancestral comum; dados e funções descem pelos construtores</td><td><a href="elevar-estado.html">Elevando o Estado</a></td></tr>
+<tr><td><code>ValueNotifier</code> / <code>ChangeNotifier</code></td><td>Uma caixinha que avisa quando muda (já vem no Flutter)</td><td>Esta aula</td></tr>
+<tr><td><code>InheritedWidget</code></td><td>O mecanismo do próprio Flutter para entregar dados a qualquer widget abaixo (é o que o <code>Theme.of(context)</code> usa)</td><td><a href="inherited-widget.html">InheritedWidget</a></td></tr>
+<tr><td>Provider</td><td>Um pacote que deixa o <code>InheritedWidget</code> fácil de usar; é o que a documentação oficial usa no tutorial de estado simples</td><td><a href="provider.html">Provider</a></td></tr>
+<tr><td>Riverpod</td><td>Do mesmo autor do Provider, sem depender do <code>context</code>, com mais checagens do compilador</td><td><a href="riverpod.html">Riverpod</a></td></tr>
+<tr><td>BLoC</td><td>Eventos entram, estados saem (com <code>Stream</code>s); muito usado em equipes grandes</td><td><a href="bloc.html">Uma Olhada no BLoC</a></td></tr>
+</table>
+</div>
+
+<div class="tip">
+<strong>Qual escolher?</strong>
+<p>Comece pelo mais simples que resolve. Estado de um widget só: <code>setState</code>. Dois ou três widgets próximos: eleve o estado. Um dado que muitas telas usam: Provider (ou Riverpod). Não existe a "melhor" para todo app; existe a que a sua equipe entende e usa do mesmo jeito em todo o código.</p>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>O estado ficou dentro do widget errado</strong>
+<p>É o exemplo da seção 1: nenhuma mensagem de erro, mas a tela mostra números que não batem (a barra diz 0, os cartões dizem 1 e 2). Sempre que dois widgets precisam do mesmo dado, pergunte: <em>quem é o ancestral comum dos dois?</em> O estado mora ali (ou acima).</p>
+</div>
+
+<div class="cenario">
+<strong>Mudou o valor, mas a tela não mudou</strong>
+<p>Com <code>ValueNotifier</code>, quem não está dentro de um <code>ValueListenableBuilder</code> não é avisado. Se a Ana escrever <code>Text('Carrinho: ${carrinho.value}')</code> direto na <code>AppBar</code>, o texto mostra o valor da hora em que foi construído e fica parado. O mesmo vale para um campo comum mudado <strong>sem</strong> <code>setState</code>: o valor muda na memória, mas ninguém mandou redesenhar. <strong>Como consertar:</strong> leia o valor dentro do <code>builder</code> que ouve a mudança (ou mude dentro do <code>setState</code>).</p>
+</div>
+
+<div class="cenario">
+<strong>Uma lista dentro do <code>ValueNotifier</code></strong>
+<p>Com <code>ValueNotifier&lt;List&lt;String&gt;&gt;</code>, fazer <code>itens.value.add('Bolo')</code> <strong>não avisa</strong> ninguém: o <code>ValueNotifier</code> só avisa quando o <code>value</code> é <strong>trocado</strong> por outro objeto, e a lista é a mesma. <strong>Como consertar:</strong> troque por uma lista nova: <code>itens.value = [...itens.value, 'Bolo'];</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>setState(() { … })</code></td><td>Muda o estado local e redesenha aquele widget</td></tr>
+<tr><td><code>final VoidCallback onAdicionar;</code></td><td>Recebe uma função de cima (elevar o estado)</td></tr>
+<tr><td><code>ValueNotifier&lt;T&gt;(inicial)</code></td><td>Guarda um valor e avisa quando <code>.value</code> é trocado</td></tr>
+<tr><td><code>ValueListenableBuilder&lt;T&gt;(valueListenable: n, builder: (context, valor, child) =&gt; …)</code></td><td>Redesenha um pedaço da tela quando o <code>ValueNotifier</code> muda</td></tr>
+<tr><td><code>ChangeNotifier</code> + <code>notifyListeners()</code></td><td>A versão para objetos com vários campos (base do Provider)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Local ou do app?</h3>
+<p>"A aba escolhida numa tela de abas, que nenhuma outra tela usa." Escreva <strong>local</strong> ou <strong>app</strong>.</p>
+<div class="ex-code"><input data-answer="local" aria-label="tipo de estado"></div>
+</div>
+
+<div class="exercise">
+<h3>2. Complete o ouvinte</h3>
+<div class="ex-code">ValueListenableBuilder&lt;int&gt;(<br>&nbsp;&nbsp;<input data-answer="valueListenable" aria-label="nome do parâmetro">: carrinho,<br>&nbsp;&nbsp;builder: (context, quantidade, child) =&gt; Text('$quantidade'),<br>)</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. A barra do topo e um cartão lá embaixo precisam do mesmo número. Onde o estado deve morar?</p>
+<label><input type="radio" name="q3"> Dentro do cartão</label>
+<label><input type="radio" name="q3"> No ancestral comum dos dois (ou acima dele)</label>
+<label><input type="radio" name="q3"> Dentro da barra</label>
+<label><input type="radio" name="q3"> Em cada um, com uma cópia</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. O que é <em>prop drilling</em>?</p>
+<label><input type="radio" name="q4"> Um erro de compilação</label>
+<label><input type="radio" name="q4"> Um pacote de gerência de estado</label>
+<label><input type="radio" name="q4"> Passar um dado por vários widgets que não o usam, só para ele chegar lá embaixo</label>
+<label><input type="radio" name="q4"> Uma animação do Material 3</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. <code>final itens = ValueNotifier&lt;List&lt;String&gt;&gt;([]);</code> Qual linha avisa os ouvintes?</p>
+<label><input type="radio" name="q5"> <code>itens.value = [...itens.value, 'Bolo'];</code></label>
+<label><input type="radio" name="q5"> <code>itens.value.add('Bolo');</code></label>
+<label><input type="radio" name="q5"> As duas</label>
+<label><input type="radio" name="q5"> Nenhuma</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Estado local (de um widget só) fica com <code>setState</code>. Estado do app (usado por vários widgets) precisa morar num lugar que todos alcancem.</li>
+  <li>Estado no widget errado não dá erro: dá números que não batem.</li>
+  <li>Elevar o estado resolve, mas obriga widgets do meio a repassar dados e funções que não usam (<em>prop drilling</em>).</li>
+  <li><code>ValueNotifier</code> + <code>ValueListenableBuilder</code> avisam e redesenham só o pedaço que precisa, sem pacote nenhum.</li>
+  <li>Para entregar estado pela árvore, o Flutter tem o <a href="inherited-widget.html">InheritedWidget</a>, a base do Provider e de outras ferramentas: é a próxima aula.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
