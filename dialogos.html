@@ -1,0 +1,654 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Diálogos e SnackBar — perguntar, avisar e mostrar opções | Guia Flutter</title>
+<meta name="description" content="Diálogos e SnackBar no Flutter para quem nunca fez um app: showDialog com AlertDialog, a resposta que volta com Navigator.pop e await, o diálogo que não fecha tocando fora, o SnackBar com ScaffoldMessenger e o botão Desfazer, a folha que sobe de baixo (showModalBottomSheet) e o erro real do context errado (No MaterialLocalizations found).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Diálogos e SnackBar</span></h1>
+
+<p class="intro">Às vezes o app precisa <strong>interromper</strong> a pessoa: "Apagar a receita? Não dá para desfazer." Outras vezes, só <strong>avisar</strong> de leve, sem atrapalhar: "Caneca no carrinho." E outras, mostrar um punhado de <strong>opções</strong>: "Compartilhar por mensagem, e-mail ou link?". Para cada caso, o Material tem uma peça: o <strong>diálogo</strong> (<code>AlertDialog</code>), a <strong>barrinha de aviso</strong> (<code>SnackBar</code>) e a <strong>folha que sobe de baixo</strong> (<em>bottom sheet</em>).</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como abrir um <code>AlertDialog</code> com <code>showDialog</code> e fechá-lo com <code>Navigator.pop</code>.</li>
+  <li>Como saber qual botão a pessoa tocou: a resposta que volta no <code>await</code>.</li>
+  <li>Como impedir que o diálogo feche com um toque fora (<code>barrierDismissible</code>).</li>
+  <li>Como mostrar um <code>SnackBar</code> com <code>ScaffoldMessenger</code>, e o botão <strong>Desfazer</strong>.</li>
+  <li>Como abrir uma folha de opções com <code>showModalBottomSheet</code>.</li>
+  <li>O erro real do <code>context</code> errado: <code>No MaterialLocalizations found</code>.</li>
+</ul>
+</div>
+
+<hr>
+
+<h2>A ideia: a campainha, o bilhete e o cardápio</h2>
+<ul>
+  <li>O <strong>diálogo</strong> é a <strong>campainha</strong>: interrompe tudo, e a pessoa tem de atender (responder) antes de continuar. O fundo do app escurece e fica "travado". Use para decisões importantes.</li>
+  <li>O <strong>SnackBar</strong> é o <strong>bilhete</strong> preso na geladeira: aparece embaixo, fica uns segundos e some sozinho. Não trava nada. Use para confirmar que algo aconteceu.</li>
+  <li>A <strong>folha de baixo</strong> é o <strong>cardápio</strong> que o garçom estende na mesa: uma lista de escolhas, perto do dedo.</li>
+</ul>
+
+<hr>
+
+<h2>1. O primeiro diálogo: <code>showDialog</code> + <code>AlertDialog</code></h2>
+<p>A Ana quer confirmar antes de apagar uma receita:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Receita()));
+
+class Receita extends StatefulWidget {
+  const Receita({super.key});
+
+  @override
+  State&lt;Receita&gt; createState() =&gt; _ReceitaState();
+}
+
+class _ReceitaState extends State&lt;Receita&gt; {
+  String situacao = 'Receita guardada';
+
+  Future&lt;void&gt; perguntar() async {
+    final resposta = await showDialog&lt;bool&gt;(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Apagar a receita?'),
+          content: const Text('O bolo de cenoura vai sumir do seu caderno.'),
+          actions: [
+            TextButton(
+              onPressed: () =&gt; Navigator.pop(context, false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () =&gt; Navigator.pop(context, true),
+              child: const Text('Apagar'),
+            ),
+          ],
+        );
+      },
+    );
+    debugPrint('resposta: $resposta');
+    if (resposta == true) {
+      setState(() {
+        situacao = 'Receita apagada';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Bolo de cenoura')),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(situacao, style: const TextStyle(fontSize: 20)),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: perguntar,
+              icon: const Icon(Icons.delete),
+              label: const Text('Apagar receita'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>Future&lt;void&gt; perguntar() async</dt><dd>Uma função <strong>assíncrona</strong>: ela vai precisar <strong>esperar</strong> a pessoa responder, o que pode levar segundos ou minutos. Enquanto espera, o app continua desenhando a tela.</dd>
+  <dt>await showDialog&lt;bool&gt;(…)</dt><dd>Abre o diálogo por cima da tela e devolve um <code>Future&lt;bool?&gt;</code>: a resposta que vai chegar quando o diálogo fechar. O <code>await</code> espera essa resposta. O <code>&lt;bool&gt;</code> é o tipo da resposta.</dd>
+  <dt>context: context</dt><dd>De onde o diálogo é aberto: o <code>context</code> do <code>State</code>, que está <strong>dentro</strong> do <code>MaterialApp</code>. (Isso importa: veja <a href="#errado">Quando dá errado</a>.)</dd>
+  <dt>builder: (context) { return AlertDialog(…); }</dt><dd>A função que constrói o que aparece no diálogo. Ela recebe um <code>context</code> novo, o <strong>do diálogo</strong>.</dd>
+  <dt>AlertDialog(title: …, content: …, actions: […])</dt><dd>A caixa pronta do Material: um título, um texto (ou qualquer widget) e uma fileira de botões no pé.</dd>
+  <dt>Navigator.pop(context, false)</dt><dd>Fecha o diálogo e manda <code>false</code> de volta para quem o abriu. O diálogo é uma "tela" por cima da outra, e o <code>pop</code> ("tirar de cima") a retira, como o botão Voltar (você vai ver o <code>Navigator</code> com calma em <a href="navegacao.html">Navegação</a>).</dd>
+  <dt>if (resposta == true)</dt><dd>A <code>resposta</code> é <code>bool?</code>: pode ser <code>true</code>, <code>false</code> ou <code>null</code> (se a pessoa fechou tocando fora). Comparar com <code>true</code> trata o <code>null</code> como "não".</dd>
+</dl>
+
+<p>A Ana tocou em <strong>Apagar receita</strong>: o diálogo apareceu no meio, e o resto da tela escureceu. Ela tocou em <strong>Cancelar</strong>, abriu de novo e, na segunda vez, tocou em <strong>Apagar</strong>:</p>
+<div class="table-wrap"><table class="ref"><tr><td><figure class="tela"><img src="assets/telas/dialogos-1.png" alt="Tela &#39;Bolo de cenoura&#39; escurecida por um véu cinza; no meio, uma caixa clara de cantos bem arredondados com o título &#39;Apagar a receita?&#39;, o texto &#39;O bolo de cenoura vai sumir do seu caderno.&#39; e, embaixo à direita, o botão de texto &#39;Cancelar&#39; e o botão roxo &#39;Apagar&#39;" width="390" height="844" loading="lazy"><figcaption>O diálogo aberto.</figcaption></figure></td><td><figure class="tela"><img src="assets/telas/dialogos-2.png" alt="Tela &#39;Bolo de cenoura&#39; sem o véu, com o texto &#39;Receita apagada&#39; e o botão roxo com lixeira &#39;Apagar receita&#39;" width="390" height="844" loading="lazy"><figcaption>Depois de tocar em Apagar.</figcaption></figure></td></tr></table></div>
+<p>O <code>debugPrint</code> mostrou no console as duas respostas, uma de cada vez que o diálogo fechou:</p>
+<pre class="term">resposta: false
+resposta: true
+</pre>
+
+<div class="tryflutter" data-goal="src:barrierDismissible:\s*false">
+<p class="try-task"><strong>Missão:</strong> abra o diálogo e toque <strong>fora</strong> dele, no fundo escuro: ele fecha, e a resposta é <code>null</code>. Para uma pergunta importante, a Ana quer obrigar a pessoa a escolher um botão. Passe <code>barrierDismissible: false</code> para o <code>showDialog</code> e tente tocar fora de novo.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Receita()));
+
+class Receita extends StatefulWidget {
+  const Receita({super.key});
+
+  @override
+  State&lt;Receita&gt; createState() =&gt; _ReceitaState();
+}
+
+class _ReceitaState extends State&lt;Receita&gt; {
+  String situacao = 'Receita guardada';
+
+  Future&lt;void&gt; perguntar() async {
+    final resposta = await showDialog&lt;bool&gt;(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Apagar a receita?'),
+          actions: [
+            TextButton(
+              onPressed: () =&gt; Navigator.pop(context, false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () =&gt; Navigator.pop(context, true),
+              child: const Text('Apagar'),
+            ),
+          ],
+        );
+      },
+    );
+    setState(() {
+      situacao = 'Resposta: $resposta';
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Bolo de cenoura')),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(situacao, style: const TextStyle(fontSize: 20)),
+            FilledButton(onPressed: perguntar, child: const Text('Apagar receita')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Receita()));
+
+class Receita extends StatefulWidget {
+  const Receita({super.key});
+
+  @override
+  State&lt;Receita&gt; createState() =&gt; _ReceitaState();
+}
+
+class _ReceitaState extends State&lt;Receita&gt; {
+  String situacao = 'Receita guardada';
+
+  Future&lt;void&gt; perguntar() async {
+    final resposta = await showDialog&lt;bool&gt;(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Apagar a receita?'),
+          actions: [
+            TextButton(
+              onPressed: () =&gt; Navigator.pop(context, false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () =&gt; Navigator.pop(context, true),
+              child: const Text('Apagar'),
+            ),
+          ],
+        );
+      },
+    );
+    setState(() {
+      situacao = 'Resposta: $resposta';
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Bolo de cenoura')),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(situacao, style: const TextStyle(fontSize: 20)),
+            FilledButton(onPressed: perguntar, child: const Text('Apagar receita')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<div class="tip">
+<strong>Escreva botões que dizem o que fazem</strong>
+<p>"Apagar" e "Cancelar" são melhores que "Sim" e "Não": a pessoa entende o botão sem ler a pergunta de novo. E ponha a ação principal à direita, como o Material faz.</p>
+</div>
+
+<hr>
+
+<h2>2. O aviso de leve: <code>SnackBar</code></h2>
+<p>Na lojinha da Ana, comprar uma caneca não precisa de pergunta; só de um aviso, com a chance de desfazer:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Carrinho()));
+
+class Carrinho extends StatefulWidget {
+  const Carrinho({super.key});
+
+  @override
+  State&lt;Carrinho&gt; createState() =&gt; _CarrinhoState();
+}
+
+class _CarrinhoState extends State&lt;Carrinho&gt; {
+  int itens = 0;
+
+  void comprar() {
+    setState(() {
+      itens++;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Caneca azul no carrinho'),
+        action: SnackBarAction(
+          label: 'Desfazer',
+          onPressed: () {
+            setState(() {
+              itens--;
+            });
+          },
+        ),
+      ),
+    );
+  }
+
+  void compartilhar() {
+    showModalBottomSheet&lt;void&gt;(
+      context: context,
+      builder: (context) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.message),
+              title: const Text('Mandar por mensagem'),
+              onTap: () =&gt; Navigator.pop(context),
+            ),
+            ListTile(
+              leading: const Icon(Icons.email),
+              title: const Text('Mandar por e-mail'),
+              onTap: () =&gt; Navigator.pop(context),
+            ),
+            ListTile(
+              leading: const Icon(Icons.link),
+              title: const Text('Copiar o link'),
+              onTap: () =&gt; Navigator.pop(context),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Lojinha da Ana'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            tooltip: 'Compartilhar',
+            onPressed: compartilhar,
+          ),
+        ],
+      ),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Itens no carrinho: $itens', style: const TextStyle(fontSize: 20)),
+            const SizedBox(height: 16),
+            FilledButton(onPressed: comprar, child: const Text('Comprar caneca')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>ScaffoldMessenger.of(context)</dt><dd>O "mensageiro" que cuida das barrinhas de todos os <code>Scaffold</code> do app. O <code>MaterialApp</code> já cria um; o <code>.of(context)</code> o encontra.</dd>
+  <dt>.showSnackBar(SnackBar(…))</dt><dd>Mostra a barrinha no pé do <code>Scaffold</code>. Ela some sozinha depois de alguns segundos (o padrão do <code>duration</code> é 4 segundos).</dd>
+  <dt>content: const Text('…')</dt><dd>O texto do aviso. Curto: uma linha.</dd>
+  <dt>action: SnackBarAction(label: 'Desfazer', onPressed: …)</dt><dd>Um botão dentro da barrinha, opcional. Uma ação só, e de preferência a de desfazer.</dd>
+</dl>
+
+<p>A Ana tocou em <strong>Comprar caneca</strong> e, com a barrinha ainda na tela, em <strong>Desfazer</strong>:</p>
+<div class="table-wrap"><table class="ref"><tr><td><figure class="tela"><img src="assets/telas/dialogos-3.png" alt="Tela &#39;Lojinha da Ana&#39; com &#39;Itens no carrinho: 1&#39; e o botão &#39;Comprar caneca&#39;; no pé, a barra escura &#39;Caneca azul no carrinho&#39; com &#39;Desfazer&#39; em lilás à direita" width="390" height="844" loading="lazy"><figcaption>Depois de comprar.</figcaption></figure></td><td><figure class="tela"><img src="assets/telas/dialogos-4.png" alt="A mesma tela com &#39;Itens no carrinho: 0&#39; e sem a barra no pé" width="390" height="844" loading="lazy"><figcaption>Depois do Desfazer: a barrinha some na hora.</figcaption></figure></td></tr></table></div>
+
+<p>Se a pessoa comprar várias canecas seguidas, as barrinhas entram numa <strong>fila</strong>: uma espera a outra sumir. Para trocar a barrinha atual pela nova na hora, chame <code>ScaffoldMessenger.of(context).hideCurrentSnackBar()</code> antes do <code>showSnackBar</code>.</p>
+
+<hr>
+
+<h2>3. A folha de opções: <code>showModalBottomSheet</code></h2>
+<p>No mesmo app, o botão de compartilhar (o ícone no canto da barra) abre uma folha que sobe de baixo. Olhe a função <code>compartilhar</code> no código acima:</p>
+
+<dl class="anatomy">
+  <dt>showModalBottomSheet&lt;void&gt;(context: …, builder: …)</dt><dd>Funciona como o <code>showDialog</code>: abre por cima da tela, escurece o fundo e devolve um <code>Future</code> com a resposta (aqui, <code>void</code>: nenhuma). <em>Modal</em> quer dizer que trava o resto da tela enquanto está aberta.</dd>
+  <dt>Column(mainAxisSize: MainAxisSize.min, …)</dt><dd>O <code>min</code> faz a folha ter só a altura das opções, em vez de subir até o meio da tela.</dd>
+  <dt>ListTile(…, onTap: () =&gt; Navigator.pop(context))</dt><dd>Cada opção é uma linha de lista. Ao tocar, a folha fecha com <code>Navigator.pop</code>, como o diálogo. Num app de verdade, antes do <code>pop</code> viria a ação (mandar a mensagem, copiar o link).</dd>
+</dl>
+
+<p>A Ana tocou no ícone de compartilhar (nas fotos, ele fica escondido debaixo da faixa DEBUG, no canto superior direito; no app de verdade ele aparece):</p>
+<figure class="tela"><img src="assets/telas/dialogos-5.png" alt="A tela da lojinha escurecida por um véu cinza; subindo do pé da tela, uma folha clara de cantos de cima arredondados com três linhas: &#39;Mandar por mensagem&#39; com um ícone de balão, &#39;Mandar por e-mail&#39; com um envelope e &#39;Copiar o link&#39; com um elo" width="390" height="844" loading="lazy"><figcaption>A folha de opções aberta.</figcaption></figure>
+
+<hr>
+
+<h2 id="formas">Qual usar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>O que usar</th></tr>
+<tr><td>Decisão importante, que não dá para desfazer</td><td><code>showDialog</code> + <code>AlertDialog</code> (com <code>barrierDismissible: false</code> se a resposta for obrigatória)</td></tr>
+<tr><td>Confirmar que algo aconteceu, sem atrapalhar</td><td><code>SnackBar</code></td></tr>
+<tr><td>Algo aconteceu e pode ser desfeito</td><td><code>SnackBar</code> com <code>SnackBarAction('Desfazer')</code>: melhor que perguntar antes</td></tr>
+<tr><td>Escolher entre algumas ações</td><td><code>showModalBottomSheet</code> com <code>ListTile</code></td></tr>
+<tr><td>Escolher uma data ou hora</td><td><code>showDatePicker</code> / <code>showTimePicker</code>, diálogos prontos que funcionam do mesmo jeito (<code>await</code> devolve a data)</td></tr>
+<tr><td>Um formulário inteiro</td><td>Uma tela nova (aula <a href="navegacao.html">Navegação</a>), não um diálogo</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>O <code>context</code> de cima do <code>MaterialApp</code></strong>
+<p>Um erro clássico de quem começa: escrever tudo num widget só, o mesmo que cria o <code>MaterialApp</code>, e usar o <code>context</code> dele para abrir o diálogo:</p>
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: FilledButton(
+            onPressed: () {
+              showDialog&lt;void&gt;(
+                context: context,
+                builder: (context) =&gt; const AlertDialog(title: Text('Oi!')),
+              );
+            },
+            child: const Text('Abrir'),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<p>A tela abre normalmente. Ao tocar em <strong>Abrir</strong>, nada aparece, e o console mostra (de um teste da Ana que toca no botão):</p>
+<pre class="term">══╡ EXCEPTION CAUGHT BY GESTURE ╞═══════════════════════════════════════════════════════════════════
+The following assertion was thrown while handling a gesture:
+No MaterialLocalizations found.
+MeuApp widgets require MaterialLocalizations to be provided by a Localizations widget ancestor.
+The material library uses Localizations to generate messages, labels, and abbreviations.
+To introduce a MaterialLocalizations, either use a MaterialApp at the root of your application to
+include them automatically, or add a Localization widget with a MaterialLocalizations delegate.
+The specific widget that could not find a MaterialLocalizations ancestor was:
+  MeuApp
+…
+When the exception was thrown, this was the stack:
+#0      debugCheckHasMaterialLocalizations.&lt;anonymous closure&gt; (package:flutter/src/material/debug.dart:97:7)
+#1      debugCheckHasMaterialLocalizations (package:flutter/src/material/debug.dart:117:4)
+#2      showDialog (package:flutter/src/material/dialog.dart:1638:10)
+#3      MeuApp.build.&lt;anonymous closure&gt; (file:///home/ana/app/test/dialogo_contexto_test.dart:14:15)
+</pre>
+<dl class="anatomy">
+  <dt>No MaterialLocalizations found.</dt><dd>"Nenhuma <code>MaterialLocalizations</code> encontrada." São os textos prontos do Material em cada língua (o nome que o leitor de tela fala para o fundo escuro do diálogo, por exemplo), e quem os fornece é o <code>MaterialApp</code>.</dd>
+  <dt>The specific widget that could not find a MaterialLocalizations ancestor was: MeuApp</dt><dd>"O widget que não achou a <code>MaterialLocalizations</code> acima dele foi o <code>MeuApp</code>." E é verdade: o <code>MaterialApp</code> está <strong>abaixo</strong> do <code>MeuApp</code> (é ele quem o cria), não acima.</dd>
+  <dt>#2 showDialog … #3 MeuApp.build</dt><dd>Quem chamou: o <code>showDialog</code>, dentro do <code>build</code> do <code>MeuApp</code>.</dd>
+</dl>
+<p>O <code>context</code> de um widget é a <strong>posição dele na árvore</strong>, e o <code>.of(context)</code> procura <strong>para cima</strong> a partir dali. O <code>context</code> do <code>MeuApp</code> fica acima do <code>MaterialApp</code>, então nada do <code>MaterialApp</code> é encontrado. O <code>ScaffoldMessenger.of(context)</code> com esse mesmo <code>context</code> falha do mesmo jeito. <strong>Como consertar:</strong> separe a tela num widget próprio, usado no <code>home:</code> (como em todos os exemplos desta aula: <code>MaterialApp(home: Receita())</code>). O <code>context</code> da <code>Receita</code> fica abaixo do <code>MaterialApp</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Esqueceu o <code>Navigator.pop</code> no botão</strong>
+<pre class="file" data-file="lib/main.dart (trecho)">TextButton(
+  onPressed: () {},
+  child: const Text('Cancelar'),
+),
+</pre>
+<p>Sem mensagem de erro: a pessoa toca em Cancelar e o diálogo continua lá. O <code>AlertDialog</code> não fecha sozinho; quem fecha é o <code>Navigator.pop</code>. <strong>Como consertar:</strong> <code>onPressed: () =&gt; Navigator.pop(context)</code>, com o <code>context</code> que o <code>builder</code> recebeu.</p>
+</div>
+
+<div class="cenario">
+<strong>Usou a resposta sem esperar</strong>
+<pre class="file" data-file="lib/main.dart (trecho)">final resposta = showDialog&lt;bool&gt;(…); // faltou o await
+if (resposta == true) { … }
+</pre>
+<p>Sem o <code>await</code>, <code>resposta</code> não é a resposta: é o <code>Future</code> (a "promessa" de resposta), e um <code>Future</code> nunca é igual a <code>true</code>. O <code>if</code> nunca entra. Tirando o <code>await</code> do app da seção 1, o <code>flutter analyze</code> avisa:</p>
+<pre class="term">   info • The type of the right operand ('bool') isn't a subtype or a supertype of the left operand ('Future&lt;bool?&gt;'). Try changing one or both of the operands • lib/main.dart:36:18 • unrelated_type_equality_checks
+</pre>
+<p>"O tipo da direita (<code>bool</code>) não tem nada a ver com o da esquerda (<code>Future&lt;bool?&gt;</code>)": comparar os dois sempre dá <code>false</code>. <strong>Como consertar:</strong> <code>final resposta = await showDialog&lt;bool&gt;(…);</code>, numa função <code>async</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Peça</th><th>O que faz</th></tr>
+<tr><td><code>await showDialog&lt;T&gt;(context: …, builder: …)</code></td><td>Abre um diálogo; devolve o valor do <code>pop</code> (ou <code>null</code>)</td></tr>
+<tr><td><code>AlertDialog(title:, content:, actions:)</code></td><td>A caixa de diálogo do Material</td></tr>
+<tr><td><code>Navigator.pop(context, valor)</code></td><td>Fecha o diálogo/folha e devolve <code>valor</code></td></tr>
+<tr><td><code>barrierDismissible: false</code></td><td>Tocar fora não fecha o diálogo</td></tr>
+<tr><td><code>ScaffoldMessenger.of(context).showSnackBar(SnackBar(…))</code></td><td>Mostra a barrinha de aviso</td></tr>
+<tr><td><code>SnackBar(content:, action:, duration:)</code></td><td>Texto, botão opcional e tempo na tela (padrão 4 s)</td></tr>
+<tr><td><code>hideCurrentSnackBar()</code></td><td>Tira a barrinha atual (para mostrar outra na hora)</td></tr>
+<tr><td><code>showModalBottomSheet(context:, builder:)</code></td><td>Folha de opções que sobe de baixo</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o diálogo</h3>
+<div class="ex-code">final ok = <input data-answer="await" aria-label="palavra que espera">  showDialog&lt;bool&gt;(<br>&nbsp;&nbsp;context: context,<br>&nbsp;&nbsp;builder: (context) =&gt; AlertDialog(<br>&nbsp;&nbsp;&nbsp;&nbsp;title: const Text('Sair do app?'),<br>&nbsp;&nbsp;&nbsp;&nbsp;actions: [<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TextButton(<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;onPressed: () =&gt; Navigator.<input data-answer="pop" aria-label="método que fecha">(context, true),<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;child: const Text('Sair'),<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;),<br>&nbsp;&nbsp;&nbsp;&nbsp;],<br>&nbsp;&nbsp;),<br>);</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">2. A pessoa fecha o diálogo tocando no fundo escuro. O que o <code>await showDialog&lt;bool&gt;(…)</code> devolve?</p>
+<label><input type="radio" name="q2"> <code>false</code></label>
+<label><input type="radio" name="q2"> <code>true</code></label>
+<label><input type="radio" name="q2"> <code>null</code></label>
+<label><input type="radio" name="q2"> Dá erro</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. Qual destas mostra um <code>SnackBar</code>?</p>
+<label><input type="radio" name="q3"> <code>showSnackBar(context, SnackBar(…))</code></label>
+<label><input type="radio" name="q3"> <code>ScaffoldMessenger.of(context).showSnackBar(SnackBar(…))</code></label>
+<label><input type="radio" name="q3"> <code>Navigator.push(context, SnackBar(…))</code></label>
+<label><input type="radio" name="q3"> <code>showDialog(context: context, builder: (_) =&gt; SnackBar(…))</code></label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. "No MaterialLocalizations found" ao abrir um diálogo. Qual a causa mais provável?</p>
+<label><input type="radio" name="q4"> Faltou o <code>await</code></label>
+<label><input type="radio" name="q4"> Faltou o <code>Navigator.pop</code></label>
+<label><input type="radio" name="q4"> O diálogo não tem <code>title</code></label>
+<label><input type="radio" name="q4"> O <code>context</code> usado está acima do <code>MaterialApp</code></label>
+</div>
+
+<h3>Missão final: aviso depois da resposta</h3>
+<div class="tryflutter" data-goal="src:showSnackBar">
+<p class="try-task"><strong>Missão:</strong> depois que a pessoa responder o diálogo, mostre um <code>SnackBar</code>: <code>'Receita apagada'</code> se a resposta for <code>true</code>, <code>'Nada foi apagado'</code> se não for. (Dica: troque o <code>setState</code> do fim da função <code>perguntar</code>.)</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Receita()));
+
+class Receita extends StatefulWidget {
+  const Receita({super.key});
+
+  @override
+  State&lt;Receita&gt; createState() =&gt; _ReceitaState();
+}
+
+class _ReceitaState extends State&lt;Receita&gt; {
+  String situacao = 'Receita guardada';
+
+  Future&lt;void&gt; perguntar() async {
+    final resposta = await showDialog&lt;bool&gt;(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Apagar a receita?'),
+          actions: [
+            TextButton(
+              onPressed: () =&gt; Navigator.pop(context, false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () =&gt; Navigator.pop(context, true),
+              child: const Text('Apagar'),
+            ),
+          ],
+        );
+      },
+    );
+    setState(() {
+      situacao = 'Resposta: $resposta';
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Bolo de cenoura')),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(situacao, style: const TextStyle(fontSize: 20)),
+            FilledButton(onPressed: perguntar, child: const Text('Apagar receita')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Receita()));
+
+class Receita extends StatefulWidget {
+  const Receita({super.key});
+
+  @override
+  State&lt;Receita&gt; createState() =&gt; _ReceitaState();
+}
+
+class _ReceitaState extends State&lt;Receita&gt; {
+  String situacao = 'Receita guardada';
+
+  Future&lt;void&gt; perguntar() async {
+    final resposta = await showDialog&lt;bool&gt;(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Apagar a receita?'),
+          actions: [
+            TextButton(
+              onPressed: () =&gt; Navigator.pop(context, false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () =&gt; Navigator.pop(context, true),
+              child: const Text('Apagar'),
+            ),
+          ],
+        );
+      },
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(resposta == true ? 'Receita apagada' : 'Nada foi apagado'),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Bolo de cenoura')),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(situacao, style: const TextStyle(fontSize: 20)),
+            FilledButton(onPressed: perguntar, child: const Text('Apagar receita')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<p>Repare no <code>if (!mounted) return;</code> da solução. Depois de um <code>await</code>, a tela pode ter sido fechada enquanto o app esperava; o <code>mounted</code> diz se este <code>State</code> ainda está na tela. Usar o <code>context</code> de uma tela que já saiu dá erro, e o <code>flutter analyze</code> avisa quando você esquece essa conferência (a regra <code>use_build_context_synchronously</code>).</p>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>showDialog</code> abre um <code>AlertDialog</code> por cima da tela; <code>Navigator.pop(context, valor)</code> fecha e manda a resposta, que chega pelo <code>await</code> (ou <code>null</code>, se a pessoa tocou fora).</li>
+  <li><code>barrierDismissible: false</code> obriga a escolher um botão.</li>
+  <li><code>ScaffoldMessenger.of(context).showSnackBar(…)</code> mostra um aviso que some sozinho; <code>SnackBarAction</code> põe um Desfazer.</li>
+  <li><code>showModalBottomSheet</code> abre uma folha de opções que sobe de baixo.</li>
+  <li>O <code>context</code> tem de estar <strong>abaixo</strong> do <code>MaterialApp</code>: separe a tela num widget próprio. Depois de um <code>await</code>, confira <code>mounted</code> antes de usar o <code>context</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
