@@ -1,0 +1,710 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter sqflite — banco de dados local com SQLite | Guia Flutter</title>
+<meta name="description" content="Como guardar listas e tabelas no próprio aparelho com o pacote sqflite (SQLite) no Flutter: flutter pub add sqflite path, openDatabase com onCreate e version, CREATE TABLE, insert, query, update e delete com whereArgs, uma lista de compras completa, as plataformas suportadas (Android, iOS e macOS) e o que acontece ao rodar no navegador.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">sqflite</span></h1>
+
+<p class="intro">O <a href="shared-preferences.html">shared_preferences</a> guarda coisas soltas: um número, um tema, um nome. Mas a lista de compras da Ana tem dezenas de itens, cada um com nome, quantidade e se já foi comprado; o app de receitas tem centenas de receitas. Para isso, o celular tem um <strong>banco de dados</strong> de verdade dentro dele: o <strong>SQLite</strong>. No Flutter, quem conversa com ele é o pacote <code>sqflite</code>.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é o SQLite e quando ele é a escolha certa.</li>
+  <li>Como acrescentar os pacotes <code>sqflite</code> e <code>path</code>.</li>
+  <li>Como abrir o banco e criar a tabela (<code>openDatabase</code>, <code>onCreate</code>, <code>version</code>).</li>
+  <li>As quatro operações: <code>insert</code> (pôr), <code>query</code> (ler), <code>update</code> (mudar) e <code>delete</code> (apagar), com <code>whereArgs</code>.</li>
+  <li>Um app completo: a lista de compras que continua lá quando o app é fechado.</li>
+  <li>Onde o <code>sqflite</code> funciona, e o que acontece se você tentar rodar no navegador.</li>
+</ul>
+</div>
+
+<div class="warning">
+<strong>Sobre as telas desta aula</strong>
+<p>O laboratório do guia fotografa os apps rodando no <strong>navegador</strong>, e o <code>sqflite</code> <strong>não funciona no navegador</strong>: segundo a documentação oficial, ele roda em <strong>Android, iOS e macOS</strong>. Por isso, nesta aula, o código foi <strong>conferido</strong> no laboratório (o <code>flutter pub add</code> e o <code>flutter analyze</code> abaixo são reais, com o <span class="versao">Flutter 3.47</span>), mas o comportamento do app num celular é <strong>ilustrativo</strong>, baseado na receita oficial <a href="https://docs.flutter.dev/cookbook/persistence/sqlite">Persist data with SQLite</a> (docs.flutter.dev) e na página do pacote no <a href="https://pub.dev/packages/sqflite">pub.dev</a>. As telas fotografadas são a do erro no navegador (seção <a href="#errado">Quando dá errado</a>) e a da versão de treino, com um banco de mentirinha na memória (seção 4).</p>
+</div>
+
+<hr>
+
+<h2>A ideia: um caderno com colunas</h2>
+<p>Pense num caderno de controle com as folhas riscadas em colunas: <strong>nº</strong>, <strong>item</strong>, <strong>quantidade</strong>. Cada linha é um item da lista de compras. Um banco de dados é isso: <strong>tabelas</strong> (as folhas) com <strong>colunas</strong> (os campos) e <strong>linhas</strong> (os registros). O SQLite guarda esse caderno inteiro num <strong>único arquivo</strong> dentro do aparelho; você conversa com ele numa linguagem própria, o <strong>SQL</strong>.</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>id</th><th>nome</th></tr>
+<tr><td>1</td><td>Leite</td></tr>
+<tr><td>2</td><td>Pão</td></tr>
+<tr><td>3</td><td>Café</td></tr>
+</table>
+</div>
+<p>A tabela <code>itens</code> da lista de compras, com duas colunas: <code>id</code> (um número que o próprio banco dá a cada linha) e <code>nome</code>.</p>
+
+<div class="tip">
+<strong>Não sabe SQL?</strong>
+<p>Para esta aula, bastam quatro ideias: <code>CREATE TABLE</code> (criar a folha), <code>INSERT</code> (escrever uma linha), <code>SELECT</code> (ler) e <code>DELETE</code> (apagar). O <code>sqflite</code> tem métodos prontos (<code>insert</code>, <code>query</code>, <code>delete</code>) que escrevem o SQL por você. Para aprender SQL de verdade, veja o <a href="https://wallysondevs.github.io/guia-sql/">Guia SQL</a>, que usa justamente o SQLite.</p>
+</div>
+
+<hr>
+
+<h2>1. Acrescentar os pacotes</h2>
+<p>São dois: o <code>sqflite</code> (o banco) e o <code>path</code> (monta o caminho do arquivo do jeito certo em cada sistema). Na pasta do projeto:</p>
+
+<pre class="term">$ cd lojinha
+$ flutter pub add sqflite path
+Resolving dependencies...
+Downloading packages...
+…                                « (pacotes que o Flutter usa)
++ path 1.9.1
+…
++ sqflite 2.4.4+2
++ sqflite_android 2.4.4+1
++ sqflite_common 2.5.14
++ sqflite_darwin 2.4.4+1
++ sqflite_platform_interface 2.4.2
+…
++ synchronized 3.5.0
+…
+Changed 35 dependencies!
+3 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+</pre>
+<p>O <code>flutter pub add</code> aceita vários pacotes de uma vez. Repare nos pacotes que vieram junto: <code>sqflite_android</code> e <code>sqflite_darwin</code> (iOS e macOS). Não há um <code>sqflite_web</code>: é por isso que ele não roda no navegador. (No laboratório, o projeto foi preparado sem o <code>pubspec.lock</code>, por isso a lista completa é longa; cortamos nos <code>…</code>.)</p>
+
+<hr>
+
+<h2>2. Abrir o banco e criar a tabela</h2>
+
+<pre class="file" data-file="trecho de lib/main.dart">import 'package:path/path.dart';
+import 'package:sqflite/sqflite.dart';
+
+class BancoCompras {
+  static Database? _db;
+
+  static Future&lt;Database&gt; abrir() async {
+    return _db ??= await openDatabase(
+      join(await getDatabasesPath(), 'compras.db'),
+      version: 1,
+      onCreate: (db, version) {
+        return db.execute(
+          'CREATE TABLE itens(id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT NOT NULL)',
+        );
+      },
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>class BancoCompras</dt><dd>Uma classe que junta tudo o que mexe no banco. Assim, as telas não precisam saber SQL: só chamam <code>BancoCompras.listar()</code>, <code>BancoCompras.inserir(…)</code>.</dd>
+  <dt>static Database? _db e _db ??= …</dt><dd>Guarda o banco aberto. O <code>??=</code> do Dart quer dizer "se ainda for nulo, abra e guarde; se já tiver, use o que tem". Assim o arquivo é aberto <strong>uma vez só</strong>.</dd>
+  <dt>getDatabasesPath()</dt><dd>A pasta onde o sistema deixa o app guardar bancos de dados (no Android, a pasta <code>databases</code> do app).</dd>
+  <dt>join(…, 'compras.db')</dt><dd>Do pacote <code>path</code>: junta a pasta e o nome do arquivo com a barra certa para o sistema. A receita oficial chama isso de "boa prática".</dd>
+  <dt>version: 1</dt><dd>A versão do <strong>formato</strong> do banco (das tabelas). Quando um dia você acrescentar uma coluna, muda para <code>2</code> e usa o <code>onUpgrade</code> para atualizar os bancos dos usuários que já têm o app.</dd>
+  <dt>onCreate: (db, version) { … }</dt><dd>Roda <strong>só na primeira vez</strong>, quando o arquivo ainda não existe. É aqui que se criam as tabelas.</dd>
+  <dt>CREATE TABLE itens(…)</dt><dd>O SQL que cria a tabela: <code>id INTEGER PRIMARY KEY AUTOINCREMENT</code> é um número que identifica a linha e que o banco preenche sozinho (1, 2, 3…); <code>nome TEXT NOT NULL</code> é um texto obrigatório.</dd>
+</dl>
+
+<hr>
+
+<h2>3. As quatro operações</h2>
+
+<pre class="file" data-file="trecho de lib/main.dart (dentro de BancoCompras)">  static Future&lt;List&lt;Item&gt;&gt; listar() async {
+    final db = await abrir();
+    final linhas = await db.query('itens', orderBy: 'id');
+    return [
+      for (final {'id': id as int, 'nome': nome as String} in linhas)
+        Item(id: id, nome: nome),
+    ];
+  }
+
+  static Future&lt;void&gt; inserir(String nome) async {
+    final db = await abrir();
+    await db.insert('itens', {'nome': nome});
+  }
+
+  static Future&lt;void&gt; renomear(int id, String novoNome) async {
+    final db = await abrir();
+    await db.update('itens', {'nome': novoNome}, where: 'id = ?', whereArgs: [id]);
+  }
+
+  static Future&lt;void&gt; apagar(int id) async {
+    final db = await abrir();
+    await db.delete('itens', where: 'id = ?', whereArgs: [id]);
+  }
+</pre>
+
+<dl class="anatomy">
+  <dt>db.query('itens', orderBy: 'id')</dt><dd>Lê as linhas da tabela, em ordem de <code>id</code>. Devolve uma <code>List&lt;Map&lt;String, Object?&gt;&gt;</code>: cada linha é um mapa, como <code>{'id': 1, 'nome': 'Leite'}</code>.</dd>
+  <dt>for (final {'id': id as int, 'nome': nome as String} in linhas)</dt><dd>Um <strong>padrão</strong> do Dart 3 que, em cada mapa, pega o <code>id</code> e o <code>nome</code> já com o tipo certo, e monta um <code>Item</code>. É o jeito que a receita oficial usa. (Os mapas e as classes de modelo são o assunto de <a href="json-modelos.html">JSON e Classes de Modelo</a>.)</dd>
+  <dt>db.insert('itens', {'nome': nome})</dt><dd>Escreve uma linha nova. As chaves do mapa são os nomes das colunas. O <code>id</code> não vai: o banco preenche.</dd>
+  <dt>db.update(…, where: 'id = ?', whereArgs: [id])</dt><dd>Muda as linhas que combinam com o <code>where</code>. O <code>?</code> é um "espaço reservado" que o <code>sqflite</code> preenche com o valor de <code>whereArgs</code>.</dd>
+  <dt>db.delete('itens', where: 'id = ?', whereArgs: [id])</dt><dd>Apaga as linhas que combinam. <strong>Sem o <code>where</code>, apaga a tabela inteira.</strong></dd>
+</dl>
+
+<div class="warning">
+<strong>Sempre <code>whereArgs</code>, nunca <code>'id = $id'</code></strong>
+<p>A receita oficial é taxativa: use sempre <code>whereArgs</code> e <strong>nunca</strong> monte o <code>where</code> com interpolação (<code>where: 'nome = $nome'</code>). Com interpolação, um texto digitado pelo usuário com aspas pode virar um pedaço de SQL (o ataque se chama <em>SQL injection</em>) ou simplesmente quebrar o comando.</p>
+</div>
+
+<hr>
+
+<h2>4. O app completo: a lista de compras</h2>
+
+<pre class="file" data-file="lib/main.dart (projeto com sqflite e path)">import 'package:flutter/material.dart';
+import 'package:path/path.dart';
+import 'package:sqflite/sqflite.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class Item {
+  final int? id;
+  final String nome;
+
+  const Item({this.id, required this.nome});
+}
+
+class BancoCompras {
+  static Database? _db;
+
+  static Future&lt;Database&gt; abrir() async {
+    return _db ??= await openDatabase(
+      join(await getDatabasesPath(), 'compras.db'),
+      version: 1,
+      onCreate: (db, version) {
+        return db.execute(
+          'CREATE TABLE itens(id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT NOT NULL)',
+        );
+      },
+    );
+  }
+
+  static Future&lt;List&lt;Item&gt;&gt; listar() async {
+    final db = await abrir();
+    final linhas = await db.query('itens', orderBy: 'id');
+    return [
+      for (final {'id': id as int, 'nome': nome as String} in linhas)
+        Item(id: id, nome: nome),
+    ];
+  }
+
+  static Future&lt;void&gt; inserir(String nome) async {
+    final db = await abrir();
+    await db.insert('itens', {'nome': nome});
+  }
+
+  static Future&lt;void&gt; renomear(int id, String novoNome) async {
+    final db = await abrir();
+    await db.update('itens', {'nome': novoNome}, where: 'id = ?', whereArgs: [id]);
+  }
+
+  static Future&lt;void&gt; apagar(int id) async {
+    final db = await abrir();
+    await db.delete('itens', where: 'id = ?', whereArgs: [id]);
+  }
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaCompras(),
+    );
+  }
+}
+
+class TelaCompras extends StatefulWidget {
+  const TelaCompras({super.key});
+
+  @override
+  State&lt;TelaCompras&gt; createState() =&gt; _TelaComprasState();
+}
+
+class _TelaComprasState extends State&lt;TelaCompras&gt; {
+  final _campo = TextEditingController();
+  List&lt;Item&gt; _itens = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _recarregar();
+  }
+
+  @override
+  void dispose() {
+    _campo.dispose();
+    super.dispose();
+  }
+
+  Future&lt;void&gt; _recarregar() async {
+    final itens = await BancoCompras.listar();
+    setState(() =&gt; _itens = itens);
+  }
+
+  Future&lt;void&gt; _adicionar() async {
+    final nome = _campo.text.trim();
+    if (nome.isEmpty) return;
+    await BancoCompras.inserir(nome);
+    _campo.clear();
+    await _recarregar();
+  }
+
+  Future&lt;void&gt; _apagar(Item item) async {
+    await BancoCompras.apagar(item.id!);
+    await _recarregar();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Compras da Ana')),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _campo,
+                    decoration: const InputDecoration(labelText: 'Item'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: _adicionar,
+                  child: const Text('Adicionar'),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              children: [
+                for (final item in _itens)
+                  ListTile(
+                    title: Text(item.nome),
+                    trailing: IconButton(
+                      tooltip: 'Apagar',
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () =&gt; _apagar(item),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+
+<p>O código passou no <code>flutter analyze</code> do laboratório, num projeto com os dois pacotes. (Antes, apagamos a pasta <code>test</code> que o <code>flutter create</code> gera: o teste de exemplo procura uma classe <code>MyApp</code>, e aqui o app se chama <code>MeuApp</code>. Com a pasta, o <code>analyze</code> acusou <code>The name 'MyApp' isn't a class</code> em <code>test/widget_test.dart</code>; veja <a href="testes-widget.html">Testes de Widget</a>.)</p>
+<pre class="term">$ flutter analyze
+Analyzing lojinha...
+No issues found! (ran in 8.3s)
+</pre>
+
+<dl class="anatomy">
+  <dt>_itens e _recarregar()</dt><dd>A tela guarda a lista num campo comum e, depois de cada mudança no banco, lê tudo de novo e chama <code>setState</code>. É o jeito mais simples (e suficiente para listas de algumas centenas de itens).</dd>
+  <dt>initState() { _recarregar(); }</dt><dd>Ao abrir a tela, lê o que já estava no banco: é aqui que a lista "volta" depois de o app ser fechado.</dd>
+  <dt>_adicionar()</dt><dd>Lê o campo, ignora texto vazio, grava no banco, limpa o campo e recarrega a lista.</dd>
+  <dt>IconButton(tooltip: 'Apagar', …)</dt><dd>Apaga a linha pelo <code>id</code>. O <code>item.id!</code> é seguro: todo item que veio do banco tem <code>id</code>.</dd>
+</dl>
+
+<p><strong>No celular (ilustrativo):</strong> na primeira vez, a lista aparece vazia, só com o campo <strong>Item</strong> e o botão <strong>Adicionar</strong>. A Ana digita "Leite", toca em Adicionar; depois "Pão" e "Café". Os três aparecem na lista, cada um com uma lixeira à direita. Ela fecha o app (tira até da lista de apps abertos) e abre de novo: os três itens continuam lá, porque estão no arquivo <code>compras.db</code>, e não na memória.</p>
+
+<p>Para praticar a tela sem o <code>sqflite</code> (o DartPad do editor roda no navegador e não tem esse pacote), a caixa abaixo traz o mesmo app com um <strong>banco de mentirinha</strong>: uma classe <code>BancoCompras</code> com os <strong>mesmos métodos</strong> (<code>listar</code>, <code>inserir</code>, <code>apagar</code>), mas guardando numa lista na memória. Repare que a tela não mudou nada: é a vantagem de juntar o acesso ao banco numa classe. (Na memória, claro, a lista some quando o app fecha.)</p>
+
+<div class="tryflutter" data-goal="src:compareTo" data-foto="assets/telas/sqlite-3.png" data-foto-alt="App Compras da Ana com o campo Item, o botão Adicionar e a lista em ordem alfabética: Arroz, Café e Pão, cada um com uma lixeira à direita" data-altura="600">
+<p class="try-task"><strong>Missão:</strong> a Ana prefere a lista em ordem alfabética. No <code>listar()</code> do banco de mentirinha, devolva a lista ordenada pelo nome: <code>return [..._itens]..sort((a, b) =&gt; a.nome.compareTo(b.nome));</code>. Adicione "Pão", "Café" e "Arroz" e veja a ordem. (No <code>sqflite</code> de verdade, o mesmo efeito é o <code>orderBy: 'nome'</code> do <code>query</code>.)</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class Item {
+  final int? id;
+  final String nome;
+
+  const Item({this.id, required this.nome});
+}
+
+// Um "banco de mentirinha", na memória, com os mesmos métodos do BancoCompras.
+// Serve para testar a tela no DartPad, onde o sqflite não roda.
+class BancoCompras {
+  static final List&lt;Item&gt; _itens = [];
+  static int _proximoId = 1;
+
+  static Future&lt;List&lt;Item&gt;&gt; listar() async {
+    return [..._itens];
+  }
+
+  static Future&lt;void&gt; inserir(String nome) async {
+    _itens.add(Item(id: _proximoId++, nome: nome));
+  }
+
+  static Future&lt;void&gt; apagar(int id) async {
+    _itens.removeWhere((item) =&gt; item.id == id);
+  }
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaCompras(),
+    );
+  }
+}
+
+class TelaCompras extends StatefulWidget {
+  const TelaCompras({super.key});
+
+  @override
+  State&lt;TelaCompras&gt; createState() =&gt; _TelaComprasState();
+}
+
+class _TelaComprasState extends State&lt;TelaCompras&gt; {
+  final _campo = TextEditingController();
+  List&lt;Item&gt; _itens = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _recarregar();
+  }
+
+  @override
+  void dispose() {
+    _campo.dispose();
+    super.dispose();
+  }
+
+  Future&lt;void&gt; _recarregar() async {
+    final itens = await BancoCompras.listar();
+    setState(() =&gt; _itens = itens);
+  }
+
+  Future&lt;void&gt; _adicionar() async {
+    final nome = _campo.text.trim();
+    if (nome.isEmpty) return;
+    await BancoCompras.inserir(nome);
+    _campo.clear();
+    await _recarregar();
+  }
+
+  Future&lt;void&gt; _apagar(Item item) async {
+    await BancoCompras.apagar(item.id!);
+    await _recarregar();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Compras da Ana')),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _campo,
+                    decoration: const InputDecoration(labelText: 'Item'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: _adicionar,
+                  child: const Text('Adicionar'),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              children: [
+                for (final item in _itens)
+                  ListTile(
+                    title: Text(item.nome),
+                    trailing: IconButton(
+                      tooltip: 'Apagar',
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () =&gt; _apagar(item),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class Item {
+  final int? id;
+  final String nome;
+
+  const Item({this.id, required this.nome});
+}
+
+// Um "banco de mentirinha", na memória, com os mesmos métodos do BancoCompras.
+// Serve para testar a tela no DartPad, onde o sqflite não roda.
+class BancoCompras {
+  static final List&lt;Item&gt; _itens = [];
+  static int _proximoId = 1;
+
+  static Future&lt;List&lt;Item&gt;&gt; listar() async {
+    return [..._itens]..sort((a, b) =&gt; a.nome.compareTo(b.nome));
+  }
+
+  static Future&lt;void&gt; inserir(String nome) async {
+    _itens.add(Item(id: _proximoId++, nome: nome));
+  }
+
+  static Future&lt;void&gt; apagar(int id) async {
+    _itens.removeWhere((item) =&gt; item.id == id);
+  }
+}
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaCompras(),
+    );
+  }
+}
+
+class TelaCompras extends StatefulWidget {
+  const TelaCompras({super.key});
+
+  @override
+  State&lt;TelaCompras&gt; createState() =&gt; _TelaComprasState();
+}
+
+class _TelaComprasState extends State&lt;TelaCompras&gt; {
+  final _campo = TextEditingController();
+  List&lt;Item&gt; _itens = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _recarregar();
+  }
+
+  @override
+  void dispose() {
+    _campo.dispose();
+    super.dispose();
+  }
+
+  Future&lt;void&gt; _recarregar() async {
+    final itens = await BancoCompras.listar();
+    setState(() =&gt; _itens = itens);
+  }
+
+  Future&lt;void&gt; _adicionar() async {
+    final nome = _campo.text.trim();
+    if (nome.isEmpty) return;
+    await BancoCompras.inserir(nome);
+    _campo.clear();
+    await _recarregar();
+  }
+
+  Future&lt;void&gt; _apagar(Item item) async {
+    await BancoCompras.apagar(item.id!);
+    await _recarregar();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Compras da Ana')),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _campo,
+                    decoration: const InputDecoration(labelText: 'Item'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: _adicionar,
+                  child: const Text('Adicionar'),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              children: [
+                for (final item in _itens)
+                  ListTile(
+                    title: Text(item.nome),
+                    trailing: IconButton(
+                      tooltip: 'Apagar',
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () =&gt; _apagar(item),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Formas diferentes de guardar dados, e qual usar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Forma</th><th>Bom para</th><th>Plataformas</th></tr>
+<tr><td><code>shared_preferences</code></td><td>Valores soltos: tema escuro ligado, último usuário, um contador</td><td>Todas, inclusive web</td></tr>
+<tr><td><code>sqflite</code></td><td>Listas e tabelas, com busca, ordem e filtros (<code>where</code>)</td><td>Android, iOS e macOS</td></tr>
+<tr><td><code>sqflite_common_ffi</code> (pacote irmão)</td><td>O mesmo SQLite no Windows e no Linux, e nos testes automáticos</td><td>Desktop</td></tr>
+<tr><td>Pacotes como <code>drift</code></td><td>Apps maiores: SQL conferido na hora de compilar, <code>Stream</code>s que avisam quando a tabela muda</td><td>Várias (veja a página de cada um)</td></tr>
+<tr><td>Um servidor (<a href="http.html">http</a>)</td><td>Dados que precisam aparecer em vários aparelhos</td><td>Todas</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Rodou no navegador (<code>flutter run -d chrome</code>)</strong>
+<p>O laboratório compilou o app completo da seção 4 para a web e abriu no navegador. A tela abriu, mas sem nada da lista:</p>
+<figure class="tela"><img src="assets/telas/sqlite-1.png" alt="App Compras da Ana com o campo Item e o botão roxo Adicionar no topo; abaixo, a tela vazia" width="390" height="844" loading="lazy"><figcaption>No navegador: a tela aparece, mas a lista nunca carrega.</figcaption></figure>
+<pre class="term">Error
+Object.wrapException (http://127.0.0.1:45629/main.dart.js:7801:47)
+databaseFactory_closure.call$0 (http://127.0.0.1:45629/main.dart.js:188552:15)
+Object.databaseFactory (http://127.0.0.1:45629/main.dart.js:48783:48)
+Object.getDatabasesPath (http://127.0.0.1:45629/main.dart.js:49878:16)
+</pre>
+<p>O console do navegador mostrou um erro e o caminho dele, de baixo para cima: o <code>getDatabasesPath</code> (chamado no <code>abrir()</code>, quando o <code>initState</code> pediu a lista) tentou pegar a "fábrica de bancos" do <code>sqflite</code> (<code>databaseFactory</code>), e no navegador não existe nenhuma. Os nomes vêm do JavaScript que o Flutter gerou para a web (<code>main.dart.js</code>), por isso não aparecem as linhas do seu <code>main.dart</code>. Tocar em <strong>Adicionar</strong> também falharia, pelo mesmo motivo. <strong>Como consertar:</strong> rode num celular ou emulador Android, num iPhone/simulador iOS ou no macOS. Se o app também precisa da web, use uma solução que funcione lá (o <code>shared_preferences</code> para dados pequenos, ou um pacote de banco com suporte à web; confira a aba de plataformas no pub.dev antes de escolher).</p>
+</div>
+
+<div class="cenario">
+<strong>Mudou a tabela, mas o banco antigo continua lá</strong>
+<p>A Ana acrescentou uma coluna <code>quantidade</code> no <code>CREATE TABLE</code> e rodou de novo. No celular dela, o app reclama que a coluna não existe. Por quê? O <code>onCreate</code> só roda quando o arquivo <strong>ainda não existe</strong>, e o <code>compras.db</code> já existia, com a tabela antiga. <strong>Como consertar:</strong> suba a <code>version</code> para <code>2</code> e escreva um <code>onUpgrade</code> que faz <code>ALTER TABLE itens ADD COLUMN quantidade INTEGER</code>. Durante o desenvolvimento, desinstalar o app também apaga o banco (e os dados de teste). (Ilustrativo.)</p>
+</div>
+
+<div class="cenario">
+<strong>Esqueceu o <code>await</code></strong>
+<p>Escrever <code>BancoCompras.inserir(nome);</code> sem <code>await</code> e logo depois <code>_recarregar()</code> pode ler a lista <strong>antes</strong> de o item ser gravado: o item novo só aparece no próximo toque. Toda operação do <code>sqflite</code> devolve um <code>Future</code>; espere por ela com <code>await</code> antes de usar o resultado.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>flutter pub add sqflite path</code></td><td>Acrescenta os dois pacotes</td></tr>
+<tr><td><code>openDatabase(caminho, version: 1, onCreate: …)</code></td><td>Abre (ou cria) o banco</td></tr>
+<tr><td><code>join(await getDatabasesPath(), 'arquivo.db')</code></td><td>O caminho do arquivo do banco</td></tr>
+<tr><td><code>db.execute('CREATE TABLE …')</code></td><td>Roda um comando SQL qualquer</td></tr>
+<tr><td><code>db.insert(tabela, mapa)</code></td><td>Grava uma linha; devolve o <code>id</code> novo</td></tr>
+<tr><td><code>db.query(tabela, where: …, whereArgs: […], orderBy: …)</code></td><td>Lê linhas (lista de mapas)</td></tr>
+<tr><td><code>db.update(tabela, mapa, where: …, whereArgs: […])</code></td><td>Muda linhas</td></tr>
+<tr><td><code>db.delete(tabela, where: …, whereArgs: […])</code></td><td>Apaga linhas</td></tr>
+<tr><td><code>onUpgrade: (db, antiga, nova) { … }</code></td><td>Atualiza as tabelas quando a <code>version</code> sobe</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o apagar</h3>
+<div class="ex-code">await db.<input data-answer="delete" aria-label="método de apagar">('itens', where: 'id = <input data-answer="?" aria-label="espaço reservado">', whereArgs: [id]);</div>
+</div>
+
+<div class="exercise">
+<h3>2. Quando roda?</h3>
+<p>Qual parâmetro do <code>openDatabase</code> roda só na primeira vez, quando o arquivo ainda não existe?</p>
+<div class="ex-code"><input data-answer="onCreate" aria-label="nome do parâmetro"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. Qual destes é o jeito seguro de buscar um item pelo nome digitado?</p>
+<label><input type="radio" name="q3"> <code>db.query('itens', where: "nome = '$nome'")</code></label>
+<label><input type="radio" name="q3"> <code>db.query('itens', where: 'nome = ?', whereArgs: [nome])</code></label>
+<label><input type="radio" name="q3"> <code>db.query('itens $nome')</code></label>
+<label><input type="radio" name="q3"> Os três são iguais</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. Em qual destas plataformas o <code>sqflite</code> <strong>não</strong> funciona?</p>
+<label><input type="radio" name="q4"> Android</label>
+<label><input type="radio" name="q4"> iOS</label>
+<label><input type="radio" name="q4"> Web (navegador)</label>
+<label><input type="radio" name="q4"> macOS</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. A Ana guarda só "tema escuro: sim/não". Qual usar?</p>
+<label><input type="radio" name="q5"> <code>shared_preferences</code></label>
+<label><input type="radio" name="q5"> <code>sqflite</code>, com uma tabela de uma linha</label>
+<label><input type="radio" name="q5"> Um servidor com <code>http</code></label>
+<label><input type="radio" name="q5"> Uma variável comum do Dart</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O SQLite é um banco de dados num arquivo, dentro do aparelho; o <code>sqflite</code> é o pacote que fala com ele (Android, iOS e macOS; não roda na web).</li>
+  <li>Abra com <code>openDatabase(join(await getDatabasesPath(), 'x.db'), version: 1, onCreate: …)</code> e crie as tabelas no <code>onCreate</code>.</li>
+  <li><code>insert</code>, <code>query</code>, <code>update</code> e <code>delete</code>, sempre com <code>where: 'id = ?'</code> + <code>whereArgs</code>, nunca com interpolação.</li>
+  <li>Junte o acesso ao banco numa classe (<code>BancoCompras</code>) e, na tela, recarregue a lista com <code>setState</code> depois de cada mudança.</li>
+  <li>Mudou as tabelas? Suba a <code>version</code> e use o <code>onUpgrade</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
