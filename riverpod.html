@@ -123,7 +123,7 @@ final carrinhoProvider =
 <dl class="anatomy">
   <dt>extends Notifier&lt;List&lt;String&gt;&gt;</dt><dd>Uma classe que cuida de um estado do tipo <code>List&lt;String&gt;</code>. Ela ganha um campo <code>state</code> ("estado").</dd>
   <dt>List&lt;String&gt; build() =&gt; []</dt><dd>O <strong>estado inicial</strong>: o carrinho começa vazio. O Riverpod chama o <code>build</code> na primeira vez que alguém pede o provider.</dd>
-  <dt>state = [...state, item]</dt><dd>Muda o estado: cria uma lista <strong>nova</strong>, com tudo o que tinha (<code>...state</code>, o operador de espalhar do Dart) mais o item. Ao receber um valor novo, o <code>state</code> avisa sozinho quem está olhando: <strong>não existe <code>notifyListeners()</code></strong>.</dd>
+  <dt>state = [...state, item]</dt><dd>Muda o estado: cria uma lista <strong>nova</strong>, com tudo o que tinha (<code>...state</code>, o <a href="https://wallysondevs.github.io/guia-dart/spread.html">operador de espalhar</a> do Dart) mais o item. Ao receber um valor novo, o <code>state</code> avisa sozinho quem está olhando: <strong>não existe <code>notifyListeners()</code></strong>.</dd>
   <dt>NotifierProvider&lt;CarrinhoNotifier, List&lt;String&gt;&gt;</dt><dd>A "gaveta": liga a classe ao estado. O primeiro tipo é a classe; o segundo, o tipo do estado.</dd>
   <dt>CarrinhoNotifier.new</dt><dd>Uma referência ao construtor da classe (o mesmo que <code>() =&gt; CarrinhoNotifier()</code>). O Riverpod chama quando precisar.</dd>
 </dl>
@@ -474,7 +474,7 @@ Carrinho: [Café, Pão de queijo]
 <p>…mas o selo continua em <strong>0</strong>, como na foto de "Ao abrir". O <code>add</code> mexeu <strong>dentro</strong> da mesma lista; o <code>state</code> continua apontando para o mesmo objeto, e o Riverpod só avisa os widgets quando <code>state</code> recebe <strong>outro</strong> objeto. Não há erro nem aviso. <strong>Como consertar:</strong> <code>state = [...state, item];</code>. Para tirar um item: <code>state = state.where((i) =&gt; i != item).toList();</code>.</p>
 </div>
 
-<div class="tryflutter" data-goal="src:state\s*=\s*\[\s*\.\.\.state;;nsrc:state\.add\(">
+<div class="tryflutter" data-goal="src:state\s*=\s*\[\s*\.\.\.state;;nsrc:state\.add\(" data-foto="assets/telas/riverpod-2.png" data-foto-alt="A Lojinha da Ana depois de dois toques nos botões de adicionar: o selo do carrinho, no canto de cima, mostra 2">
 <p class="try-task"><strong>Missão:</strong> este é o carrinho com <code>state.add</code>. Rode, toque nos botões, veja o selo parado em 0 e a lista crescendo no console do DartPad. Conserte o <code>adicionar</code> para trocar o estado em vez de modificá-lo.</p>
 <pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
