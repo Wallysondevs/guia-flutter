@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Pacotes do pub.dev — flutter pub add, pubspec e versões | Guia Flutter</title>
+<meta name="description" content="Pacotes do pub.dev para quem nunca fez um app: como escolher um pacote, flutter pub add, a linha no pubspec.yaml e o ^ da versão, o pubspec.lock, import 'package:…', flutter pub get, outdated, upgrade e remove, dev_dependencies, o intl formatando preços em reais e os erros reais (nome errado, pacote não instalado).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Pacotes do pub.dev</span></h1>
+
+<p class="intro">Ninguém escreve um app inteiro do zero. Formatar dinheiro em reais, falar com a internet, guardar dados no celular, abrir a câmera: para quase tudo isso existe um <strong>pacote</strong> pronto, escrito e testado por outras pessoas (muitos pelo próprio time do Flutter). Os pacotes de Dart e Flutter moram num site só, o <a href="https://pub.dev">pub.dev</a>, e entram no seu projeto com <strong>um comando</strong>. Você já usou alguns nas aulas de <a href="provider.html">Provider</a> e <a href="riverpod.html">Riverpod</a>; aqui está o processo completo.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como achar e escolher um pacote no pub.dev (curtidas, pontos, plataformas, quem publicou).</li>
+  <li>A instalar com <code>flutter pub add</code> e a ler a saída.</li>
+  <li>O que muda no <code>pubspec.yaml</code>, o que quer dizer o <code>^</code> da versão e para que serve o <code>pubspec.lock</code>.</li>
+  <li>A usar o pacote com <code>import 'package:…'</code>: o <code>intl</code> formatando os preços da lojinha em reais.</li>
+  <li><code>flutter pub get</code>, <code>outdated</code>, <code>upgrade</code> e <code>remove</code>.</li>
+  <li>Os erros reais: o nome digitado errado e o pacote que não foi instalado.</li>
+</ul>
+</div>
+
+<p>Todas as saídas desta aula vieram do terminal da Ana, com o <span class="versao">Flutter 3.47.7</span>, num projeto chamado <code>app</code>.</p>
+
+<hr>
+
+<h2>A ideia: a loja de peças de montar</h2>
+<p>Pense num conjunto de blocos de montar. Você pode fazer tudo com os blocos básicos que vieram na caixa (o Flutter já traz muita coisa: <code>Text</code>, <code>ListView</code>, <code>Navigator</code>…). Mas existe uma <strong>loja de peças especiais</strong>: rodas, motores, luzes. Você escolhe a peça, ela chega com um manual, e encaixa no seu modelo.</p>
+<ol class="passo">
+  <li>A loja é o <strong>pub.dev</strong>.</li>
+  <li>A lista de compras do seu projeto é o <strong>pubspec.yaml</strong>: cada pacote é uma linha na seção <code>dependencies</code> ("dependências").</li>
+  <li>O <strong><code>flutter pub</code></strong> é o entregador: lê a lista, escolhe versões que combinem entre si e baixa tudo.</li>
+  <li>No código, o <strong><code>import 'package:nome/…'</code></strong> é você pegando a peça da caixa.</li>
+</ol>
+
+<hr>
+
+<h2>1. Achar e escolher um pacote</h2>
+<p>Na busca do pub.dev, cada pacote aparece com alguns números. Antes de instalar, olhe:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Onde olhar</th><th>O que diz</th></tr>
+<tr><td><strong>Likes</strong> (curtidas)</td><td>Quantas pessoas marcaram o pacote como útil.</td></tr>
+<tr><td><strong>Pub points</strong> (até 160)</td><td>Nota automática de qualidade: documentação, análise do código, suporte às plataformas, dependências em dia.</td></tr>
+<tr><td><strong>Downloads</strong></td><td>Quanto é usado. Pacote muito usado tem mais respostas na internet quando dá problema.</td></tr>
+<tr><td><strong>Publisher</strong> (quem publicou)</td><td>Um selo de "verificado" ao lado do domínio (ex.: <code>dart.dev</code>, <code>flutter.dev</code>) diz que a organização é quem diz ser.</td></tr>
+<tr><td><strong>Platforms</strong></td><td>Em quais plataformas funciona: Android, iOS, Web, Windows, macOS, Linux. Um pacote de câmera pode não funcionar na web, por exemplo.</td></tr>
+<tr><td><strong>Flutter Favorite</strong></td><td>Selo dado pelo time do Flutter a pacotes de qualidade alta.</td></tr>
+<tr><td>Data da última versão</td><td>Um pacote parado há anos pode não funcionar com o Flutter atual.</td></tr>
+</table>
+</div>
+<p>Na página de cada pacote, as abas mais úteis são <strong>Readme</strong> (como usar), <strong>Example</strong> (um app de exemplo), <strong>Changelog</strong> (o que mudou em cada versão) e <strong>Installing</strong> (o comando para instalar).</p>
+
+<hr>
+
+<h2>2. Instalar: <code>flutter pub add</code></h2>
+<p>A Ana quer mostrar os preços da lojinha do jeito brasileiro: <code>R$ 4,50</code>, com vírgula, e <code>R$ 1.250,00</code>, com ponto no milhar. Quem faz isso é o pacote <code>intl</code> (de <em>internationalization</em>, "internacionalização"), publicado pelo time do Dart. Na pasta do projeto:</p>
+
+<pre class="term">$ cd app
+$ flutter pub add intl
+Resolving dependencies...
+Downloading packages...
+  cupertino_icons 1.0.9 (2.0.0 available)
++ intl 0.20.3
+  material_color_utilities 0.13.0 (0.13.1 available)
+  meta 1.18.3 (1.19.0 available)
+  test_api 0.7.12 (0.7.15 available)
+Changed 1 dependency!
+4 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+</pre>
+
+<dl class="anatomy">
+  <dt>Resolving dependencies...</dt><dd>"Resolvendo as dependências": o <code>pub</code> procura uma combinação de versões em que <strong>todos</strong> os pacotes do projeto (e os pacotes que eles usam) se entendam.</dd>
+  <dt>Downloading packages...</dt><dd>Baixa o que falta para uma pasta do seu usuário (o "cache do pub"). Cada versão é baixada uma vez só e serve para todos os seus projetos.</dd>
+  <dt>+ intl 0.20.3</dt><dd>O <code>+</code> marca o pacote <strong>novo</strong>: a versão 0.20.3, a mais nova que combina com o projeto.</dd>
+  <dt>cupertino_icons 1.0.9 (2.0.0 available)</dt><dd>Pacotes que o projeto já tinha. Entre parênteses, uma versão mais nova que existe, mas que a faixa do <code>pubspec.yaml</code> não aceita. Não é erro.</dd>
+  <dt>Changed 1 dependency!</dt><dd>"1 dependência mudou": o <code>intl</code>.</dd>
+  <dt>4 packages have newer versions incompatible with dependency constraints</dt><dd>"4 pacotes têm versões mais novas fora das faixas permitidas": um aviso, não um erro. O comando sugerido, <code>flutter pub outdated</code>, está na seção 5.</dd>
+</dl>
+
+<hr>
+
+<h2>3. O <code>pubspec.yaml</code> e o <code>pubspec.lock</code></h2>
+<p>O comando acrescentou uma linha na lista de compras:</p>
+<pre class="file" data-file="pubspec.yaml">dependencies:
+  flutter:
+    sdk: flutter
+  …
+  cupertino_icons: ^1.0.8
+  intl: ^0.20.3
+</pre>
+
+<dl class="anatomy">
+  <dt>intl:</dt><dd>O nome do pacote, exatamente como no pub.dev.</dd>
+  <dt>^0.20.3</dt><dd>A <strong>faixa de versões</strong> aceitas. O <code>^</code> ("circunflexo") quer dizer "esta versão ou uma mais nova que <strong>não quebre</strong> o código". Para versões 1 ou maiores, <code>^6.1.5</code> aceita de 6.1.5 até antes de 7.0.0. Para versões que começam com 0, a regra aperta: <code>^0.20.3</code> aceita de 0.20.3 até antes de 0.21.0.</dd>
+</dl>
+
+<p>Além disso, apareceu (ou mudou) o arquivo <code>pubspec.lock</code>, com a versão <strong>exata</strong> de cada pacote baixado, incluindo os que vieram junto. Ele é a "nota fiscal": garante que, no computador de outra pessoa (ou no seu, daqui a um mês), o <code>flutter pub get</code> baixe exatamente as mesmas versões. Num app, os dois arquivos vão para o git; você não edita o <code>.lock</code> à mão.</p>
+
+<div class="tip">
+<strong>Também dá para editar o <code>pubspec.yaml</code> à mão</strong>
+<p>Escreva a linha <code>intl: ^0.20.3</code> embaixo de <code>dependencies:</code> (com 2 espaços na frente, o YAML liga para a indentação) e rode <code>flutter pub get</code> (seção 5). O VS Code e o Android Studio rodam o <code>pub get</code> sozinhos quando você salva o arquivo.</p>
+</div>
+
+<hr>
+
+<h2>4. Usar o pacote: <code>import 'package:…'</code></h2>
+<p>Primeiro, os preços sem o pacote, com o <code>toString</code> normal do Dart:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaPrecos(),
+    ));
+
+class TelaPrecos extends StatelessWidget {
+  const TelaPrecos({super.key});
+
+  static const precos = {
+    'Café': 4.5,
+    'Pão de queijo': 3.25,
+    'Bolo de cenoura': 12.9,
+    'Encomenda de festa': 1250.0,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Preços da Lojinha')),
+      body: ListView(
+        children: [
+          for (final item in precos.entries)
+            ListTile(
+              title: Text(item.key),
+              trailing: Text('R\$ ${item.value}'),
+            ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+
+<figure class="tela"><img src="assets/telas/pacotes-2.png" alt="Tela Preços da Lojinha com quatro linhas: Café R$ 4.5, Pão de queijo R$ 3.25, Bolo de cenoura R$ 12.9 e Encomenda de festa R$ 1250" width="390" height="844" loading="lazy"><figcaption>Sem o pacote: ponto no lugar da vírgula e centavos faltando.</figcaption></figure>
+<p>Ficou estranho: <code>R$ 4.5</code> (com ponto e sem o zero), <code>R$ 12.9</code>, <code>R$ 1250</code>. (Detalhe: a foto é do Flutter web, onde o <code>1250.0</code> vira <code>1250</code>; num celular Android o mesmo código mostra <code>1250.0</code>.)</p>
+
+<p>Agora com o <code>intl</code>. Mudam três linhas: o <code>import</code>, a criação do formatador e o <code>trailing</code>:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+
+void main() =&gt; runApp(const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaPrecos(),
+    ));
+
+class TelaPrecos extends StatelessWidget {
+  const TelaPrecos({super.key});
+
+  static const precos = {
+    'Café': 4.5,
+    'Pão de queijo': 3.25,
+    'Bolo de cenoura': 12.9,
+    'Encomenda de festa': 1250.0,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final real = NumberFormat.currency(locale: 'pt_BR', symbol: r'R$');
+    return Scaffold(
+      appBar: AppBar(title: const Text('Preços da Lojinha')),
+      body: ListView(
+        children: [
+          for (final item in precos.entries)
+            ListTile(
+              title: Text(item.key),
+              trailing: Text(real.format(item.value)),
+            ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>import 'package:intl/intl.dart'</dt><dd>Pega a peça da caixa. O formato é sempre <code>package:NOME_DO_PACOTE/ARQUIVO.dart</code>; o Readme do pacote diz qual arquivo importar.</dd>
+  <dt>NumberFormat.currency(locale: 'pt_BR', symbol: r'R$')</dt><dd>Um formatador de dinheiro (<em>currency</em>, "moeda") com as regras do português do Brasil: vírgula nos centavos, ponto nos milhares. O <code>r</code> antes da string (string "crua") deixa o <code>$</code> ser só um caractere, e não o começo de uma interpolação.</dd>
+  <dt>real.format(item.value)</dt><dd>Transforma o <code>double</code> no texto formatado.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/pacotes-1.png" alt="Tela Preços da Lojinha com os preços no formato brasileiro: Café R$ 4,50, Pão de queijo R$ 3,25, Bolo de cenoura R$ 12,90 e Encomenda de festa R$ 1.250,00" width="390" height="844" loading="lazy"><figcaption>Com o intl: vírgula nos centavos e ponto no milhar.</figcaption></figure>
+
+<div class="tryflutter" data-goal="src:^import 'package:intl/intl\.dart';;src:NumberFormat\.currency\(" data-foto="assets/telas/pacotes-1.png" data-foto-alt="Tela Preços da Lojinha com Café R$ 4,50, Pão de queijo R$ 3,25, Bolo de cenoura R$ 12,90 e Encomenda de festa R$ 1.250,00">
+<p class="try-task"><strong>Missão:</strong> este é o app sem o pacote. Formate os preços em reais: acrescente o <code>import 'package:intl/intl.dart';</code>, crie o formatador no começo do <code>build</code> e use <code>real.format(item.value)</code> no <code>trailing</code>. (No DartPad, o <code>intl</code> já está disponível: não precisa de <code>pub add</code>.)</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaPrecos(),
+    ));
+
+class TelaPrecos extends StatelessWidget {
+  const TelaPrecos({super.key});
+
+  static const precos = {
+    'Café': 4.5,
+    'Pão de queijo': 3.25,
+    'Bolo de cenoura': 12.9,
+    'Encomenda de festa': 1250.0,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Preços da Lojinha')),
+      body: ListView(
+        children: [
+          for (final item in precos.entries)
+            ListTile(
+              title: Text(item.key),
+              trailing: Text('R\$ ${item.value}'),
+            ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+
+void main() =&gt; runApp(const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaPrecos(),
+    ));
+
+class TelaPrecos extends StatelessWidget {
+  const TelaPrecos({super.key});
+
+  static const precos = {
+    'Café': 4.5,
+    'Pão de queijo': 3.25,
+    'Bolo de cenoura': 12.9,
+    'Encomenda de festa': 1250.0,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final real = NumberFormat.currency(locale: 'pt_BR', symbol: r'R$');
+    return Scaffold(
+      appBar: AppBar(title: const Text('Preços da Lojinha')),
+      body: ListView(
+        children: [
+          for (final item in precos.entries)
+            ListTile(
+              title: Text(item.key),
+              trailing: Text(real.format(item.value)),
+            ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>5. Os outros comandos do <code>pub</code></h2>
+
+<h3><code>flutter pub get</code>: baixar o que a lista pede</h3>
+<p>Quando você baixa um projeto de outra pessoa (do GitHub, por exemplo) ou edita o <code>pubspec.yaml</code> à mão, rode <code>flutter pub get</code>. Ele lê a lista e baixa o que falta, sem mudar nada no <code>pubspec.yaml</code>:</p>
+<pre class="term">$ flutter pub get
+Resolving dependencies...
+Downloading packages...
+  cupertino_icons 1.0.9 (2.0.0 available)
+  material_color_utilities 0.13.0 (0.13.1 available)
+  meta 1.18.3 (1.19.0 available)
+  test_api 0.7.12 (0.7.15 available)
+Got dependencies!
+4 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+</pre>
+<p><code>Got dependencies!</code> ("peguei as dependências!") quer dizer que está tudo baixado. Aqui nada mudou, porque tudo já estava lá.</p>
+
+<h3><code>flutter pub outdated</code>: o que está velho?</h3>
+<pre class="term">$ flutter pub outdated
+Showing outdated packages.
+[*] indicates versions that are not the latest available.
+
+Package Name              Current  Upgradable  Resolvable  Latest
+
+direct dependencies:
+cupertino_icons           *1.0.9   *1.0.9      2.0.0       2.0.0
+
+dev_dependencies: all up-to-date.
+
+transitive dependencies:
+material_color_utilities  *0.13.0  *0.13.0     *0.13.0     0.13.1
+meta                      *1.18.3  1.19.0      1.19.0      1.19.0
+
+transitive dev_dependencies:
+test_api                  *0.7.12  *0.7.12     *0.7.12     0.7.15
+
+1 upgradable dependency is locked (in pubspec.lock) to an older version.
+To update it, use `flutter pub upgrade`.
+
+1 dependency is constrained to a version that is older than a resolvable version.
+To update it, edit pubspec.yaml, or run `flutter pub upgrade --major-versions`.
+</pre>
+<dl class="anatomy">
+  <dt>Current / Upgradable / Resolvable / Latest</dt><dd>Para cada pacote: a versão que você <strong>tem</strong>; a mais nova que o <code>flutter pub upgrade</code> consegue sem mexer no <code>pubspec.yaml</code>; a mais nova possível mexendo nele; a mais nova que existe.</dd>
+  <dt>[*]</dt><dd>O asterisco marca versões que não são a mais nova.</dd>
+  <dt>direct / transitive dependencies</dt><dd>Diretas: as que estão no seu <code>pubspec.yaml</code>. Transitivas: as que vieram "de carona", porque outros pacotes as usam.</dd>
+  <dt>cupertino_icons *1.0.9 … 2.0.0</dt><dd>O <code>^1.0.8</code> do <code>pubspec.yaml</code> não aceita a 2.0.0 (versão "grande" nova). Por isso a última linha sugere o <code>--major-versions</code>.</dd>
+  <dt>meta … locked (in pubspec.lock)</dt><dd>O <code>meta</code> poderia ir para 1.19.0, mas o <code>pubspec.lock</code> o segura na 1.18.3 até você rodar <code>flutter pub upgrade</code>.</dd>
+</dl>
+
+<h3><code>flutter pub upgrade</code> e <code>flutter pub remove</code></h3>
+<p><code>flutter pub upgrade</code> sobe os pacotes para a versão mais nova <strong>dentro</strong> da faixa do <code>^</code>. <code>flutter pub upgrade --major-versions</code> vai além, mudando o próprio <code>pubspec.yaml</code> para aceitar uma versão "grande" nova (e aí o seu código pode precisar de ajustes: leia o Changelog). Para tirar um pacote:</p>
+<pre class="term">$ flutter pub remove intl
+Resolving dependencies...
+Downloading packages...
+  cupertino_icons 1.0.9 (2.0.0 available)
+  material_color_utilities 0.13.0 (0.13.1 available)
+  meta 1.18.3 (1.19.0 available)
+  test_api 0.7.12 (0.7.15 available)
+These packages are no longer being depended on:
+- intl 0.20.3
+Changed 1 dependency!
+4 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+</pre>
+<p>"Estes pacotes não são mais usados: <code>intl</code>". A linha sumiu do <code>pubspec.yaml</code>. Se algum arquivo ainda tiver o <code>import 'package:intl/…'</code>, o app para de compilar (veja <a href="#errado">Quando dá errado</a>).</p>
+
+<h3><code>dev_dependencies</code>: pacotes só para quem desenvolve</h3>
+<p>Alguns pacotes só servem durante o desenvolvimento: testes, regras de estilo, geradores de código. Eles vão numa seção separada, <code>dev_dependencies</code>, e <strong>não</strong> entram no app que vai para a loja. O projeto do <code>flutter create</code> já vem com dois: <code>flutter_test</code> e <code>flutter_lints</code>. Para instalar um pacote nessa seção, use <code>flutter pub add --dev NOME</code> (ou <code>flutter pub add dev:NOME</code>).</p>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de instalar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Jeito</th><th>Quando usar</th></tr>
+<tr><td><code>flutter pub add nome</code></td><td>O normal: escolhe a versão mais nova que combina e escreve a linha por você</td></tr>
+<tr><td><code>flutter pub add 'nome:^1.2.0'</code></td><td>Quando o tutorial pede uma versão específica</td></tr>
+<tr><td>Editar o <code>pubspec.yaml</code> + <code>flutter pub get</code></td><td>Quando quer ver e controlar a linha; o editor roda o <code>get</code> ao salvar</td></tr>
+<tr><td><code>flutter pub add --dev nome</code></td><td>Pacotes só de desenvolvimento</td></tr>
+</table>
+</div>
+
+<div class="note">
+<strong>Pacotes no editor do guia</strong>
+<p>O "Experimente" deste guia roda no DartPad, que aceita só uma lista de pacotes populares (entre eles <code>intl</code>, <code>provider</code>, <code>flutter_riverpod</code> e <code>flutter_bloc</code>). Lá não existe <code>pubspec.yaml</code>: basta o <code>import</code>. No seu computador, o <code>flutter pub add</code> é obrigatório.</p>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Nome do pacote digitado errado</strong>
+<pre class="term">$ flutter pub add provder
+Because app depends on provder any which doesn't exist (could not find package provder at https://pub.dev), version solving failed.
+Failed to update packages.
+</pre>
+<dl class="anatomy">
+  <dt>Because app depends on provder any which doesn't exist</dt><dd>"Como <code>app</code> (o seu projeto) depende de <code>provder</code>, em qualquer versão (<em>any</em>), e ele não existe…"</dd>
+  <dt>could not find package provder at https://pub.dev</dt><dd>"…não achei o pacote <code>provder</code> no pub.dev…"</dd>
+  <dt>version solving failed / Failed to update packages</dt><dd>"…a escolha das versões falhou." Nada foi mudado no <code>pubspec.yaml</code>.</dd>
+</dl>
+<p><strong>Como consertar:</strong> copie o nome da aba <em>Installing</em> do pub.dev. Os nomes usam só letras minúsculas, números e <code>_</code> (ex.: <code>flutter_riverpod</code>, <code>shared_preferences</code>).</p>
+</div>
+
+<div class="cenario">
+<strong>Usou o pacote sem instalar</strong>
+<p>A Ana copiou o código dos preços para um projeto novo e esqueceu o <code>flutter pub add intl</code>. Na hora de compilar:</p>
+<pre class="term">Error: Couldn't resolve the package 'intl' in 'package:intl/intl.dart'.
+lib/main.dart:2:8: Error: Not found: 'package:intl/intl.dart'
+import 'package:intl/intl.dart';
+       ^
+lib/main.dart:21:18: Error: The getter 'NumberFormat' isn't defined for the type 'TelaPrecos'.
+ - 'TelaPrecos' is from 'package:app/main.dart' ('lib/main.dart').
+Try correcting the name to the name of an existing getter, or defining a getter or field named 'NumberFormat'.
+    final real = NumberFormat.currency(locale: 'pt_BR', symbol: r'R$');
+                 ^^^^^^^^^^^^
+</pre>
+<dl class="anatomy">
+  <dt>Couldn't resolve the package 'intl'</dt><dd>"Não consegui achar o pacote <code>intl</code>": ele não está no <code>pubspec.yaml</code>.</dd>
+  <dt>lib/main.dart:2:8: Error: Not found: 'package:intl/intl.dart'</dt><dd>A linha 2, coluna 8: o <code>import</code>. O <code>^</code> aponta o começo do endereço.</dd>
+  <dt>The getter 'NumberFormat' isn't defined</dt><dd>Consequência do primeiro erro: sem o import, o Dart não conhece o <code>NumberFormat</code> e acha que é um "getter" (uma propriedade) da sua classe. Corrija o primeiro erro e este some junto.</dd>
+</dl>
+<p><strong>Como consertar:</strong> <code>flutter pub add intl</code> (ou, se a linha já está no <code>pubspec.yaml</code>, <code>flutter pub get</code>). Regra geral: quando vários erros aparecem juntos, leia e conserte o <strong>primeiro</strong>.</p>
+</div>
+
+<div class="cenario">
+<strong>Pacote que não funciona na plataforma</strong>
+<p>Um pacote que mexe com o aparelho (câmera, GPS, arquivos) pode não ter suporte para todas as plataformas. Confira o quadro <em>Platforms</em> do pub.dev <strong>antes</strong> de instalar; a aula <a href="plataforma.html">Recursos do Aparelho</a> mostra o caso da câmera e da localização.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>flutter pub add nome</code></td><td>Instala e escreve no <code>pubspec.yaml</code></td></tr>
+<tr><td><code>flutter pub add --dev nome</code></td><td>Instala em <code>dev_dependencies</code></td></tr>
+<tr><td><code>flutter pub get</code></td><td>Baixa o que o <code>pubspec.yaml</code> pede</td></tr>
+<tr><td><code>flutter pub outdated</code></td><td>Mostra o que tem versão mais nova</td></tr>
+<tr><td><code>flutter pub upgrade</code></td><td>Atualiza dentro das faixas do <code>^</code></td></tr>
+<tr><td><code>flutter pub upgrade --major-versions</code></td><td>Atualiza também as versões "grandes"</td></tr>
+<tr><td><code>flutter pub remove nome</code></td><td>Tira o pacote</td></tr>
+<tr><td><code>flutter pub deps</code></td><td>Mostra a árvore de dependências</td></tr>
+<tr><td><code>import 'package:nome/arquivo.dart';</code></td><td>Usa o pacote no código</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o import</h3>
+<div class="ex-code">import '<input data-answer="package" aria-label="prefixo do import">:intl/intl.dart';</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. No <code>pubspec.yaml</code> está <code>provider: ^6.1.5</code>. Qual destas versões o <code>pub</code> pode usar?</p>
+<label><input type="radio" name="q2"> 6.0.0</label>
+<label><input type="radio" name="q2"> 6.4.0</label>
+<label><input type="radio" name="q2"> 7.0.0</label>
+<label><input type="radio" name="q2"> qualquer uma</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. Você baixou um projeto do GitHub e o editor sublinha de vermelho todos os <code>import 'package:…'</code>. Qual comando resolve?</p>
+<label><input type="radio" name="q3"> <code>flutter create</code></label>
+<label><input type="radio" name="q3"> <code>flutter pub outdated</code></label>
+<label><input type="radio" name="q3"> <code>flutter pub get</code></label>
+<label><input type="radio" name="q3"> <code>flutter doctor</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. Para que serve o <code>pubspec.lock</code>?</p>
+<label><input type="radio" name="q4"> Guardar a versão exata de cada pacote, para todo mundo baixar as mesmas</label>
+<label><input type="radio" name="q4"> Trancar o projeto contra edições</label>
+<label><input type="radio" name="q4"> Listar os pacotes que você quer (a "lista de compras")</label>
+<label><input type="radio" name="q4"> Guardar a senha do pub.dev</label>
+</div>
+
+<h3>Missão final: o milhar com ponto</h3>
+
+<div class="tryflutter" data-goal="src:^import 'package:intl/intl\.dart';;src:NumberFormat\.decimalPattern\(\s*'pt_BR'\s*\)" data-foto="assets/telas/pacotes-3.png" data-foto-alt="Tela Vendas do ano com o texto Cafés vendidos: 12.345 no meio">
+<p class="try-task"><strong>Missão:</strong> a tela mostra <code>Cafés vendidos: 12345</code>. Use o <code>intl</code> para mostrar <code>12.345</code>: importe o pacote, crie <code>final numero = NumberFormat.decimalPattern('pt_BR');</code> no começo do <code>build</code> e use <code>${numero.format(vendidos)}</code> no texto. Atenção: o <code>Center</code> e o <code>Text</code> deixam de poder ser <code>const</code> (o <code>const</code> vai para o <code>TextStyle</code>).</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaVendas(),
+    ));
+
+class TelaVendas extends StatelessWidget {
+  const TelaVendas({super.key});
+
+  static const vendidos = 12345;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Vendas do ano')),
+      body: const Center(
+        child: Text(
+          'Cafés vendidos: $vendidos',
+          style: TextStyle(fontSize: 24),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+
+void main() =&gt; runApp(const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TelaVendas(),
+    ));
+
+class TelaVendas extends StatelessWidget {
+  const TelaVendas({super.key});
+
+  static const vendidos = 12345;
+
+  @override
+  Widget build(BuildContext context) {
+    final numero = NumberFormat.decimalPattern('pt_BR');
+    return Scaffold(
+      appBar: AppBar(title: const Text('Vendas do ano')),
+      body: Center(
+        child: Text(
+          'Cafés vendidos: ${numero.format(vendidos)}',
+          style: const TextStyle(fontSize: 24),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Os pacotes de Dart e Flutter ficam no pub.dev; escolha olhando curtidas, pontos, plataformas, quem publicou e a data.</li>
+  <li><code>flutter pub add nome</code> instala e escreve <code>nome: ^versão</code> no <code>pubspec.yaml</code>; o <code>pubspec.lock</code> guarda as versões exatas.</li>
+  <li>No código: <code>import 'package:nome/arquivo.dart';</code>.</li>
+  <li><code>pub get</code> baixa o que a lista pede; <code>outdated</code> mostra o que envelheceu; <code>upgrade</code> atualiza; <code>remove</code> tira.</li>
+  <li>Nome errado: "could not find package"; pacote não instalado: o <code>import</code> não acha o arquivo.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
