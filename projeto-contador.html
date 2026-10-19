@@ -1,0 +1,706 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Projeto: Contador Turbinado — o primeiro app completo | Guia Flutter</title>
+<meta name="description" content="Projeto guiado do Guia Flutter: o Contador Turbinado, do zero ao app completo. StatefulWidget, setState, botões Somar/Subtrair/Zerar, passo escolhido com SegmentedButton, cor que muda com o valor, meta com mensagem, botão desabilitado e testes de widget reais, com as telas do app rodando.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Projeto: Contador Turbinado</span></h1>
+
+<p class="intro">Todo projeto Flutter novo nasce com um contador: um número e um botão <strong>+</strong>. Neste projeto, a Ana pega essa ideia e a <strong>turbina</strong>: botões de somar, subtrair e zerar, um seletor de "passo" (contar de 1 em 1, de 5 em 5 ou de 10 em 10), a cor do número mudando conforme o valor e uma meta que comemora quando é batida. No caminho, você junta quase tudo o que viu até aqui num app só e, no fim, escreve testes de verdade para ele.</p>
+
+<div class="note">
+<strong>O que você vai construir e praticar</strong>
+<ul>
+  <li><code>MaterialApp</code> com tema Material 3 a partir de uma cor (<a href="temas.html">Temas</a>).</li>
+  <li>Um <code>StatefulWidget</code> com três informações no estado: o valor, o passo e a meta (<a href="stateful.html">StatefulWidget</a>, <a href="setstate.html">setState</a>).</li>
+  <li><code>FilledButton</code>, <code>OutlinedButton</code>, <code>TextButton</code> e o botão <strong>desabilitado</strong> (<a href="botoes.html">Botões</a>).</li>
+  <li><code>SegmentedButton</code> para escolher o passo.</li>
+  <li>Texto e cor que mudam conforme o estado (uma função que escolhe a cor).</li>
+  <li>Testes de widget, incluindo uma falha real e como consertá-la (<a href="testes-widget.html">Testes de Widget</a>).</li>
+</ul>
+</div>
+
+<p>Todas as telas desta página são fotos do app rodando no <strong>Flutter 3.47.7</strong>; as saídas de terminal vieram da máquina da Ana. Você pode fazer o projeto inteiro no editor do guia, ou num projeto seu criado com <code>flutter create contador_turbinado</code> (veja <a href="criar-projeto.html">Criando um Projeto</a>).</p>
+
+<hr>
+
+<h2>O plano</h2>
+<p>Antes de escrever código, a Ana desenhou a tela num papel, de cima para baixo:</p>
+<pre>Scaffold
+├── AppBar: "Contador Turbinado"
+└── Padding
+    └── Column (centralizada)
+        ├── Text  ← o valor, enorme (96), com cor que muda
+        ├── Text  ← "Meta: 10" ou "Meta batida! 🎉"
+        ├── Text  "Passo"
+        ├── SegmentedButton  [ 1 | 5 | 10 ]
+        ├── Row
+        │   ├── OutlinedButton "Subtrair"
+        │   └── FilledButton   "Somar"
+        └── TextButton "Zerar"  ← desabilitado quando o valor já é 0
+</pre>
+<p>E listou o que muda com o tempo (o <strong>estado</strong>): o <strong>valor</strong> e o <strong>passo</strong>. A <strong>meta</strong> não muda: vira uma constante. Tudo o mais (a cor, a frase da meta, se o Zerar está ligado) é <strong>calculado</strong> a partir do valor, a cada <code>build</code>. Essa é a regra de ouro: guarde no estado só o mínimo; o resto, calcule.</p>
+
+<hr>
+
+<h2>Passo 1: o esqueleto com tema</h2>
+<pre class="file" data-file="lib/main.dart (passo 1)">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ContadorApp());
+
+class ContadorApp extends StatelessWidget {
+  const ContadorApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Contador Turbinado',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+      ),
+      home: const TelaContador(),
+    );
+  }
+}
+</pre>
+<dl class="anatomy">
+  <dt>ContadorApp</dt><dd>O app em si: só configura o <code>MaterialApp</code> e não muda nunca, por isso é <code>StatelessWidget</code>.</dd>
+  <dt>ColorScheme.fromSeed(seedColor: Colors.indigo)</dt><dd>O Material 3 gera a paleta inteira (cor principal, de fundo, de erro…) a partir de uma cor-semente, o índigo.</dd>
+  <dt>home: const TelaContador()</dt><dd>A tela, que vamos escrever agora. Separar o app da tela deixa cada classe com um trabalho só.</dd>
+</dl>
+
+<h2>Passo 2: o estado e o primeiro botão</h2>
+<pre class="file" data-file="lib/main.dart (passo 2, a tela)">class TelaContador extends StatefulWidget {
+  const TelaContador({super.key});
+
+  @override
+  State&lt;TelaContador&gt; createState() =&gt; _TelaContadorState();
+}
+
+class _TelaContadorState extends State&lt;TelaContador&gt; {
+  int _valor = 0;
+
+  void _somar() =&gt; setState(() =&gt; _valor++);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Contador Turbinado')),
+      body: Center(
+        child: Text('$_valor', style: const TextStyle(fontSize: 96)),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _somar,
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+</pre>
+<p>Isto já é o contador clássico. O <code>_</code> na frente de <code>_valor</code> e <code>_somar</code> os deixa <strong>privados</strong> ao arquivo: ninguém de fora mexe no estado. O <code>setState</code> avisa o Flutter "mudei o valor, redesenhe".</p>
+
+<h2>Passo 3: o passo, Subtrair e Zerar</h2>
+<p>Agora o estado ganha o <strong>passo</strong>, e os botões viram três funções pequenas:</p>
+<pre class="file" data-file="lib/main.dart (passo 3, trecho)">  static const meta = 10;
+  int _valor = 0;
+  int _passo = 1;
+
+  void _somar() =&gt; setState(() =&gt; _valor += _passo);
+  void _subtrair() =&gt; setState(() =&gt; _valor -= _passo);
+  void _zerar() =&gt; setState(() =&gt; _valor = 0);
+</pre>
+<dl class="anatomy">
+  <dt>static const meta = 10;</dt><dd>A meta é a mesma para sempre: <code>static const</code> ("constante da classe"). Não vai no estado.</dd>
+  <dt>_valor += _passo</dt><dd>Soma o passo atual, seja 1, 5 ou 10.</dd>
+</dl>
+<p>E o seletor do passo, com <code>SegmentedButton</code> (botões grudados, em que um fica marcado):</p>
+<pre class="file" data-file="lib/main.dart (passo 3, o seletor)">SegmentedButton&lt;int&gt;(
+  segments: const [
+    ButtonSegment(value: 1, label: Text('1')),
+    ButtonSegment(value: 5, label: Text('5')),
+    ButtonSegment(value: 10, label: Text('10')),
+  ],
+  selected: {_passo},
+  onSelectionChanged: (escolha) =&gt;
+      setState(() =&gt; _passo = escolha.first),
+),
+</pre>
+<dl class="anatomy">
+  <dt>SegmentedButton&lt;int&gt;</dt><dd>O <code>&lt;int&gt;</code> diz o tipo do valor de cada segmento.</dd>
+  <dt>segments: [ButtonSegment(value: 1, label: Text('1')), …]</dt><dd>Os segmentos: o valor de cada um e o que aparece escrito.</dd>
+  <dt>selected: {_passo}</dt><dd>Quais estão marcados. É um <strong>conjunto</strong> (<code>Set</code>, com chaves <code>{}</code>), porque o <code>SegmentedButton</code> também permite marcar vários. Aqui, sempre um.</dd>
+  <dt>onSelectionChanged: (escolha) =&gt; …</dt><dd>Chamado quando a pessoa toca num segmento. <code>escolha</code> é o novo conjunto; <code>escolha.first</code>, o valor escolhido.</dd>
+</dl>
+
+<h2>Passo 4: cor, meta e o Zerar inteligente</h2>
+<p>A cor do número sai de uma função que olha o valor:</p>
+<pre class="file" data-file="lib/main.dart (passo 4, a cor)">  Color _corDoValor(ColorScheme cores) {
+    if (_valor &lt; 0) return cores.error;
+    if (_valor &gt;= meta) return Colors.green.shade700;
+    return cores.onSurface;
+  }
+</pre>
+<ul>
+  <li>Negativo: <code>cores.error</code>, o vermelho de erro do tema.</li>
+  <li>Bateu a meta: verde-escuro.</li>
+  <li>No meio: <code>cores.onSurface</code>, a cor normal do texto.</li>
+</ul>
+<p>A frase da meta usa o operador ternário (<code>condição ? se_sim : se_não</code>):</p>
+<pre class="file" data-file="lib/main.dart (passo 4, a frase)">Text(
+  _valor &gt;= meta ? 'Meta batida! 🎉' : 'Meta: $meta',
+  style: const TextStyle(fontSize: 20),
+),
+</pre>
+<p>E o Zerar fica <strong>desligado</strong> quando não há o que zerar. Em Flutter, um botão com <code>onPressed: null</code> aparece apagado e não responde:</p>
+<pre class="file" data-file="lib/main.dart (passo 4, o Zerar)">TextButton(
+  onPressed: _valor == 0 ? null : _zerar,
+  child: const Text('Zerar'),
+),
+</pre>
+
+<hr>
+
+<h2>O app completo</h2>
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ContadorApp());
+
+class ContadorApp extends StatelessWidget {
+  const ContadorApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Contador Turbinado',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+      ),
+      home: const TelaContador(),
+    );
+  }
+}
+
+class TelaContador extends StatefulWidget {
+  const TelaContador({super.key});
+
+  @override
+  State&lt;TelaContador&gt; createState() =&gt; _TelaContadorState();
+}
+
+class _TelaContadorState extends State&lt;TelaContador&gt; {
+  static const meta = 10;
+  int _valor = 0;
+  int _passo = 1;
+
+  void _somar() =&gt; setState(() =&gt; _valor += _passo);
+  void _subtrair() =&gt; setState(() =&gt; _valor -= _passo);
+  void _zerar() =&gt; setState(() =&gt; _valor = 0);
+
+  Color _corDoValor(ColorScheme cores) {
+    if (_valor &lt; 0) return cores.error;
+    if (_valor &gt;= meta) return Colors.green.shade700;
+    return cores.onSurface;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cores = Theme.of(context).colorScheme;
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Contador Turbinado'),
+        backgroundColor: cores.primaryContainer,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              '$_valor',
+              key: const Key('valor'),
+              style: TextStyle(
+                fontSize: 96,
+                fontWeight: FontWeight.bold,
+                color: _corDoValor(cores),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _valor &gt;= meta ? 'Meta batida! 🎉' : 'Meta: $meta',
+              style: const TextStyle(fontSize: 20),
+            ),
+            const SizedBox(height: 32),
+            const Text('Passo'),
+            const SizedBox(height: 8),
+            SegmentedButton&lt;int&gt;(
+              segments: const [
+                ButtonSegment(value: 1, label: Text('1')),
+                ButtonSegment(value: 5, label: Text('5')),
+                ButtonSegment(value: 10, label: Text('10')),
+              ],
+              selected: {_passo},
+              onSelectionChanged: (escolha) =&gt;
+                  setState(() =&gt; _passo = escolha.first),
+            ),
+            const SizedBox(height: 32),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                OutlinedButton(
+                  onPressed: _subtrair,
+                  child: const Text('Subtrair'),
+                ),
+                const SizedBox(width: 16),
+                FilledButton(
+                  onPressed: _somar,
+                  child: const Text('Somar'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: _valor == 0 ? null : _zerar,
+              child: const Text('Zerar'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<p>O <code>key: const Key('valor')</code> no texto do número parece não fazer nada na tela; ele vai salvar os testes, lá no fim. O app rodando:</p>
+
+<figure class="tela"><img src="assets/telas/projeto-contador-1.png" alt="App Contador Turbinado: barra do topo lilás-clara com o título, o número 0 enorme em preto no meio, 'Meta: 10' embaixo, o rótulo 'Passo' e o seletor com 1 marcado, 5 e 10, os botões 'Subtrair' (contorno) e 'Somar' (preenchido, índigo) lado a lado e o 'Zerar' apagado embaixo" width="390" height="844" loading="lazy"><figcaption>Ao abrir: valor 0, passo 1 marcado, e o <strong>Zerar apagado</strong> (não há o que zerar).</figcaption></figure>
+
+<figure class="tela"><img src="assets/telas/projeto-contador-2.png" alt="O mesmo app mostrando o número 3 em preto, 'Meta: 10', passo 1 marcado e o botão Zerar agora com a cor índigo, ativo" width="390" height="844" loading="lazy"><figcaption>Três toques em Somar: 3. O Zerar acendeu.</figcaption></figure>
+
+<figure class="tela"><img src="assets/telas/projeto-contador-3.png" alt="O app com o número 8 em preto, 'Meta: 10', e o segmento 5 marcado com um tique no seletor de passo" width="390" height="844" loading="lazy"><figcaption>Passo 5 escolhido (o segmento ganha um ✓) e mais um Somar: 3 + 5 = 8.</figcaption></figure>
+
+<figure class="tela"><img src="assets/telas/projeto-contador-4.png" alt="O app com o número -5 enorme em vermelho, 'Meta: 10', passo 5 marcado" width="390" height="844" loading="lazy"><figcaption>Zerar e depois Subtrair (com passo 5): -5, em <strong>vermelho</strong>, a cor de erro do tema.</figcaption></figure>
+
+<figure class="tela"><img src="assets/telas/projeto-contador-5.png" alt="O app com o número 10 enorme em verde, a frase 'Meta batida! 🎉' embaixo e o segmento 10 marcado no seletor de passo" width="390" height="844" loading="lazy"><figcaption>Zerar, passo 10 e Somar: 10, em <strong>verde</strong>, e a frase vira "Meta batida! 🎉".</figcaption></figure>
+
+<div class="tryflutter" data-goal="src:static\s+const\s+meta\s*=\s*5\s*;">
+<p class="try-task"><strong>Missão:</strong> a Ana achou a meta de 10 longe demais para o sobrinho de 5 anos. Mude a meta para <strong>5</strong>. Depois rode, escolha o passo 5 e toque em Somar: a comemoração deve aparecer com um toque só.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ContadorApp());
+
+class ContadorApp extends StatelessWidget {
+  const ContadorApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Contador Turbinado',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+      ),
+      home: const TelaContador(),
+    );
+  }
+}
+
+class TelaContador extends StatefulWidget {
+  const TelaContador({super.key});
+
+  @override
+  State&lt;TelaContador&gt; createState() =&gt; _TelaContadorState();
+}
+
+class _TelaContadorState extends State&lt;TelaContador&gt; {
+  static const meta = 10;
+  int _valor = 0;
+  int _passo = 1;
+
+  void _somar() =&gt; setState(() =&gt; _valor += _passo);
+  void _subtrair() =&gt; setState(() =&gt; _valor -= _passo);
+  void _zerar() =&gt; setState(() =&gt; _valor = 0);
+
+  Color _corDoValor(ColorScheme cores) {
+    if (_valor &lt; 0) return cores.error;
+    if (_valor &gt;= meta) return Colors.green.shade700;
+    return cores.onSurface;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cores = Theme.of(context).colorScheme;
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Contador Turbinado'),
+        backgroundColor: cores.primaryContainer,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              '$_valor',
+              key: const Key('valor'),
+              style: TextStyle(
+                fontSize: 96,
+                fontWeight: FontWeight.bold,
+                color: _corDoValor(cores),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _valor &gt;= meta ? 'Meta batida! 🎉' : 'Meta: $meta',
+              style: const TextStyle(fontSize: 20),
+            ),
+            const SizedBox(height: 32),
+            const Text('Passo'),
+            const SizedBox(height: 8),
+            SegmentedButton&lt;int&gt;(
+              segments: const [
+                ButtonSegment(value: 1, label: Text('1')),
+                ButtonSegment(value: 5, label: Text('5')),
+                ButtonSegment(value: 10, label: Text('10')),
+              ],
+              selected: {_passo},
+              onSelectionChanged: (escolha) =&gt;
+                  setState(() =&gt; _passo = escolha.first),
+            ),
+            const SizedBox(height: 32),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                OutlinedButton(
+                  onPressed: _subtrair,
+                  child: const Text('Subtrair'),
+                ),
+                const SizedBox(width: 16),
+                FilledButton(
+                  onPressed: _somar,
+                  child: const Text('Somar'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: _valor == 0 ? null : _zerar,
+              child: const Text('Zerar'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const ContadorApp());
+
+class ContadorApp extends StatelessWidget {
+  const ContadorApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Contador Turbinado',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+      ),
+      home: const TelaContador(),
+    );
+  }
+}
+
+class TelaContador extends StatefulWidget {
+  const TelaContador({super.key});
+
+  @override
+  State&lt;TelaContador&gt; createState() =&gt; _TelaContadorState();
+}
+
+class _TelaContadorState extends State&lt;TelaContador&gt; {
+  static const meta = 5;
+  int _valor = 0;
+  int _passo = 1;
+
+  void _somar() =&gt; setState(() =&gt; _valor += _passo);
+  void _subtrair() =&gt; setState(() =&gt; _valor -= _passo);
+  void _zerar() =&gt; setState(() =&gt; _valor = 0);
+
+  Color _corDoValor(ColorScheme cores) {
+    if (_valor &lt; 0) return cores.error;
+    if (_valor &gt;= meta) return Colors.green.shade700;
+    return cores.onSurface;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cores = Theme.of(context).colorScheme;
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Contador Turbinado'),
+        backgroundColor: cores.primaryContainer,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              '$_valor',
+              key: const Key('valor'),
+              style: TextStyle(
+                fontSize: 96,
+                fontWeight: FontWeight.bold,
+                color: _corDoValor(cores),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _valor &gt;= meta ? 'Meta batida! 🎉' : 'Meta: $meta',
+              style: const TextStyle(fontSize: 20),
+            ),
+            const SizedBox(height: 32),
+            const Text('Passo'),
+            const SizedBox(height: 8),
+            SegmentedButton&lt;int&gt;(
+              segments: const [
+                ButtonSegment(value: 1, label: Text('1')),
+                ButtonSegment(value: 5, label: Text('5')),
+                ButtonSegment(value: 10, label: Text('10')),
+              ],
+              selected: {_passo},
+              onSelectionChanged: (escolha) =&gt;
+                  setState(() =&gt; _passo = escolha.first),
+            ),
+            const SizedBox(height: 32),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                OutlinedButton(
+                  onPressed: _subtrair,
+                  child: const Text('Subtrair'),
+                ),
+                const SizedBox(width: 16),
+                FilledButton(
+                  onPressed: _somar,
+                  child: const Text('Somar'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: _valor == 0 ? null : _zerar,
+              child: const Text('Zerar'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+<figure class="tela"><img src="assets/telas/projeto-contador-6.png" alt="O app com a meta 5: o número 5 em verde e 'Meta batida! 🎉', com o segmento 5 marcado" width="390" height="844" loading="lazy"><figcaption>O resultado esperado com a meta 5: passo 5 e um toque em Somar.</figcaption></figure>
+
+<hr>
+
+<h2>Testando o projeto</h2>
+<p>A Ana escreveu três testes. O primeiro, na primeira versão, era assim:</p>
+<pre class="file" data-file="test/contador_test.dart (primeira versão, trecho)">  testWidgets('começa em 0 e soma de 1 em 1', (WidgetTester tester) async {
+    await tester.pumpWidget(const ContadorApp());
+    expect(find.text('0'), findsOneWidget);
+
+    await tester.tap(find.text('Somar'));
+    await tester.pump();
+    expect(find.text('1'), findsOneWidget);
+  });
+</pre>
+<p>E falhou:</p>
+<pre class="term">$ flutter test
+00:00 +0: loading /home/ana/contador_turbinado/test/contador_test.dart
+00:00 +0: começa em 0 e soma de 1 em 1
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following TestFailure was thrown running a test:
+Expected: exactly one matching candidate
+  Actual: _TextWidgetFinder:&lt;Found 2 widgets with text "1": [
+            Text("1", inherit: true, color: Color(alpha: 1.0000, red: 0.1059, green: 0.1059, blue:
+0.1294, colorSpace: ColorSpace.sRGB), size: 96.0, weight: 700, dependencies: [DefaultSelectionStyle,
+DefaultTextStyle, MediaQuery]),
+            Text("1", dependencies: [DefaultSelectionStyle, DefaultTextStyle, MediaQuery]),
+          ]&gt;
+   Which: is too many
+«…»
+00:01 +0 -1: começa em 0 e soma de 1 em 1 [E]
+  Test failed. See exception logs above.
+  The test description was: começa em 0 e soma de 1 em 1
+
+00:01 +0 -1: passo 10 bate a meta com um toque
+00:01 +1 -1: Zerar volta para 0
+00:01 +2 -1: Some tests failed.
+</pre>
+<p>"Esperado: exatamente um. Achei <strong>2</strong> textos <code>"1"</code>: um de tamanho 96, negrito (o valor), e outro sem estilo próprio. Ou seja: <strong>demais</strong> (<em>is too many</em>)." O segundo <code>"1"</code> é o rótulo do segmento <strong>1</strong> do seletor de passo! O app está certo; o <strong>teste</strong> é que procurava de um jeito ambíguo. É por isso que o texto do valor ganhou a chave <code>Key('valor')</code>: agora o teste lê exatamente aquele <code>Text</code>:</p>
+
+<pre class="file" data-file="test/contador_test.dart">import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import 'package:contador_turbinado/main.dart';
+
+void main() {
+  testWidgets('começa em 0 e soma de 1 em 1', (WidgetTester tester) async {
+    await tester.pumpWidget(const ContadorApp());
+    expect(find.text('0'), findsOneWidget);
+
+    await tester.tap(find.text('Somar'));
+    await tester.pump();
+    expect(tester.widget&lt;Text&gt;(find.byKey(const Key('valor'))).data, '1');
+  });
+
+  testWidgets('passo 10 bate a meta com um toque', (WidgetTester tester) async {
+    await tester.pumpWidget(const ContadorApp());
+
+    await tester.tap(find.text('10'));
+    await tester.pump();
+    await tester.tap(find.text('Somar'));
+    await tester.pump();
+
+    expect(find.text('Meta batida! 🎉'), findsOneWidget);
+  });
+
+  testWidgets('Zerar volta para 0', (WidgetTester tester) async {
+    await tester.pumpWidget(const ContadorApp());
+
+    await tester.tap(find.text('Subtrair'));
+    await tester.pump();
+    expect(find.text('-1'), findsOneWidget);
+
+    await tester.tap(find.text('Zerar'));
+    await tester.pump();
+    expect(find.text('0'), findsOneWidget);
+  });
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>tester.widget&lt;Text&gt;(find.byKey(const Key('valor')))</dt><dd>Pega o widget <code>Text</code> que tem a chave <code>valor</code>.</dd>
+  <dt>.data</dt><dd>O texto que ele mostra. Compara com <code>'1'</code>: <code>expect(valor, esperado)</code> funciona com qualquer valor, não só com finders.</dd>
+  <dt>find.text('10') e depois find.text('Somar')</dt><dd>No segundo teste, toca no segmento 10 e em Somar. O <code>'10'</code> só aparece uma vez na tela (no seletor), então aqui o <code>find.text</code> serve.</dd>
+</dl>
+
+<pre class="term">$ flutter test
+00:00 +0: loading /home/ana/contador_turbinado/test/contador_test.dart
+00:00 +0: começa em 0 e soma de 1 em 1
+00:00 +1: passo 10 bate a meta com um toque
+00:01 +2: Zerar volta para 0
+00:01 +3: All tests passed!
+$ flutter analyze
+Analyzing contador_turbinado...
+No issues found! (ran in 5.4s)
+</pre>
+<p>Três testes passando, e o analisador sem nenhuma reclamação.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>O número não muda ao tocar</strong>
+<p>Você escreveu <code>void _somar() { _valor += _passo; }</code>, sem o <code>setState</code>. O valor muda na memória, mas ninguém avisou o Flutter para redesenhar. <strong>Como resolver:</strong> <code>setState(() =&gt; _valor += _passo)</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>O seletor não marca o segmento tocado</strong>
+<p>O <code>onSelectionChanged</code> está vazio, ou não chama <code>setState</code>. O <code>SegmentedButton</code> só mostra o que está em <code>selected</code>; quem muda isso é você. <strong>Como resolver:</strong> <code>onSelectionChanged: (escolha) =&gt; setState(() =&gt; _passo = escolha.first)</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Teste acha "too many"</strong>
+<p>Como você viu acima: o texto procurado aparece em mais de um lugar. <strong>Como resolver:</strong> dê uma <code>Key</code> ao widget que interessa e procure por ela.</p>
+</div>
+
+<div class="cenario">
+<strong>A meta virou parte do estado</strong>
+<p>Se a meta ficasse como <code>int _meta = 10;</code> no estado sem nunca mudar, o app funcionaria, mas o código mentiria ("isto muda"). <strong>Como resolver:</strong> o que não muda é <code>static const</code>; o que é calculado (cor, frase) não vai no estado.</p>
+</div>
+
+<hr>
+
+<h2>Desafios para turbinar mais</h2>
+<ol>
+  <li><strong>Limite mínimo:</strong> não deixe o valor passar de -10 (desligue o Subtrair quando chegar lá, como o Zerar).</li>
+  <li><strong>Histórico:</strong> guarde numa lista os últimos 5 valores e mostre embaixo (veja <a href="listview.html">ListView</a>).</li>
+  <li><strong>Meta escolhida:</strong> troque a constante por um <code>Slider</code> de 5 a 50 (veja <a href="slider-dropdown.html">Slider e Dropdown</a>). Agora a meta <strong>muda</strong>: ela vai para o estado.</li>
+  <li><strong>Lembrar o valor:</strong> ao fechar e abrir o app, o valor volta. Veja <a href="shared-preferences.html">SharedPreferences</a>.</li>
+  <li><strong>Mais testes:</strong> escreva um que confira a cor vermelha quando o valor fica negativo (<code>tester.widget&lt;Text&gt;(…).style!.color</code>).</li>
+</ol>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. O botão desligado</h3>
+<p>Complete para o Zerar ficar desligado quando o valor for 0:</p>
+<div class="ex-code">onPressed: _valor == 0 ? <input data-answer="null" aria-label="valor"> : _zerar,</div>
+</div>
+
+<div class="exercise">
+<h3>2. A conta</h3>
+<p>Valor 3, passo 5 escolhido. A Ana toca em Subtrair duas vezes. Qual o valor?</p>
+<div class="ex-code"><input data-answer="-7" aria-label="valor"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. Neste app, o que vai no estado (<code>State</code>)?</p>
+<label><input type="radio" name="q3"> O valor, o passo, a meta, a cor e a frase</label>
+<label><input type="radio" name="q3"> Só o valor e o passo</label>
+<label><input type="radio" name="q3"> Só a cor</label>
+<label><input type="radio" name="q3"> Nada: o app é <code>StatelessWidget</code></label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. Por que <code>selected: {_passo}</code> usa chaves?</p>
+<label><input type="radio" name="q4"> É um erro de digitação</label>
+<label><input type="radio" name="q4"> Para criar um <code>Map</code></label>
+<label><input type="radio" name="q4"> Para interpolar o valor</label>
+<label><input type="radio" name="q4"> É um <code>Set</code>: o <code>SegmentedButton</code> aceita vários segmentos marcados</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. O teste <code>expect(find.text('1'), findsOneWidget)</code> falhou com <em>Found 2 widgets … is too many</em>. Por quê?</p>
+<label><input type="radio" name="q5"> O rótulo "1" do seletor de passo também é um <code>Text</code> com "1"</label>
+<label><input type="radio" name="q5"> Faltou o <code>pump()</code></label>
+<label><input type="radio" name="q5"> O app somou duas vezes</label>
+<label><input type="radio" name="q5"> O <code>find.text</code> não funciona com números</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Planeje antes: desenhe a árvore e separe o que <strong>muda</strong> (estado: valor e passo) do que é <strong>fixo</strong> (<code>static const meta</code>) e do que é <strong>calculado</strong> (cor, frase, botão ligado).</li>
+  <li>Cada ação é uma função pequena com <code>setState</code>.</li>
+  <li><code>SegmentedButton</code> escolhe uma opção entre poucas; <code>onPressed: null</code> desliga um botão.</li>
+  <li>Testes pegam ambiguidades: uma <code>Key</code> no widget certo deixa o teste firme.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
