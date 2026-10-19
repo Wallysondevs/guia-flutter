@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter Row e Column — enfileirar widgets na horizontal e na vertical | Guia Flutter</title>
+<meta name="description" content="Row e Column no Flutter para quem nunca fez um app: children, a lista de filhos, Column para empilhar e Row para enfileirar, uma dentro da outra, mainAxisSize, a árvore de widgets e os erros reais (overflow com as listras amarelas e pretas, children sem colchetes), com as telas fotografadas no Flutter de verdade.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">Row e Column</span></h1>
+
+<p class="intro">Até agora, cada tela teve <strong>um</strong> widget no <code>body</code>: um texto, uma imagem, um <code>Container</code>. Uma tela de verdade tem vários: um título, uma foto, uma lista de ingredientes, dois botões lado a lado. Para colocar <strong>vários</strong> widgets juntos, o Flutter tem duas peças básicas: a <code>Column</code> ("coluna"), que empilha os filhos <strong>um embaixo do outro</strong>, e a <code>Row</code> ("linha", no sentido de fileira), que os enfileira <strong>um do lado do outro</strong>. Quase toda tela que você vai montar é feita de <code>Row</code>s e <code>Column</code>s, uma dentro da outra.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é o <code>children</code> (a lista de filhos) e a diferença para o <code>child</code>.</li>
+  <li>Como empilhar widgets com <code>Column</code> e enfileirar com <code>Row</code>.</li>
+  <li>Como colocar uma <code>Row</code> dentro de uma <code>Column</code> (e o contrário), e ler a árvore de widgets.</li>
+  <li>Quanto espaço cada uma ocupa: o <code>mainAxisSize</code>.</li>
+  <li>Os erros reais: o <strong>overflow</strong> (as listras amarelas e pretas) e o <code>children</code> sem colchetes.</li>
+</ul>
+</div>
+
+<p>Todos os apps desta aula são um <code>lib/main.dart</code> completo, compilados pelo Flutter <span class="versao">Flutter 3.47</span> do laboratório para a web e fotografados no navegador, em tamanho de celular (390 × 844).</p>
+
+<hr>
+
+<h2>A ideia: a pilha de pratos e a prateleira</h2>
+<p>Na cozinha da Ana, os pratos ficam <strong>empilhados</strong>: um em cima do outro, de cima para baixo. As latas de tempero ficam na <strong>prateleira</strong>: uma do lado da outra, da esquerda para a direita.</p>
+<ul>
+  <li><code>Column</code> é a pilha: os filhos vão de <strong>cima para baixo</strong>, na ordem em que você os escreveu.</li>
+  <li><code>Row</code> é a prateleira: os filhos vão da <strong>esquerda para a direita</strong>, na ordem em que você os escreveu.</li>
+</ul>
+<p>As duas recebem os filhos do mesmo jeito: uma <strong>lista</strong>, no parâmetro <code>children</code> ("filhos", no plural). Compare com o <code>Padding</code> e o <code>Container</code> da aula anterior, que têm <code>child</code> (no singular): <strong>um</strong> filho só.</p>
+
+<hr>
+
+<h2>1. <code>Column</code>: um embaixo do outro</h2>
+<p>A lista de compras da Ana, com três itens:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lista de compras')),
+        body: const Column(
+          children: [
+            Text('Arroz', style: TextStyle(fontSize: 24)),
+            Text('Feijão', style: TextStyle(fontSize: 24)),
+            Text('Café', style: TextStyle(fontSize: 24)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>Column(…)</dt><dd>A coluna: empilha os filhos de cima para baixo.</dd>
+  <dt>children: [ … ]</dt><dd>A lista de filhos, entre <strong>colchetes</strong>, como qualquer <code>List</code> do Dart (o tipo é <code>List&lt;Widget&gt;</code>). Cada item é um widget, separado por vírgula.</dd>
+  <dt>Text('Arroz', …)</dt><dd>O primeiro filho: fica em cima. A ordem na lista é a ordem na tela.</dd>
+  <dt>a vírgula no fim</dt><dd>A vírgula depois do último filho (<code>…'Café', …),</code>) é opcional, mas é um costume do Flutter: com ela, o formatador do Dart (<code>dart format</code>) põe um filho por linha, e acrescentar um item novo mexe numa linha só.</dd>
+  <dt>const Column</dt><dd>Todos os filhos são constantes, então a coluna inteira pode ser <code>const</code>.</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/row-column-1.png" alt="Barra Lista de compras e, embaixo, as palavras Arroz, Feijão e Café, uma embaixo da outra, no alto da tela e perto da borda esquerda; Arroz e Café um pouco recuados em relação a Feijão" width="390" height="844" loading="lazy"><figcaption>Os três itens, um embaixo do outro, no alto da tela e à esquerda.</figcaption></figure>
+
+<p>Repare em duas coisas na foto. Primeiro, os itens ficaram <strong>no alto</strong> da tela: a coluna começa em cima. Segundo, olhe de perto: <code>Arroz</code> e <code>Café</code> estão um pouquinho para a direita do <code>Feijão</code>. É que a <code>Column</code> ficou só com a largura do filho mais largo (o <code>Feijão</code>), encostada à esquerda, e os outros dois foram <strong>centralizados</strong> dentro dessa largura. Os dois comportamentos têm nome e dá para mudar: é o assunto da próxima aula, <a href="alinhamento.html">Alinhamento (mainAxis e crossAxis)</a>.</p>
+
+<hr>
+
+<h2>2. <code>Row</code>: um do lado do outro</h2>
+<p>Troque <code>Column</code> por <code>Row</code> e os mesmos filhos passam a ficar lado a lado. Aqui, as três latas de tempero da prateleira, cada uma com um ícone:</p>
+
+<pre class="file" data-file="lib/main.dart (só o body)">        body: const Row(
+          children: [
+            Icon(Icons.local_florist, size: 48, color: Colors.green),
+            Icon(Icons.local_fire_department, size: 48, color: Colors.red),
+            Icon(Icons.grain, size: 48, color: Colors.brown),
+          ],
+        ),
+</pre>
+
+<figure class="tela"><img src="assets/telas/row-column-2.png" alt="Barra Temperos e, embaixo, três ícones lado a lado no canto esquerdo: uma flor verde, uma chama vermelha e um punhado de grãos marrons" width="390" height="844" loading="lazy"><figcaption>Três ícones lado a lado, começando da esquerda, no alto da tela.</figcaption></figure>
+
+<p>A <code>Row</code> é exatamente a <code>Column</code> "deitada": tem o mesmo <code>children</code>, os mesmos parâmetros, e o mesmo comportamento, só que na horizontal. Por isso as duas são ensinadas juntas: aprendeu uma, aprendeu a outra.</p>
+
+<div class="tryflutter" data-goal="src:Text\('Leite'">
+<p class="try-task"><strong>Missão:</strong> a Ana esqueceu o leite. Acrescente um quarto item, <code>Text('Leite', style: TextStyle(fontSize: 24))</code>, no fim da lista. Depois, por curiosidade, troque <code>Column</code> por <code>Row</code> e veja os quatro itens ficarem em fila.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lista de compras')),
+        body: const Column(
+          children: [
+            Text('Arroz', style: TextStyle(fontSize: 24)),
+            Text('Feijão', style: TextStyle(fontSize: 24)),
+            Text('Café', style: TextStyle(fontSize: 24)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Lista de compras')),
+        body: const Column(
+          children: [
+            Text('Arroz', style: TextStyle(fontSize: 24)),
+            Text('Feijão', style: TextStyle(fontSize: 24)),
+            Text('Café', style: TextStyle(fontSize: 24)),
+            Text('Leite', style: TextStyle(fontSize: 24)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>3. Uma dentro da outra</h2>
+<p>O poder de verdade aparece quando você <strong>combina</strong> as duas. A ficha de uma receita: o título em cima e, embaixo, duas linhas com um ícone e um texto cada. Ou seja: uma <code>Column</code> cujos filhos são um <code>Text</code> e duas <code>Row</code>s.</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Bolo de cenoura', style: TextStyle(fontSize: 28)),
+              Row(
+                children: [
+                  Icon(Icons.timer),
+                  Text(' 40 minutos', style: TextStyle(fontSize: 18)),
+                ],
+              ),
+              Row(
+                children: [
+                  Icon(Icons.people),
+                  Text(' 8 porções', style: TextStyle(fontSize: 18)),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<p>A <strong>árvore de widgets</strong> desse <code>body</code>, quem está dentro de quem:</p>
+<pre>Padding
+└── Column
+    ├── Text('Bolo de cenoura')
+    ├── Row
+    │   ├── Icon(timer)
+    │   └── Text(' 40 minutos')
+    └── Row
+        ├── Icon(people)
+        └── Text(' 8 porções')</pre>
+
+<dl class="anatomy">
+  <dt>Padding → Column</dt><dd>O respiro de 16 em volta de tudo (aula <a href="padding-margin.html">Padding e Margem</a>).</dd>
+  <dt>crossAxisAlignment: CrossAxisAlignment.start</dt><dd>Encosta os filhos da coluna à <strong>esquerda</strong>, em vez de centralizar. Por enquanto, aceite essa linha; a próxima aula explica o nome.</dd>
+  <dt>Row(children: [Icon, Text])</dt><dd>Uma fileira dentro da coluna: o ícone e, à direita dele, o texto. O espaço no começo de <code>' 40 minutos'</code> afasta o texto do ícone (um jeito simples; na aula <a href="sizedbox.html">SizedBox e Spacer</a> você aprende o jeito certo).</dd>
+</dl>
+
+<figure class="tela"><img src="assets/telas/row-column-3.png" alt="Barra Receitas da Ana; embaixo, com margem, o título grande Bolo de cenoura e duas linhas menores: um cronômetro com 40 minutos e um ícone de pessoas com 8 porções, tudo alinhado à esquerda" width="390" height="844" loading="lazy"><figcaption>A ficha da receita: título grande e duas linhas com ícone e texto, tudo encostado à esquerda.</figcaption></figure>
+
+<div class="tip">
+<strong>Dica: desenhe a árvore antes do código</strong>
+<p>Olhe uma tela (de um app que você usa, ou um desenho no papel) e pergunte: "isto está empilhado ou lado a lado?". O que está empilhado vira <code>Column</code>; o que está lado a lado vira <code>Row</code>; repita para cada pedaço. Em pouco tempo você "enxerga" as <code>Row</code>s e <code>Column</code>s em qualquer app.</p>
+</div>
+
+<hr>
+
+<h2>4. Quanto espaço elas ocupam: <code>mainAxisSize</code></h2>
+<p>Uma <code>Column</code> ocupa, por padrão, <strong>toda a altura</strong> que puder, mesmo que os filhos sejam pequenos. Uma <code>Row</code> ocupa toda a <strong>largura</strong>. Para ver isso, este app pinta o fundo de cada uma (com um <code>ColoredBox</code>), uma com o padrão e outra com <code>mainAxisSize: MainAxisSize.min</code> ("tamanho mínimo"):</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('mainAxisSize')),
+        body: const Column(
+          children: [
+            ColoredBox(
+              color: Colors.amber,
+              child: Row(
+                children: [Text('max ', style: TextStyle(fontSize: 22)), Icon(Icons.star)],
+              ),
+            ),
+            SizedBox(height: 16),
+            ColoredBox(
+              color: Colors.lightGreen,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [Text('min ', style: TextStyle(fontSize: 22)), Icon(Icons.star)],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<figure class="tela"><img src="assets/telas/row-column-4.png" alt="Uma faixa amarela da largura toda da tela com o texto max e uma estrela à esquerda; abaixo, centralizada, uma caixa verde pequena, só do tamanho do texto min e da estrela" width="390" height="844" loading="lazy"><figcaption>Amarelo: a Row com o padrão (max) ocupa a largura toda. Verde: com min, só o tamanho dos filhos (e, por isso, a Column a centraliza).</figcaption></figure>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Valor</th><th>Na Column</th><th>Na Row</th></tr>
+<tr><td><code>MainAxisSize.max</code> (o padrão)</td><td>Ocupa toda a altura disponível</td><td>Ocupa toda a largura disponível</td></tr>
+<tr><td><code>MainAxisSize.min</code></td><td>Só a altura somada dos filhos</td><td>Só a largura somada dos filhos</td></tr>
+</table>
+</div>
+<p>(O <code>SizedBox(height: 16)</code> do meio é só um espaço vazio entre as duas; ele tem aula própria.) Na prática, você vai usar <code>min</code> quando a <code>Row</code> ou a <code>Column</code> estiver dentro de algo que deve "abraçar" o conteúdo, como um botão ou um cartão.</p>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer</h2>
+<p>A <code>Row</code> e a <code>Column</code> não são as únicas formas de juntar vários widgets. Cada uma resolve um problema diferente:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Qual usar</th></tr>
+<tr><td>Poucos itens, empilhados, que cabem na tela</td><td><code>Column</code></td></tr>
+<tr><td>Poucos itens lado a lado, que cabem na largura</td><td><code>Row</code></td></tr>
+<tr><td>Muitos itens, ou itens que podem não caber (a lista de compras do mês)</td><td><code>ListView</code>, que rola (aula <a href="listview.html">ListView</a>)</td></tr>
+<tr><td>Itens lado a lado que devem "quebrar a linha" quando acabar o espaço (etiquetas, filtros)</td><td><code>Wrap</code></td></tr>
+<tr><td>Um widget <strong>em cima</strong> do outro (texto sobre a foto)</td><td><code>Stack</code> (aula <a href="stack.html">Stack e Positioned</a>)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Não coube: o overflow (as listras amarelas e pretas)</strong>
+<p>A <code>Row</code> não quebra linha e não rola. Se os filhos forem mais largos que a tela, ela mostra o que cabe e pinta uma faixa de aviso no lado que estourou:</p>
+<pre class="file" data-file="lib/main.dart (só o body)">        body: const Row(
+          children: [
+            Icon(Icons.shopping_cart, size: 40),
+            Text('Arroz, feijão, café, leite, açúcar e farinha de trigo', style: TextStyle(fontSize: 24)),
+          ],
+        ),
+</pre>
+<figure class="tela"><img src="assets/telas/row-column-5.png" alt="O carrinho de compras e, ao lado, o texto 'Arroz, feijão, café, leite, açúc' cortado na borda direita, onde aparece um retângulo com listras diagonais amarelas e pretas e, em letras pequenas na vertical, RIGHT OVERFLOWED BY" width="390" height="844" loading="lazy"><figcaption>O overflow: o texto é cortado na borda direita e aparece a faixa listrada, com o aviso escrito de lado.</figcaption></figure>
+<p>A faixa só aparece no modo de depuração (o do <code>flutter run</code>). Ao mesmo tempo, o console mostra a explicação completa. Os trechos principais:</p>
+<pre class="term">══╡ EXCEPTION CAUGHT BY RENDERING LIBRARY ╞═════════════════════════════════════════════════════════
+The following assertion was thrown during layout:
+A RenderFlex overflowed by 172 pixels on the right.
+«  (duas linhas sobre "widget creation tracking")
+The overflowing RenderFlex has an orientation of Axis.horizontal.
+The edge of the RenderFlex that is overflowing has been marked in the rendering with a yellow and
+black striped pattern. This is usually caused by the contents being too big for the RenderFlex.
+Consider applying a flex factor (e.g. using an Expanded widget) to force the children of the
+RenderFlex to fit within the available space instead of being sized to their natural size.
+«  (mais conselhos e os detalhes da Row: o creator, as constraints, o size…)
+  constraints: BoxConstraints(0.0&lt;=w&lt;=390.0, 0.0&lt;=h&lt;=788.0)
+  size: Size(390.0, 40.0)
+  direction: horizontal
+◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤
+════════════════════════════════════════════════════════════════════════════════════════════════════
+</pre>
+<dl class="anatomy">
+  <dt>A RenderFlex overflowed by 172 pixels on the right.</dt><dd>"Um RenderFlex transbordou 172 pixels à direita." <code>RenderFlex</code> é o nome, por dentro do Flutter, da peça que desenha a <code>Row</code> e a <code>Column</code>. Os filhos somados precisavam de 172 pixels a mais do que os 390 da tela.</dd>
+  <dt>orientation of Axis.horizontal</dt><dd>Foi uma fileira (horizontal), ou seja, uma <code>Row</code>.</dd>
+  <dt>marked … with a yellow and black striped pattern</dt><dd>"A borda que transbordou foi marcada com listras amarelas e pretas": é a faixa da foto.</dd>
+  <dt>Consider applying a flex factor (e.g. using an Expanded widget)</dt><dd>O próprio Flutter sugere o conserto: usar um <code>Expanded</code>, que obriga o filho a caber no espaço que sobra.</dd>
+  <dt>constraints: BoxConstraints(0.0&lt;=w&lt;=390.0, …)</dt><dd>A Row podia ter no máximo 390 de largura (a tela). Essas "restrições" são o assunto da aula <a href="constraints.html">Como o Flutter Calcula Tamanhos</a>.</dd>
+</dl>
+<p><strong>Como consertar:</strong> deixe o texto ocupar só o espaço que sobra, embrulhando-o num <code>Expanded</code> (aula <a href="expanded.html">Expanded e Flexible</a>), ou troque a <code>Row</code> por uma <code>Column</code>. O erro tem uma aula inteira: <a href="overflow.html">O Famoso Erro de Overflow</a>.</p>
+</div>
+
+<div class="cenario">
+<strong>Esqueceu os colchetes do <code>children</code></strong>
+<pre class="file" data-file="lib/main.dart (trecho)">        body: const Column(
+          children: Text('Arroz'),
+        ),
+</pre>
+<pre class="term">$ flutter build web --debug
+Target dart2js failed: ProcessException: Process exited abnormally with exit code 1:
+lib/main.dart:15:21:
+Error: The argument type 'Text' can't be assigned to the parameter type 'List&lt;Widget&gt;'.
+ - 'Text' is from 'package:flutter/src/widgets/text.dart' (…).
+ - 'List' is from 'dart:core'.
+ - 'Widget' is from 'package:flutter/src/widgets/framework.dart' (…).
+          children: Text('Arroz'),
+                    ^
+Error: Compilation failed.
+Error: Failed to compile application for the Web.
+</pre>
+<p>"O argumento do tipo <code>Text</code> não pode ser passado para o parâmetro do tipo <code>List&lt;Widget&gt;</code>." O <code>children</code> espera uma <strong>lista</strong> de widgets, e recebeu um widget solto. A linha 15, coluna 21, é onde começa o <code>Text</code> (o <code>^</code> aponta para ele). As linhas com <code>is from</code> só dizem onde cada tipo foi definido. <strong>Como consertar:</strong> <code>children</code> é sempre uma lista, mesmo com um filho só: <code>children: [Text('Arroz')]</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Escreveu <code>child</code> numa <code>Column</code></strong>
+<pre class="file" data-file="lib/main.dart (trecho)">        body: const Column(
+          child: Text('Arroz'),
+        ),
+</pre>
+<pre class="term">$ flutter build web --debug
+Target dart2js failed: ProcessException: Process exited abnormally with exit code 1:
+lib/main.dart:15:11:
+Error: No named parameter with the name 'child'.
+          child: Text('Arroz'),
+          ^^^^^
+…/packages/flutter/lib/src/widgets/basic.dart:5897:9:
+Info: Found this candidate, but the arguments don't match.
+  const Column({
+        ^^^^^^
+Error: Compilation failed.
+Error: Failed to compile application for the Web.
+</pre>
+<p>"Não existe parâmetro com o nome <code>child</code>." O <code>Info:</code> mostra o construtor da <code>Column</code> no código do Flutter, para você conferir o que ela aceita. <strong>Como consertar:</strong> <code>Row</code> e <code>Column</code> usam <code>children</code> (vários); <code>Padding</code>, <code>Container</code> e <code>Center</code> usam <code>child</code> (um).</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>O que faz</th></tr>
+<tr><td><code>Column(children: [a, b, c])</code></td><td>Empilha <code>a</code>, <code>b</code> e <code>c</code> de cima para baixo</td></tr>
+<tr><td><code>Row(children: [a, b, c])</code></td><td>Enfileira <code>a</code>, <code>b</code> e <code>c</code> da esquerda para a direita</td></tr>
+<tr><td><code>mainAxisSize: MainAxisSize.min</code></td><td>Ocupa só o tamanho dos filhos (o padrão, <code>max</code>, ocupa tudo)</td></tr>
+<tr><td><code>mainAxisAlignment:</code> / <code>crossAxisAlignment:</code></td><td>Onde os filhos ficam dentro do espaço (aula <a href="alinhamento.html">Alinhamento</a>)</td></tr>
+<tr><td>Faixa amarela e preta + <code>A RenderFlex overflowed…</code></td><td>Os filhos não couberam (aula <a href="overflow.html">Overflow</a>)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete a coluna</h3>
+<div class="ex-code"><input data-answer="Column" aria-label="widget que empilha">(<br>&nbsp;&nbsp;<input data-answer="children" aria-label="parâmetro da lista de filhos">: <input data-answer="[" aria-label="abre a lista">Text('A'), Text('B')],<br>)</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. Para mostrar uma foto com o nome do prato <strong>à direita</strong> dela, qual widget usar?</p>
+<label><input type="radio" name="q2"> <code>Column</code></label>
+<label><input type="radio" name="q2"> <code>Row</code></label>
+<label><input type="radio" name="q2"> <code>Padding</code></label>
+<label><input type="radio" name="q2"> <code>Container</code></label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. Uma <code>Row</code> com textos que não cabem na largura da tela…</p>
+<label><input type="radio" name="q3"> quebra a linha sozinha</label>
+<label><input type="radio" name="q3"> rola para o lado</label>
+<label><input type="radio" name="q3"> corta o conteúdo e mostra a faixa amarela e preta de overflow</label>
+<label><input type="radio" name="q3"> diminui a letra até caber</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. Qual destes widgets tem <code>children</code> (vários filhos)?</p>
+<label><input type="radio" name="q4"> <code>Column</code></label>
+<label><input type="radio" name="q4"> <code>Padding</code></label>
+<label><input type="radio" name="q4"> <code>Container</code></label>
+<label><input type="radio" name="q4"> <code>Center</code></label>
+</div>
+
+<h3>Missão final: a ficha do pudim</h3>
+
+<div class="tryflutter" data-goal="src:Icons\.people;;src:porções">
+<p class="try-task"><strong>Missão:</strong> a ficha do pudim só tem o tempo de preparo. Acrescente, embaixo, uma segunda <code>Row</code> com <code>Icon(Icons.people)</code> e o texto <code>' 8 porções'</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Pudim de leite', style: TextStyle(fontSize: 28)),
+              Row(
+                children: [
+                  Icon(Icons.timer),
+                  Text(' 1 hora', style: TextStyle(fontSize: 18)),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MeuApp());
+
+class MeuApp extends StatelessWidget {
+  const MeuApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Receitas da Ana')),
+        body: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Pudim de leite', style: TextStyle(fontSize: 28)),
+              Row(
+                children: [
+                  Icon(Icons.timer),
+                  Text(' 1 hora', style: TextStyle(fontSize: 18)),
+                ],
+              ),
+              Row(
+                children: [
+                  Icon(Icons.people),
+                  Text(' 8 porções', style: TextStyle(fontSize: 18)),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+
+<figure class="tela"><img src="assets/telas/row-column-6.png" alt="A ficha do Pudim de leite: o título grande e, embaixo, um cronômetro com 1 hora e um ícone de pessoas com 8 porções, tudo à esquerda" width="390" height="844" loading="lazy"><figcaption>O resultado esperado da missão.</figcaption></figure>
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>Column</code> empilha os filhos de cima para baixo; <code>Row</code> os enfileira da esquerda para a direita.</li>
+  <li>As duas recebem uma lista no <code>children</code> (com colchetes); a ordem da lista é a ordem na tela.</li>
+  <li>Telas de verdade são <code>Row</code>s dentro de <code>Column</code>s dentro de <code>Row</code>s: desenhe a árvore antes de escrever.</li>
+  <li>Por padrão elas ocupam todo o espaço do eixo principal; <code>mainAxisSize: MainAxisSize.min</code> faz ocupar só o tamanho dos filhos.</li>
+  <li>Elas não rolam nem quebram linha: o que não cabe vira o <strong>overflow</strong> com listras amarelas e pretas.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
