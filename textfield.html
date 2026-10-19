@@ -1,0 +1,841 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter TextField — campos de texto para a pessoa digitar | Guia Flutter</title>
+<meta name="description" content="O TextField do Flutter para quem nunca fez um app: o campo de texto, o rótulo e a dica (InputDecoration), ler o que foi digitado com onChanged e com TextEditingController, teclado de número e de e-mail, senha escondida, limite de caracteres, várias linhas e os erros reais (TextField dentro de Row sem largura).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Flutter <span class="hl">TextField</span></h1>
+
+<p class="intro">Até aqui, os seus apps só <strong>mostravam</strong> coisas e reagiam a botões. Mas quase todo app precisa que a pessoa <strong>escreva</strong>: o nome no cadastro, a busca, a senha, o item da lista de compras. Para isso existe o <code>TextField</code> ("campo de texto"): a caixinha em que se toca, o teclado sobe e a pessoa digita.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como pôr um <code>TextField</code> na tela e enfeitá-lo com rótulo, dica, ícone e borda (<code>InputDecoration</code>).</li>
+  <li>Duas formas de saber o que a pessoa digitou: <code>onChanged</code> (a cada letra) e <code>TextEditingController</code> (quando você precisar).</li>
+  <li>Como limpar o campo, preencher um valor inicial e por que o controlador precisa de <code>dispose</code>.</li>
+  <li>Como pedir o teclado certo (número, e-mail, telefone), esconder a senha e limitar o tamanho.</li>
+  <li>O erro real mais comum: o <code>TextField</code> dentro de uma <code>Row</code> sem largura.</li>
+</ul>
+</div>
+
+<p>O leitor já viu <a href="stateful.html">StatefulWidget</a> e <a href="setstate.html">setState</a>; vamos precisar dos dois. Os apps rodaram no Flutter do laboratório, e as fotos são das telas de verdade.</p>
+
+<hr>
+
+<h2>A ideia: o formulário de papel</h2>
+<p>Pense numa ficha de papel na recepção do médico. Cada linha em branco tem, em cima, um <strong>rótulo</strong> ("Nome completo"), às vezes um <strong>exemplo</strong> em letra clarinha ("ex.: Ana Souza"), e embaixo um espaço para escrever. O <code>TextField</code> é essa linha em branco. Ele vem em duas partes:</p>
+<ul>
+  <li>o <strong>campo</strong> em si, que guarda o texto e abre o teclado;</li>
+  <li>a <strong>decoração</strong> (<code>InputDecoration</code>): o rótulo, o exemplo, o ícone, a borda e a mensagem de erro.</li>
+</ul>
+<p>E tem uma diferença do papel: a recepcionista só lê a ficha no fim, mas o app pode "espiar" cada letra enquanto ela é escrita.</p>
+
+<hr>
+
+<h2>1. O campo mais simples</h2>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Cadastro()));
+
+class Cadastro extends StatelessWidget {
+  const Cadastro({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Cadastro')),
+      body: const Padding(
+        padding: EdgeInsets.all(16),
+        child: TextField(),
+      ),
+    );
+  }
+}
+</pre>
+
+<p>Um <code>TextField()</code> sem nada: uma linha fininha, que ocupa a largura toda. Tocou nela, a linha fica colorida (o campo ganhou o <strong>foco</strong>) e o teclado do celular sobe.</p>
+
+<figure class="tela"><img src="assets/telas/textfield-1.png" alt="App com o título &#39;Cadastro&#39; e, logo abaixo, só uma linha fina cinza de lado a lado: o campo vazio, sem nenhum texto" width="390" height="844" loading="lazy"><figcaption>Um <code>TextField()</code> sem decoração: só a linha de baixo.</figcaption></figure>
+
+<p>Funciona, mas a pessoa não sabe o que escrever ali. Vamos decorar.</p>
+
+<hr>
+
+<h2>2. Rótulo, dica e ícone: <code>InputDecoration</code></h2>
+
+<pre class="file" data-file="lib/main.dart (trecho)">const TextField(
+  decoration: InputDecoration(
+    labelText: 'Nome',
+    hintText: 'ex.: Ana Souza',
+    helperText: 'Como está no documento',
+    prefixIcon: Icon(Icons.person),
+    border: OutlineInputBorder(),
+  ),
+)
+</pre>
+
+<dl class="anatomy">
+  <dt>decoration: InputDecoration(…)</dt><dd>A "roupa" do campo. Tudo o que fica em volta do texto mora aqui.</dd>
+  <dt>labelText: 'Nome'</dt><dd>O <strong>rótulo</strong>. Com o campo vazio, ele fica dentro da caixa; quando a pessoa toca no campo, ele <strong>sobe</strong> e fica pequeno na borda, para não sumir enquanto ela digita.</dd>
+  <dt>hintText: 'ex.: Ana Souza'</dt><dd>A <strong>dica</strong>, em cinza claro. Só aparece com o campo em foco e vazio; some na primeira letra.</dd>
+  <dt>helperText: '…'</dt><dd>Um texto de <strong>ajuda</strong> pequeno, embaixo do campo, que fica sempre lá.</dd>
+  <dt>prefixIcon: Icon(Icons.person)</dt><dd>Um ícone no começo do campo. Existe também o <code>suffixIcon</code>, no fim (o lugar do "olhinho" da senha, mais abaixo).</dd>
+  <dt>border: OutlineInputBorder()</dt><dd>Uma borda em volta do campo todo, com cantos arredondados. Sem ela, o Material 3 desenha só a linha de baixo.</dd>
+</dl>
+
+<p>Antes de tocar, o rótulo fica dentro da caixa, ao lado do ícone, e a ajuda aparece embaixo:</p>
+<figure class="tela"><img src="assets/telas/textfield-2.png" alt="Campo com borda arredondada, um ícone de pessoa à esquerda e a palavra &#39;Nome&#39; dentro dele; embaixo, em letra pequena, &#39;Como está no documento&#39;" width="390" height="844" loading="lazy"><figcaption>O campo decorado, sem foco.</figcaption></figure>
+<p>Depois que a Ana tocou no campo: o rótulo subiu para a borda, a borda ficou roxa (a cor principal do tema) e a dica apareceu dentro:</p>
+<figure class="tela"><img src="assets/telas/textfield-3.png" alt="O mesmo campo com a borda roxa e mais grossa; o rótulo &#39;Nome&#39; pequeno, em roxo, encaixado na borda de cima; dentro do campo, em cinza, a dica &#39;ex.: Ana Souza&#39;" width="390" height="844" loading="lazy"><figcaption>Com o foco: rótulo no alto, dica dentro.</figcaption></figure>
+
+<div class="tryflutter" data-goal="src:labelText:\s*'E-mail'">
+<p class="try-task"><strong>Missão:</strong> o campo abaixo já tem borda. Dê a ele o rótulo <code>'E-mail'</code> (<code>labelText</code>), a dica <code>'ana@exemplo.com'</code> e o ícone <code>Icons.email</code> no começo.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Cadastro()));
+
+class Cadastro extends StatelessWidget {
+  const Cadastro({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Cadastro')),
+      body: const Padding(
+        padding: EdgeInsets.all(16),
+        child: TextField(
+          decoration: InputDecoration(
+            border: OutlineInputBorder(),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Cadastro()));
+
+class Cadastro extends StatelessWidget {
+  const Cadastro({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Cadastro')),
+      body: const Padding(
+        padding: EdgeInsets.all(16),
+        child: TextField(
+          decoration: InputDecoration(
+            labelText: 'E-mail',
+            hintText: 'ana@exemplo.com',
+            prefixIcon: Icon(Icons.email),
+            border: OutlineInputBorder(),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2>3. Lendo o que foi digitado, letra a letra: <code>onChanged</code></h2>
+<p>O jeito mais direto de saber o que a pessoa escreve é o <code>onChanged</code> ("ao mudar"): uma função que o Flutter chama <strong>a cada letra</strong> digitada ou apagada, com o texto inteiro do campo. A Ana quer um cartão de boas-vindas que mostra o nome enquanto ele é digitado:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: BoasVindas()));
+
+class BoasVindas extends StatefulWidget {
+  const BoasVindas({super.key});
+
+  @override
+  State&lt;BoasVindas&gt; createState() =&gt; _BoasVindasState();
+}
+
+class _BoasVindasState extends State&lt;BoasVindas&gt; {
+  String nome = '';
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Boas-vindas')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            TextField(
+              decoration: const InputDecoration(
+                labelText: 'Seu nome',
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (texto) {
+                setState(() {
+                  nome = texto;
+                });
+              },
+            ),
+            const SizedBox(height: 24),
+            Text(
+              nome.isEmpty ? 'Digite o seu nome' : 'Olá, $nome!',
+              style: const TextStyle(fontSize: 24),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>String nome = ''</dt><dd>O estado da tela: o último nome digitado. Começa vazio.</dd>
+  <dt>onChanged: (texto) { … }</dt><dd>Recebe o texto <strong>inteiro</strong> do campo (não só a letra nova). Digitou "A", chega <code>'A'</code>; depois "n", chega <code>'An'</code>; depois "a", <code>'Ana'</code>.</dd>
+  <dt>setState(() { nome = texto; })</dt><dd>Guarda o texto e manda redesenhar, para o <code>Text</code> de baixo mostrar o nome novo.</dd>
+  <dt>nome.isEmpty ? … : …</dt><dd>Se ainda não tem nome, mostra um convite; se tem, a saudação.</dd>
+</dl>
+
+<p>Ao abrir, o nome está vazio e aparece o convite. Depois que a Ana digitou <code>Ana</code>, o texto de baixo mudou letra a letra até ficar assim:</p>
+<div class="table-wrap"><table class="ref"><tr><td><figure class="tela"><img src="assets/telas/textfield-4.png" alt="Tela &#39;Boas-vindas&#39; com o campo &#39;Seu nome&#39; vazio e, embaixo, em letra grande, &#39;Digite o seu nome&#39;" width="390" height="844" loading="lazy"><figcaption>Ao abrir.</figcaption></figure></td><td><figure class="tela"><img src="assets/telas/textfield-5.png" alt="O campo com &#39;Ana&#39; digitado, rótulo &#39;Seu nome&#39; no alto da borda roxa, e embaixo, em letra grande, &#39;Olá, Ana!&#39;" width="390" height="844" loading="lazy"><figcaption>Depois de digitar Ana.</figcaption></figure></td></tr></table></div>
+
+<hr>
+
+<h2>4. O controlador: <code>TextEditingController</code></h2>
+<p>O <code>onChanged</code> é ótimo para reagir a cada letra. Mas e quando você só quer o texto <strong>na hora de um botão</strong>, ou quer <strong>mudar</strong> o texto do campo pelo código (limpar depois de salvar, por exemplo)? Para isso existe o <strong>controlador</strong>: um objeto que fica "ligado" ao campo e sabe o texto dele a qualquer momento.</p>
+
+<p>A lista de compras da Ana, agora com um campo para acrescentar itens:</p>
+
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: ListaDeCompras()));
+
+class ListaDeCompras extends StatefulWidget {
+  const ListaDeCompras({super.key});
+
+  @override
+  State&lt;ListaDeCompras&gt; createState() =&gt; _ListaDeComprasState();
+}
+
+class _ListaDeComprasState extends State&lt;ListaDeCompras&gt; {
+  final List&lt;String&gt; itens = ['Leite', 'Pão'];
+  final TextEditingController controle = TextEditingController();
+
+  void acrescentar() {
+    final texto = controle.text.trim();
+    if (texto.isEmpty) return;
+    setState(() {
+      itens.add(texto);
+    });
+    controle.clear();
+  }
+
+  @override
+  void dispose() {
+    controle.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Lista de compras')),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: TextField(
+              controller: controle,
+              decoration: InputDecoration(
+                labelText: 'Novo item',
+                border: const OutlineInputBorder(),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.add),
+                  onPressed: acrescentar,
+                ),
+              ),
+              onSubmitted: (_) =&gt; acrescentar(),
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              children: [for (final item in itens) ListTile(title: Text(item))],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+
+<dl class="anatomy">
+  <dt>final TextEditingController controle = TextEditingController();</dt><dd>Cria o controlador <strong>no <code>State</code></strong>, uma vez só. Se você o criasse dentro do <code>build</code>, a cada redesenho nasceria um controlador novo, vazio, e o texto digitado sumiria.</dd>
+  <dt>controller: controle</dt><dd>Liga o campo ao controlador.</dd>
+  <dt>controle.text</dt><dd>O texto que está no campo agora. O <code>.trim()</code> tira os espaços do começo e do fim (para "  " não virar um item).</dd>
+  <dt>controle.clear()</dt><dd>Apaga o campo, pronto para o próximo item. Também dá para <strong>escrever</strong> no campo: <code>controle.text = 'Café';</code>.</dd>
+  <dt>dispose()</dt><dd>Quando a tela sai de cena, o controlador tem de ser jogado fora com <code>controle.dispose()</code>. Ele guarda "ouvintes" (quem quer saber das mudanças); sem o <code>dispose</code>, eles ficam presos na memória. Veja <a href="ciclo-de-vida.html">Ciclo de Vida do Widget</a>.</dd>
+  <dt>suffixIcon: IconButton(…)</dt><dd>O botão "+" dentro do campo, no fim.</dd>
+  <dt>onSubmitted: (_) =&gt; acrescentar()</dt><dd>Chamado quando a pessoa aperta a tecla de confirmar do teclado (o "Enter"). Assim dá para acrescentar sem tirar o dedo do teclado. O <code>_</code> é o texto, que não usamos porque já está no controlador.</dd>
+</dl>
+
+<p>A Ana tocou no campo e digitou <code>Café</code>:</p>
+<figure class="tela"><img src="assets/telas/textfield-6.png" alt="Tela &#39;Lista de compras&#39;: no topo, o campo &#39;Novo item&#39; com &#39;Café&#39; digitado e um sinal de mais à direita; embaixo, a lista com Leite e Pão" width="390" height="844" loading="lazy"><figcaption>Café digitado, ainda não acrescentado.</figcaption></figure>
+<p>Depois ela apertou <kbd>Enter</kbd>. O <code>onSubmitted</code> chamou <code>acrescentar()</code>: o Café entrou na lista e o <code>controle.clear()</code> esvaziou o campo:</p>
+<figure class="tela"><img src="assets/telas/textfield-7.png" alt="O campo &#39;Novo item&#39; vazio de novo, e a lista agora com Leite, Pão e Café" width="390" height="844" loading="lazy"><figcaption>Depois do Enter.</figcaption></figure>
+
+<div class="tryflutter" data-goal="src:controle\.clear\(\)">
+<p class="try-task"><strong>Missão:</strong> o app acrescenta o item, mas o texto fica no campo, e a Ana tem de apagá-lo à mão. Faça a função <code>acrescentar</code> limpar o campo depois de guardar o item.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: ListaDeCompras()));
+
+class ListaDeCompras extends StatefulWidget {
+  const ListaDeCompras({super.key});
+
+  @override
+  State&lt;ListaDeCompras&gt; createState() =&gt; _ListaDeComprasState();
+}
+
+class _ListaDeComprasState extends State&lt;ListaDeCompras&gt; {
+  final List&lt;String&gt; itens = ['Leite', 'Pão'];
+  final TextEditingController controle = TextEditingController();
+
+  void acrescentar() {
+    final texto = controle.text.trim();
+    if (texto.isEmpty) return;
+    setState(() {
+      itens.add(texto);
+    });
+  }
+
+  @override
+  void dispose() {
+    controle.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Lista de compras')),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: TextField(
+              controller: controle,
+              decoration: InputDecoration(
+                labelText: 'Novo item',
+                border: const OutlineInputBorder(),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.add),
+                  onPressed: acrescentar,
+                ),
+              ),
+              onSubmitted: (_) =&gt; acrescentar(),
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              children: [for (final item in itens) ListTile(title: Text(item))],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: ListaDeCompras()));
+
+class ListaDeCompras extends StatefulWidget {
+  const ListaDeCompras({super.key});
+
+  @override
+  State&lt;ListaDeCompras&gt; createState() =&gt; _ListaDeComprasState();
+}
+
+class _ListaDeComprasState extends State&lt;ListaDeCompras&gt; {
+  final List&lt;String&gt; itens = ['Leite', 'Pão'];
+  final TextEditingController controle = TextEditingController();
+
+  void acrescentar() {
+    final texto = controle.text.trim();
+    if (texto.isEmpty) return;
+    setState(() {
+      itens.add(texto);
+    });
+    controle.clear();
+  }
+
+  @override
+  void dispose() {
+    controle.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Lista de compras')),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: TextField(
+              controller: controle,
+              decoration: InputDecoration(
+                labelText: 'Novo item',
+                border: const OutlineInputBorder(),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.add),
+                  onPressed: acrescentar,
+                ),
+              ),
+              onSubmitted: (_) =&gt; acrescentar(),
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              children: [for (final item in itens) ListTile(title: Text(item))],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<h3>Começar com um texto já escrito</h3>
+<p>Na tela de "editar perfil", o campo já vem com o nome atual. Passe o texto ao criar o controlador:</p>
+<pre class="file" data-file="lib/main.dart (trecho)">final TextEditingController controle = TextEditingController(text: 'Ana Souza');
+</pre>
+
+<hr>
+
+<h2>5. O teclado certo, a senha e os limites</h2>
+<p>O <code>TextField</code> tem vários parâmetros para combinar o campo com o que se espera nele:</p>
+
+<pre class="file" data-file="lib/main.dart (trecho)">Column(
+  children: [
+    const TextField(
+      keyboardType: TextInputType.emailAddress,
+      decoration: InputDecoration(labelText: 'E-mail'),
+    ),
+    const TextField(
+      keyboardType: TextInputType.number,
+      decoration: InputDecoration(labelText: 'Idade'),
+    ),
+    const TextField(
+      obscureText: true,
+      decoration: InputDecoration(labelText: 'Senha'),
+    ),
+    const TextField(
+      maxLength: 20,
+      decoration: InputDecoration(labelText: 'Apelido'),
+    ),
+    const TextField(
+      maxLines: 4,
+      decoration: InputDecoration(labelText: 'Observações'),
+    ),
+  ],
+)
+</pre>
+
+<dl class="anatomy">
+  <dt>keyboardType: TextInputType.emailAddress</dt><dd>Pede ao celular o teclado de e-mail (com o <code>@</code> à mão). Outros: <code>.number</code> (só números), <code>.phone</code>, <code>.url</code>, <code>.multiline</code>. <strong>É só o teclado:</strong> a pessoa ainda pode colar letras num campo de número. Para conferir o que foi digitado, use validação (próxima aula, <a href="formularios.html">Formulários e Validação</a>).</dd>
+  <dt>obscureText: true</dt><dd>Esconde as letras com bolinhas: o campo de senha.</dd>
+  <dt>maxLength: 20</dt><dd>Não deixa passar de 20 letras e mostra um contador <code>0/20</code> embaixo, à direita.</dd>
+  <dt>maxLines: 4</dt><dd>Deixa o campo com 4 linhas de altura, para textos longos. O padrão é <code>1</code>: uma linha só, que rola para o lado.</dd>
+</dl>
+
+<p>A Ana digitou <code>segredo</code> na senha e <code>Aninha</code> no apelido:</p>
+<figure class="tela"><img src="assets/telas/textfield-8.png" alt="Tela &#39;Tipos de campo&#39; com cinco campos de linha: E-mail e Idade vazios; Senha com sete bolinhas; Apelido com &#39;Aninha&#39; e, embaixo à direita, o contador &#39;6/20&#39;; e Observações, um campo bem mais alto que os outros" width="390" height="844" loading="lazy"><figcaption>Os cinco campos. Sem <code>border</code>, o Material 3 desenha só a linha de baixo.</figcaption></figure>
+<p>Repare: a senha virou bolinhas, o apelido ganhou o contador <code>6/20</code> e o campo de observações é mais alto. O teclado de e-mail e o de números não aparecem na foto: eles só existem no celular, quando o campo ganha o foco.</p>
+
+<h3>O "olhinho" da senha</h3>
+<p>Um botão para mostrar e esconder a senha é só um <code>bool</code> no estado e um <code>suffixIcon</code>:</p>
+<pre class="file" data-file="lib/main.dart (trecho)">bool escondida = true;
+
+// no build:
+TextField(
+  obscureText: escondida,
+  decoration: InputDecoration(
+    labelText: 'Senha',
+    border: const OutlineInputBorder(),
+    suffixIcon: IconButton(
+      icon: Icon(escondida ? Icons.visibility : Icons.visibility_off),
+      onPressed: () {
+        setState(() {
+          escondida = !escondida;
+        });
+      },
+    ),
+  ),
+)
+</pre>
+
+<div class="tryflutter" data-goal="src:obscureText:\s*escondida">
+<p class="try-task"><strong>Missão:</strong> o campo de senha abaixo mostra as letras. Use a variável <code>escondida</code> no <code>obscureText</code> e faça o botão do olhinho trocar o valor dela com <code>setState</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Entrar()));
+
+class Entrar extends StatefulWidget {
+  const Entrar({super.key});
+
+  @override
+  State&lt;Entrar&gt; createState() =&gt; _EntrarState();
+}
+
+class _EntrarState extends State&lt;Entrar&gt; {
+  bool escondida = true;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Entrar')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: TextField(
+          decoration: InputDecoration(
+            labelText: 'Senha',
+            border: const OutlineInputBorder(),
+            suffixIcon: IconButton(
+              icon: Icon(escondida ? Icons.visibility : Icons.visibility_off),
+              onPressed: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Entrar()));
+
+class Entrar extends StatefulWidget {
+  const Entrar({super.key});
+
+  @override
+  State&lt;Entrar&gt; createState() =&gt; _EntrarState();
+}
+
+class _EntrarState extends State&lt;Entrar&gt; {
+  bool escondida = true;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Entrar')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: TextField(
+          obscureText: escondida,
+          decoration: InputDecoration(
+            labelText: 'Senha',
+            border: const OutlineInputBorder(),
+            suffixIcon: IconButton(
+              icon: Icon(escondida ? Icons.visibility : Icons.visibility_off),
+              onPressed: () {
+                setState(() {
+                  escondida = !escondida;
+                });
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de ler o texto</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>O que usar</th></tr>
+<tr><td>Reagir a cada letra (busca enquanto digita, contador, prévia)</td><td><code>onChanged: (texto) { … }</code></td></tr>
+<tr><td>Pegar o texto quando a pessoa aperta Enter</td><td><code>onSubmitted: (texto) { … }</code></td></tr>
+<tr><td>Pegar o texto num botão, limpar o campo ou preencher pelo código</td><td><code>TextEditingController</code> (com <code>dispose</code>!)</td></tr>
+<tr><td>Vários campos que precisam ser conferidos juntos (cadastro, login)</td><td><code>Form</code> + <code>TextFormField</code>: aula <a href="formularios.html">Formulários e Validação</a></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>TextField dentro de uma Row, sem largura</strong>
+<p>A Ana quis uma lupa do lado do campo de busca e pôs os dois numa <code>Row</code>:</p>
+<pre class="file" data-file="lib/main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Busca()));
+
+class Busca extends StatelessWidget {
+  const Busca({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Busca')),
+      body: const Padding(
+        padding: EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Icon(Icons.search),
+            TextField(
+              decoration: InputDecoration(labelText: 'Buscar receita'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<p>A tela abre só com a barra de título: a lupa e o campo <strong>não aparecem</strong>.</p>
+<figure class="tela"><img src="assets/telas/textfield-9.png" alt="Tela com o título &#39;Busca&#39; e todo o resto vazio: nem a lupa nem o campo aparecem" width="390" height="844" loading="lazy"><figcaption>A <code>Row</code> com o <code>TextField</code> sem largura.</figcaption></figure>
+<p>O motivo está no console (este é o do app rodando no navegador, em modo debug; o começo da mensagem):</p>
+<pre class="term">══╡ EXCEPTION CAUGHT BY RENDERING LIBRARY ╞═════════════════════════════════════════════════════════
+The following assertion was thrown during performLayout():
+Assertion failed:
+file:///home/ana/flutter/packages/flutter/lib/src/material/input_decorator.dart:964:7
+constraints.maxWidth &lt; double.infinity
+"An InputDecorator, which is typically created by a TextField, cannot have an unbounded width.\nThis
+happens when the parent widget does not provide a finite width constraint. For example, if the
+InputDecorator is contained by a Row, then its width must be constrained. An Expanded widget or a
+SizedBox can be used to constrain the width of the InputDecorator or the TextField that contains
+it."
+
+The relevant error-causing widget was:
+  TextField TextField:file:///home/ana/app/lib/main.dart:17:13
+…                                                   « a pilha e mais detalhes
+Another exception was thrown: Assertion failed: file:///home/ana/flutter/packages/flutter/lib/src/rendering/box.dart:2251:12
+Another exception was thrown: Assertion failed: file:///home/ana/flutter/packages/flutter/lib/src/rendering/box.dart:2251:12
+…                                                   « a mesma linha, muitas vezes
+</pre>
+<dl class="anatomy">
+  <dt>An InputDecorator … cannot have an unbounded width.</dt><dd>"Um InputDecorator (a peça que desenha a decoração, criada pelo <code>TextField</code>) não pode ter largura <strong>ilimitada</strong>."</dd>
+  <dt>This happens when the parent widget does not provide a finite width constraint.</dt><dd>"Isso acontece quando o pai não dá um limite de largura." A <code>Row</code> pergunta a cada filho "qual o seu tamanho?" sem limite nenhum (veja <a href="constraints.html">Como o Flutter Calcula Tamanhos</a>), e o <code>TextField</code> responde "quero toda a largura que houver". Infinito não cabe.</dd>
+  <dt>An Expanded widget or a SizedBox can be used…</dt><dd>A própria mensagem dá a solução: um <code>Expanded</code> ou um <code>SizedBox</code> em volta do campo.</dd>
+  <dt>The relevant error-causing widget was: TextField …lib/main.dart:17:13</dt><dd>O culpado e onde ele está: linha 17, coluna 13 do <code>main.dart</code>, o <code>TextField(</code>.</dd>
+  <dt>Another exception was thrown: …</dt><dd>"Outra exceção foi lançada." São erros <strong>em cadeia</strong>: como o campo não conseguiu ter tamanho, o resto da linha também não. Leia sempre a <strong>primeira</strong> mensagem, a do quadro com <code>══╡ EXCEPTION</code>; as repetidas de baixo são consequência dela.</dd>
+</dl>
+<p><strong>Como consertar:</strong> embrulhe o campo num <code>Expanded</code>, para ele ocupar o que sobra da linha depois da lupa (veja <a href="expanded.html">Expanded e Flexible</a>):</p>
+<pre class="file" data-file="lib/main.dart (trecho)">Row(
+  children: [
+    Icon(Icons.search),
+    Expanded(
+      child: TextField(
+        decoration: InputDecoration(labelText: 'Buscar receita'),
+      ),
+    ),
+  ],
+)
+</pre>
+</div>
+
+<div class="cenario">
+<strong>Controlador criado dentro do <code>build</code></strong>
+<pre class="file" data-file="lib/main.dart (trecho)">@override
+Widget build(BuildContext context) {
+  final controle = TextEditingController(); // errado: nasce de novo a cada build
+  …
+}
+</pre>
+<p>O app não mostra erro nenhum, mas se comporta de um jeito estranho: qualquer <code>setState</code> redesenha a tela, cria um controlador <strong>novo e vazio</strong>, e o que a pessoa tinha digitado some. <strong>Como consertar:</strong> crie o controlador como campo do <code>State</code> (<code>final controle = TextEditingController();</code> fora do <code>build</code>) e faça o <code>dispose</code> dele.</p>
+</div>
+
+<div class="cenario">
+<strong>O teclado cobre o campo</strong>
+<p>Num celular, o teclado ocupa quase metade da tela. Se o campo estiver lá embaixo numa <code>Column</code> que não rola, o teclado o cobre, ou aparecem as listras amarelas e pretas do <a href="overflow.html">overflow</a> embaixo da tela. <strong>Como consertar:</strong> ponha o conteúdo dentro de um <code>SingleChildScrollView</code> (veja <a href="scroll.html">Rolagem</a>) ou de um <code>ListView</code>; o <code>Scaffold</code> encolhe o corpo quando o teclado sobe, e a rolagem deixa a pessoa chegar ao campo.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Parâmetro</th><th>O que faz</th></tr>
+<tr><td><code>decoration: InputDecoration(…)</code></td><td>Rótulo (<code>labelText</code>), dica (<code>hintText</code>), ajuda (<code>helperText</code>), ícones (<code>prefixIcon</code>, <code>suffixIcon</code>), borda (<code>border</code>), erro (<code>errorText</code>)</td></tr>
+<tr><td><code>onChanged: (texto) {…}</code></td><td>Chamado a cada mudança, com o texto inteiro</td></tr>
+<tr><td><code>onSubmitted: (texto) {…}</code></td><td>Chamado quando a pessoa confirma no teclado</td></tr>
+<tr><td><code>controller: TextEditingController()</code></td><td>Ler (<code>.text</code>), mudar (<code>.text = …</code>) e limpar (<code>.clear()</code>) o campo</td></tr>
+<tr><td><code>keyboardType: TextInputType.number</code></td><td>O teclado que o celular mostra</td></tr>
+<tr><td><code>obscureText: true</code></td><td>Esconde o texto (senha)</td></tr>
+<tr><td><code>maxLength: 20</code></td><td>Limite de caracteres, com contador</td></tr>
+<tr><td><code>maxLines: 4</code></td><td>Altura em linhas (padrão 1)</td></tr>
+<tr><td><code>autofocus: true</code></td><td>O campo já começa com o foco (e o teclado aberto)</td></tr>
+<tr><td><code>enabled: false</code></td><td>Campo cinza, que não aceita toque</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o campo de senha</h3>
+<div class="ex-code">TextField(<br>&nbsp;&nbsp;<input data-answer="obscureText" aria-label="parâmetro que esconde o texto">: true,<br>&nbsp;&nbsp;decoration: <input data-answer="InputDecoration" aria-label="classe da decoração">(<input data-answer="labelText" aria-label="parâmetro do rótulo">: 'Senha'),<br>)</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. A pessoa digitou "Ana" no campo, uma letra por vez. Quantas vezes o <code>onChanged</code> foi chamado, e com o quê na última vez?</p>
+<label><input type="radio" name="q2"> 1 vez, com <code>'Ana'</code></label>
+<label><input type="radio" name="q2"> 3 vezes; na última, com <code>'Ana'</code></label>
+<label><input type="radio" name="q2"> 3 vezes; na última, com <code>'a'</code></label>
+<label><input type="radio" name="q2"> Nenhuma: só quando ela apertar Enter</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. Onde se cria o <code>TextEditingController</code>?</p>
+<label><input type="radio" name="q3"> Dentro do <code>build</code>, para estar sempre atualizado</label>
+<label><input type="radio" name="q3"> Dentro do <code>onChanged</code></label>
+<label><input type="radio" name="q3"> Como campo do <code>State</code>, com <code>dispose</code> no fim</label>
+<label><input type="radio" name="q3"> Num <code>StatelessWidget</code>, como <code>const</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. Com <code>keyboardType: TextInputType.number</code>, a pessoa consegue pôr letras no campo?</p>
+<label><input type="radio" name="q4"> Sim, colando um texto; o <code>keyboardType</code> só escolhe o teclado</label>
+<label><input type="radio" name="q4"> Não, o Flutter bloqueia</label>
+<label><input type="radio" name="q4"> Só no iPhone</label>
+<label><input type="radio" name="q4"> Só se <code>obscureText</code> for <code>true</code></label>
+</div>
+
+<h3>Missão final: contador de caracteres</h3>
+<div class="tryflutter" data-goal="src:onChanged;;src:\.length">
+<p class="try-task"><strong>Missão:</strong> a Ana quer escrever a legenda de uma foto e saber quantas letras já usou. Use o <code>onChanged</code> para guardar o texto em <code>legenda</code> com <code>setState</code>, e troque o <code>0</code> do <code>Text</code> de baixo por <code>${legenda.length}</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Legenda()));
+
+class Legenda extends StatefulWidget {
+  const Legenda({super.key});
+
+  @override
+  State&lt;Legenda&gt; createState() =&gt; _LegendaState();
+}
+
+class _LegendaState extends State&lt;Legenda&gt; {
+  String legenda = '';
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Legenda da foto')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            const TextField(
+              maxLines: 3,
+              decoration: InputDecoration(
+                labelText: 'Legenda',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text('Letras: 0'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() =&gt; runApp(const MaterialApp(home: Legenda()));
+
+class Legenda extends StatefulWidget {
+  const Legenda({super.key});
+
+  @override
+  State&lt;Legenda&gt; createState() =&gt; _LegendaState();
+}
+
+class _LegendaState extends State&lt;Legenda&gt; {
+  String legenda = '';
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Legenda da foto')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            TextField(
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Legenda',
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (texto) {
+                setState(() {
+                  legenda = texto;
+                });
+              },
+            ),
+            const SizedBox(height: 16),
+            Text('Letras: ${legenda.length}'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+</pre>
+</div>
+
+<p>Repare na solução: o <code>TextField</code> perdeu o <code>const</code> (agora ele tem uma função, o <code>onChanged</code>, que não é constante), e o <code>const</code> passou para o <code>InputDecoration</code>, que continua sem mudar. O mesmo vale para o <code>Text</code>, que agora mostra um valor que muda.</p>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O <code>TextField</code> é o campo em que a pessoa digita; o <code>InputDecoration</code> é a roupa dele: rótulo, dica, ajuda, ícones e borda.</li>
+  <li><code>onChanged</code> chega a cada letra com o texto inteiro; <code>onSubmitted</code>, quando a pessoa confirma no teclado.</li>
+  <li>O <code>TextEditingController</code> lê, muda e limpa o campo a qualquer momento. Crie-o no <code>State</code>, nunca no <code>build</code>, e chame <code>dispose()</code> nele.</li>
+  <li><code>keyboardType</code> escolhe o teclado (não valida nada); <code>obscureText</code> esconde a senha; <code>maxLength</code> e <code>maxLines</code> controlam o tamanho.</li>
+  <li>Dentro de uma <code>Row</code>, o <code>TextField</code> precisa de uma largura: embrulhe-o num <code>Expanded</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
