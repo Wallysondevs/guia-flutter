@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VS Code e Android Studio — o editor para programar em Flutter | Guia Flutter</title>
+<meta name="description" content="Qual editor usar para Flutter: o VS Code com a extensão Flutter (paleta de comandos, escolher o aparelho, F5, hot reload ao salvar, lâmpada de correções) e o Android Studio com o plugin Flutter, o SDK Manager e o emulador Android (Device Manager), com o que cada um faz melhor e os problemas comuns.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>VS Code e <span class="hl">Android Studio</span></h1>
+
+<p class="intro">Dá para escrever um app Flutter no Bloco de Notas e rodar tudo pelo terminal, mas ninguém faz isso. Um editor preparado para Flutter completa os nomes dos widgets enquanto você digita, sublinha os erros antes de você rodar, mostra a documentação de cada parâmetro, roda o app com uma tecla e faz o <strong>hot reload</strong> sozinho quando você salva. Os dois editores oficiais são o <strong>VS Code</strong> e o <strong>Android Studio</strong>. Esta aula mostra os dois e ajuda você a escolher.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que um editor "com Flutter" faz por você.</li>
+  <li>A preparar o VS Code: a extensão Flutter, a paleta de comandos, a escolha do aparelho e o <kbd>F5</kbd>.</li>
+  <li>A preparar o Android Studio: o plugin Flutter, o SDK Manager e o emulador.</li>
+  <li>As teclas e os comandos que você vai usar todo dia.</li>
+  <li>Qual dos dois usar, e por que muita gente usa os dois.</li>
+  <li>Os problemas comuns: o editor que não acha o SDK e o aparelho que não aparece.</li>
+</ul>
+</div>
+
+<div class="warning">
+<strong>Ilustrativo</strong>
+<p>Os editores são programas de janela, e cada versão muda um pouco os menus. Os nomes de menus e comandos desta aula foram conferidos na documentação oficial (<code>docs.flutter.dev/tools</code> e <code>docs.flutter.dev/platform-integration/android/setup</code>), mas as telas dos editores não foram fotografadas. A tela do app e as saídas de terminal vieram do Flutter 3.47.7 do laboratório.</p>
+</div>
+
+<hr>
+
+<h2>A ideia: a cozinha equipada</h2>
+<p>Dá para fazer um bolo com uma colher e uma tigela. Mas, numa cozinha equipada, a batedeira bate, o forno avisa quando esquentou e a balança pesa certinho. A receita é a mesma; o trabalho é muito menor.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Sem editor (só terminal)</th><th>Com um editor com Flutter</th></tr>
+<tr><td>Você digita <code>ElevatedButton</code> letra por letra</td><td>Digita <code>Elev</code> e escolhe na lista (<strong>autocompletar</strong>)</td></tr>
+<tr><td>Descobre o erro quando o <code>flutter run</code> falha</td><td>O erro aparece <strong>sublinhado em vermelho</strong> enquanto você digita</td></tr>
+<tr><td>Abre o navegador para ver os parâmetros do <code>Text</code></td><td>Para o mouse em cima do <code>Text</code> e a documentação aparece</td></tr>
+<tr><td>Aperta <kbd>r</kbd> no terminal para o hot reload</td><td>Salva o arquivo (<kbd>Ctrl</kbd>+<kbd>S</kbd>) e o hot reload acontece sozinho</td></tr>
+<tr><td>Encaixa um widget dentro de outro à mão, contando parênteses</td><td>Usa a <strong>lâmpada</strong> de correções: "Wrap with Padding", "Wrap with Center"</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>1. VS Code</h2>
+<p>O <strong>Visual Studio Code</strong> (VS Code) é um editor gratuito da Microsoft, leve, para Windows, macOS e Linux. Sozinho, ele não sabe nada de Flutter: quem ensina é a <strong>extensão Flutter</strong>, da <em>Dart Code</em>, que instala junto a extensão Dart.</p>
+
+<h3>1.1 Preparar</h3>
+<ol class="passo">
+  <li>Instale o VS Code (<code>code.visualstudio.com</code>).</li>
+  <li>Abra a aba de extensões (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd>), procure <strong>Flutter</strong> e clique em <strong>Install</strong>.</li>
+  <li>Se o Flutter ainda não estiver instalado, a própria extensão oferece baixá-lo (aula <a href="instalar.html">Instalar o Flutter</a>, seção "O jeito rápido").</li>
+</ol>
+
+<h3>1.2 O que você vai usar todo dia</h3>
+<dl class="anatomy">
+  <dt>Paleta de comandos (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>)</dt><dd>A "central" do VS Code. Digite <code>flutter</code> e aparecem os comandos da extensão: <strong>Flutter: New Project</strong> (cria um projeto, como o <code>flutter create</code>), <strong>Flutter: Select Device</strong> (escolhe o aparelho), <strong>Flutter: Run Flutter Doctor</strong>, <strong>Flutter: Get Packages</strong>.</dd>
+  <dt>O aparelho, na barra de status</dt><dd>No canto de baixo, à direita, aparece o aparelho em que o app vai rodar (por exemplo, <em>Chrome (web)</em>, <em>Linux (desktop)</em> ou o seu emulador). Clique nele para trocar.</dd>
+  <dt><kbd>F5</kbd> (Run › Start Debugging)</dt><dd>Roda o app no aparelho escolhido, em modo de depuração. É o mesmo que o <code>flutter run</code> (aula <a href="flutter-run.html">Rodando o App</a>). Aparece uma barrinha de botões no alto: pausar, <strong>hot reload</strong> (o raio), <strong>hot restart</strong> (a seta circular), parar.</dd>
+  <dt><kbd>Ctrl</kbd>+<kbd>S</kbd> (salvar)</dt><dd>Com o app rodando, salvar o arquivo faz o hot reload automaticamente (aula <a href="hot-reload.html">Hot Reload e Hot Restart</a>).</dd>
+  <dt><kbd>Ctrl</kbd>+<kbd>.</kbd> (a lâmpada)</dt><dd>Com o cursor num widget, mostra as correções e "refatorações" rápidas: <em>Wrap with widget</em>, <em>Wrap with Padding</em>, <em>Wrap with Column</em>, <em>Remove this widget</em>. Poupa a contagem de parênteses.</dd>
+  <dt><kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> (formatar)</dt><dd>Arruma a indentação do arquivo com o <code>dart format</code>. Com a vírgula no fim de cada parâmetro, cada widget fica numa linha (aula <a href="dart-para-flutter.html">O Dart que Você Precisa</a>).</dd>
+  <dt>Aba <em>Problems</em> (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd>)</dt><dd>A lista de erros e avisos do projeto inteiro: a mesma lista que o comando <code>flutter analyze</code> mostra no terminal.</dd>
+</dl>
+
+<div class="tip">
+<strong>Os "snippets"</strong>
+<p>Num arquivo <code>.dart</code> vazio, digite <code>stless</code> e aperte <kbd>Enter</kbd>: a extensão escreve o esqueleto inteiro de um <code>StatelessWidget</code>, e você só digita o nome. <code>stful</code> faz o mesmo para um <code>StatefulWidget</code>. Você vai conhecer os dois nas aulas <a href="stateless.html">StatelessWidget</a> e <a href="stateful.html">StatefulWidget</a>.</p>
+</div>
+
+<hr>
+
+<h2>2. Android Studio</h2>
+<p>O <strong>Android Studio</strong> é o editor oficial do Google para Android. Ele é bem mais pesado que o VS Code, mas traz uma coisa que o VS Code não traz: as <strong>ferramentas do Android</strong> (o Android SDK) e o <strong>emulador</strong>, um celular Android de mentira que roda numa janela do seu computador. Para fazer app de Android, você precisa dele instalado, <strong>mesmo que escreva o código no VS Code</strong>.</p>
+
+<h3>2.1 Preparar</h3>
+<ol class="passo">
+  <li>Instale o Android Studio (<code>developer.android.com/studio</code>) e abra uma vez, aceitando a configuração padrão.</li>
+  <li>Na tela <strong>Welcome to Android Studio</strong>, clique em <strong>Plugins</strong>, procure <strong>Flutter</strong> e instale (ele instala junto o plugin Dart). Reinicie o Android Studio.</li>
+  <li>Abra o <strong>SDK Manager</strong> (<strong>More Actions › SDK Manager</strong> na tela de boas-vindas, ou <strong>Tools › SDK Manager</strong> com um projeto aberto). Na aba <strong>SDK Tools</strong>, confira que estão marcados: <em>Android SDK Build-Tools</em>, <em>Android SDK Command-line Tools</em>, <em>Android Emulator</em> e <em>Android SDK Platform-Tools</em>. Clique em <strong>Apply</strong>.</li>
+  <li>No terminal, aceite as licenças do Android com <code>flutter doctor --android-licenses</code> (aula <a href="flutter-doctor.html">flutter doctor</a>).</li>
+</ol>
+
+<div class="note">
+<strong>O plugin não instala o Flutter</strong>
+<p>A documentação oficial avisa: instalar o plugin Flutter no Android Studio <strong>não basta</strong>. O SDK do Flutter tem de estar instalado e no PATH (aula <a href="instalar.html">Instalar o Flutter</a>). Na primeira vez, o Android Studio pergunta onde ele está: aponte a pasta <code>develop/flutter</code>.</p>
+</div>
+
+<h3>2.2 O emulador</h3>
+<ol class="passo">
+  <li>Abra o <strong>Device Manager</strong> (<strong>More Actions › Virtual Device Manager</strong>, ou <strong>Tools › Device Manager</strong>).</li>
+  <li>Clique no <strong>+</strong> (<em>Create Virtual Device</em>), escolha <strong>Phone</strong> e um modelo (um Pixel, por exemplo) e clique em <strong>Next</strong>.</li>
+  <li>Escolha uma imagem do sistema (uma versão do Android) e baixe-a, se tiver o ícone de download.</li>
+  <li>Em <strong>Additional settings</strong>, no item <em>Graphics acceleration</em>, escolha uma opção com <strong>Hardware</strong> (o emulador fica muito mais rápido).</li>
+  <li>Clique em <strong>Finish</strong> e, depois, no botão de rodar (▶) ao lado do aparelho criado. Abre uma janela com um celular Android ligando.</li>
+</ol>
+
+<p>Com o emulador aberto, ele aparece na lista de aparelhos do Flutter, tanto no Android Studio quanto no VS Code e no terminal (<code>flutter devices</code>).</p>
+
+<div class="tip">
+<strong>Celular de verdade</strong>
+<p>No lugar do emulador, você pode usar o seu próprio celular Android: ative as <strong>Opções do desenvolvedor</strong> (no Android, toque 7 vezes em "Número da versão", em Configurações › Sobre o telefone) e, dentro delas, a <strong>Depuração USB</strong>; ligue o cabo e autorize o computador quando o celular perguntar. É mais leve que o emulador.</p>
+</div>
+
+<h3>2.3 O que você vai usar todo dia</h3>
+<dl class="anatomy">
+  <dt>File › New › New Flutter Project</dt><dd>Cria um projeto Flutter (o equivalente ao <code>flutter create</code>).</dd>
+  <dt>A lista de aparelhos, na barra de cima</dt><dd>Escolhe onde o app vai rodar: o emulador, o celular ligado no cabo, o Chrome.</dd>
+  <dt>O botão ▶ (Run) e o 🐞 (Debug)</dt><dd>Rodam o app.</dd>
+  <dt>O raio (Hot Reload) e a seta circular (Hot Restart)</dt><dd>Na barra de ferramentas e na aba <em>Run</em>. Salvar o arquivo também faz o hot reload.</dd>
+  <dt><kbd>Alt</kbd>+<kbd>Enter</kbd></dt><dd>A "lâmpada" do Android Studio: <em>Wrap with Padding</em>, <em>Wrap with Center</em> e as outras correções rápidas.</dd>
+</dl>
+
+<hr>
+
+<h2>Experimente</h2>
+<p>Seja qual for o editor, o código é o mesmo. Esta missão imita o que a lâmpada ("Wrap with Padding") faz por você: encaixar um widget dentro de outro.</p>
+
+<div class="tryflutter" data-goal="src:Padding\(\s*padding:\s*(const\s+)?EdgeInsets\.all\(\s*32\s*\)">
+<p class="try-task"><strong>Missão:</strong> o texto está grudado na borda da tela. Encaixe o <code>Text</code> dentro de um <code>Padding</code> com <code>padding: EdgeInsets.all(32)</code>, como o "Wrap with Padding" do editor faria. Dica: o <code>Text</code> vira o <code>child</code> do <code>Padding</code>.</p>
+<pre class="script" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(
+    const MaterialApp(
+      home: Scaffold(
+        body: Text('Receitas da Ana: bolo de cenoura, pão de queijo e torta de limão'),
+      ),
+    ),
+  );
+}
+</pre>
+<pre class="solucao" data-file="main.dart">import 'package:flutter/material.dart';
+
+void main() {
+  runApp(
+    const MaterialApp(
+      home: Scaffold(
+        body: Padding(
+          padding: EdgeInsets.all(32),
+          child: Text('Receitas da Ana: bolo de cenoura, pão de queijo e torta de limão'),
+        ),
+      ),
+    ),
+  );
+}
+</pre>
+</div>
+
+<figure class="tela"><img src="assets/telas/editor-1.png" alt="Antes: o texto 'Receitas da Ana: bolo de cenoura, pão de queijo e torta de limão' começa colado no canto superior esquerdo da tela, quebra em duas linhas e passa por baixo da faixa DEBUG" width="390" height="844" loading="lazy"><figcaption>Antes: o texto encostado nas bordas.</figcaption></figure>
+
+<figure class="tela"><img src="assets/telas/editor-2.png" alt="Depois, o resultado esperado: o mesmo texto afastado das bordas por um espaço em volta, quebrando em duas linhas antes de chegar à borda direita" width="390" height="844" loading="lazy"><figcaption>Depois (o resultado esperado): 32 pixels de espaço em volta.</figcaption></figure>
+
+<p>Repare na solução: o <code>EdgeInsets.all(32)</code> ficou <strong>sem</strong> <code>const</code>. Ele já está dentro de um <code>const MaterialApp(...)</code>, e tudo o que fica dentro de um <code>const</code> já é constante; um segundo <code>const</code> ali seria só repetição. O <code>Padding</code> tem aula própria: <a href="padding-margin.html">Padding e Margem</a>.</p>
+
+<hr>
+
+<h2>Formas diferentes de editar (e qual usar)</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Editor</th><th>Pontos fortes</th><th>Pontos fracos</th></tr>
+<tr><td><strong>VS Code</strong> + extensão Flutter</td><td>Leve, abre rápido, ótimo também para outras linguagens. A forma mais fácil de instalar o Flutter</td><td>Não traz o Android SDK nem o emulador</td></tr>
+<tr><td><strong>Android Studio</strong> + plugin Flutter</td><td>Traz o Android SDK, o SDK Manager e o emulador; ferramentas de Android avançadas</td><td>Pesado (pede bastante memória); mais menus para aprender</td></tr>
+<tr><td>IntelliJ IDEA + plugin Flutter</td><td>O "irmão" do Android Studio (feitos pela mesma base)</td><td>Igual ao Android Studio, sem as ferramentas de Android</td></tr>
+<tr><td>Qualquer editor + terminal</td><td>Funciona em qualquer lugar: <code>flutter run</code> e as teclas <kbd>r</kbd> e <kbd>R</kbd></td><td>Sem autocompletar nem erros ao vivo (a não ser que o editor tenha suporte ao Dart)</td></tr>
+</table>
+</div>
+
+<div class="tip">
+<strong>Qual usar?</strong>
+<p>A combinação mais comum: <strong>instalar os dois e programar no VS Code</strong>, usando o Android Studio só para o SDK Manager e o emulador. Se o seu computador tem pouca memória (8 GB ou menos), prefira o VS Code com um celular de verdade no cabo, no lugar do emulador. Este guia não depende de editor: tudo o que é feito por menu também tem o comando de terminal.</p>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>"Could not find a Flutter SDK"</strong>
+<p>O VS Code mostra um aviso parecido com esse quando a extensão não acha o Flutter, e o Android Studio pede o <em>Flutter SDK path</em>. Quase sempre o SDK não está no PATH, ou o editor foi aberto <strong>antes</strong> de você mexer no PATH. <strong>Como consertar:</strong> feche o editor por completo e abra de novo; se continuar, clique em <em>Locate SDK</em> e aponte a pasta <code>develop/flutter</code>. Confira no terminal com <code>flutter --version</code> (aula <a href="instalar.html">Instalar o Flutter</a>).</p>
+</div>
+
+
+<div class="cenario">
+<strong>O emulador não abre, ou é muito lento</strong>
+<p>O emulador precisa da <strong>aceleração de virtualização</strong> do processador (no Windows, o recurso <em>Windows Hypervisor Platform</em>; em muitos computadores, ela precisa ser ligada na BIOS) e de memória livre. Sem ela, o emulador recusa abrir ou fica lentíssimo. <strong>Como consertar:</strong> siga as instruções de aceleração do Android Studio (<em>Configure hardware acceleration</em>, em <code>developer.android.com</code>), escolha <em>Hardware</em> em <em>Graphics acceleration</em>, ou use um celular de verdade no cabo.</p>
+</div>
+
+<div class="cenario">
+<strong>O hot reload "não fez nada"</strong>
+<p>Você salvou e a tela não mudou. Três suspeitos: o arquivo não foi salvo (a bolinha branca na aba do VS Code), o app não está rodando pelo editor (foi aberto por outro terminal), ou a mudança é das que o hot reload não aplica (por exemplo, no <code>main</code>). A aula <a href="hot-reload.html">Hot Reload e Hot Restart</a> explica cada caso.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Ação</th><th>VS Code</th><th>Android Studio</th><th>Terminal</th></tr>
+<tr><td>Criar projeto</td><td>Paleta › <em>Flutter: New Project</em></td><td>File › New › New Flutter Project</td><td><code>flutter create nome</code></td></tr>
+<tr><td>Escolher aparelho</td><td>Barra de status (canto inferior direito)</td><td>Lista de aparelhos na barra de cima</td><td><code>flutter run -d aparelho</code></td></tr>
+<tr><td>Rodar</td><td><kbd>F5</kbd></td><td>▶ Run</td><td><code>flutter run</code></td></tr>
+<tr><td>Hot reload</td><td>Salvar, ou o raio</td><td>Salvar, ou o raio</td><td><kbd>r</kbd></td></tr>
+<tr><td>Hot restart</td><td>A seta circular (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F5</kbd>)</td><td>A seta circular</td><td><kbd>R</kbd></td></tr>
+<tr><td>Correções rápidas</td><td><kbd>Ctrl</kbd>+<kbd>.</kbd></td><td><kbd>Alt</kbd>+<kbd>Enter</kbd></td><td>(não tem)</td></tr>
+<tr><td>Formatar</td><td><kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd></td><td><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>L</kbd></td><td><code>dart format .</code></td></tr>
+<tr><td>Lista de problemas</td><td>Aba Problems</td><td>Aba Dart Analysis</td><td><code>flutter analyze</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. O atalho do esqueleto</h3>
+<p>No VS Code com a extensão Flutter, que palavra você digita para gerar o esqueleto de um <code>StatelessWidget</code>?</p>
+<div class="ex-code"><input data-answer="stless" aria-label="snippet"></div>
+</div>
+
+<div class="exercise">
+<h3>2. A tecla de rodar</h3>
+<p>Que tecla roda o app no VS Code?</p>
+<div class="ex-code"><input data-answer="F5" aria-label="tecla"></div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. A Ana vai programar no VS Code, para Android, com o emulador. Ela precisa instalar o Android Studio?</p>
+<label><input type="radio" name="q3"> Não: o VS Code traz o emulador</label>
+<label><input type="radio" name="q3"> Não: o Flutter traz o Android SDK</label>
+<label><input type="radio" name="q3"> Sim: é o Android Studio que traz o Android SDK e o emulador</label>
+<label><input type="radio" name="q3"> Sim: o código Flutter só compila dentro do Android Studio</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. Para que serve a "lâmpada" (<kbd>Ctrl</kbd>+<kbd>.</kbd> no VS Code) em cima de um widget?</p>
+<label><input type="radio" name="q4"> Mostra correções rápidas, como encaixar o widget dentro de um <code>Padding</code></label>
+<label><input type="radio" name="q4"> Liga o tema claro</label>
+<label><input type="radio" name="q4"> Roda o app</label>
+<label><input type="radio" name="q4"> Apaga o arquivo</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Os editores oficiais do Flutter são o <strong>VS Code</strong> (com a extensão Flutter) e o <strong>Android Studio</strong> (com o plugin Flutter).</li>
+  <li>Eles completam nomes, mostram erros ao vivo e a documentação, rodam o app e fazem hot reload ao salvar.</li>
+  <li>No VS Code: paleta (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>), aparelho na barra de status, <kbd>F5</kbd> para rodar, <kbd>Ctrl</kbd>+<kbd>.</kbd> para a lâmpada.</li>
+  <li>Para Android, o Android Studio é necessário de qualquer jeito: ele traz o Android SDK (SDK Manager) e o emulador (Device Manager).</li>
+  <li>O plugin do editor não instala o Flutter: o SDK tem de estar instalado e no PATH.</li>
+  <li>Combinação comum: programar no VS Code e usar o Android Studio para o SDK e o emulador.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
