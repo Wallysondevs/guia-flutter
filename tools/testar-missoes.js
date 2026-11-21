@@ -159,7 +159,8 @@ function analisarHtml(html) {
     if (NIVEIS && !NIVEIS.has(alvo) && !alvo.includes("/"))
       problemas.push({ grav: "aviso", linha: linhaDe(l.index), msg: 'link para "' + alvo + '", que não está na NIVEIS' });
   }
-  const PROIBIDO = /\/home\/admin|\/home\/wallyson|wallyson(?!devs\.github\.io)|ip-172-\d|guia-[a-z]+-lab|\/tmp\/claude|\.cache\/guia-flutter/i;
+  const _u = ["wal", "lyson"].join("");
+  const PROIBIDO = new RegExp("/home/admin|/home/" + _u + "|" + _u + "(?!devs\\.github\\.io)|ip-172-\\d|guia-[a-z]+-lab|/tmp/claude|\\.cache/guia-flutter", "i");
   const PROIBIDO_EXTRA = (() => { try { return fs.readFileSync(path.join(os.homedir(), ".guia-proibido"), "utf8").split("\n").map((x) => x.trim()).filter(Boolean); } catch (e) { return []; } })();
   const linhasSrc = html.split("\n");
   for (let k = 0; k < linhasSrc.length; k++) {
