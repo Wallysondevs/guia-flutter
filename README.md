@@ -1,3 +1,5 @@
+<p align="center"><img src="capa.png" alt="Capa do guia-flutter" width="100%"></p>
+
 # Guia Flutter
 
 Site: https://wallysondevs.github.io/guia-flutter/
