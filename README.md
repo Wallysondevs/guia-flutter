@@ -39,6 +39,7 @@ node tools/testar-missoes.js pagina.html                # só estas páginas (-q
 node tools/testar-missoes.js --sem-analise pagina.html  # rápido, sem o dart analyze
 node tools/testar-navegador.js pagina.html              # confere o editor num Chromium sem janela
 node tools/testar-navegador.js --dartpad 1 pagina.html  # clica em Rodar na caixa 1 e espera o DartPad (precisa de internet)
+bash tools/checar-privacidade.sh             # páginas e histórico; lista extra: PROIBIDO=lista.txt
 ```
 
 ## Publicar no GitHub Pages
